@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk -F/ '{depth=NF-1; if\\(depth<=3\\) print}')",
+      "Bash(sqlite3 /c/Users/ardat/Desktop/StoaBoard/stoaboard.db \".tables\")",
+      "Bash(pip install *)",
+      "Bash(python -c \"from app import create_app; app = create_app\\(\\); print\\('OK — tablolar kontrol edildi'\\)\")"
+    ]
+  }
+}
