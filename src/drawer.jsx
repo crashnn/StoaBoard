@@ -1,12 +1,24 @@
 // Task detail drawer — Notion-style rich doc
 
-const { useState: useDrawerState } = React;
+const { useState: useDrawerState, useEffect: useDrawerEffect, useRef: useDrawerRef } = React;
 
 function TaskDrawer({ open, task, onClose, onMoveTask }) {
   if (!task) return null;
 
   const members = task.assignees.map(id => DATA.MEMBERS.find(m => m.id === id)).filter(Boolean);
   const col = DATA.COLUMNS.find(c => c.id === task.col);
+  const [statusOpen, setStatusOpen] = useDrawerState(false);
+  const statusRef = useDrawerRef(null);
+
+  useDrawerEffect(() => {
+    const handleClick = (e) => {
+      if (statusOpen && statusRef.current && !statusRef.current.contains(e.target)) {
+        setStatusOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [statusOpen]);
 
   // Use rich doc if it's the detailed task, else generate basic
   const detail = task.id === 't8' ? DATA.TASK_DETAIL_T8 : {
@@ -50,13 +62,33 @@ function TaskDrawer({ open, task, onClose, onMoveTask }) {
           <div className="props-grid">
             <div className="prop-label"><Icon name="circleHalf" size={13} /> Durum</div>
             <div className="prop-value">
-              <select
-                value={task.col}
-                onChange={(e) => onMoveTask(task.id, e.target.value)}
-                style={{ border: 'none', background: 'none', padding: 0, fontSize: 13, cursor: 'pointer', outline: 'none' }}
-              >
-                {DATA.COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title_tr}</option>)}
-              </select>
+              <div className="custom-dropdown" ref={statusRef}>
+                <button
+                  className="custom-dropdown-btn"
+                  type="button"
+                  onClick={() => setStatusOpen(!statusOpen)}
+                >
+                  <span>{col.title_tr}</span>
+                  <Icon name="chevronDown" size={12} />
+                </button>
+                {statusOpen && (
+                  <div className="custom-dropdown-menu">
+                    {DATA.COLUMNS.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className="custom-dropdown-item"
+                        onClick={() => {
+                          onMoveTask(task.id, c.id);
+                          setStatusOpen(false);
+                        }}
+                      >
+                        {c.title_tr}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="prop-label"><Icon name="flag" size={13} /> Öncelik</div>

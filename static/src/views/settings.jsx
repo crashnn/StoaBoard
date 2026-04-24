@@ -182,7 +182,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
           <h3>Profil</h3>
           <p className="desc">Takım üyelerinin sizi nasıl göreceği.</p>
         </div>
-        <div>
+        <div className="settings-card">
           <div style={{ display:'flex', gap:16, alignItems:'center', marginBottom:18 }}>
             <Avatar member={me} size="lg" />
           </div>
@@ -214,7 +214,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
           <h3>Görünüm</h3>
           <p className="desc">Tema, renk ve tipografi tercihlerin.</p>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        <div className="settings-card settings-panel">
           <div className="tweak-group">
             <div className="tweak-label">Tema</div>
             <div className="tweak-options">
@@ -243,6 +243,29 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
               ))}
             </div>
           </div>
+          <div className="tweak-group">
+            <div className="tweak-label">Bildirimler</div>
+            <div className="tweak-options">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={tweaks.notifyMessages || false}
+                  onChange={e => setTweak('notifyMessages', e.target.checked)}
+                  style={{ margin: 0 }}
+                />
+                Mesaj bildirimleri
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={tweaks.notifyToasts || false}
+                  onChange={e => setTweak('notifyToasts', e.target.checked)}
+                  style={{ margin: 0 }}
+                />
+                Sağ alt köşe baloncukları
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -253,7 +276,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
             <h3>Davet Kodu</h3>
             <p className="desc">Bu kodu paylaşarak takıma üye ekleyin.</p>
           </div>
-          <div>
+          <div className="settings-card settings-panel">
             {inviteCode ? (
               <>
                 <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', background:'var(--bg-raised)', border:'1px solid var(--line)', borderRadius:10, marginBottom:12 }}>
@@ -294,7 +317,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
             <h3>Roller</h3>
             <p className="desc">Özel roller ve izinler tanımlayın.</p>
           </div>
-          <div>
+          <div className="settings-card settings-panel">
             {/* Role list */}
             <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
               {roles.map(r => (
@@ -375,7 +398,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
             <h3>Takım Üyeleri</h3>
             <p className="desc">{members.length} üye · {ws.name}</p>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          <div className="settings-card settings-panel">
             {members.map(m => (
               <div key={m.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', background:'var(--bg-raised)', border:'1px solid var(--line)', borderRadius:9 }}>
                 <Avatar member={m} size="md" />
@@ -423,7 +446,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
           <h3>Bildirimler</h3>
           <p className="desc">Uygulama içi bildirim tercihleri.</p>
         </div>
-        <div>
+        <div className="settings-card settings-panel">
           {[
             ['Bir kart sana atandığında', true],
             ['Takip ettiğin kartta yorum olduğunda', true],
@@ -440,7 +463,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
           <h3 style={{ color:'var(--status-rose)' }}>Tehlikeli bölge</h3>
           <p className="desc">Geri alınamayan işlemler.</p>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <div className="settings-card settings-panel">
           {onLogout && (
             <button className="btn btn-ghost" style={{ justifyContent:'flex-start' }} onClick={onLogout}>
               <Icon name="logOut" size={14} /> Çıkış yap

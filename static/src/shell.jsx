@@ -1,6 +1,83 @@
 // App shell: sidebar + topbar + shared bits
 
-const { useState } = React;
+const { useState, useEffect } = React;
+
+// ── Global Toast State ────────────────────────────────────────────────────
+window.TOAST_QUEUE = [];
+window.TOAST_LISTENER = null;
+
+function showToast(message, type = 'info') {
+  const id = Date.now() + Math.random();
+  const toast = { id, message, type, _createdAt: Date.now() };
+  window.TOAST_QUEUE.push(toast);
+  if (window.TOAST_LISTENER) {
+    window.TOAST_LISTENER([...window.TOAST_QUEUE]);
+  }
+}
+
+function ToastContainer() {
+  const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    window.TOAST_LISTENER = (newToasts) => setToasts(newToasts);
+    
+    // Auto-remove toasts after 4 seconds
+    const interval = setInterval(() => {
+      const now = Date.now();
+      window.TOAST_QUEUE = window.TOAST_QUEUE.filter(t => {
+        return (now - (t._createdAt || now)) < 4000;
+      });
+      if (window.TOAST_LISTENER) {
+        window.TOAST_LISTENER([...window.TOAST_QUEUE]);
+      }
+    }, 500);
+    
+    return () => {
+      clearInterval(interval);
+      window.TOAST_LISTENER = null;
+    };
+  }, []);
+
+  const removeToast = (id) => {
+    window.TOAST_QUEUE = window.TOAST_QUEUE.filter(t => t.id !== id);
+    setToasts([...window.TOAST_QUEUE]);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 20,
+      right: 20,
+      zIndex: 10000,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      pointerEvents: 'none'
+    }}>
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          style={{
+            background: toast.type === 'message' ? 'var(--accent)' : 'var(--bg-raised)',
+            color: 'var(--ink)',
+            border: '1px solid var(--line)',
+            borderRadius: 8,
+            padding: '12px 16px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            maxWidth: 300,
+            wordWrap: 'break-word',
+            pointerEvents: 'auto',
+            animation: 'toastIn 0.3s ease-out',
+            cursor: 'pointer'
+          }}
+          onClick={() => removeToast(toast.id)}
+        >
+          {toast.message}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function Avatar({ member, size = 'sm' }) {
   if (!member) return null;

@@ -4,13 +4,52 @@ function NotifPanel({ open, onClose }) {
   const [tab, setTab]     = React.useState('all');
   const [items, setItems] = React.useState(() => DATA.NOTIFICATIONS || []);
 
-  // Refresh when panel opens
+  // Update when panel opens OR when new notifications arrive
   React.useEffect(() => {
-    if (!open) return;
-    API.getNotifications()
-      .then(notifs => { setItems(notifs); DATA.NOTIFICATIONS = notifs; })
-      .catch(() => {});
+    if (open) {
+      // Fetch from API when opening
+      API.getNotifications()
+        .then(notifs => { 
+          console.log('📋 Loaded notifications from API:', notifs);
+          setItems(notifs);
+          DATA.NOTIFICATIONS = notifs;
+        })
+        .catch((e) => { console.error('Failed to load notifs:', e); });
+    }
   }, [open]);
+
+  // Listen for new notifications added from chat
+  React.useEffect(() => {
+    // Update items whenever DATA.NOTIFICATIONS changes
+    const checkForNewNotifs = setInterval(() => {
+      if (DATA.NOTIFICATIONS && open) {
+        console.log('🔄 Notif check - found', DATA.NOTIFICATIONS.length, 'notifications');
+        setItems([...DATA.NOTIFICATIONS]);
+      }
+    }, 100);
+    
+    return () => clearInterval(checkForNewNotifs);
+  }, [open]);
+
+  // Listen for real-time notifications via socket
+  React.useEffect(() => {
+    const sock = window.SOCKET;
+    if (!sock) return;
+
+    const onNewNotification = (notif) => {
+      console.log('🔔 Received real-time notification:', notif);
+      setItems(prev => {
+        // Check if already exists
+        if (prev.some(n => n.id === notif.id)) return prev;
+        const newItems = [notif, ...prev];
+        DATA.NOTIFICATIONS = newItems;
+        return newItems;
+      });
+    };
+
+    sock.on('notification', onNewNotification);
+    return () => sock.off('notification', onNewNotification);
+  }, []);
 
   const markRead = async (id) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));

@@ -62,6 +62,15 @@ def _member_to_dict(wm):
     return d
 
 
+def _push_notification(user_id, notif):
+    """Bildirim oluştuktan sonra SocketIO ile anlık gönder."""
+    from app import socketio as _sio
+    try:
+        _sio.emit('notification', notif.to_dict(), to=f'user_{user_id}')
+    except Exception:
+        pass
+
+
 # ── Bootstrap ──────────────────────────────────────────────────────────────
 
 @api_bp.route('/bootstrap')
@@ -484,12 +493,28 @@ def create_task(project_id):
         if label:
             db.session.add(TaskLabel(task_id=task.id, label_id=label.id))
 
+    # ── Atama bildirimi (görev oluşturulurken) ──────────────────────────────
+    notifs_to_push = []
     for user_slug in (data.get('assignees') or []):
         assignee = User.query.filter_by(slug=user_slug).first()
         if assignee:
             db.session.add(TaskAssignee(task_id=task.id, user_id=assignee.id))
+            if assignee.id != user.id:
+                notif_text = (
+                    f'<em>{user.name}</em> seni '
+                    f'<strong>{title}</strong> görevine atadı'
+                )
+                notif = Notification(user_id=assignee.id, text=notif_text)
+                db.session.add(notif)
+                notifs_to_push.append((assignee.id, notif))
 
     _log_activity(project_id, user, f'yeni kart oluşturdu: <em>{title}</em>')
+    db.session.flush()
+
+    # flush sonrası ID atandığından artık to_dict() çalışır
+    for assignee_id, notif in notifs_to_push:
+        _push_notification(assignee_id, notif)
+
     db.session.commit()
     return jsonify(task.to_dict()), 201
 
@@ -539,12 +564,36 @@ def update_task(task_id):
             if label:
                 db.session.add(TaskLabel(task_id=task.id, label_id=label.id))
 
+    # ── Atama bildirimi (görev güncellenirken) ──────────────────────────────
     if 'assignees' in data:
+        # Mevcut atananları kaydet (silmeden önce)
+        old_assignee_ids = {ta.user_id for ta in task.assignees}
+
         TaskAssignee.query.filter_by(task_id=task.id).delete()
+
+        new_assignee_ids = set()
         for user_slug in data['assignees']:
             assignee = User.query.filter_by(slug=user_slug).first()
             if assignee:
                 db.session.add(TaskAssignee(task_id=task.id, user_id=assignee.id))
+                new_assignee_ids.add(assignee.id)
+
+        # Sadece YENİ eklenen kişilere bildirim gönder
+        notifs_to_push = []
+        for aid in new_assignee_ids - old_assignee_ids:
+            if aid != user.id:  # kendine bildirim gitmesin
+                notif_text = (
+                    f'<em>{user.name}</em> seni '
+                    f'<strong>{task.title}</strong> görevine atadı'
+                )
+                notif = Notification(user_id=aid, text=notif_text)
+                db.session.add(notif)
+                notifs_to_push.append((aid, notif))
+
+        db.session.flush()  # notif ID'leri oluşsun
+
+        for aid, notif in notifs_to_push:
+            _push_notification(aid, notif)
 
     db.session.commit()
     return jsonify(task.to_dict())
@@ -634,10 +683,18 @@ def add_comment(task_id):
     comment = Comment(task_id=task_id, user_id=user.id, text=text)
     db.session.add(comment)
 
+    notifs_to_push = []
     for ta in task.assignees:
         if ta.user_id != user.id:
             notif_text = f'<em>{user.name}</em> yorum yazdı: "{text[:60]}{"..." if len(text) > 60 else ""}"'
-            db.session.add(Notification(user_id=ta.user_id, text=notif_text))
+            notif = Notification(user_id=ta.user_id, text=notif_text)
+            db.session.add(notif)
+            notifs_to_push.append((ta.user_id, notif))
+
+    db.session.flush()
+
+    for uid, notif in notifs_to_push:
+        _push_notification(uid, notif)
 
     db.session.commit()
     return jsonify(comment.to_dict()), 201
@@ -667,7 +724,15 @@ def get_columns(project_id):
 @api_bp.route('/projects/<int:project_id>/columns', methods=['POST'])
 @_login_required
 def create_column(project_id):
+    user = _current_user()
     project = Project.query.get_or_404(project_id)
+    member = WorkspaceMember.query.filter_by(
+        workspace_id=project.workspace_id,
+        user_id=user.id,
+    ).first()
+    if not member:
+        return jsonify({'error': 'Bu işlem için yetkiniz yok'}), 403
+
     data = request.get_json(silent=True) or {}
     title = (data.get('title') or '').strip()
     if not title:
@@ -684,6 +749,7 @@ def create_column(project_id):
         position=pos,
     )
     db.session.add(col)
+    _log_activity(project_id, user, f"'{title}' isimli yeni bir kolon ekledi.")
     db.session.commit()
     return jsonify(col.to_dict()), 201
 
@@ -786,6 +852,36 @@ def delete_notification(notif_id):
     db.session.delete(notif)
     db.session.commit()
     return jsonify({'ok': True})
+
+
+@api_bp.route('/notifications', methods=['POST'])
+@_login_required
+def create_notification():
+    user = _current_user()
+    data = request.get_json(silent=True) or {}
+    text = data.get('text', '').strip()
+    target_user_id = data.get('user_id', user.id)  # Default to current user, but allow specifying another
+    
+    if not text:
+        return jsonify({'error': 'Bildirim metni gerekli'}), 400
+    
+    # Check if target user exists and is in same workspace (for chat notifications)
+    if target_user_id != user.id:
+        target_user = User.query.get(target_user_id)
+        if not target_user:
+            return jsonify({'error': 'Kullanıcı bulunamadı'}), 404
+        
+        # Optional: Check if they are in the same workspace
+        user_member = WorkspaceMember.query.filter_by(user_id=user.id).first()
+        target_member = WorkspaceMember.query.filter_by(user_id=target_user_id).first()
+        if not (user_member and target_member and user_member.workspace_id == target_member.workspace_id):
+            return jsonify({'error': 'Bu kullanıcıya bildirim gönderemezsiniz'}), 403
+    
+    notif = Notification(user_id=target_user_id, text=text)
+    db.session.add(notif)
+    db.session.commit()
+    _push_notification(target_user_id, notif)
+    return jsonify(notif.to_dict()), 201
 
 
 # ── Users ──────────────────────────────────────────────────────────────────

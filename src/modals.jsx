@@ -1,6 +1,6 @@
 // Add Task modal
 
-const { useState: useModalState } = React;
+const { useState: useModalState, useEffect: useModalEffect, useRef: useModalRef } = React;
 
 function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
   const [title, setTitle] = useModalState('');
@@ -10,6 +10,23 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
   const [due, setDue] = useModalState('');
   const [labels, setLabels] = useModalState([]);
   const [assignees, setAssignees] = useModalState(['aliz']);
+  const [colOpen, setColOpen] = useModalState(false);
+  const [priorityOpen, setPriorityOpen] = useModalState(false);
+  const colRef = useModalRef(null);
+  const priorityRef = useModalRef(null);
+
+  useModalEffect(() => {
+    const handleClick = (e) => {
+      if (colOpen && colRef.current && !colRef.current.contains(e.target)) {
+        setColOpen(false);
+      }
+      if (priorityOpen && priorityRef.current && !priorityRef.current.contains(e.target)) {
+        setPriorityOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [colOpen, priorityOpen]);
 
   React.useEffect(() => { if (defaultCol) setCol(defaultCol); }, [defaultCol, open]);
   React.useEffect(() => { if (!open) { setTitle(''); setDesc(''); } }, [open]);
@@ -52,17 +69,61 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
           <div className="field-row">
             <div className="field">
               <label>Kolon</label>
-              <select value={col} onChange={(e) => setCol(e.target.value)}>
-                {DATA.COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title_tr}</option>)}
-              </select>
+              <div className="custom-dropdown" ref={colRef}>
+                <button
+                  type="button"
+                  className="custom-dropdown-btn"
+                  onClick={() => setColOpen(o => !o)}
+                >
+                  <span>{DATA.COLUMNS.find(c => c.id === col)?.title_tr || 'Seç'}</span>
+                  <Icon name="chevronDown" size={12} />
+                </button>
+                {colOpen && (
+                  <div className="custom-dropdown-menu">
+                    {DATA.COLUMNS.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`custom-dropdown-item${c.id === col ? ' active' : ''}`}
+                        onClick={() => { setCol(c.id); setColOpen(false); }}
+                      >
+                        {c.title_tr}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="field">
               <label>Öncelik</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-                <option value="high">Yüksek</option>
-                <option value="mid">Orta</option>
-                <option value="low">Düşük</option>
-              </select>
+              <div className="custom-dropdown" ref={priorityRef}>
+                <button
+                  type="button"
+                  className="custom-dropdown-btn"
+                  onClick={() => setPriorityOpen(o => !o)}
+                >
+                  <span>{priority === 'high' ? 'Yüksek' : priority === 'mid' ? 'Orta' : 'Düşük'}</span>
+                  <Icon name="chevronDown" size={12} />
+                </button>
+                {priorityOpen && (
+                  <div className="custom-dropdown-menu">
+                    {[
+                      { id: 'high', label: 'Yüksek' },
+                      { id: 'mid', label: 'Orta' },
+                      { id: 'low', label: 'Düşük' },
+                    ].map(item => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`custom-dropdown-item${item.id === priority ? ' active' : ''}`}
+                        onClick={() => { setPriority(item.id); setPriorityOpen(false); }}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="field">
               <label>Bitiş</label>

@@ -268,6 +268,7 @@ function App() {
 
   return (
     <div className="app">
+      <ToastContainer />
       <Sidebar
         collapsed={tweaks.sidebarCollapsed}
         onCollapseToggle={() => setTweak('sidebarCollapsed', !tweaks.sidebarCollapsed)}

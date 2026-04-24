@@ -1,21 +1,33 @@
 // Task detail drawer — API-backed
 
-const { useState: useDrawerState, useEffect: useDrawerEffect } = React;
+const { useState: useDrawerState, useEffect: useDrawerEffect, useRef: useDrawerRef } = React;
 
 function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete }) {
   const [detail, setDetail]       = useDrawerState(null);
   const [newComment, setNewComment] = useDrawerState('');
   const [submitting, setSubmitting] = useDrawerState(false);
   const [loadingDetail, setLoadingDetail] = useDrawerState(false);
+  const [statusOpen, setStatusOpen] = useDrawerState(false);
+  const statusRef = useDrawerRef(null);
 
   // Fetch full task detail (doc + comments + subtasks) when drawer opens
   useDrawerEffect(() => {
-    if (!open || !task) { setDetail(null); return; }
+    if (!open || !task) { setDetail(null); setStatusOpen(false); return; }
     setLoadingDetail(true);
     API.getTaskDetail(task.id)
       .then(d => { setDetail(d); setLoadingDetail(false); })
       .catch(() => { setDetail(null); setLoadingDetail(false); });
   }, [open, task?.id]);
+
+  useDrawerEffect(() => {
+    const handleClick = (e) => {
+      if (statusOpen && statusRef.current && !statusRef.current.contains(e.target)) {
+        setStatusOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [statusOpen]);
 
   if (!task) return null;
 
@@ -105,14 +117,25 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete })
           {/* Properties */}
           <div className="props-grid">
             <div className="prop-label"><Icon name="circleHalf" size={13} /> Durum</div>
-            <div className="prop-value">
-              <select
-                value={task.col}
-                onChange={(e) => onMoveTask(task.id, e.target.value)}
-                style={{ border: 'none', background: 'none', padding: 0, fontSize: 13, cursor: 'pointer', outline: 'none' }}
-              >
-                {DATA.COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title_tr}</option>)}
-              </select>
+            <div className="prop-value custom-dropdown" ref={statusRef}>
+              <button type="button" className="custom-dropdown-btn" onClick={() => setStatusOpen(o => !o)}>
+                <span>{col.title_tr}</span>
+                <Icon name="chevronDown" size={12} />
+              </button>
+              {statusOpen && (
+                <div className="custom-dropdown-menu">
+                  {DATA.COLUMNS.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={"custom-dropdown-item" + (c.id === task.col ? ' active' : '')}
+                      onClick={() => { onMoveTask(task.id, c.id); setStatusOpen(false); }}
+                    >
+                      {c.title_tr}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="prop-label"><Icon name="flag" size={13} /> Öncelik</div>

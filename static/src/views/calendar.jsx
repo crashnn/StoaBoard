@@ -34,13 +34,35 @@ function CalendarView({ tasks, onOpenTask }) {
   return (
     <div className="cal-wrap">
       <div className="cal-header">
-        <div className="cal-month">{monthName} <em>{year}</em></div>
-        <div className="cal-nav">
-          <button className="icon-btn" onClick={() => setCursor(new Date(year, month - 1, 1))}><Icon name="chevronLeft" size={15} /></button>
-          <button className="icon-btn" onClick={() => setCursor(new Date(year, month + 1, 1))}><Icon name="chevronRight" size={15} /></button>
+        <div>
+          <div className="cal-title">Takvim</div>
+          <div className="cal-month">{monthName} <em>{year}</em></div>
         </div>
-        <button className="btn btn-ghost" onClick={() => setCursor(new Date())}>Bugün</button>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: 'var(--ink-muted)' }}>
+        <div className="cal-header-actions">
+          <div className="cal-nav">
+            <button className="icon-btn" onClick={() => setCursor(new Date(year, month - 1, 1))}><Icon name="chevronLeft" size={15} /></button>
+            <button className="icon-btn" onClick={() => setCursor(new Date(year, month + 1, 1))}><Icon name="chevronRight" size={15} /></button>
+          </div>
+          <button className="btn btn-ghost" onClick={() => setCursor(new Date())}>Bugün</button>
+        </div>
+      </div>
+
+      <div className="cal-panels">
+        <div className="cal-summary">
+          <div className="cal-stat">
+            <span>Toplam görev</span>
+            <strong>{tasks.length}</strong>
+          </div>
+          <div className="cal-stat">
+            <span>Bugün</span>
+            <strong>{tasksFor(today).length}</strong>
+          </div>
+          <div className="cal-stat">
+            <span>Gecikmiş</span>
+            <strong>{tasks.filter(t => t.due && new Date(t.due) < new Date() && t.col !== 'done').length}</strong>
+          </div>
+        </div>
+        <div className="cal-filter-row">
           <span>Görünüm:</span>
           <button className="filter-chip" data-active="true">Ay</button>
           <button className="filter-chip">Hafta</button>

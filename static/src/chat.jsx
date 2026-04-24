@@ -114,6 +114,7 @@ function ChatPanel({ open, onClose, onlineUsers, members: membersProp }) {
     if (!sock) return;
 
     const onMsg = (msg) => {
+      console.log('📥 Received chat_message:', msg, 'dmWith:', dmWith, 'me:', me);
       // Check relevance
       let relevant = false;
       if (dmWith) {
@@ -121,6 +122,7 @@ function ChatPanel({ open, onClose, onlineUsers, members: membersProp }) {
       } else {
         relevant = !msg.to;
       }
+      console.log('✅ Message relevant?', relevant);
       if (!relevant) return;
 
       const msgKey = String(msg.id);
@@ -137,6 +139,41 @@ function ChatPanel({ open, onClose, onlineUsers, members: membersProp }) {
         }
         return [...prev, msg];
       });
+
+      // ── Create notification for incoming messages ──────────────────────
+      if (msg.from !== me) {
+        const tweaks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
+        // Default: notifications ON unless explicitly turned OFF
+        const notifyEnabled = tweaks.notifyMessages !== false;
+
+        console.log('🔔 Notification settings:', { notifyEnabled, tweaks });
+
+        if (notifyEnabled) {
+          const sender = allMembers.find(m => m.id === msg.from);
+          if (sender) {
+            const notifText = dmWith
+              ? `<strong>${sender.name}</strong> sana mesaj gönderdi: ${msg.text || (msg.file_name ? '📎 ' + msg.file_name : '📎 Dosya')}`
+              : `<strong>${sender.name}</strong> genel sohbete mesaj gönderdi: ${msg.text || (msg.file_name ? '📎 ' + msg.file_name : '📎 Dosya')}`;
+
+            // Save to database via API
+            API.createNotification(notifText)
+              .then(notif => {
+                console.log('✅ Created notification via API:', notif);
+                // Update local DATA for immediate UI update
+                if (!window.DATA.NOTIFICATIONS) window.DATA.NOTIFICATIONS = [];
+                window.DATA.NOTIFICATIONS.unshift(notif);
+              })
+              .catch(err => console.error('Failed to create notification:', err));
+
+            // Show toast baloncuk if enabled
+            const toastEnabled = tweaks.notifyToasts !== false;
+            if (toastEnabled && window.showToast) {
+              window.showToast(`${sender.name}: ${msg.text || '📎 Dosya'}`, 'message');
+              console.log('💬 Showed toast');
+            }
+          }
+        }
+      }
     };
 
     const onTyping = ({ user, typing }) => {
@@ -171,7 +208,12 @@ function ChatPanel({ open, onClose, onlineUsers, members: membersProp }) {
   const sendMessage = () => {
     const t = text.trim();
     if (!t && !pendingFile) return;
-    if (!window.SOCKET) return;
+    if (!window.SOCKET) {
+      console.error('❌ No socket connection');
+      return;
+    }
+
+    console.log('📤 Attempting to send message:', { text: t, dmWith, pendingFile });
 
     if (pendingFile) {
       // File already uploaded; send socket event with file info
@@ -187,6 +229,7 @@ function ChatPanel({ open, onClose, onlineUsers, members: membersProp }) {
         _temp: true,
       };
       setMessages(prev => [...prev, tempMsg]);
+      console.log('📤 Sending file message via socket:', tempMsg);
       window.SOCKET.emit('chat_message', {
         text: t || '',
         to: dmWith || null,
@@ -209,6 +252,7 @@ function ChatPanel({ open, onClose, onlineUsers, members: membersProp }) {
       _temp: true,
     };
     setMessages(prev => [...prev, tempMsg]);
+    console.log('📤 Sending text message via socket:', { text: t, to: dmWith });
     window.SOCKET.emit('chat_message', { text: t, to: dmWith || null });
     setText('');
   };

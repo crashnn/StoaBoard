@@ -69,6 +69,7 @@ window.API = {
 
   // Notifications
   getNotifications: () => apiFetch('/api/notifications'),
+  createNotification: (text, userId) => apiFetch('/api/notifications', { method: 'POST', body: { text, user_id: userId } }),
   markRead:         (id) => apiFetch(`/api/notifications/${id}/read`, { method: 'POST' }),
   markAllRead:      ()   => apiFetch('/api/notifications/read-all',   { method: 'POST' }),
   deleteNotif:      (id) => apiFetch(`/api/notifications/${id}`,      { method: 'DELETE' }),

@@ -1,6 +1,6 @@
 // Kanban board view
 
-const { useState: useBoardState, useRef: useBoardRef } = React;
+const { useState: useBoardState, useRef: useBoardRef, useEffect: useBoardEf } = React;
 
 function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleChange }) {
   const members = (task.assignees || []).map(id => DATA.MEMBERS.find(m => m.id === id)).filter(Boolean);
@@ -147,6 +147,13 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
 
 function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitleChange }) {
   const [draggingId, setDraggingId] = useBoardState(null);
+  const [columns, setColumns] = useBoardState(() => DATA.COLUMNS || []);
+  const [isAddingColumn, setIsAddingColumn] = useBoardState(false);
+  const [newColumnTitle, setNewColumnTitle] = useBoardState("");
+
+  useBoardEf(() => {
+    setColumns(DATA.COLUMNS || []);
+  }, [tasks]);
 
   const handleDragStart = (e, task) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -158,9 +165,31 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
     if (draggingId) { onMoveTask(draggingId, targetColId); setDraggingId(null); }
   };
 
+  const handleAddColumn = async () => {
+    const title = newColumnTitle.trim();
+    if (!title) return;
+
+    const projectId = window.CURRENT_PROJECT_ID || DATA.currentProject?.id;
+    if (!projectId) {
+      alert('Proje seçili değil.');
+      return;
+    }
+
+    try {
+      const created = await API.createColumn(projectId, { title });
+      window.DATA.COLUMNS = [...(window.DATA.COLUMNS || []), created];
+      setColumns(prev => [...prev, created]);
+      setNewColumnTitle("");
+      setIsAddingColumn(false);
+    } catch (e) {
+      alert('Kolon oluşturulamadı: ' + e.message);
+      console.error('createColumn error:', e);
+    }
+  };
+
   return (
     <div className="board">
-      {DATA.COLUMNS.map(col => (
+      {columns.map(col => (
         <Column
           key={col.id}
           col={col}
@@ -175,9 +204,29 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
           onTitleChange={onTitleChange}
         />
       ))}
-      <button className="add-column-btn">
-        <Icon name="plus" size={14} /> Kolon ekle
-      </button>
+      {isAddingColumn ? (
+        <div className="add-column-form">
+          <input
+            autoFocus
+            className="add-column-input"
+            placeholder="Kolon başlığı yazın..."
+            value={newColumnTitle}
+            onChange={(e) => setNewColumnTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddColumn();
+              if (e.key === 'Escape') setIsAddingColumn(false);
+            }}
+          />
+          <div className="add-column-actions">
+            <button className="btn-save" onClick={handleAddColumn}>Ekle</button>
+            <button className="btn-cancel" onClick={() => setIsAddingColumn(false)}>İptal</button>
+          </div>
+        </div>
+      ) : (
+        <button className="add-column-btn" onClick={() => setIsAddingColumn(true)}>
+          <Icon name="plus" size={14} /> Kolon ekle
+        </button>
+      )}
     </div>
   );
 }

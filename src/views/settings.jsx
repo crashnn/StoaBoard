@@ -11,7 +11,7 @@ function SettingsView({ tweaks, setTweak }) {
           <h3>Profil</h3>
           <p className="desc">Takım üyelerinin sizi nasıl göreceği.</p>
         </div>
-        <div>
+        <div className="settings-card">
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 18 }}>
             <Avatar member={DATA.MEMBERS[0]} size="lg" />
             <button className="btn btn-ghost">Fotoğraf yükle</button>
@@ -39,7 +39,7 @@ function SettingsView({ tweaks, setTweak }) {
           <h3>Görünüm</h3>
           <p className="desc">Tema, renk ve tipografi tercihlerin.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="settings-card settings-panel">
           <div className="tweak-group">
             <div className="tweak-label">Tema</div>
             <div className="tweak-options">
@@ -82,7 +82,7 @@ function SettingsView({ tweaks, setTweak }) {
           <h3>Bildirimler</h3>
           <p className="desc">E-posta ve uygulama içi bildirim tercihleri.</p>
         </div>
-        <div>
+        <div className="settings-card settings-panel">
           {[
             ['Bir kart sana atandığında', true],
             ['Takip ettiğin kartta yorum olduğunda', true],
@@ -100,7 +100,7 @@ function SettingsView({ tweaks, setTweak }) {
           <h3>Çalışma alanı</h3>
           <p className="desc">Stoa Labs için takım ayarları (yalnızca yöneticiler).</p>
         </div>
-        <div>
+        <div className="settings-card settings-panel">
           <div className="field">
             <label>Çalışma alanı adı</label>
             <input defaultValue="Stoa Labs" />
@@ -127,7 +127,7 @@ function SettingsView({ tweaks, setTweak }) {
           <h3 style={{ color: 'var(--status-rose)' }}>Tehlikeli bölge</h3>
           <p className="desc">Geri alınamayan işlemler.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="settings-card settings-panel">
           <button className="btn btn-ghost" style={{ justifyContent: 'flex-start' }}><Icon name="archive" size={14} /> Çalışma alanını arşivle</button>
           <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--status-rose)', borderColor: 'oklch(58% 0.13 10 / 0.3)' }}>
             <Icon name="trash" size={14} /> Hesabı sil
