@@ -123,6 +123,16 @@ window.API = {
   // Members
   updateMember: (slug, data) => apiFetch(`/api/workspaces/members/${slug}`, { method: 'PATCH',  body: data }),
   removeMember: (slug)       => apiFetch(`/api/workspaces/members/${slug}`, { method: 'DELETE' }),
+
+  // Workspace logo
+  uploadWorkspaceLogo: (wsId, formData) => {
+    return fetch(`/api/workspaces/${wsId}/logo`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: formData,
+    }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.error || 'Yükleme başarısız'))));
+  },
+  deleteWorkspaceLogo: (wsId) => apiFetch(`/api/workspaces/${wsId}/logo`, { method: 'DELETE' }),
 };
 
 // ── Static palette commands ─────────────────────────────────────────────────

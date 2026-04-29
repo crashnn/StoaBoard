@@ -12,7 +12,7 @@ const ROLE_COLORS = [
   'oklch(50% 0.14 340)', 'oklch(65% 0.11 70)',  'oklch(50% 0.04 250)',
 ];
 
-function SettingsView({ tweaks, setTweak, onLogout }) {
+function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
   const me       = window.CURRENT_USER || DATA.MEMBERS[0] || {};
   const ws       = window.DATA.WORKSPACE || {};
   const isOwner  = ws.is_owner || false;
@@ -23,12 +23,12 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
   const [saved, setSaved] = React.useState(false);
   const [busy, setBusy]   = React.useState(false);
 
-  // Workspace state
   const [inviteCode, setInviteCode]   = React.useState(ws.invite_code || null);
   const [codeLoading, setCodeLoading] = React.useState(false);
   const [codeCopied, setCodeCopied]   = React.useState(false);
+  const [confirmRegen, setConfirmRegen]   = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
 
-  // Roles state
   const [roles, setRoles]           = React.useState(ws.roles || []);
   const [roleForm, setRoleForm]     = React.useState(null); // null = closed, {} = new, {id,...} = edit
   const [rolePerms, setRolePerms]   = React.useState([]);
@@ -37,9 +37,27 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
   const [roleDefault, setRoleDefault] = React.useState(false);
   const [roleBusy, setRoleBusy]     = React.useState(false);
 
-  // Members state
   const [members, setMembers]         = React.useState([...DATA.MEMBERS]);
   const [memberBusy, setMemberBusy]   = React.useState(null);
+
+  const [logoUrl, setLogoUrl]       = React.useState(ws.logo_url || null);
+  const [logoBusy, setLogoBusy]     = React.useState(false);
+  const logoInputRef = React.useRef(null);
+
+  const uploadLogo = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await API.uploadWorkspaceLogo(ws.id, fd);
+      setLogoUrl(res.logo_url);
+      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, logo_url: res.logo_url };
+      if (onWsLogoChange) onWsLogoChange(res.logo_url);
+    } catch (err) { alert('Logo yüklenemedi: ' + err.message); }
+    finally { setLogoBusy(false); }
+  };
 
   const saveProfile = async () => {
     setBusy(true);
@@ -54,7 +72,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
     finally { setBusy(false); }
   };
 
-  // ── Invite code ───────────────────────────────────────────────────────────
+
 
   const copyCode = () => {
     if (!inviteCode) return;
@@ -64,7 +82,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
   };
 
   const regenCode = async () => {
-    if (!confirm('Mevcut kod geçersiz olacak. Devam et?')) return;
+    setConfirmRegen(false);
     setCodeLoading(true);
     try {
       const res = await API.regenInviteCode();
@@ -75,7 +93,7 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
   };
 
   const deleteCode = async () => {
-    if (!confirm('Davet kodu silinecek. Yeni üyeler katılamaz. Devam et?')) return;
+    setConfirmDelete(false);
     setCodeLoading(true);
     try {
       await API.deleteInviteCode();
@@ -95,7 +113,6 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
     finally { setCodeLoading(false); }
   };
 
-  // ── Roles ─────────────────────────────────────────────────────────────────
 
   const openRoleForm = (existing) => {
     if (existing) {
@@ -166,6 +183,18 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
       await API.removeMember(slug);
       setMembers(members.filter(m => m.id !== slug));
       DATA.MEMBERS = DATA.MEMBERS.filter(m => m.id !== slug);
+    } catch (e) { alert(e.message); }
+  };
+
+  const [projects, setProjects] = React.useState([...(DATA.PROJECTS || [])]);
+  const [editingProject, setEditingProject] = React.useState(null);
+
+  const saveProjectIcon = async (projectId, icon, color) => {
+    try {
+      const updated = await API.updateProject(projectId, { icon, color });
+      setProjects(ps => ps.map(p => p.id === updated.id ? { ...p, ...updated } : p));
+      DATA.PROJECTS = DATA.PROJECTS.map(p => p.id === updated.id ? { ...p, ...updated } : p);
+      setEditingProject(null);
     } catch (e) { alert(e.message); }
   };
 
@@ -247,6 +276,55 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
         </div>
       </div>
 
+      {/* ── Workspace logo ── (owner only) */}
+      {isOwner && (
+        <div className="settings-section">
+          <div>
+            <h3>Çalışma Alanı</h3>
+            <p className="desc">Takımınızın logo veya fotoğrafını yükleyin.</p>
+          </div>
+          <div className="settings-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 12, overflow: 'hidden', flexShrink: 0,
+                background: 'var(--accent)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: 22, fontWeight: 700, color: 'white',
+                border: '1px solid var(--line)',
+              }}>
+                {logoUrl
+                  ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : (ws.name || 'W')[0].toUpperCase()
+                }
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{ws.name || 'Çalışma Alanı'}</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadLogo} />
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={logoBusy}
+                    onClick={() => logoInputRef.current?.click()}>
+                    <Icon name="upload" size={12} /> {logoBusy ? 'Yükleniyor…' : 'Logo Yükle'}
+                  </button>
+                  {logoUrl && (
+                    <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--status-rose)' }}
+                      onClick={async () => {
+                        try {
+                          await API.deleteWorkspaceLogo(ws.id);
+                          setLogoUrl(null);
+                          window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, logo_url: null };
+                          if (onWsLogoChange) onWsLogoChange(null);
+                        } catch(err) { alert(err.message); }
+                      }}>
+                      Kaldır
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>PNG, JPG, WEBP — maks. 5 MB</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Workspace / Invite code ── (owner only) */}
       {isOwner && (
         <div className="settings-section">
@@ -265,13 +343,29 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
                     {codeCopied ? '✓ Kopyalandı' : 'Kopyala'}
                   </button>
                 </div>
-                <div style={{ display:'flex', gap:8 }}>
-                  <button className="btn btn-ghost" onClick={regenCode} disabled={codeLoading}>
-                    <Icon name="refresh" size={13} /> Yenile
-                  </button>
-                  <button className="btn btn-ghost" onClick={deleteCode} disabled={codeLoading} style={{ color:'var(--status-rose)' }}>
-                    <Icon name="trash" size={13} /> Kodu Sil
-                  </button>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {confirmRegen ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'var(--bg-subtle)', borderRadius:8, border:'1px solid var(--line)', fontSize:13 }}>
+                      <span style={{ color:'var(--ink-muted)' }}>Mevcut kod geçersiz olacak.</span>
+                      <button className="btn btn-primary" style={{ fontSize:12, padding:'4px 10px' }} onClick={regenCode} disabled={codeLoading}>Yenile</button>
+                      <button className="btn btn-ghost" style={{ fontSize:12, padding:'4px 10px' }} onClick={() => setConfirmRegen(false)}>İptal</button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-ghost" onClick={() => setConfirmRegen(true)} disabled={codeLoading}>
+                      <Icon name="refresh" size={13} /> Yenile
+                    </button>
+                  )}
+                  {confirmDelete ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'var(--bg-subtle)', borderRadius:8, border:'1px solid var(--line)', fontSize:13 }}>
+                      <span style={{ color:'var(--status-rose)' }}>Kod silinecek, üye eklenemez.</span>
+                      <button className="btn btn-ghost" style={{ fontSize:12, padding:'4px 10px', color:'var(--status-rose)' }} onClick={deleteCode} disabled={codeLoading}>Sil</button>
+                      <button className="btn btn-ghost" style={{ fontSize:12, padding:'4px 10px' }} onClick={() => setConfirmDelete(false)}>İptal</button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-ghost" onClick={() => setConfirmDelete(true)} disabled={codeLoading} style={{ color:'var(--status-rose)' }}>
+                      <Icon name="trash" size={13} /> Kodu Sil
+                    </button>
+                  )}
                 </div>
               </>
             ) : (
@@ -365,6 +459,75 @@ function SettingsView({ tweaks, setTweak, onLogout }) {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Projects ── */}
+      {isOwner && projects.length > 0 && (
+        <div className="settings-section">
+          <div>
+            <h3>Projeler</h3>
+            <p className="desc">Her projenin ikon ve rengini özelleştirin.</p>
+          </div>
+          <div className="settings-card" style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {projects.map(p => {
+              const isEditing = editingProject?.id === p.id;
+              const editColor = editingProject?.id === p.id ? editingProject.color : p.color;
+              const editIcon  = editingProject?.id === p.id ? editingProject.icon  : (p.icon || 'folder');
+              const COLORS = [
+                ['Terracotta','oklch(55% 0.13 25)'],['Sage','oklch(55% 0.09 150)'],
+                ['Indigo','oklch(52% 0.15 270)'],   ['Plum','oklch(50% 0.14 340)'],
+                ['Amber','oklch(65% 0.11 70)'],     ['Slate','oklch(50% 0.04 250)'],
+              ];
+              return (
+                <div key={p.id} style={{ border:'1px solid var(--line)', borderRadius:10, overflow:'hidden' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px' }}>
+                    <div style={{ width:34, height:34, borderRadius:8, background:p.color, display:'grid', placeItems:'center', color:'white', flexShrink:0 }}>
+                      <Icon name={p.icon || 'folder'} size={16} strokeWidth={1.8} />
+                    </div>
+                    <span style={{ fontWeight:500, fontSize:13, flex:1 }}>{p.name}</span>
+                    <button className="icon-btn" title="Düzenle" onClick={() => setEditingProject(isEditing ? null : { id:p.id, color:p.color, icon:p.icon||'folder' })}>
+                      <Icon name={isEditing ? 'x' : 'edit'} size={13} />
+                    </button>
+                  </div>
+                  {isEditing && (
+                    <div style={{ padding:'0 14px 14px', borderTop:'1px solid var(--line)', paddingTop:14, display:'flex', flexDirection:'column', gap:12 }}>
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:600, color:'var(--ink-muted)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>Renk</div>
+                        <div style={{ display:'flex', gap:7 }}>
+                          {COLORS.map(([lbl,val]) => (
+                            <button key={val} type="button" title={lbl} onClick={() => setEditingProject(ep => ({...ep, color:val}))}
+                              style={{ width:24, height:24, borderRadius:6, background:val, cursor:'pointer',
+                                border: editColor===val ? '2px solid var(--ink)' : '2px solid transparent',
+                                boxShadow: editColor===val ? '0 0 0 1px var(--bg),0 0 0 3px var(--ink)' : 'none' }} />
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:600, color:'var(--ink-muted)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>İkon</div>
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(10,1fr)', gap:4, maxHeight:160, overflowY:'auto' }}>
+                          {(window.PROJECT_ICONS||[]).map(({id,label}) => (
+                            <button key={id+label} type="button" title={label} onClick={() => setEditingProject(ep => ({...ep, icon:id}))}
+                              style={{ width:30, height:30, borderRadius:7, display:'grid', placeItems:'center',
+                                background: editIcon===id ? editColor : 'var(--bg-raised)',
+                                color: editIcon===id ? 'white' : 'var(--ink-muted)',
+                                border: editIcon===id ? `2px solid ${editColor}` : '2px solid transparent',
+                                cursor:'pointer', transition:'all 0.1s' }}>
+                              <Icon name={id} size={14} strokeWidth={1.8} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', gap:8, marginTop:2 }}>
+                        <button className="btn btn-primary" style={{ fontSize:12 }} onClick={() => saveProjectIcon(p.id, editIcon, editColor)}>Kaydet</button>
+                        <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => setEditingProject(null)}>İptal</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

@@ -85,6 +85,7 @@ class Workspace(db.Model):
     slug = db.Column(db.String(100), unique=True, nullable=False)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     invite_code = db.Column(db.String(20), nullable=True, unique=True)
+    logo_url = db.Column(db.String(255), nullable=True)
 
     owner = db.relationship('User', foreign_keys=[owner_id])
     members = db.relationship('WorkspaceMember', backref='workspace', lazy='dynamic')
@@ -98,6 +99,7 @@ class Workspace(db.Model):
             'name': self.name,
             'slug': self.slug,
             'owner_id': self.owner_id,
+            'logo_url': self.logo_url,
         }
 
 
@@ -118,6 +120,7 @@ class Project(db.Model):
     workspace_id = db.Column(db.Integer, db.ForeignKey('workspaces.id'))
     name = db.Column(db.String(100), nullable=False)
     color = db.Column(db.String(100), default='oklch(55% 0.13 25)')
+    icon  = db.Column(db.String(50), default='folder')
 
     columns = db.relationship(
         'BoardColumn', backref='project', lazy='select',
@@ -143,6 +146,7 @@ class Project(db.Model):
             'name': self.name,
             'color': self.color,
             'open': self.open_count(),
+            'icon': self.icon or 'folder',
         }
 
 

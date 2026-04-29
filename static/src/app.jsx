@@ -24,6 +24,7 @@ function App() {
   const [workspaces, setWorkspaces]         = useS([]);
   const [wsSwitcherOpen, setWsSwitcherOpen] = useS(false);
   const [wsJoinModalOpen, setWsJoinModalOpen] = useS(false);
+  const [wsLogoUrl, setWsLogoUrl]           = useS(null);
 
   const activityTimer  = useRef(null);
   const currentStatus  = useRef('online');
@@ -245,6 +246,7 @@ function App() {
     window.DATA.PROJECTS      = data.projects      || [];
     window.DATA.WORKSPACE     = data.workspace     || {};
     window.DATA.WORKSPACES    = data.workspaces    || [];
+    setWsLogoUrl(data.workspace?.logo_url || null);
     window.DATA.NOTIFICATIONS = data.notifications || [];
     window.DATA.ACTIVITY      = data.activity      || [];
     window.DATA.THROUGHPUT    = data.throughput    || [];
@@ -323,9 +325,9 @@ function App() {
     } catch (e) { console.error('switchProject failed:', e.message); }
   };
 
-  const handleCreateProject = async (name, color) => {
+  const handleCreateProject = async (name, color, icon) => {
     try {
-      const p = await API.createProject({ name, color });
+      const p = await API.createProject({ name, color, icon });
       window.DATA.PROJECTS = [...(window.DATA.PROJECTS || []), p];
       await switchProject(p.id);
       setProjectModal(false);
@@ -381,6 +383,8 @@ function App() {
     window.DATA.PROJECTS = []; window.DATA.WORKSPACE = {}; window.DATA.WORKSPACES = [];
     setAuthed(false); setNeedsWorkspace(false);
     setTasks([]); setOnlineUsers(new Map()); setWorkspaces([]);
+    setWsLogoUrl(null);
+    setTweak('theme', 'cream');
   };
 
   const openDrawer = (task) => setDrawerTask(task);
@@ -440,6 +444,7 @@ function App() {
         onSwitchProject={switchProject}
         onNewProject={() => setProjectModal(true)}
         workspaces={workspaces}
+        wsLogoUrl={wsLogoUrl}
         onSwitchWorkspace={handleSwitchWorkspace}
         wsSwitcherOpen={wsSwitcherOpen}
         onWsSwitcherToggle={() => setWsSwitcherOpen(v => !v)}
@@ -481,7 +486,7 @@ function App() {
             {view === 'dashboard' && <DashboardView tasks={tasks} onOpenTask={openDrawer} />}
           </>
         )}
-        {view === 'settings' && <SettingsView tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} />}
+        {view === 'settings' && <SettingsView tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={setWsLogoUrl} />}
       </div>
 
       <TaskDrawer
@@ -519,9 +524,30 @@ function App() {
 
 // ── New Project Modal ─────────────────────────────────────────────────────
 
+function ProjectIconPicker({ selected, color, onChange }) {
+  const icons = window.PROJECT_ICONS || [];
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:'repeat(10,1fr)', gap:4, maxHeight:180, overflowY:'auto', padding:'2px 0' }}>
+      {icons.map(({ id, label }) => (
+        <button key={id+label} type="button" title={label} onClick={() => onChange(id)}
+          style={{
+            width:32, height:32, borderRadius:8, display:'grid', placeItems:'center',
+            background: selected === id ? color : 'var(--bg-raised)',
+            color: selected === id ? 'white' : 'var(--ink-muted)',
+            border: selected === id ? `2px solid ${color}` : '2px solid transparent',
+            cursor:'pointer', transition:'all 0.12s', flexShrink:0,
+          }}>
+          <Icon name={id} size={15} strokeWidth={1.8} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function NewProjectModal({ onClose, onCreate }) {
   const [name, setName]   = React.useState('');
   const [color, setColor] = React.useState('oklch(55% 0.13 25)');
+  const [icon, setIcon]   = React.useState('folder');
   const [loading, setLoading] = React.useState(false);
 
   const colors = [
@@ -534,7 +560,7 @@ function NewProjectModal({ onClose, onCreate }) {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
-    await onCreate(name.trim(), color);
+    await onCreate(name.trim(), color, icon);
     setLoading(false);
   };
 
@@ -543,7 +569,7 @@ function NewProjectModal({ onClose, onCreate }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <div className="modal-title">Yeni Proje</div>
-          <div className="modal-sub">Projeniz için bir isim ve renk seçin.</div>
+          <div className="modal-sub">Projeniz için isim, renk ve ikon seçin.</div>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
@@ -553,14 +579,19 @@ function NewProjectModal({ onClose, onCreate }) {
             </div>
             <div className="field">
               <label>Renk</label>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', padding:'2px 0' }}>
                 {colors.map(([label, val]) => (
                   <button key={val} type="button" title={label} onClick={() => setColor(val)}
-                    style={{ width:28, height:28, borderRadius:7, background:val, cursor:'pointer',
-                      border: color===val ? '2px solid var(--ink)' : '2px solid transparent',
-                      transform: color===val ? 'scale(1.1)' : 'none' }} />
+                    style={{ width:28, height:28, borderRadius:7, background:val, cursor:'pointer', flexShrink:0,
+                      border: color===val ? '3px solid var(--ink)' : '2px solid transparent',
+                      boxShadow: color===val ? '0 0 0 1px var(--bg), 0 0 0 3px var(--ink)' : 'none',
+                      transition: 'box-shadow 0.15s' }} />
                 ))}
               </div>
+            </div>
+            <div className="field">
+              <label>İkon</label>
+              <ProjectIconPicker selected={icon} color={color} onChange={setIcon} />
             </div>
           </div>
           <div className="modal-foot">

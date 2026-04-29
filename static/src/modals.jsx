@@ -5,17 +5,33 @@ const { useState: useModalState, useEffect: useModalEffect, useRef: useModalRef 
 // ── Custom Date Picker ─────────────────────────────────────────────────────
 function DatePicker({ value, onChange }) {
   const [open, setOpen] = React.useState(false);
-  const ref = React.useRef(null);
+  const [pos, setPos]   = React.useState({ top: 0, left: 0 });
+  const btnRef = React.useRef(null);
+  const menuRef = React.useRef(null);
   const today = new Date();
   const parsed = value ? new Date(value + 'T00:00:00') : null;
   const [viewYear, setViewYear] = React.useState((parsed || today).getFullYear());
   const [viewMonth, setViewMonth] = React.useState((parsed || today).getMonth());
 
   React.useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target) &&
+          btnRef.current && !btnRef.current.contains(e.target)) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  const handleToggle = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      const menuH = 320;
+      const spaceBelow = window.innerHeight - r.bottom - 8;
+      const top = spaceBelow >= menuH ? r.bottom + 8 : r.top - menuH - 8;
+      setPos({ top, left: r.left });
+    }
+    setOpen(o => !o);
+  };
 
   const TR_MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   const TR_DAYS = ['Pt','Sa','Ça','Pe','Cu','Ct','Pa'];
@@ -50,8 +66,8 @@ function DatePicker({ value, onChange }) {
     : 'Tarih seç';
 
   return (
-    <div ref={ref} style={{ position: 'relative', width: '100%' }}>
-      <button type="button" onClick={() => setOpen(o => !o)} style={{
+    <div style={{ position: 'relative', width: '100%' }}>
+      <button ref={btnRef} type="button" onClick={handleToggle} style={{
         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 14px', background: 'var(--bg-raised)', border: '1px solid var(--line)',
         borderRadius: 999, fontSize: 14, color: parsed ? 'var(--ink)' : 'var(--ink-muted)',
@@ -61,9 +77,9 @@ function DatePicker({ value, onChange }) {
         <Icon name="calendar" size={14} />
       </button>
 
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 200,
+      {open && ReactDOM.createPortal(
+        <div ref={menuRef} style={{
+          position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
           background: 'var(--bg-raised)', border: '1px solid var(--line)',
           borderRadius: 14, boxShadow: 'var(--shadow-lg)', padding: '14px 16px', width: 260,
         }}>
@@ -114,7 +130,8 @@ function DatePicker({ value, onChange }) {
               Bugün
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -133,17 +150,31 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
   const [busy, setBusy]           = useModalState(false);
   const [colOpen, setColOpen]           = useModalState(false);
   const [priorityOpen, setPriorityOpen] = useModalState(false);
-  const colRef      = useModalRef(null);
-  const priorityRef = useModalRef(null);
+  const [colPos, setColPos]             = useModalState({ top: 0, left: 0, width: 0 });
+  const [priPos, setPriPos]             = useModalState({ top: 0, left: 0, width: 0 });
+  const colBtnRef      = useModalRef(null);
+  const priBtnRef      = useModalRef(null);
+  const colMenuRef     = useModalRef(null);
+  const priMenuRef     = useModalRef(null);
 
   useModalEffect(() => {
     const handleClick = (e) => {
-      if (colOpen && colRef.current && !colRef.current.contains(e.target)) setColOpen(false);
-      if (priorityOpen && priorityRef.current && !priorityRef.current.contains(e.target)) setPriorityOpen(false);
+      if (colOpen && colMenuRef.current && !colMenuRef.current.contains(e.target) &&
+          colBtnRef.current && !colBtnRef.current.contains(e.target)) setColOpen(false);
+      if (priorityOpen && priMenuRef.current && !priMenuRef.current.contains(e.target) &&
+          priBtnRef.current && !priBtnRef.current.contains(e.target)) setPriorityOpen(false);
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [colOpen, priorityOpen]);
+
+  const openDropdown = (btnRef, setPos, setOpenFn) => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setOpenFn(o => !o);
+  };
 
   React.useEffect(() => { if (defaultCol) setCol(defaultCol); }, [defaultCol, open]);
   React.useEffect(() => {
@@ -191,13 +222,15 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
           <div className="field-row">
             <div className="field">
               <label>Kolon</label>
-              <div className="custom-dropdown" ref={colRef}>
-                <button type="button" className="custom-dropdown-btn" onClick={() => setColOpen(o => !o)}>
+              <div className="custom-dropdown">
+                <button ref={colBtnRef} type="button" className="custom-dropdown-btn"
+                  onClick={() => openDropdown(colBtnRef, setColPos, setColOpen)}>
                   <span>{DATA.COLUMNS.find(c => c.id === col)?.title_tr || 'Seç'}</span>
                   <Icon name="chevronDown" size={12} />
                 </button>
-                {colOpen && (
-                  <div className="custom-dropdown-menu">
+                {colOpen && ReactDOM.createPortal(
+                  <div ref={colMenuRef} className="custom-dropdown-menu"
+                    style={{ position: 'fixed', top: colPos.top, left: colPos.left, minWidth: colPos.width, zIndex: 9999 }}>
                     {DATA.COLUMNS.map(c => (
                       <button key={c.id} type="button"
                         className={`custom-dropdown-item${c.id === col ? ' active' : ''}`}
@@ -205,19 +238,22 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
                         {c.title_tr}
                       </button>
                     ))}
-                  </div>
+                  </div>,
+                  document.body
                 )}
               </div>
             </div>
             <div className="field">
               <label>Öncelik</label>
-              <div className="custom-dropdown" ref={priorityRef}>
-                <button type="button" className="custom-dropdown-btn" onClick={() => setPriorityOpen(o => !o)}>
+              <div className="custom-dropdown">
+                <button ref={priBtnRef} type="button" className="custom-dropdown-btn"
+                  onClick={() => openDropdown(priBtnRef, setPriPos, setPriorityOpen)}>
                   <span>{priority === 'high' ? 'Yüksek' : priority === 'mid' ? 'Orta' : 'Düşük'}</span>
                   <Icon name="chevronDown" size={12} />
                 </button>
-                {priorityOpen && (
-                  <div className="custom-dropdown-menu">
+                {priorityOpen && ReactDOM.createPortal(
+                  <div ref={priMenuRef} className="custom-dropdown-menu"
+                    style={{ position: 'fixed', top: priPos.top, left: priPos.left, minWidth: priPos.width, zIndex: 9999 }}>
                     {[{id:'high',label:'Yüksek'},{id:'mid',label:'Orta'},{id:'low',label:'Düşük'}].map(item => (
                       <button key={item.id} type="button"
                         className={`custom-dropdown-item${item.id === priority ? ' active' : ''}`}
@@ -225,7 +261,8 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
                         {item.label}
                       </button>
                     ))}
-                  </div>
+                  </div>,
+                  document.body
                 )}
               </div>
             </div>

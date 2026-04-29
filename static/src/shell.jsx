@@ -108,7 +108,7 @@ function Sidebar({
   projects, members: membersProp, openCmd,
   onlineUsers, onlineStatuses,
   onChatOpen, onSwitchProject, onNewProject,
-  workspaces, onSwitchWorkspace, onAddWorkspace,
+  workspaces, wsLogoUrl, onSwitchWorkspace, onAddWorkspace,
   wsSwitcherOpen, onWsSwitcherToggle,
   currentStatus, onStatusChange,
 }) {
@@ -130,7 +130,10 @@ function Sidebar({
           style={collapsed ? { cursor: 'pointer' } : undefined}
           title={collapsed ? 'Genişlet' : undefined}
         >
-          <Icon name="bolt" size={16} strokeWidth={1.8} />
+          <img src="/static/StoaBoard_symbol.png" width={18} height={18}
+            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)', display: 'block' }}
+            onError={e => { e.target.style.display='none'; e.target.parentNode.textContent='S'; }}
+          />
         </div>
         <div className="sidebar-logo-text">Stoa<em>Board</em></div>
         <button className="sidebar-collapse-btn" onClick={onCollapseToggle} title={collapsed ? 'Genişlet' : 'Daralt'}>
@@ -144,7 +147,12 @@ function Sidebar({
           onClick={onWsSwitcherToggle}
           style={{ cursor: 'pointer', userSelect: 'none' }}
         >
-          <div className="ws-avatar">{(DATA.WORKSPACE?.name || 'S')[0].toUpperCase()}</div>
+          <div className="ws-avatar" style={wsLogoUrl ? { padding: 0, overflow: 'hidden' } : {}}>
+            {wsLogoUrl
+              ? <img src={wsLogoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              : (DATA.WORKSPACE?.name || 'S')[0].toUpperCase()
+            }
+          </div>
           <div className="ws-info">
             <div className="ws-name">{DATA.WORKSPACE?.name || 'StoaBoard'}</div>
             <div className="ws-sub">{DATA.MEMBERS.length} üye</div>
@@ -228,7 +236,9 @@ function Sidebar({
         </div>
         {(projects || []).map(p => (
           <div className="project-item" key={p.id} onClick={() => onSwitchProject && onSwitchProject(p.id)}>
-            <div className="project-dot" style={{ background: p.color }} />
+            <div style={{ width:18, height:18, borderRadius:5, background:p.color, display:'grid', placeItems:'center', color:'white', flexShrink:0 }}>
+              <Icon name={p.icon || 'folder'} size={11} strokeWidth={2} />
+            </div>
             <span className="sidebar-label">{p.name}</span>
             <span className="project-meta">{p.open}</span>
           </div>

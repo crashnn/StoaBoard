@@ -27,7 +27,7 @@ function DashboardView({ tasks, onOpenTask }) {
         {overdue === 0 && ' — harika gidiyor!'}
       </p>
 
-      {/* Stat cards */}
+    
       <div className="dash-grid">
         <div className="stat-card">
           <div className="stat-label">Aktif kartlar</div>
@@ -56,7 +56,7 @@ function DashboardView({ tasks, onOpenTask }) {
       </div>
 
       <div className="dash-row">
-        {/* Throughput chart */}
+      
         <div className="panel">
           <div className="panel-head">
             <div>
@@ -159,7 +159,7 @@ function DashboardView({ tasks, onOpenTask }) {
           </div>
         </div>
 
-        {/* Activity feed */}
+       
         <div className="panel">
           <div className="panel-head">
             <div className="panel-title">Takım hareketleri</div>

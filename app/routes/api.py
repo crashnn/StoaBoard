@@ -248,14 +248,70 @@ def create_workspace():
     while Workspace.query.filter_by(invite_code=invite_code).first():
         invite_code = secrets.token_hex(4).upper()
 
+    template = data.get('template', 'software')
+
+    TEMPLATES = {
+        'software': {
+            'project': 'Ana Proje',
+            'color': 'oklch(52% 0.15 270)',
+            'cols': [
+                ('backlog',  'Backlog',      'Backlog',       'oklch(55% 0.02 250)', 0),
+                ('todo',     'To Do',        'Yapılacak',     'oklch(55% 0.09 230)', 1),
+                ('doing',    'In Progress',  'Devam Ediyor',  'oklch(65% 0.11 70)',  2),
+                ('review',   'In Review',    'İncelemede',    'oklch(58% 0.13 10)',  3),
+                ('done',     'Done',         'Tamamlandı',    'oklch(55% 0.09 150)', 4),
+            ],
+            'labels': [
+                ('bug',          'Bug',          'Bug',          'rose'),
+                ('feature',      'Feature',      'Özellik',      'blue'),
+                ('tech-debt',    'Tech Debt',    'Teknik Borç',  'amber'),
+                ('sprint',       'Sprint',       'Sprint',       'green'),
+            ],
+        },
+        'design': {
+            'project': 'Tasarım Projesi',
+            'color': 'oklch(50% 0.14 300)',
+            'cols': [
+                ('brief',    'Brief',     'Brief',     'oklch(55% 0.02 250)', 0),
+                ('draft',    'Draft',     'Taslak',    'oklch(55% 0.09 230)', 1),
+                ('design',   'Design',    'Tasarım',   'oklch(52% 0.15 270)', 2),
+                ('revision', 'Revision',  'Revizyon',  'oklch(58% 0.13 10)',  3),
+                ('delivery', 'Delivered', 'Teslim',    'oklch(55% 0.09 150)', 4),
+            ],
+            'labels': [
+                ('ui',       'UI',       'UI',       'purple'),
+                ('ux',       'UX',       'UX',       'blue'),
+                ('revision', 'Revision', 'Revizyon', 'amber'),
+                ('approved', 'Approved', 'Onaylı',   'green'),
+            ],
+        },
+        'personal': {
+            'project': 'Kişisel Projeler',
+            'color': 'oklch(55% 0.09 150)',
+            'cols': [
+                ('ideas',    'Ideas',     'Fikirler',    'oklch(55% 0.02 250)', 0),
+                ('thisweek', 'This Week', 'Bu Hafta',    'oklch(65% 0.11 70)',  1),
+                ('doing',    'Doing',     'Yapıyor',     'oklch(58% 0.13 10)',  2),
+                ('done',     'Done',      'Tamamlandı',  'oklch(55% 0.09 150)', 3),
+            ],
+            'labels': [
+                ('goal',    'Goal',    'Hedef',      'blue'),
+                ('habit',   'Habit',   'Alışkanlık', 'green'),
+                ('project', 'Project', 'Proje',      'amber'),
+                ('personal','Personal','Kişisel',    'rose'),
+            ],
+        },
+    }
+    tmpl = TEMPLATES.get(template, TEMPLATES['software'])
+
     ws = Workspace(name=name, slug=slug, owner_id=user.id, invite_code=invite_code)
     db.session.add(ws)
     db.session.flush()
 
     default_roles = [
-        ('Yönetici', 'oklch(52% 0.15 270)', ['manage_tasks', 'manage_projects', 'manage_members'], False),
-        ('Düzenleyici', 'oklch(55% 0.09 150)', ['manage_tasks'], True),
-        ('Görüntüleyici', 'oklch(55% 0.02 250)', [], False),
+        ('Yönetici',     'oklch(52% 0.15 270)', ['manage_tasks', 'manage_projects', 'manage_members'], False),
+        ('Düzenleyici',  'oklch(55% 0.09 150)', ['manage_tasks'], True),
+        ('Görüntüleyici','oklch(55% 0.02 250)', [], False),
     ]
     for rname, rcolor, rperms, is_default in default_roles:
         db.session.add(WorkspaceRole(
@@ -266,6 +322,23 @@ def create_workspace():
     member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role='owner')
     db.session.add(member)
     user.current_workspace_id = ws.id
+
+    # Şablona göre varsayılan proje + kolonlar + etiketler
+    project = Project(workspace_id=ws.id, name=tmpl['project'], color=tmpl['color'])
+    db.session.add(project)
+    db.session.flush()
+
+    for slug_c, title, title_tr, color, pos in tmpl['cols']:
+        db.session.add(BoardColumn(
+            project_id=project.id, slug=slug_c, title=title,
+            title_tr=title_tr, color=color, position=pos,
+        ))
+    for slug_l, name_en, name_tr, tone in tmpl['labels']:
+        db.session.add(Label(
+            project_id=project.id, slug=slug_l,
+            name_en=name_en, name_tr=name_tr, color_tone=tone,
+        ))
+
     db.session.commit()
 
     return jsonify({'ok': True, 'invite_code': invite_code, 'workspace_id': ws.id}), 201
@@ -1055,6 +1128,7 @@ def create_project():
         workspace_id=member.workspace_id,
         name=name,
         color=data.get('color') or 'oklch(55% 0.13 25)',
+        icon=data.get('icon') or 'folder',
     )
     db.session.add(project)
     db.session.flush()
@@ -1085,6 +1159,8 @@ def update_project(project_id):
         project.name = data['name']
     if 'color' in data:
         project.color = data['color']
+    if 'icon' in data:
+        project.icon = data['icon']
     db.session.commit()
     return jsonify(project.to_dict())
 
@@ -1096,6 +1172,61 @@ def delete_project(project_id):
     db.session.delete(project)
     db.session.commit()
     return jsonify({'ok': True})
+
+
+# ── Workspace logo upload ─────────────────────────────────────────────────
+
+@api_bp.route('/workspaces/<int:ws_id>/logo', methods=['POST'])
+@_login_required
+def upload_workspace_logo(ws_id):
+    from app.models import Workspace, WorkspaceMember
+    user = _current_user()
+    ws = Workspace.query.get_or_404(ws_id)
+    if ws.owner_id != user.id:
+        member = WorkspaceMember.query.filter_by(workspace_id=ws_id, user_id=user.id).first()
+        if not member:
+            return jsonify({'error': 'Yetkisiz'}), 403
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'Dosya seçilmedi'}), 400
+    f = request.files['file']
+    if not f or not f.filename:
+        return jsonify({'error': 'Geçersiz dosya'}), 400
+
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in {'jpg', 'jpeg', 'png', 'gif', 'webp'}:
+        return jsonify({'error': 'Sadece resim dosyaları yüklenebilir'}), 400
+
+    f.seek(0, 2)
+    size = f.tell()
+    f.seek(0)
+    if size > 5 * 1024 * 1024:
+        return jsonify({'error': 'Logo 5 MB\'dan büyük olamaz'}), 400
+
+    safe_name = f'ws_{ws_id}_{uuid.uuid4().hex[:8]}.{ext}'
+    upload_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        'static', 'uploads', 'logos'
+    )
+    os.makedirs(upload_dir, exist_ok=True)
+    f.save(os.path.join(upload_dir, safe_name))
+
+    ws.logo_url = f'/static/uploads/logos/{safe_name}'
+    db.session.commit()
+    return jsonify({'logo_url': ws.logo_url})
+
+
+@api_bp.route('/workspaces/<int:ws_id>/logo', methods=['DELETE'])
+@_login_required
+def delete_workspace_logo(ws_id):
+    from app.models import Workspace
+    user = _current_user()
+    ws = Workspace.query.get_or_404(ws_id)
+    if ws.owner_id != user.id:
+        return jsonify({'error': 'Yetkisiz'}), 403
+    ws.logo_url = None
+    db.session.commit()
+    return jsonify({'logo_url': None})
 
 
 # ── Chat file upload ──────────────────────────────────────────────────────

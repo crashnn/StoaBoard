@@ -276,13 +276,13 @@ a { color: inherit; text-decoration: none; }
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--accent);
+  color: white;
   display: grid;
   place-items: center;
   flex-shrink: 0;
 }
-[data-theme="dark"] .sidebar-logo { background: var(--accent); color: white; }
+[data-theme="dark"] .sidebar-logo { background: var(--accent); }
 .sidebar-logo-text {
   font-family: var(--font-display);
   font-size: 20px;
@@ -1055,10 +1055,12 @@ a { color: inherit; text-decoration: none; }
    ======================================== */
 .cal-wrap {
   flex: 1;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 16px 20px 20px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .cal-header {
   display: flex;
@@ -1090,13 +1092,15 @@ a { color: inherit; text-decoration: none; }
 .cal-nav { display: flex; gap: 2px; margin-left: 8px; }
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
   background: var(--bg-raised);
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
 }
 .cal-panels {
   display: grid;
@@ -1518,15 +1522,13 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg);
 }
 .custom-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
+  position: fixed;
   width: 100%;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: 18px;
   box-shadow: var(--shadow-lg);
-  z-index: 30;
+  z-index: 9999;
   overflow: hidden;
 }
 .custom-dropdown-item {
@@ -1697,6 +1699,7 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   gap: 18px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .modal-foot {
   padding: 18px 26px 20px;
@@ -2151,30 +2154,49 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-display)
   --color-line: rgba(0,0,0,0.08);
   --color-brand-blue: #1d3461;
   --color-brand-red: #9b1d20;
-  --auth-theme: var(--color-ink);
-  --auth-glow: rgba(26, 26, 26, 0.12);
+  --auth-theme: var(--color-brand-blue);
+  --auth-glow: rgba(29, 52, 97, 0.18);
   --ws-theme: var(--color-brand-blue);
 }
 
-/* Kaydol → Mavi */
 [data-variant="register"] {
   --auth-theme: var(--color-brand-blue);
   --auth-glow: rgba(29, 52, 97, 0.18);
 }
 
-/* Workspace Oda Kur → Siyah tema (sağ taraf) */
 [data-variant="ws-create"] {
-  --auth-theme: var(--color-ink);
-  --auth-glow: rgba(26, 26, 26, 0.12);
-  --ws-theme: var(--color-ink);
+  --auth-theme: var(--color-brand-blue);
+  --auth-glow: rgba(29, 52, 97, 0.18);
+  --ws-theme: var(--color-brand-blue);
 }
 
-/* Workspace Odaya Katıl → Mavi tema (sağ taraf) */
 [data-variant="ws-join"] {
   --auth-theme: var(--color-brand-blue);
   --auth-glow: rgba(29, 52, 97, 0.18);
   --ws-theme: var(--color-brand-blue);
 }
+
+/* Auth sayfası: dark temada metin renkleri */
+[data-theme="dark"] {
+  --color-ink: #ededea;
+  --color-ink-muted: rgba(237, 237, 234, 0.62);
+  --color-line: rgba(255, 255, 255, 0.09);
+  --auth-glow: rgba(237, 237, 234, 0.07);
+}
+[data-theme="dark"] .glow-input {
+  background: var(--bg-subtle);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+[data-theme="dark"] .glow-input::placeholder { color: var(--ink-faint); }
+[data-theme="dark"] .oauth-btn {
+  background: var(--bg-raised);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+[data-theme="dark"] .oauth-btn:hover { background: var(--bg-subtle); }
+[data-theme="dark"] .auth-tabs { background: var(--bg-subtle); }
+[data-theme="dark"] .auth-tabs button[data-active="true"] { background: var(--bg-raised); color: var(--ink); }
 
 /* ─── LAYOUT ─────────────────────────────────────────────────── */
 .auth-page {
@@ -2219,10 +2241,10 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-display)
 .glass-content {
   position: relative; z-index: 3;
   margin: auto 48px 72px 8vw; padding: 40px;
-  background: rgba(245, 245, 240, 0.55);
-  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255,255,255,0.5); border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15); max-width: 540px;
+  background: rgba(245, 245, 240, 0.28);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.35); border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12); max-width: 540px;
 }
 
 /* Logo + Marka satırı */
@@ -2236,7 +2258,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-display)
 .auth-brand-text em { color: var(--color-brand-blue); font-style: normal; }
 
 .auth-hero h1 {
-  font-family: var(--font-display); font-size: 48px; line-height: 1.1;
+  font-family: var(--font-display); font-size: 34px; line-height: 1.2;
   letter-spacing: -0.015em; margin-bottom: 20px; color: var(--color-ink);
 }
 .auth-hero h1 em { font-style: italic; color: var(--color-brand-blue); }

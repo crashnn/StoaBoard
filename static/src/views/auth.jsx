@@ -21,24 +21,24 @@ const StoaLogoPNG = ({ size = 40, style = {} }) => (
 const StoaLogoSVG = ({ color = '#1d3461', size = 40 }) => (
   <svg width={size} height={size} viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg">
     {/* Sol sütun grubu */}
-    <rect x="5"  y="52" width="8" height="42" rx="2" fill={color}/>
-    <rect x="15" y="52" width="8" height="42" rx="2" fill={color}/>
-    <rect x="25" y="52" width="8" height="42" rx="2" fill={color}/>
-    <rect x="3"  y="89" width="32" height="5" rx="2" fill={color}/>
-    <rect x="1"  y="94" width="36" height="4" rx="2" fill={color}/>
+    <rect x="5" y="52" width="8" height="42" rx="2" fill={color} />
+    <rect x="15" y="52" width="8" height="42" rx="2" fill={color} />
+    <rect x="25" y="52" width="8" height="42" rx="2" fill={color} />
+    <rect x="3" y="89" width="32" height="5" rx="2" fill={color} />
+    <rect x="1" y="94" width="36" height="4" rx="2" fill={color} />
     {/* Sağ sütun grubu */}
-    <rect x="59" y="52" width="8" height="42" rx="2" fill={color}/>
-    <rect x="69" y="52" width="8" height="42" rx="2" fill={color}/>
-    <rect x="79" y="52" width="8" height="42" rx="2" fill={color}/>
-    <rect x="57" y="89" width="32" height="5" rx="2" fill={color}/>
-    <rect x="55" y="94" width="36" height="4" rx="2" fill={color}/>
+    <rect x="59" y="52" width="8" height="42" rx="2" fill={color} />
+    <rect x="69" y="52" width="8" height="42" rx="2" fill={color} />
+    <rect x="79" y="52" width="8" height="42" rx="2" fill={color} />
+    <rect x="57" y="89" width="32" height="5" rx="2" fill={color} />
+    <rect x="55" y="94" width="36" height="4" rx="2" fill={color} />
     {/* Orta sütun */}
-    <rect x="44" y="52" width="10" height="46" rx="2" fill={color}/>
-    <rect x="41" y="94" width="16" height="4" rx="2" fill={color}/>
+    <rect x="44" y="52" width="10" height="46" rx="2" fill={color} />
+    <rect x="41" y="94" width="16" height="4" rx="2" fill={color} />
     {/* S harfi */}
-    <path d="M8 8 C4 8 1 11 1 15 C1 19 4 21 9 23 L16 26 C21 28 24 30 24 35 C24 40 21 43 16 43 C11 43 8 40 7 36 L3 37.5 C5 43 10 47 16 47 C23 47 28 43 28 35 C28 30 25 27 20 25 L13 22 C9 20 5 18 5 15 C5 12 7 10 10 10 C13 10 15 11.5 16 14 L20 12 C18 9 14 8 8 8Z" fill={color}/>
+    <path d="M8 8 C4 8 1 11 1 15 C1 19 4 21 9 23 L16 26 C21 28 24 30 24 35 C24 40 21 43 16 43 C11 43 8 40 7 36 L3 37.5 C5 43 10 47 16 47 C23 47 28 43 28 35 C28 30 25 27 20 25 L13 22 C9 20 5 18 5 15 C5 12 7 10 10 10 C13 10 15 11.5 16 14 L20 12 C18 9 14 8 8 8Z" fill={color} />
     {/* R harfi */}
-    <path d="M32 8 L32 47 L37 47 L37 30 L45 30 L51 47 L57 47 L50 29.5 C54 28 56 24.5 56 20 C56 13 51 8 44 8 L32 8Z M37 12.5 L43 12.5 C47 12.5 50 15 50 20 C50 25 47 27.5 43 27.5 L37 27.5 L37 12.5Z" fill={color}/>
+    <path d="M32 8 L32 47 L37 47 L37 30 L45 30 L51 47 L57 47 L50 29.5 C54 28 56 24.5 56 20 C56 13 51 8 44 8 L32 8Z M37 12.5 L43 12.5 C47 12.5 50 15 50 20 C50 25 47 27.5 43 27.5 L37 27.5 L37 12.5Z" fill={color} />
   </svg>
 );
 
@@ -51,7 +51,8 @@ const StoaLogo = ({ color = '#1d3461', size = 40, style = {} }) => {
       src="/static/StoaBoard_symbol.png"
       width={size} height={size}
       alt="StoaBoard"
-      style={{ objectFit: 'contain', display: 'block', ...style,
+      style={{
+        objectFit: 'contain', display: 'block', ...style,
         ...(color !== '#1d3461' ? { filter: color === '#ef4444' ? 'invert(27%) sepia(97%) saturate(1000%) hue-rotate(332deg)' : color === 'white' ? 'brightness(0) invert(1)' : 'none' } : {})
       }}
       onError={() => setPngFailed(true)}
@@ -61,15 +62,15 @@ const StoaLogo = ({ color = '#1d3461', size = 40, style = {} }) => {
 
 // ── GEÇERLİ E-POSTA DOMAINLER ─────────────────────────────────────────────────
 const VALID_EMAIL_DOMAINS = [
-  'gmail.com','googlemail.com',
-  'hotmail.com','hotmail.co.uk','hotmail.fr','hotmail.de','hotmail.it','hotmail.es','hotmail.tr',
-  'outlook.com','outlook.co.uk','outlook.de','outlook.fr','outlook.com.tr',
-  'live.com','live.co.uk','live.fr','live.de',
-  'yahoo.com','yahoo.co.uk','yahoo.fr','yahoo.de','yahoo.com.tr',
-  'ymail.com','icloud.com','me.com','mac.com','msn.com',
-  'protonmail.com','proton.me','pm.me','zoho.com',
-  'yandex.com','yandex.ru','mail.com','email.com','aol.com',
-  'tutanota.com','tuta.io',
+  'gmail.com', 'googlemail.com',
+  'hotmail.com', 'hotmail.co.uk', 'hotmail.fr', 'hotmail.de', 'hotmail.it', 'hotmail.es', 'hotmail.tr',
+  'outlook.com', 'outlook.co.uk', 'outlook.de', 'outlook.fr', 'outlook.com.tr',
+  'live.com', 'live.co.uk', 'live.fr', 'live.de',
+  'yahoo.com', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de', 'yahoo.com.tr',
+  'ymail.com', 'icloud.com', 'me.com', 'mac.com', 'msn.com',
+  'protonmail.com', 'proton.me', 'pm.me', 'zoho.com',
+  'yandex.com', 'yandex.ru', 'mail.com', 'email.com', 'aol.com',
+  'tutanota.com', 'tuta.io',
 ];
 function isValidEmailDomain(email) {
   if (!email || !email.includes('@')) return false;
@@ -79,26 +80,26 @@ function isValidEmailDomain(email) {
 
 // ── 1. GİRİŞ YAP / KAYDOL SAYFASI ───────────────────────────────────────────────
 function AuthPage({ onSignIn }) {
-  const [mode, setMode]   = useAuthState('signin');
+  const [mode, setMode] = useAuthState('signin');
   const [error, setError] = useAuthState('');
-  const [busy, setBusy]   = useAuthState(false);
-  const [form, setForm]   = useAuthState({ name: '', email: '', password: '' });
+  const [busy, setBusy] = useAuthState(false);
+  const [form, setForm] = useAuthState({ name: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useAuthState(false);
   const [isShaking, setIsShaking] = useAuthState(false);
   const [currentSlide, setCurrentSlide] = useAuthState(0);
 
-  const [showForgot, setShowForgot]     = useAuthState(false);
-  const [forgotStep, setForgotStep]     = useAuthState('email');
-  const [forgotEmail, setForgotEmail]   = useAuthState('');
-  const [forgotCode, setForgotCode]     = useAuthState('');
+  const [showForgot, setShowForgot] = useAuthState(false);
+  const [forgotStep, setForgotStep] = useAuthState('email');
+  const [forgotEmail, setForgotEmail] = useAuthState('');
+  const [forgotCode, setForgotCode] = useAuthState('');
   const [forgotNewPass, setForgotNewPass] = useAuthState('');
   const [forgotConfirmPass, setForgotConfirmPass] = useAuthState('');
   const [mockSentCode, setMockSentCode] = useAuthState('');
-  const [forgotError, setForgotError]   = useAuthState('');
-  const [forgotBusy, setForgotBusy]     = useAuthState(false);
+  const [forgotError, setForgotError] = useAuthState('');
+  const [forgotBusy, setForgotBusy] = useAuthState(false);
   const [forgotShowNewPass, setForgotShowNewPass] = useAuthState(false);
-  const [oauthError, setOauthError]     = useAuthState(null);
-  const [greeting, setGreeting]         = useAuthState('Tekrar hoşgeldin.');
+  const [oauthError, setOauthError] = useAuthState(null);
+  const [greeting, setGreeting] = useAuthState('Tekrar hoşgeldin.');
 
   // YENİ FOTOĞRAFLAR - zoom azaltıldı
   const slideImages = [
@@ -112,7 +113,7 @@ function AuthPage({ onSignIn }) {
   ];
 
   useAuthEffect(() => {
-    const t = setInterval(() => setCurrentSlide(p => (p + 1) % slideImages.length), 3000);
+    const t = setInterval(() => setCurrentSlide(p => (p + 1) % slideImages.length), 10000);
     return () => clearInterval(t);
   }, [slideImages.length]);
 
@@ -218,7 +219,7 @@ function AuthPage({ onSignIn }) {
         </div>
         <div className="dust-overlay">
           {particles.map(p => (
-            <div key={p.id} className="dust-particle" style={{ width:p.size, height:p.size, left:p.left, animationDelay:p.delay, animationDuration:p.duration }} />
+            <div key={p.id} className="dust-particle" style={{ width: p.size, height: p.size, left: p.left, animationDelay: p.delay, animationDuration: p.duration }} />
           ))}
         </div>
         <div className="glass-content">
@@ -227,12 +228,12 @@ function AuthPage({ onSignIn }) {
             <div className="auth-brand-text">Stoa<em>Board</em></div>
           </div>
           <div className="auth-hero">
-            <h1>Takımının işi <em>konuşsun</em>,<br/>kartları değil.</h1>
-            <p>StoaBoard — pano, liste ve takvimde aynı anda çalışan hafif, hızlı bir proje yönetim aracı. Startup takımları için tasarlandı, ekibinle 15 saniyede başla. Görevleri atayın, ilerlemeyi takip edin ve tüm ekiple senkronize çalışın — tek bir platformda, sıfır karmaşıklıkla.</p>
+            <h1>Yarının projelerini, bugünün en <em>hafif</em> araçlarıyla inşa edin.</h1>
+            <p>Teknoloji dünyası artık ağır ve hantal sistemleri kaldırmıyor. StoaBoard, startup çevikliğini merkeze alarak tasarlandı; 15 saniyede kurulum, sıfır karmaşıklık ve tam senkronizasyon. Pano, liste ve takvim görünümleri arasında pürüzsüzce geçiş yaparken, sistemin ağırlığını değil, ekibinizin yaratıcılığını hissedeceksiniz. Gelecek burada başlıyor, hafiflikten güç alarak.</p>
             <div className="stats-row">
-              <div><strong>6k+</strong><span>aktif takım</span></div>
-              <div><strong>98%</strong><span>memnuniyet</span></div>
-              <div><strong>15sn</strong><span>başlama süresi</span></div>
+              <div><strong>1.200+</strong><span>aktif ekip</span></div>
+              <div><strong>38k+</strong><span>tamamlanan görev</span></div>
+              <div><strong>15sn</strong><span>ortalama kurulum</span></div>
             </div>
           </div>
         </div>
@@ -248,7 +249,7 @@ function AuthPage({ onSignIn }) {
                 <p>{oauthError.message}</p>
               </div>
               <button className="oauth-error-close" onClick={() => setOauthError(null)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
               <button className="oauth-error-back" onClick={() => setOauthError(null)}>← Geri Dön</button>
             </div>
@@ -274,11 +275,11 @@ function AuthPage({ onSignIn }) {
                 {forgotError && <div className="error-msg">{forgotError}</div>}
                 <form className="auth-fields" onSubmit={handleForgotCodeSubmit}>
                   <div className="field"><label className="field-label">DOĞRULAMA KODU</label>
-                    <input className="glow-input" autoFocus placeholder="123456" value={forgotCode} onChange={e => setForgotCode(e.target.value.replace(/\D/g,'').slice(0,6))} maxLength={6} style={{ fontFamily:'var(--font-mono)', letterSpacing:'0.3em', fontSize:20, textAlign:'center', fontWeight:'bold' }} required />
+                    <input className="glow-input" autoFocus placeholder="123456" value={forgotCode} onChange={e => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 6))} maxLength={6} style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.3em', fontSize: 20, textAlign: 'center', fontWeight: 'bold' }} required />
                   </div>
-                  <div style={{ display:'flex', gap:10 }}>
-                    <button type="button" className="auth-submit" style={{ background:'transparent', color:'var(--color-ink)', border:'1px solid var(--color-line)', flex:1 }} onClick={handleContinueWithoutChange}>Devam Et</button>
-                    <button type="submit" className="auth-submit" style={{ flex:2 }}>ŞİFREYİ DEĞİŞTİR</button>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button type="button" className="auth-submit" style={{ background: 'transparent', color: 'var(--color-ink)', border: '1px solid var(--color-line)', flex: 1 }} onClick={handleContinueWithoutChange}>Devam Et</button>
+                    <button type="submit" className="auth-submit" style={{ flex: 2 }}>ŞİFREYİ DEĞİŞTİR</button>
                   </div>
                 </form>
                 <div className="auth-foot"><a onClick={() => { setForgotStep('email'); setForgotError(''); setForgotCode(''); }}>← Geri dön</a></div>
@@ -297,9 +298,9 @@ function AuthPage({ onSignIn }) {
                   <div className="field"><label className="field-label">PAROLAYI TEKRARLA</label>
                     <input className="glow-input" type="password" placeholder="••••••••" value={forgotConfirmPass} onChange={e => setForgotConfirmPass(e.target.value)} required />
                   </div>
-                  <div style={{ display:'flex', gap:10 }}>
-                    <button type="button" className="auth-submit" style={{ background:'transparent', color:'var(--color-ink)', border:'1px solid var(--color-line)', flex:1 }} onClick={handleContinueWithoutChange}>Değiştirme</button>
-                    <button type="submit" className="auth-submit" disabled={forgotBusy} style={{ flex:2 }}>{forgotBusy ? 'KAYDEDİLİYOR…' : 'KAYDET'}</button>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button type="button" className="auth-submit" style={{ background: 'transparent', color: 'var(--color-ink)', border: '1px solid var(--color-line)', flex: 1 }} onClick={handleContinueWithoutChange}>Değiştirme</button>
+                    <button type="submit" className="auth-submit" disabled={forgotBusy} style={{ flex: 2 }}>{forgotBusy ? 'KAYDEDİLİYOR…' : 'KAYDET'}</button>
                   </div>
                 </form>
               </>)}
@@ -334,7 +335,7 @@ function AuthPage({ onSignIn }) {
                 </div>
                 {mode === 'signup' && (
                   <div className={`password-strength-container ${form.password.length > 0 ? '' : 'hidden'}`}>
-                    <div className="password-strength-bar" style={{ width:pwdStrength.width, backgroundColor:pwdStrength.color }} />
+                    <div className="password-strength-bar" style={{ width: pwdStrength.width, backgroundColor: pwdStrength.color }} />
                   </div>
                 )}
                 <button type="submit" className="auth-submit" disabled={busy}>
@@ -346,11 +347,11 @@ function AuthPage({ onSignIn }) {
                   <div className="auth-divider">VEYA</div>
                   <div className="auth-oauth-list">
                     <button className="oauth-btn" onClick={() => handleOAuth('GitHub')}>
-                      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" /></svg>
                       GitHub ile devam et
                     </button>
                     <button className="oauth-btn" onClick={() => handleOAuth('Gmail')}>
-                      <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.64 24.32c0-1.55-.13-3.04-.36-4.5H24v9.06h12.7c-.55 2.87-2.17 5.3-4.61 6.94l7.6 5.89C44.13 36.67 46.64 31.02 46.64 24.32z"/><path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59L2.56 13.22C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.6-5.89c-2.15 1.45-4.92 2.3-8.29 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+                      <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" /><path fill="#4285F4" d="M46.64 24.32c0-1.55-.13-3.04-.36-4.5H24v9.06h12.7c-.55 2.87-2.17 5.3-4.61 6.94l7.6 5.89C44.13 36.67 46.64 31.02 46.64 24.32z" /><path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59L2.56 13.22C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z" /><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.6-5.89c-2.15 1.45-4.92 2.3-8.29 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" /><path fill="none" d="M0 0h48v48H0z" /></svg>
                       Gmail ile devam et
                     </button>
                   </div>
@@ -371,101 +372,110 @@ function AuthPage({ onSignIn }) {
 
 // ── BLUEPRINT SVG ─────────────────────────────────────────────────────────────
 const BlueprintSVG = () => (
-  <svg viewBox="0 0 900 480" xmlns="http://www.w3.org/2000/svg" style={{ width:'100%', display:'block' }}>
+  <svg viewBox="0 0 900 480" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', display: 'block' }}>
     <defs>
       <pattern id="bpgrid" width="30" height="30" patternUnits="userSpaceOnUse">
-        <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(160,200,255,0.12)" strokeWidth="0.5"/>
+        <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(160,200,255,0.12)" strokeWidth="0.5" />
       </pattern>
       <filter id="bpglow">
-        <feGaussianBlur stdDeviation="1.8" result="coloredBlur"/>
-        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        <feGaussianBlur stdDeviation="1.8" result="coloredBlur" />
+        <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
     </defs>
     <rect width="900" height="480" fill="url(#bpgrid)" />
     {/* Üst ölçü */}
-    <line x1="90" y1="28" x2="810" y2="28" stroke="rgba(160,200,255,0.35)" strokeWidth="0.7" strokeDasharray="4,4"/>
-    <line x1="90" y1="24" x2="90" y2="34" stroke="rgba(160,200,255,0.5)" strokeWidth="0.9"/>
-    <line x1="810" y1="24" x2="810" y2="34" stroke="rgba(160,200,255,0.5)" strokeWidth="0.9"/>
+    <line x1="90" y1="28" x2="810" y2="28" stroke="rgba(160,200,255,0.35)" strokeWidth="0.7" strokeDasharray="4,4" />
+    <line x1="90" y1="24" x2="90" y2="34" stroke="rgba(160,200,255,0.5)" strokeWidth="0.9" />
+    <line x1="810" y1="24" x2="810" y2="34" stroke="rgba(160,200,255,0.5)" strokeWidth="0.9" />
     <text x="450" y="20" fill="rgba(160,200,255,0.65)" fontSize="8.5" textAnchor="middle" fontFamily="monospace">69.5 m — STOA CEPHESİ</text>
     {/* Yan ölçü */}
-    <line x1="50" y1="95" x2="50" y2="430" stroke="rgba(160,200,255,0.35)" strokeWidth="0.7" strokeDasharray="4,4"/>
-    <line x1="42" y1="95" x2="58" y2="95" stroke="rgba(160,200,255,0.5)" strokeWidth="0.9"/>
-    <line x1="42" y1="430" x2="58" y2="430" stroke="rgba(160,200,255,0.5)" strokeWidth="0.9"/>
+    <line x1="50" y1="95" x2="50" y2="430" stroke="rgba(160,200,255,0.35)" strokeWidth="0.7" strokeDasharray="4,4" />
+    <line x1="42" y1="95" x2="58" y2="95" stroke="rgba(160,200,255,0.5)" strokeWidth="0.9" />
+    <line x1="42" y1="430" x2="58" y2="430" stroke="rgba(160,200,255,0.5)" strokeWidth="0.9" />
     <text x="32" y="265" fill="rgba(160,200,255,0.65)" fontSize="8.5" textAnchor="middle" fontFamily="monospace" transform="rotate(-90,32,265)">18.2 m — YÜKSEKLİK</text>
     {/* Pediment (alın üçgeni) */}
-    <polygon points="90,95 450,38 810,95" fill="none" stroke="rgba(160,220,255,0.92)" strokeWidth="1.6" filter="url(#bpglow)"/>
-    <polygon points="170,95 450,52 730,95" fill="none" stroke="rgba(160,220,255,0.35)" strokeWidth="0.7"/>
+    <polygon points="90,95 450,38 810,95" fill="none" stroke="rgba(160,220,255,0.92)" strokeWidth="1.6" filter="url(#bpglow)" />
+    <polygon points="170,95 450,52 730,95" fill="none" stroke="rgba(160,220,255,0.35)" strokeWidth="0.7" />
     {/* Akroter */}
-    <polygon points="450,38 440,26 460,26" fill="none" stroke="rgba(160,220,255,0.7)" strokeWidth="1"/>
-    <polygon points="90,95 78,83 90,83" fill="none" stroke="rgba(160,220,255,0.6)" strokeWidth="0.9"/>
-    <polygon points="810,95 822,83 810,83" fill="none" stroke="rgba(160,220,255,0.6)" strokeWidth="0.9"/>
+    <polygon points="450,38 440,26 460,26" fill="none" stroke="rgba(160,220,255,0.7)" strokeWidth="1" />
+    <polygon points="90,95 78,83 90,83" fill="none" stroke="rgba(160,220,255,0.6)" strokeWidth="0.9" />
+    <polygon points="810,95 822,83 810,83" fill="none" stroke="rgba(160,220,255,0.6)" strokeWidth="0.9" />
     {/* Arşitrav */}
-    <rect x="90" y="95" width="720" height="17" fill="none" stroke="rgba(160,220,255,0.92)" strokeWidth="1.6" filter="url(#bpglow)"/>
-    <rect x="90" y="112" width="720" height="9" fill="none" stroke="rgba(160,220,255,0.55)" strokeWidth="0.75"/>
+    <rect x="90" y="95" width="720" height="17" fill="none" stroke="rgba(160,220,255,0.92)" strokeWidth="1.6" filter="url(#bpglow)" />
+    <rect x="90" y="112" width="720" height="9" fill="none" stroke="rgba(160,220,255,0.55)" strokeWidth="0.75" />
     {/* Triglifler */}
-    {[128,174,220,266,312,358,404,450,496,542,588,634,680,726,772].map((x,i) => (
+    {[128, 174, 220, 266, 312, 358, 404, 450, 496, 542, 588, 634, 680, 726, 772].map((x, i) => (
       <g key={i}>
-        <rect x={x} y="121" width="22" height="9" fill="none" stroke="rgba(160,220,255,0.45)" strokeWidth="0.55"/>
-        <line x1={x+7} y1="121" x2={x+7} y2="130" stroke="rgba(160,220,255,0.35)" strokeWidth="0.55"/>
-        <line x1={x+15} y1="121" x2={x+15} y2="130" stroke="rgba(160,220,255,0.35)" strokeWidth="0.55"/>
+        <rect x={x} y="121" width="22" height="9" fill="none" stroke="rgba(160,220,255,0.45)" strokeWidth="0.55" />
+        <line x1={x + 7} y1="121" x2={x + 7} y2="130" stroke="rgba(160,220,255,0.35)" strokeWidth="0.55" />
+        <line x1={x + 15} y1="121" x2={x + 15} y2="130" stroke="rgba(160,220,255,0.35)" strokeWidth="0.55" />
       </g>
     ))}
     {/* Sütunlar */}
-    {[108,178,248,318,388,458,528,598,668,738].map((x,i) => (
+    {[108, 178, 248, 318, 388, 458, 528, 598, 668, 738].map((x, i) => (
       <g key={i}>
-        <path d={`M${x} 130 Q${x-5} 285 ${x} 430`} fill="none" stroke="rgba(160,220,255,0.88)" strokeWidth="1.3" filter="url(#bpglow)"/>
-        <path d={`M${x+48} 130 Q${x+53} 285 ${x+48} 430`} fill="none" stroke="rgba(160,220,255,0.88)" strokeWidth="1.3" filter="url(#bpglow)"/>
-        {[8,16,24,32,40].map((d,j) => (
-          <line key={j} x1={x+d} y1="138" x2={x+d} y2="422" stroke="rgba(160,220,255,0.16)" strokeWidth="0.5"/>
+        <path d={`M${x} 130 Q${x - 5} 285 ${x} 430`} fill="none" stroke="rgba(160,220,255,0.88)" strokeWidth="1.3" filter="url(#bpglow)" />
+        <path d={`M${x + 48} 130 Q${x + 53} 285 ${x + 48} 430`} fill="none" stroke="rgba(160,220,255,0.88)" strokeWidth="1.3" filter="url(#bpglow)" />
+        {[8, 16, 24, 32, 40].map((d, j) => (
+          <line key={j} x1={x + d} y1="138" x2={x + d} y2="422" stroke="rgba(160,220,255,0.16)" strokeWidth="0.5" />
         ))}
-        <ellipse cx={x+24} cy={130} rx={29} ry={5} fill="none" stroke="rgba(160,220,255,0.68)" strokeWidth="0.9"/>
-        <path d={`M${x-4} 130 Q${x+6} 124 ${x+13} 130`} fill="none" stroke="rgba(160,220,255,0.45)" strokeWidth="0.7"/>
-        <path d={`M${x+35} 130 Q${x+42} 124 ${x+52} 130`} fill="none" stroke="rgba(160,220,255,0.45)" strokeWidth="0.7"/>
-        <rect x={x-4} y="430" width="56" height="6" fill="none" stroke="rgba(160,220,255,0.68)" strokeWidth="0.9"/>
-        <rect x={x-8} y="436" width="64" height="6" fill="none" stroke="rgba(160,220,255,0.55)" strokeWidth="0.75"/>
-        <rect x={x-12} y="442" width="72" height="7" fill="none" stroke="rgba(160,220,255,0.45)" strokeWidth="0.75"/>
+        <ellipse cx={x + 24} cy={130} rx={29} ry={5} fill="none" stroke="rgba(160,220,255,0.68)" strokeWidth="0.9" />
+        <path d={`M${x - 4} 130 Q${x + 6} 124 ${x + 13} 130`} fill="none" stroke="rgba(160,220,255,0.45)" strokeWidth="0.7" />
+        <path d={`M${x + 35} 130 Q${x + 42} 124 ${x + 52} 130`} fill="none" stroke="rgba(160,220,255,0.45)" strokeWidth="0.7" />
+        <rect x={x - 4} y="430" width="56" height="6" fill="none" stroke="rgba(160,220,255,0.68)" strokeWidth="0.9" />
+        <rect x={x - 8} y="436" width="64" height="6" fill="none" stroke="rgba(160,220,255,0.55)" strokeWidth="0.75" />
+        <rect x={x - 12} y="442" width="72" height="7" fill="none" stroke="rgba(160,220,255,0.45)" strokeWidth="0.75" />
       </g>
     ))}
     {/* Stylobat */}
-    <rect x="78" y="449" width="744" height="11" fill="none" stroke="rgba(160,220,255,0.8)" strokeWidth="1.5"/>
-    <rect x="66" y="460" width="768" height="7" fill="none" stroke="rgba(160,220,255,0.6)" strokeWidth="1"/>
+    <rect x="78" y="449" width="744" height="11" fill="none" stroke="rgba(160,220,255,0.8)" strokeWidth="1.5" />
+    <rect x="66" y="460" width="768" height="7" fill="none" stroke="rgba(160,220,255,0.6)" strokeWidth="1" />
     {/* Etiketler */}
-    <line x1="450" y1="38" x2="590" y2="14" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55"/>
+    <line x1="450" y1="38" x2="590" y2="14" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55" />
     <text x="593" y="13" fill="rgba(160,200,255,0.65)" fontSize="7.5" fontFamily="monospace">Akroter</text>
-    <line x1="810" y1="112" x2="848" y2="100" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55"/>
+    <line x1="810" y1="112" x2="848" y2="100" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55" />
     <text x="851" y="104" fill="rgba(160,200,255,0.65)" fontSize="7.5" fontFamily="monospace">Arşitrav</text>
-    <line x1="810" y1="275" x2="848" y2="265" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55"/>
+    <line x1="810" y1="275" x2="848" y2="265" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55" />
     <text x="851" y="269" fill="rgba(160,200,255,0.65)" fontSize="7.5" fontFamily="monospace">Sütun — İon. Düz.</text>
-    <line x1="810" y1="440" x2="848" y2="430" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55"/>
+    <line x1="810" y1="440" x2="848" y2="430" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55" />
     <text x="851" y="434" fill="rgba(160,200,255,0.65)" fontSize="7.5" fontFamily="monospace">Stylobat</text>
-    <line x1="108" y1="472" x2="178" y2="472" stroke="rgba(160,200,255,0.3)" strokeWidth="0.55"/>
-    <line x1="108" y1="468" x2="108" y2="476" stroke="rgba(160,200,255,0.45)" strokeWidth="0.75"/>
-    <line x1="178" y1="468" x2="178" y2="476" stroke="rgba(160,200,255,0.45)" strokeWidth="0.75"/>
+    <line x1="108" y1="472" x2="178" y2="472" stroke="rgba(160,200,255,0.3)" strokeWidth="0.55" />
+    <line x1="108" y1="468" x2="108" y2="476" stroke="rgba(160,200,255,0.45)" strokeWidth="0.75" />
+    <line x1="178" y1="468" x2="178" y2="476" stroke="rgba(160,200,255,0.45)" strokeWidth="0.75" />
     <text x="143" y="474" fill="rgba(160,200,255,0.5)" fontSize="7" textAnchor="middle" fontFamily="monospace" dominantBaseline="hanging">6.35 m</text>
-    <circle cx="90" cy="95" r="3" fill="none" stroke="rgba(160,220,255,0.55)" strokeWidth="0.9"/>
-    <line x1="90" y1="95" x2="76" y2="80" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55"/>
+    <circle cx="90" cy="95" r="3" fill="none" stroke="rgba(160,220,255,0.55)" strokeWidth="0.9" />
+    <line x1="90" y1="95" x2="76" y2="80" stroke="rgba(160,200,255,0.35)" strokeWidth="0.55" />
     <text x="73" y="78" fill="rgba(160,200,255,0.55)" fontSize="7" textAnchor="end" fontFamily="monospace">R.P.01</text>
     <text x="680" y="476" fill="rgba(160,200,255,0.4)" fontSize="7.5" fontFamily="monospace">KESİT A-A — M 1:200</text>
   </svg>
 );
 
 // Oda rozeti önizlemesi (create)
+const TEMPLATE_META = {
+  software: { iconName: 'cpu',    color: '#1d3461', label: 'Yazılım Geliştirme',
+    cols: ['Backlog','Yapılacak','Devam Ediyor','İncelemede','Tamamlandı'],
+    labels: [['Bug','rose'],['Özellik','blue'],['Teknik Borç','amber'],['Sprint','green']] },
+  design:   { iconName: 'layers', color: '#6d28d9', label: 'Tasarım Stüdyosu',
+    cols: ['Brief','Taslak','Tasarım','Revizyon','Teslim'],
+    labels: [['UI','purple'],['UX','blue'],['Revizyon','amber'],['Onaylı','green']] },
+  personal: { iconName: 'target', color: '#065f46', label: 'Kişisel Yönetim',
+    cols: ['Fikirler','Bu Hafta','Yapıyor','Tamamlandı'],
+    labels: [['Hedef','blue'],['Alışkanlık','green'],['Proje','amber'],['Kişisel','rose']] },
+};
+
 const RoomBadge = ({ name, template }) => {
-  const templates = {
-    software: { icon:'⚙️', color:'#1d3461', label:'Yazılım' },
-    design:   { icon:'🎨', color:'#7c3aed', label:'Tasarım' },
-    personal: { icon:'📋', color:'#065f46', label:'Kişisel' },
-  };
-  const t = templates[template] || templates.software;
+  const t = TEMPLATE_META[template] || TEMPLATE_META.software;
   if (!name) return null;
   return (
     <div className="room-badge-preview">
-      <div className="room-badge-icon" style={{ background:t.color }}>{t.icon}</div>
+      <div className="room-badge-icon" style={{ background: t.color }}>
+        <Icon name={t.iconName} size={16} strokeWidth={2} />
+      </div>
       <div>
         <div className="room-badge-name">{name}</div>
         <div className="room-badge-type">{t.label} Odası</div>
       </div>
-      <div className="room-badge-live">ÖNZLM</div>
+      <div className="room-badge-live">ÖNİZLEME</div>
     </div>
   );
 };
@@ -475,13 +485,13 @@ const JoinRoomPreview = ({ code, isOnline }) => {
   if (!code || code.length < 8) return null;
   // Mock: gerçek API'de window.API.previewRoom(code) çağrılır
   const mockRooms = {
-    'ABCD1234': { name:"Aristo'nun Akademisi", admin:'Platon', members:12 },
-    'STOA2024': { name:'Stoa Takımı', admin:'Marcus Aurelius', members:7 },
-    'FLUX2025': { name:'Flux Labs', admin:'Zeno', members:24 },
+    'ABCD1234': { name: "Aristo'nun Akademisi", admin: 'Platon', members: 12 },
+    'STOA2024': { name: 'Stoa Takımı', admin: 'Marcus Aurelius', members: 7 },
+    'FLUX2025': { name: 'Flux Labs', admin: 'Zeno', members: 24 },
   };
-  const room = mockRooms[code] || { name:'Doğrulandı — Aktif Oda', admin:'Oda Yöneticisi', members:'?' };
+  const room = mockRooms[code] || { name: 'Doğrulandı — Aktif Oda', admin: 'Oda Yöneticisi', members: '?' };
   return (
-    <div className="join-room-preview" style={{ animation:'fadeIn 0.35s ease' }}>
+    <div className="join-room-preview" style={{ animation: 'fadeIn 0.35s ease' }}>
       <div className="join-room-status">
         <span className="join-room-dot" />
         <span className="join-room-verified">Oda Doğrulandı</span>
@@ -501,8 +511,8 @@ const SecurityNote = () => (
   <div className="security-note">
     <div className="security-note-icon">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        <polyline points="9 12 11 14 15 10"/>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <polyline points="9 12 11 14 15 10" />
       </svg>
     </div>
     <div className="security-note-text">
@@ -514,19 +524,19 @@ const SecurityNote = () => (
 
 // ── 2. ÇALIŞMA ALANI SAYFASI ─────────────────────────────────────────────────────
 function WorkspaceSetupPage({ onReady, onLogout }) {
-  const [tab, setTab]           = React.useState('create');
-  const [wsName, setWsName]     = React.useState('');
+  const [tab, setTab] = React.useState('create');
+  const [wsName, setWsName] = React.useState('');
   const [wsTemplate, setWsTemplate] = React.useState('software');
-  const [code, setCode]         = React.useState('');
-  const [error, setError]       = React.useState('');
-  const [busy, setBusy]         = React.useState(false);
+  const [code, setCode] = React.useState('');
+  const [error, setError] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
   const me = window.CURRENT_USER || {};
 
   const [isOnline, setIsOnline] = React.useState(navigator.onLine);
   const [netFlash, setNetFlash] = React.useState(false);
 
   useAuthEffect(() => {
-    const handleOnline  = () => { setIsOnline(true);  setNetFlash(true); setTimeout(() => setNetFlash(false), 2500); };
+    const handleOnline = () => { setIsOnline(true); setNetFlash(true); setTimeout(() => setNetFlash(false), 2500); };
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -538,7 +548,7 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
     if (!isOnline) { setError('Ağ bağlantısı yok.'); return; }
     if (!wsName.trim()) return;
     setError(''); setBusy(true);
-    try { await window.API.createWorkspace({ name:wsName.trim(), template:wsTemplate }); onReady(); }
+    try { await window.API.createWorkspace({ name: wsName.trim(), template: wsTemplate }); onReady(); }
     catch (err) { setError(err.message || 'Bir hata oluştu'); }
     finally { setBusy(false); }
   };
@@ -564,15 +574,16 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
   return (
     <div className="auth-page workspace-page" data-variant={dataVariant}>
       {/* SOL TARAF — BLUEPRINT */}
-      <div className="auth-visual ws-blueprint-bg" style={{ background: leftBg, transition:'background 0.7s ease' }}>
-        <div className="ws-bp-overlay" style={{ background: joinActive
-          ? 'radial-gradient(ellipse at 30% 40%, rgba(29,52,97,0.5) 0%, transparent 70%), radial-gradient(ellipse at 80% 80%, rgba(29,52,97,0.3) 0%, transparent 60%)'
-          : 'radial-gradient(ellipse at 30% 40%, rgba(40,40,40,0.6) 0%, transparent 70%)'
-        }}/>
+      <div className="auth-visual ws-blueprint-bg" style={{ background: leftBg, transition: 'background 0.7s ease' }}>
+        <div className="ws-bp-overlay" style={{
+          background: joinActive
+            ? 'radial-gradient(ellipse at 30% 40%, rgba(29,52,97,0.5) 0%, transparent 70%), radial-gradient(ellipse at 80% 80%, rgba(29,52,97,0.3) 0%, transparent 60%)'
+            : 'radial-gradient(ellipse at 30% 40%, rgba(40,40,40,0.6) 0%, transparent 70%)'
+        }} />
 
         <div className="ws-blueprint-content">
           {/* Logo + Marka */}
-          <div className="auth-brand-row" style={{ marginBottom:28 }}>
+          <div className="auth-brand-row" style={{ marginBottom: 28 }}>
             <StoaLogo
               color={isOnline ? (joinActive ? 'rgba(160,220,255,0.9)' : 'white') : '#ef4444'}
               size={36}
@@ -596,10 +607,10 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
               Kendi odanı kur veya bir davet koduyla mevcut takıma katıl. Her şey burada inşa edilir.
             </div>
             <div className="ws-bp-stats" style={{ borderColor: joinActive ? 'rgba(160,200,255,0.12)' : 'rgba(255,255,255,0.08)', background: joinActive ? 'rgba(160,200,255,0.05)' : 'rgba(255,255,255,0.04)' }}>
-              {[['6k+','aktif takım'],['98%','memnuniyet'],['15sn','başlama süresi'],['15m+','görev tamamlandı']].map(([v,l]) => (
+              {[['6k+', 'aktif takım'], ['98%', 'memnuniyet'], ['15sn', 'başlama süresi'], ['15m+', 'görev tamamlandı']].map(([v, l]) => (
                 <div key={l}>
                   <strong style={{ color: joinActive ? 'rgba(200,230,255,0.9)' : 'rgba(255,255,255,0.85)' }}>{v}</strong>
-                  <span style={{ color: joinActive ? 'rgba(160,200,255,0.55)' : 'rgba(255,255,255,0.35)', fontSize:10, textTransform:'uppercase', letterSpacing:'0.04em' }}>{l}</span>
+                  <span style={{ color: joinActive ? 'rgba(160,200,255,0.55)' : 'rgba(255,255,255,0.35)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{l}</span>
                 </div>
               ))}
             </div>
@@ -614,22 +625,29 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
           {/* Bağlantı kartı — Logo avatar */}
           <div className={`user-session-card ${isOnline ? (netFlash ? 'net-flash' : 'net-online') : 'net-offline'}`}>
             {typeof Avatar !== 'undefined' ? <Avatar member={me} size="md" /> : (
-              <div className="ws-logo-avatar" style={{ background: isOnline ? 'var(--ws-theme)' : '#9ca3af', transition:'background 0.8s ease' }}>
+              <div className="ws-logo-avatar" style={{ background: isOnline ? 'var(--ws-theme)' : '#9ca3af', transition: 'background 0.8s ease' }}>
                 <StoaLogo color="white" size={22} />
               </div>
             )}
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:600, fontSize:14, color:'var(--color-ink)' }}>{me.name || 'Kullanıcı'}</div>
-              <div style={{ fontSize:12, color: isOnline ? '#16a34a' : '#dc2626', fontWeight:500 }}>
-                {isOnline ? (netFlash ? '✓ Bağlantı yeniden kuruldu' : 'Bağlantı başarılı, oda bekleniyor...') : '⚡ Ağ bağlantısı kesildi'}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-ink)' }}>{me.name || 'Kullanıcı'}</div>
+              <div style={{ fontSize: 12, color: isOnline ? '#16a34a' : '#dc2626', fontWeight: 500 }}>
+                <span style={{ display:'flex', alignItems:'center', gap:4 }}>
+                {isOnline
+                  ? (netFlash
+                      ? <><Icon name="check" size={12} strokeWidth={2.5} /> Bağlantı yeniden kuruldu</>
+                      : 'Bağlantı başarılı, oda bekleniyor...')
+                  : <><Icon name="bolt" size={12} strokeWidth={2} /> Ağ bağlantısı kesildi</>
+                }
+              </span>
               </div>
             </div>
-            <div style={{ width:10, height:10, background: isOnline ? '#22c55e' : '#ef4444', borderRadius:'50%', boxShadow: isOnline ? '0 0 0 3px rgba(34,197,94,0.25)' : '0 0 0 3px rgba(239,68,68,0.25)', transition:'all 1s ease', flexShrink:0 }} />
+            <div style={{ width: 10, height: 10, background: isOnline ? '#22c55e' : '#ef4444', borderRadius: '50%', boxShadow: isOnline ? '0 0 0 3px rgba(34,197,94,0.25)' : '0 0 0 3px rgba(239,68,68,0.25)', transition: 'all 1s ease', flexShrink: 0 }} />
           </div>
 
           {!isOnline && (
-            <div className="error-msg" style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div className="error-msg" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
               <span>İnternet bağlantısı yok. Bağlanmadan oda oluşturulamaz.</span>
             </div>
           )}
@@ -651,28 +669,37 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
               <div className="field">
                 <label className="field-label">ODA TÜRÜ — ÇALIŞMA MODU</label>
                 <div className="template-selector">
-                  {[
-                    { key:'software', icon:'⚙️', title:'Yazılım Geliştirme', desc:'Sprint, bug, deployment' },
-                    { key:'design',   icon:'🎨', title:'Tasarım Stüdyosu',   desc:'Wireframe, revizyon, sunum' },
-                    { key:'personal', icon:'📋', title:'Kişisel Yönetim',    desc:'Hedef, alışkanlık, proje' },
-                  ].map(t => (
-                    <div key={t.key} className={`template-card ${wsTemplate === t.key ? 'selected' : ''}`} onClick={() => setWsTemplate(t.key)}>
-                      <div className="template-icon">{t.icon}</div>
-                      <div className="template-title">{t.title}</div>
-                      <div className="template-desc">{t.desc}</div>
-                      {wsTemplate === t.key && <div className="template-check">✓</div>}
+                  {Object.entries(TEMPLATE_META).map(([key, t]) => (
+                    <div key={key} className={`template-card ${wsTemplate === key ? 'selected' : ''}`} onClick={() => setWsTemplate(key)}>
+                      <div className="template-icon" style={{ color: t.color }}>
+                        <Icon name={t.iconName} size={22} strokeWidth={1.8} />
+                      </div>
+                      <div className="template-title">{t.label}</div>
+                      <div className="template-desc">{t.cols.slice(0,3).join(' · ')}</div>
+                      {wsTemplate === key && <div className="template-check"><Icon name="check" size={11} strokeWidth={2.5} /></div>}
                     </div>
                   ))}
                 </div>
               </div>
               <div className="room-blueprint">
                 <strong>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                  Oda Altyapısı
+                  <Icon name="layers" size={14} strokeWidth={2} />
+                  Oda Altyapısı — {TEMPLATE_META[wsTemplate]?.label}
                 </strong>
-                • Yönetici yetkileri tanımlanır.<br/>
-                • Şifreli davet kodu aktifleşir.<br/>
-                • Ekip üyeleri bu kodla giriş yapar.
+                <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:6 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <Icon name="layoutBoard" size={12} strokeWidth={2} />
+                    <span>Kolonlar: {TEMPLATE_META[wsTemplate]?.cols.join(' → ')}</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <Icon name="tag" size={12} strokeWidth={2} />
+                    <span>Etiketler: {TEMPLATE_META[wsTemplate]?.labels.map(([l]) => l).join(', ')}</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <Icon name="lock" size={12} strokeWidth={2} />
+                    <span>Şifreli davet kodu otomatik oluşturulur.</span>
+                  </div>
+                </div>
               </div>
               <button type="submit" className="auth-submit" disabled={busy || !wsName.trim() || !isOnline}>
                 {busy ? 'SİSTEM KURULUYOR…' : 'SİSTEMİ BAŞLAT'}
@@ -684,7 +711,7 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
                 <label className="field-label">GÜVENLİK KODU</label>
                 <input className="glow-input" autoFocus placeholder="ABCD1234" value={code}
                   onChange={e => setCode(e.target.value.toUpperCase())} maxLength={8}
-                  style={{ fontFamily:'var(--font-mono)', letterSpacing:'0.3em', fontSize:20, textAlign:'center', textTransform:'uppercase', fontWeight:'bold' }}
+                  style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.3em', fontSize: 20, textAlign: 'center', textTransform: 'uppercase', fontWeight: 'bold' }}
                   required disabled={!isOnline} />
               </div>
               {/* Dinamik oda önizleme */}
@@ -698,8 +725,8 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
           )}
 
           <div className="auth-foot">
-            <a onClick={onLogout} style={{ display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <a onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
               Sistemi Kapat (Çıkış)
             </a>
           </div>
