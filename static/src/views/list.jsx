@@ -2,7 +2,7 @@
 
 const { useState: useListState } = React;
 
-function ListView({ tasks, onOpenTask, onMoveTask }) {
+function ListView({ tasks, onOpenTask, onMoveTask, canManageTasks = true }) {
   const groups = DATA.COLUMNS.map(col => ({
     col,
     tasks: tasks.filter(t => t.col === col.id),
@@ -40,7 +40,10 @@ function ListView({ tasks, onOpenTask, onMoveTask }) {
                       <div
                         className="list-check"
                         data-checked={isDone}
-                        onClick={(e) => { e.stopPropagation(); onMoveTask(t.id, isDone ? 'todo' : 'done'); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (canManageTasks) onMoveTask(t.id, isDone ? 'todo' : 'done');
+                        }}
                       >
                         {isDone && <Icon name="check" size={10} strokeWidth={2.5} />}
                       </div>

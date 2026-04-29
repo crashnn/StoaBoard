@@ -6,9 +6,11 @@ const { useState, useEffect } = React;
 window.TOAST_QUEUE = [];
 window.TOAST_LISTENER = null;
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', meta = null) {
   const id = Date.now() + Math.random();
-  const toast = { id, message, type, _createdAt: Date.now() };
+  const toast = typeof message === 'object'
+    ? { id, type, _createdAt: Date.now(), ...message }
+    : { id, message, type, meta, _createdAt: Date.now() };
   window.TOAST_QUEUE.push(toast);
   if (window.TOAST_LISTENER) {
     window.TOAST_LISTENER([...window.TOAST_QUEUE]);
@@ -57,14 +59,15 @@ function ToastContainer() {
       {toasts.map(toast => (
         <div
           key={toast.id}
+          className={`toast-item toast-${toast.type || 'info'}`}
           style={{
-            background: toast.type === 'message' ? 'var(--accent)' : 'var(--bg-raised)',
+            background: 'var(--bg-raised)',
             color: 'var(--ink)',
             border: '1px solid var(--line)',
             borderRadius: 8,
-            padding: '12px 16px',
+            padding: toast.type === 'message' && toast.meta ? '12px 14px' : '12px 16px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            maxWidth: 300,
+            maxWidth: 340,
             wordWrap: 'break-word',
             pointerEvents: 'auto',
             animation: 'toastIn 0.3s ease-out',
@@ -72,7 +75,16 @@ function ToastContainer() {
           }}
           onClick={() => removeToast(toast.id)}
         >
-          {toast.message}
+          {toast.type === 'message' && toast.meta ? (
+            <div className="toast-message-body">
+              <div className="toast-message-title">{toast.meta.sender || 'Yeni mesaj'}</div>
+              <div className="toast-message-text">{toast.message}</div>
+              <div className="toast-message-meta">
+                <span>{toast.meta.channel || 'Genel'}</span>
+                <span>{toast.meta.time || ''}</span>
+              </div>
+            </div>
+          ) : toast.message}
         </div>
       ))}
     </div>
@@ -108,6 +120,7 @@ function Sidebar({
   projects, members: membersProp, openCmd,
   onlineUsers, onlineStatuses,
   onChatOpen, onSwitchProject, onNewProject,
+  canManageProjects,
   workspaces, wsLogoUrl, onSwitchWorkspace, onAddWorkspace,
   wsSwitcherOpen, onWsSwitcherToggle,
   currentStatus, onStatusChange,
@@ -188,9 +201,12 @@ function Sidebar({
                 <div style={{
                   width: 28, height: 28, borderRadius: 7, flexShrink: 0, fontSize: 12, fontWeight: 700,
                   background: 'var(--accent)', color: 'white',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                 }}>
-                  {(ws.name || '?')[0].toUpperCase()}
+                  {ws.logo_url
+                    ? <img src={ws.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    : (ws.name || '?')[0].toUpperCase()
+                  }
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -232,7 +248,7 @@ function Sidebar({
       <div className="sidebar-section">
         <div className="sidebar-section-title">
           <span>Projeler</span>
-          <button title="Yeni proje" onClick={onNewProject}><Icon name="plus" size={13} /></button>
+          {canManageProjects && <button title="Yeni proje" onClick={onNewProject}><Icon name="plus" size={13} /></button>}
         </div>
         {(projects || []).map(p => (
           <div className="project-item" key={p.id} onClick={() => onSwitchProject && onSwitchProject(p.id)}>
@@ -334,7 +350,7 @@ function StatusProfileWidget({ me, myStatus, onStatusChange }) {
         </div>
         <div className="user-meta">
           <div className="user-name">{me.name}</div>
-          <div className="user-status" style={{ color: current.color }}>{current.label}</div>
+          <div className="user-status" style={{ color: current.color, '--user-status-dot': current.color }}>{current.label}</div>
         </div>
         <Icon name="chevronUp" size={12} style={{ color: 'var(--ink-faint)', flexShrink: 0 }} />
       </div>
@@ -352,7 +368,7 @@ function NavItem({ icon, label, sub, badge, active, onClick }) {
   );
 }
 
-function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onChatOpen, notifCount }) {
+function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onChatOpen, notifCount, canManageTasks }) {
   return (
     <div className="topbar">
       <div className="topbar-crumbs">
@@ -377,7 +393,7 @@ function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onC
             : <span className="pip" />
           }
         </button>
-        <button className="btn btn-primary" onClick={openModal}><Icon name="plus" size={14} /> Yeni görev</button>
+        {canManageTasks && <button className="btn btn-primary" onClick={openModal}><Icon name="plus" size={14} /> Yeni görev</button>}
       </div>
     </div>
   );

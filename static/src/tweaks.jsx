@@ -42,7 +42,7 @@ function TweaksPanel({ tweaks, setTweak, visible }) {
           <div className="tweak-group">
             <div className="tweak-label">Tipografi</div>
             <div className="tweak-options">
-              {[['instrument','Instrument'],['fraunces','Fraunces'],['sans','Sans']].map(([k, label]) => (
+              {[['sans','Sans'],['fraunces','Fraunces']].map(([k, label]) => (
                 <button key={k} className="tweak-opt" data-active={tweaks.fontPair === k} onClick={() => setTweak('fontPair', k)}>{label}</button>
               ))}
             </div>

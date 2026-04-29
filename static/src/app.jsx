@@ -28,12 +28,15 @@ function App() {
 
   const activityTimer  = useRef(null);
   const currentStatus  = useRef('online');
+  const autoAwayStatus = useRef(false);
+  const manualAwayStatus = useRef(false);
   const [myStatusState, setMyStatusState] = useS('online');
   const [notifCount, setNotifCount]       = useS(0);
 
   const [tweaks, setTweaks] = useS(() => {
     const saved = localStorage.getItem('stoa.tweaks');
-    return saved ? JSON.parse(saved) : (window.__TWEAKS__ || {});
+    const initial = saved ? JSON.parse(saved) : (window.__TWEAKS__ || {});
+    return initial.fontPair === 'instrument' ? { ...initial, fontPair: 'sans' } : initial;
   });
 
   const setTweak = (key, value) => {
@@ -42,6 +45,11 @@ function App() {
     localStorage.setItem('stoa.tweaks', JSON.stringify(next));
     try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [key]: value } }, '*'); } catch (e) {}
   };
+
+  const myMember = members.find(m => m.id === window.CURRENT_USER?.id) || {};
+  const myPerms = myMember.role_permissions || [];
+  const canManageTasks = DATA.WORKSPACE?.is_owner || myPerms.includes('manage_tasks');
+  const canManageProjects = DATA.WORKSPACE?.is_owner || myPerms.includes('manage_projects');
 
   useEf(() => localStorage.setItem('stoa.view', view), [view]);
   useEf(() => { document.documentElement.dataset.theme    = tweaks.theme;    }, [tweaks.theme]);
@@ -72,11 +80,13 @@ function App() {
         document.activeElement.tagName !== 'INPUT' &&
         document.activeElement.tagName !== 'TEXTAREA' &&
         !document.activeElement.isContentEditable
-      ) { setModalCol('todo'); setModalOpen(true); }
+      ) {
+        if (canManageTasks) openModal('todo');
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [canManageTasks]);
 
   // ── Auth + bootstrap on mount ────────────────────────────────────────────
   useEf(() => {
@@ -163,8 +173,7 @@ function App() {
       const allMembers = window.DATA?.MEMBERS || [];
       const sender = allMembers.find(m => m.id === msg.from);
       if (sender && window.showToast) {
-        const preview = msg.text || (msg.file_name ? '📎 ' + msg.file_name : '📎 Dosya');
-        window.showToast(`${sender.name}: ${preview}`, 'message');
+        window.showToast(messageToastPayload(msg, sender), 'message');
       }
     });
 
@@ -175,6 +184,10 @@ function App() {
     };
   }, [authed, needsWorkspace]);
 
+  useEf(() => {
+    window.__CHAT_OPEN__ = chatOpen;
+  }, [chatOpen]);
+
   // ── Activity tracking → presence status ─────────────────────────────────
   useEf(() => {
     if (!authed || needsWorkspace) return;
@@ -184,22 +197,21 @@ function App() {
       return ((user?.away_timeout) || 15) * 60 * 1000;
     };
 
-    const setStatus = (status) => {
-      if (currentStatus.current === status) return;
-      if (currentStatus.current === 'dnd') return;  // never auto-override DND
-      currentStatus.current = status;
-      setMyStatusState(status);
-      window.__MY_STATUS__ = status;
-      if (window.SOCKET) window.SOCKET.emit('set_status', { status });
-      API.updatePreferences({ status }).catch(() => {});
+    const armAwayTimer = () => {
+      clearTimeout(activityTimer.current);
+      if (currentStatus.current === 'online') {
+        activityTimer.current = setTimeout(() => {
+          setOwnStatus('away', { auto: true });
+        }, getTimeout());
+      }
     };
 
     const resetTimer = () => {
-      clearTimeout(activityTimer.current);
-      if (currentStatus.current !== 'dnd') {
-        setStatus('online');
-        activityTimer.current = setTimeout(() => setStatus('away'), getTimeout());
+      if (currentStatus.current === 'dnd' || manualAwayStatus.current) return;
+      if (currentStatus.current === 'away' && autoAwayStatus.current) {
+        setOwnStatus('online');
       }
+      armAwayTimer();
     };
 
     const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
@@ -225,6 +237,40 @@ function App() {
   }, [authed, needsWorkspace, socket]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
+
+  function setOwnStatus(status, options = {}) {
+    const normalized = ['online', 'away', 'dnd'].includes(status) ? status : 'online';
+    const isManualAway = options.manual && normalized === 'away';
+    const isAutoAway = options.auto && normalized === 'away';
+
+    currentStatus.current = normalized;
+    autoAwayStatus.current = !!isAutoAway;
+    manualAwayStatus.current = !!isManualAway;
+
+    if (normalized === 'online' || normalized === 'dnd') {
+      autoAwayStatus.current = false;
+      manualAwayStatus.current = false;
+    }
+
+    setMyStatusState(normalized);
+    window.__MY_STATUS__ = normalized;
+    if (window.SOCKET) window.SOCKET.emit('set_status', { status: normalized });
+    if (options.persist !== false) {
+      API.updatePreferences({ status: normalized }).catch(() => {});
+    }
+  }
+
+  function messageToastPayload(msg, sender) {
+    const preview = msg.text || msg.file_name || 'Dosya';
+    return {
+      message: preview,
+      meta: {
+        sender: sender?.name || msg.from || 'Yeni mesaj',
+        channel: msg.to ? 'Direkt mesaj' : 'Genel kanal',
+        time: msg.time || new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      },
+    };
+  }
 
   function _applyOnlineUsers(users) {
     // users is array of {slug, status} objects
@@ -252,6 +298,9 @@ function App() {
     window.DATA.THROUGHPUT    = data.throughput    || [];
     window.CURRENT_USER       = data.user;
     window.CURRENT_PROJECT_ID = data.current_project;
+
+    const nextStatus = ['away', 'dnd'].includes(data.user?.status) ? data.user.status : 'online';
+    setOwnStatus(nextStatus, { manual: nextStatus === 'away', persist: false });
   }
 
   // ── Workspace ready (after setup) ─────────────────────────────────────────
@@ -282,6 +331,19 @@ function App() {
       if (data.workspaces)   setWorkspaces(data.workspaces);
       setWsSwitcherOpen(false);
     } catch (e) { alert('Çalışma alanı değiştirilemedi: ' + e.message); }
+  };
+
+  const handleWsLogoChange = (logoUrl) => {
+    setWsLogoUrl(logoUrl || null);
+    window.DATA.WORKSPACE = { ...(window.DATA.WORKSPACE || {}), logo_url: logoUrl || null };
+    setWorkspaces(prev => {
+      const currentId = window.DATA.WORKSPACE?.id;
+      const next = (prev || []).map(ws =>
+        ws.id === currentId || ws.is_current ? { ...ws, logo_url: logoUrl || null } : ws
+      );
+      window.DATA.WORKSPACES = next;
+      return next;
+    });
   };
 
   // ── Task operations ───────────────────────────────────────────────────────
@@ -344,10 +406,10 @@ function App() {
 
   const handleCmd = (action) => {
     if (action.startsWith('goto:'))       setView(action.slice(5));
-    else if (action === 'new:task')       openModal('todo');
+    else if (action === 'new:task')       { if (canManageTasks) openModal('todo'); }
     else if (action === 'open:notifs')    setNotifOpen(true);
     else if (action === 'open:chat')      openChat();
-    else if (action === 'new:project')    setProjectModal(true);
+    else if (action === 'new:project')    { if (canManageProjects) setProjectModal(true); }
     else if (action === 'toggle:theme') {
       const order = ['light','cream','dark'];
       setTweak('theme', order[(order.indexOf(tweaks.theme) + 1) % order.length]);
@@ -389,7 +451,11 @@ function App() {
 
   const openDrawer = (task) => setDrawerTask(task);
   const closeDrawer = () => setDrawerTask(null);
-  const openModal = (colId) => { setModalCol(colId || 'todo'); setModalOpen(true); };
+  const openModal = (colId) => {
+    if (!canManageTasks) return;
+    setModalCol(colId || 'todo');
+    setModalOpen(true);
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -427,7 +493,6 @@ function App() {
 
   // Convert onlineUsers map to Set of online slugs (for backward compat) and expose full map
   const onlineSet = new Set(onlineUsers.keys());
-
   return (
     <div className="app">
       <ToastContainer />
@@ -443,6 +508,7 @@ function App() {
         onChatOpen={openChat}
         onSwitchProject={switchProject}
         onNewProject={() => setProjectModal(true)}
+        canManageProjects={canManageProjects}
         workspaces={workspaces}
         wsLogoUrl={wsLogoUrl}
         onSwitchWorkspace={handleSwitchWorkspace}
@@ -451,11 +517,13 @@ function App() {
         onAddWorkspace={() => { setWsSwitcherOpen(false); setWsJoinModalOpen(true); }}
         currentStatus={myStatusState}
         onStatusChange={(s) => {
-          currentStatus.current = s;
-          setMyStatusState(s);
-          window.__MY_STATUS__ = s;
-          if (window.SOCKET) window.SOCKET.emit('set_status', { status: s });
-          API.updatePreferences({ status: s }).catch(() => {});
+          clearTimeout(activityTimer.current);
+          setOwnStatus(s, { manual: s === 'away' });
+          if (s === 'online') {
+            activityTimer.current = setTimeout(() => {
+              setOwnStatus('away', { auto: true });
+            }, ((window.CURRENT_USER?.away_timeout) || 15) * 60 * 1000);
+          }
         }}
       />
       <div className="main">
@@ -467,6 +535,7 @@ function App() {
           activeCrumb={crumb}
           onChatOpen={() => openChat()}
           notifCount={notifCount}
+          canManageTasks={canManageTasks}
         />
 
         {noProject && view !== 'settings' ? (
@@ -474,19 +543,21 @@ function App() {
             <Icon name="layoutBoard" size={48} strokeWidth={1} />
             <div style={{ fontSize:22, fontFamily:'var(--font-display)', color:'var(--ink)' }}>Henüz proje yok</div>
             <div style={{ fontSize:14 }}>İlk projenizi oluşturun.</div>
-            <button className="btn btn-primary" onClick={() => setProjectModal(true)}>
-              <Icon name="plus" size={14} /> Proje Oluştur
-            </button>
+            {canManageProjects && (
+              <button className="btn btn-primary" onClick={() => setProjectModal(true)}>
+                <Icon name="plus" size={14} /> Proje Oluştur
+              </button>
+            )}
           </div>
         ) : (
           <>
-            {view === 'board'     && <BoardView tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} />}
-            {view === 'list'      && <ListView tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} />}
+            {view === 'board'     && <BoardView tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} canManageTasks={canManageTasks} canManageProjects={canManageProjects} />}
+            {view === 'list'      && <ListView tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} canManageTasks={canManageTasks} />}
             {view === 'calendar'  && <CalendarView tasks={tasks} onOpenTask={openDrawer} />}
             {view === 'dashboard' && <DashboardView tasks={tasks} onOpenTask={openDrawer} />}
           </>
         )}
-        {view === 'settings' && <SettingsView tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={setWsLogoUrl} />}
+        {view === 'settings' && <SettingsView tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={handleWsLogoChange} onMembersChange={setMembers} />}
       </div>
 
       <TaskDrawer
@@ -494,8 +565,9 @@ function App() {
         onMoveTask={moveTask}
         onTaskUpdate={(updated) => setTasks(tasks.map(t => t.id === updated.id ? { ...t, ...updated } : t))}
         onDelete={deleteTask}
+        canManageTasks={canManageTasks}
       />
-      <AddTaskModal open={modalOpen} onClose={() => setModalOpen(false)} defaultCol={modalCol} onCreate={createTask} />
+      <AddTaskModal open={canManageTasks && modalOpen} onClose={() => setModalOpen(false)} defaultCol={modalCol} onCreate={createTask} />
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onAction={handleCmd} />
       <NotifPanel open={notifOpen} onClose={() => { setNotifOpen(false); setNotifCount(0); }} socket={socket} />
       <ChatPanel
@@ -508,7 +580,7 @@ function App() {
         initialDmWith={chatDmWith}
       />
       <TweaksPanel tweaks={tweaks} setTweak={setTweak} visible={tweaksAvailable} />
-      {projectModal && <NewProjectModal onClose={() => setProjectModal(false)} onCreate={handleCreateProject} />}
+      {projectModal && canManageProjects && <NewProjectModal onClose={() => setProjectModal(false)} onCreate={handleCreateProject} />}
       {wsJoinModalOpen && (
         <AddWorkspaceModal
           onClose={() => setWsJoinModalOpen(false)}

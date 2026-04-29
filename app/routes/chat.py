@@ -48,6 +48,11 @@ def on_connect():
         return False
 
     online_state.set_online(user.id, request.sid)
+    if user.status in ('away', 'dnd'):
+        online_state.set_status(user.id, user.status)
+    else:
+        user.status = 'online'
+        db.session.commit()
     join_room(f'user_{user.id}')
 
     # Join ALL workspace rooms so DMs + general chat always work

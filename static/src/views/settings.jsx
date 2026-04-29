@@ -12,16 +12,24 @@ const ROLE_COLORS = [
   'oklch(50% 0.14 340)', 'oklch(65% 0.11 70)',  'oklch(50% 0.04 250)',
 ];
 
-function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
+function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersChange }) {
   const me       = window.CURRENT_USER || DATA.MEMBERS[0] || {};
   const ws       = window.DATA.WORKSPACE || {};
   const isOwner  = ws.is_owner || false;
+  const myMember = (DATA.MEMBERS || []).find(m => m.id === me.id) || {};
+  const myPerms  = myMember.role_permissions || [];
+  const canManageMembers  = isOwner || myPerms.includes('manage_members');
+  const canManageProjects = isOwner || myPerms.includes('manage_projects');
 
   const [name, setName]   = React.useState(me.name || '');
   const [role, setRole]   = React.useState(me.role || '');
   const [email, setEmail] = React.useState('');
   const [saved, setSaved] = React.useState(false);
   const [busy, setBusy]   = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleteEmail, setDeleteEmail] = React.useState('');
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState('');
 
   const [inviteCode, setInviteCode]   = React.useState(ws.invite_code || null);
   const [codeLoading, setCodeLoading] = React.useState(false);
@@ -39,6 +47,12 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
 
   const [members, setMembers]         = React.useState([...DATA.MEMBERS]);
   const [memberBusy, setMemberBusy]   = React.useState(null);
+
+  const syncMembers = (nextMembers) => {
+    setMembers(nextMembers);
+    DATA.MEMBERS = nextMembers;
+    if (onMembersChange) onMembersChange(nextMembers);
+  };
 
   const [logoUrl, setLogoUrl]       = React.useState(ws.logo_url || null);
   const [logoBusy, setLogoBusy]     = React.useState(false);
@@ -143,12 +157,15 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
       let saved;
       if (roleForm.id) {
         saved = await API.updateRole(roleForm.id, body);
-        setRoles(roles.map(r => r.id === saved.id ? saved : r));
+        const nextRoles = roles.map(r => r.id === saved.id ? saved : r);
+        setRoles(nextRoles);
+        window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, roles: nextRoles };
       } else {
         saved = await API.createRole(body);
-        setRoles([...roles, saved]);
+        const nextRoles = [...roles, saved];
+        setRoles(nextRoles);
+        window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, roles: nextRoles };
       }
-      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, roles: roles };
       setRoleForm(null);
     } catch (e) { alert(e.message); }
     finally { setRoleBusy(false); }
@@ -158,7 +175,11 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
     if (!confirm('Bu rol silinecek. Üyelerden kaldırılacak. Devam et?')) return;
     try {
       await API.deleteRole(id);
-      setRoles(roles.filter(r => r.id !== id));
+      const nextRoles = roles.filter(r => r.id !== id);
+      setRoles(nextRoles);
+      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, roles: nextRoles };
+      const nextMembers = members.map(m => m.role_id === id ? { ...m, role_id: null, role_name: '', role_permissions: [] } : m);
+      syncMembers(nextMembers);
     } catch (e) { alert(e.message); }
   };
 
@@ -167,12 +188,9 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
   const changeMemberRole = async (slug, roleId) => {
     setMemberBusy(slug);
     try {
-      await API.updateMember(slug, { role_id: roleId || null });
-      setMembers(members.map(m =>
-        m.id === slug
-          ? { ...m, role_id: roleId, role_name: roles.find(r => r.id === roleId)?.name || '' }
-          : m
-      ));
+      const updated = await API.updateMember(slug, { role_id: roleId || null });
+      const nextMembers = members.map(m => m.id === slug ? { ...m, ...updated } : m);
+      syncMembers(nextMembers);
     } catch (e) { alert(e.message); }
     finally { setMemberBusy(null); }
   };
@@ -181,9 +199,29 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
     if (!confirm('Bu üyeyi takımdan çıkar?')) return;
     try {
       await API.removeMember(slug);
-      setMembers(members.filter(m => m.id !== slug));
-      DATA.MEMBERS = DATA.MEMBERS.filter(m => m.id !== slug);
+      syncMembers(members.filter(m => m.id !== slug));
     } catch (e) { alert(e.message); }
+  };
+
+  const deleteAccount = async () => {
+    setDeleteError('');
+    if (!deleteEmail.trim()) {
+      setDeleteError('Devam etmek için hesabınızın e-posta adresini yazın.');
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      await API.deleteAccount(deleteEmail.trim());
+      if (window.SOCKET) {
+        window.SOCKET.disconnect();
+        window.SOCKET = null;
+      }
+      if (onLogout) onLogout();
+    } catch (e) {
+      setDeleteError(e.message || 'Hesap silinemedi.');
+    } finally {
+      setDeleteBusy(false);
+    }
   };
 
   const [projects, setProjects] = React.useState([...(DATA.PROJECTS || [])]);
@@ -222,7 +260,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
             </div>
             <div className="field">
               <label>E-posta (değiştirmek için girin)</label>
-              <input type="email" value={email} placeholder={me.id ? `${me.id}@...` : ''} onChange={e => setEmail(e.target.value)} />
+              <input type="email" value={email} placeholder={me.email || 'eposta@ornek.com'} onChange={e => setEmail(e.target.value)} />
             </div>
           </div>
           <div className="field" style={{ marginTop:12 }}>
@@ -464,7 +502,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
       )}
 
       {/* ── Projects ── */}
-      {isOwner && projects.length > 0 && (
+      {canManageProjects && projects.length > 0 && (
         <div className="settings-section">
           <div>
             <h3>Projeler</h3>
@@ -540,7 +578,10 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
             <p className="desc">{members.length} üye · {ws.name}</p>
           </div>
           <div className="settings-card settings-panel">
-            {members.map(m => (
+            {members.map(m => {
+              const workspaceRole = m.ws_role === 'owner' ? 'Sahip' : (m.role_name || 'Üye');
+              const profileRole = m.role && m.role !== workspaceRole ? ` · ${m.role}` : '';
+              return (
               <div key={m.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', background:'var(--bg-raised)', border:'1px solid var(--line)', borderRadius:9 }}>
                 <Avatar member={m} size="md" />
                 <div style={{ flex:1, minWidth:0 }}>
@@ -550,9 +591,9 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
                       <span style={{ marginLeft:6, fontSize:10, padding:'2px 6px', background:'oklch(65% 0.11 70 / 0.2)', color:'oklch(50% 0.1 70)', borderRadius:4 }}>Sahip</span>
                     )}
                   </div>
-                  <div style={{ fontSize:11, color:'var(--ink-muted)' }}>{m.role || m.role_name || 'Üye'}</div>
+                  <div style={{ fontSize:11, color:'var(--ink-muted)' }}>{workspaceRole}{profileRole}</div>
                 </div>
-                {isOwner && m.ws_role !== 'owner' && (
+                {canManageMembers && m.ws_role !== 'owner' && (
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <select
                       value={m.role_id || ''}
@@ -576,7 +617,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
                   </div>
                 )}
               </div>
-            ))}
+            );})}
           </div>
         </div>
       )}
@@ -630,9 +671,38 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange }) {
               <Icon name="logOut" size={14} /> Çıkış yap
             </button>
           )}
-          <button className="btn btn-ghost" style={{ justifyContent:'flex-start', color:'var(--status-rose)', borderColor:'oklch(58% 0.13 10 / 0.3)' }}>
-            <Icon name="trash" size={14} /> Hesabı sil
-          </button>
+          {!deleteOpen ? (
+            <button
+              className="btn btn-ghost"
+              style={{ justifyContent:'flex-start', color:'var(--status-rose)', borderColor:'oklch(58% 0.13 10 / 0.3)' }}
+              onClick={() => { setDeleteOpen(true); setDeleteError(''); }}
+            >
+              <Icon name="trash" size={14} /> Hesabı sil
+            </button>
+          ) : (
+            <div className="danger-confirm">
+              <div>
+                <strong>Hesap kalıcı olarak silinecek.</strong>
+                <p>Devam etmek için hesabınızın e-posta adresini yazın.</p>
+              </div>
+              <input
+                type="email"
+                value={deleteEmail}
+                onChange={e => setDeleteEmail(e.target.value)}
+                placeholder={me.email || 'eposta@ornek.com'}
+                autoFocus
+              />
+              {deleteError && <div className="inline-error">{deleteError}</div>}
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <button className="btn btn-ghost" onClick={() => { setDeleteOpen(false); setDeleteEmail(''); setDeleteError(''); }} disabled={deleteBusy}>
+                  İptal
+                </button>
+                <button className="btn btn-ghost" style={{ color:'var(--status-rose)', borderColor:'oklch(58% 0.13 10 / 0.35)' }} onClick={deleteAccount} disabled={deleteBusy || !deleteEmail.trim()}>
+                  <Icon name="trash" size={14} /> {deleteBusy ? 'Siliniyor…' : 'Hesabı kalıcı sil'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

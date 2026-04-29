@@ -15,7 +15,7 @@
 
 :root {
   /* Type */
-  --font-display: 'Instrument Serif', 'Times New Roman', serif;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
@@ -471,7 +471,7 @@ a { color: inherit; text-decoration: none; }
 .user-meta { flex: 1; min-width: 0; }
 .user-name { font-size: 13px; font-weight: 500; }
 .user-status { font-size: 11px; color: var(--ink-muted); display: flex; align-items: center; gap: 5px; }
-.user-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--status-green); }
+.user-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--user-status-dot, var(--status-green)); }
 
 /* ========================================
    Main
@@ -595,6 +595,36 @@ a { color: inherit; text-decoration: none; }
   color: white;
 }
 .btn-accent:hover { background: oklch(from var(--accent) calc(l - 0.05) c h); }
+
+.toast-message-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.toast-message-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.toast-message-text {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.35;
+}
+.toast-message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+}
+.toast-message-meta span:first-child {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
 
 .filter-chip {
   display: inline-flex;
@@ -2146,7 +2176,7 @@ a { color: inherit; text-decoration: none; }
 /* ========================================
    Auth & Workspace — Premium Stoa UI v3
    ======================================== */
-body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-display), sans-serif; }
+body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
 
 :root {
   --color-ink: #1a1a1a;
@@ -2208,6 +2238,19 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-display)
   position: relative; height: 100vh; width: 100%;
   overflow: hidden; display: flex; flex-direction: column;
 }
+.auth-visual::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(244, 241, 236, 0.92) 0%, rgba(244, 241, 236, 0.72) 48%, rgba(244, 241, 236, 0.18) 100%),
+    radial-gradient(circle at 18% 28%, rgba(255,255,255,0.55), transparent 42%);
+}
+.workspace-page .auth-visual::after {
+  display: none;
+}
 
 /* ─── AUTH — SLIDER (fotoğraf arka plan) ─────────────────────── */
 .slider-container {
@@ -2241,10 +2284,10 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-display)
 .glass-content {
   position: relative; z-index: 3;
   margin: auto 48px 72px 8vw; padding: 40px;
-  background: rgba(245, 245, 240, 0.28);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,0.35); border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.12); max-width: 540px;
+  background: rgba(250, 248, 242, 0.82);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,0.62); border-radius: 12px;
+  box-shadow: 0 16px 44px rgba(24,20,14,0.18); max-width: 540px;
 }
 
 /* Logo + Marka satırı */
@@ -2641,6 +2684,39 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-display)
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+.danger-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid oklch(58% 0.13 10 / 0.3);
+  border-radius: 10px;
+  background: oklch(58% 0.13 10 / 0.06);
+}
+.danger-confirm strong {
+  color: var(--status-rose);
+  font-size: 13px;
+}
+.danger-confirm p {
+  color: var(--ink-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.danger-confirm input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  outline: none;
+}
+.danger-confirm input:focus {
+  border-color: var(--status-rose);
+}
+.inline-error {
+  color: var(--status-rose);
+  font-size: 12px;
 }
 .settings-panel-row {
   display: grid;

@@ -2,7 +2,7 @@
 
 const { useState: useDrawerState, useEffect: useDrawerEffect, useRef: useDrawerRef } = React;
 
-function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete }) {
+function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, canManageTasks = true }) {
   const [detail, setDetail]       = useDrawerState(null);
   const [newComment, setNewComment] = useDrawerState('');
   const [submitting, setSubmitting] = useDrawerState(false);
@@ -59,6 +59,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete })
 
   // ── Toggle subtask ──────────────────────────────────────────────────────
   const handleSubtaskToggle = async (subId, currentDone) => {
+    if (!canManageTasks) return;
     const newDone = !currentDone;
     setDetail(d => ({
       ...(d || {}),
@@ -92,7 +93,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete })
           <div className="drawer-head-actions">
             <button className="icon-btn" title="Kopyala"><Icon name="copy" size={15} /></button>
             <button className="icon-btn" title="Tam ekran"><Icon name="expand" size={14} /></button>
-            {onDelete && (
+            {onDelete && canManageTasks && (
               <button className="icon-btn" title="Sil" onClick={() => { if (confirm('Bu kartı silmek istediğinize emin misiniz?')) onDelete(task.id); }}>
                 <Icon name="trash" size={14} />
               </button>
@@ -102,8 +103,9 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete })
         </div>
 
         <div className="drawer-body">
-          <div className="doc-title" contentEditable suppressContentEditableWarning
+          <div className="doc-title" contentEditable={canManageTasks} suppressContentEditableWarning
             onBlur={(e) => {
+              if (!canManageTasks) return;
               const newTitle = e.target.textContent?.trim();
               if (newTitle && newTitle !== task.title) {
                 API.updateTask(task.id, { title: newTitle })
@@ -118,11 +120,11 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete })
           <div className="props-grid">
             <div className="prop-label"><Icon name="circleHalf" size={13} /> Durum</div>
             <div className="prop-value custom-dropdown" ref={statusRef}>
-              <button type="button" className="custom-dropdown-btn" onClick={() => setStatusOpen(o => !o)}>
+              <button type="button" className="custom-dropdown-btn" disabled={!canManageTasks} onClick={() => canManageTasks && setStatusOpen(o => !o)}>
                 <span>{col.title_tr}</span>
                 <Icon name="chevronDown" size={12} />
               </button>
-              {statusOpen && (
+              {statusOpen && canManageTasks && (
                 <div className="custom-dropdown-menu">
                   {DATA.COLUMNS.map(c => (
                     <button
@@ -185,6 +187,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete })
                   block={b}
                   subsDetail={subsDetail}
                   onSubtaskToggle={handleSubtaskToggle}
+                  canManageTasks={canManageTasks}
                 />
               ))}
             </div>
@@ -234,7 +237,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete })
 
 // ── Doc block renderer ──────────────────────────────────────────────────────
 
-function DrawerDocBlock({ block, subsDetail, onSubtaskToggle }) {
+function DrawerDocBlock({ block, subsDetail, onSubtaskToggle, canManageTasks = true }) {
   const [localChecks, setLocalChecks] = useDrawerState(null);
 
   // Build check state from subsDetail or block items
@@ -275,6 +278,7 @@ function DrawerDocBlock({ block, subsDetail, onSubtaskToggle }) {
                 className="check-row"
                 data-checked={checked}
                 onClick={() => {
+                  if (!canManageTasks) return;
                   const newChecks = checks.map((c, j) => j === i ? !c : c);
                   setLocalChecks(newChecks);
                   if (subId && onSubtaskToggle) onSubtaskToggle(subId, checked);

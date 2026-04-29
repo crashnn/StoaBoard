@@ -53,6 +53,17 @@ function StatusDot({ status }) {
 }
 
 // ── Message bubble content ────────────────────────────────────────────────
+function chatToastPayload(msg, sender) {
+  return {
+    message: msg.text || msg.file_name || 'Dosya',
+    meta: {
+      sender: sender?.name || msg.from || 'Yeni mesaj',
+      channel: msg.to ? 'Direkt mesaj' : 'Genel kanal',
+      time: msg.time || new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+    },
+  };
+}
+
 function MsgContent({ msg, onImageClick }) {
   if (msg.file_type === 'image') {
     return (
@@ -313,7 +324,7 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
         if (notifyEnabled && toastEnabled && myStatus !== 'dnd') {
           const sender = allMembers.find(m => m.id === msg.from);
           if (sender && window.showToast) {
-            window.showToast(`${sender.name}: ${msg.text || '📎 Dosya'}`, 'message');
+            window.showToast(chatToastPayload(msg, sender), 'message');
           }
         }
       }

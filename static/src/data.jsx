@@ -79,6 +79,7 @@ window.API = {
 
   // Profile
   updateProfile: (data) => apiFetch('/api/users/me', { method: 'PUT', body: data }),
+  deleteAccount: (email) => apiFetch('/api/users/me', { method: 'DELETE', body: { email } }),
 
   // Projects
   getProjects:   ()          => apiFetch('/api/projects'),

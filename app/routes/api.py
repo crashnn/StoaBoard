@@ -2,6 +2,7 @@ import re
 import os
 import uuid
 import secrets
+from sqlalchemy import or_
 from flask import Blueprint, request, jsonify, session
 from datetime import date
 from app import db
@@ -66,6 +67,51 @@ def _current_member(user):
     return m
 
 
+def _member_permissions(member):
+    if not member:
+        return []
+    if member.role == 'owner':
+        return ['manage_tasks', 'manage_projects', 'manage_members']
+    if member.workspace_role:
+        return member.workspace_role.permissions or []
+    return []
+
+
+def _has_permission(member, permission):
+    return member is not None and (
+        member.role == 'owner' or permission in _member_permissions(member)
+    )
+
+
+def _member_for_workspace(user, workspace_id):
+    return WorkspaceMember.query.filter_by(
+        user_id=user.id,
+        workspace_id=workspace_id,
+    ).first()
+
+
+def _require_workspace_permission(user, workspace_id, permission, message='Bu işlem için yetkiniz yok'):
+    member = _member_for_workspace(user, workspace_id)
+    if not _has_permission(member, permission):
+        return None, (jsonify({'error': message}), 403)
+    return member, None
+
+
+def _require_project_permission(user, project, permission, message='Bu işlem için yetkiniz yok'):
+    return _require_workspace_permission(user, project.workspace_id, permission, message)
+
+
+def _require_workspace_access(user, workspace_id, message='Bu çalışma alanına erişiminiz yok'):
+    member = _member_for_workspace(user, workspace_id)
+    if not member:
+        return None, (jsonify({'error': message}), 403)
+    return member, None
+
+
+def _require_project_access(user, project, message='Bu projeye erişiminiz yok'):
+    return _require_workspace_access(user, project.workspace_id, message)
+
+
 def _member_to_dict(wm):
     d = wm.user.to_dict()
     d['ws_role'] = wm.role
@@ -74,6 +120,12 @@ def _member_to_dict(wm):
         d['role_name'] = wm.workspace_role.name
         d['role_color'] = wm.workspace_role.color
         d['role_permissions'] = wm.workspace_role.permissions or []
+    return d
+
+
+def _user_private_dict(user):
+    d = user.to_dict()
+    d['email'] = user.email
     return d
 
 
@@ -111,7 +163,7 @@ def bootstrap():
     if not member:
         return jsonify({
             'needs_workspace': True,
-            'user': user.to_dict(),
+            'user': _user_private_dict(user),
         })
 
     # All workspaces the user belongs to (for switcher)
@@ -144,7 +196,7 @@ def bootstrap():
     sidebar_projects = [p.to_dict() for p in projects]
 
     base_payload = {
-        'user': user.to_dict(),
+        'user': _user_private_dict(user),
         'workspace': ws_dict,
         'workspaces': workspaces_list,
         'members': members,
@@ -430,9 +482,16 @@ def update_preferences():
         except (TypeError, ValueError):
             pass
 
-    if 'status' in data and data['status'] in ('online', 'dnd'):
+    if 'status' in data and data['status'] in ('online', 'away', 'dnd'):
         user.status = data['status']
         online_state.set_status(user.id, data['status'])
+        from app import socketio as _sio
+        memberships = WorkspaceMember.query.filter_by(user_id=user.id).all()
+        for m in memberships:
+            try:
+                _sio.emit('user_status', {'user': user.slug, 'status': user.status}, to=f'ws_{m.workspace_id}')
+            except Exception:
+                pass
 
     db.session.commit()
     return jsonify({'ok': True, 'away_timeout': user.away_timeout, 'status': user.status})
@@ -502,6 +561,11 @@ def create_role():
     if not name:
         return jsonify({'error': 'Rol adı zorunludur'}), 400
 
+    if data.get('is_default'):
+        WorkspaceRole.query.filter_by(
+            workspace_id=member.workspace_id, is_default=True
+        ).update({'is_default': False})
+
     role = WorkspaceRole(
         workspace_id=member.workspace_id,
         name=name,
@@ -567,14 +631,16 @@ def delete_role(role_id):
 @_login_required
 def update_member(slug):
     user = _current_user()
-    actor = WorkspaceMember.query.filter_by(user_id=user.id, role='owner').first()
-    if not actor:
-        return jsonify({'error': 'Yetkisiz işlem'}), 403
+    actor = _current_member(user)
+    if not _has_permission(actor, 'manage_members'):
+        return jsonify({'error': 'Üye yönetme yetkiniz yok'}), 403
 
     target_user = User.query.filter_by(slug=slug).first_or_404()
     target = WorkspaceMember.query.filter_by(
         workspace_id=actor.workspace_id, user_id=target_user.id
     ).first_or_404()
+    if target.role == 'owner' and actor.role != 'owner':
+        return jsonify({'error': 'Sahip rolü sadece sahip tarafından değiştirilebilir'}), 403
 
     data = request.get_json(silent=True) or {}
     if 'role_id' in data:
@@ -585,21 +651,21 @@ def update_member(slug):
             ).first()
             if not role:
                 return jsonify({'error': 'Rol bulunamadı'}), 404
-            target.role_id = role_id
+            target.role_id = role.id
         else:
             target.role_id = None
 
     db.session.commit()
-    return jsonify({'ok': True})
+    return jsonify(_member_to_dict(target))
 
 
 @api_bp.route('/workspaces/members/<slug>', methods=['DELETE'])
 @_login_required
 def remove_member(slug):
     user = _current_user()
-    actor = WorkspaceMember.query.filter_by(user_id=user.id, role='owner').first()
-    if not actor:
-        return jsonify({'error': 'Yetkisiz işlem'}), 403
+    actor = _current_member(user)
+    if not _has_permission(actor, 'manage_members'):
+        return jsonify({'error': 'Üye yönetme yetkiniz yok'}), 403
 
     target_user = User.query.filter_by(slug=slug).first_or_404()
     if target_user.id == user.id:
@@ -608,6 +674,8 @@ def remove_member(slug):
     target = WorkspaceMember.query.filter_by(
         workspace_id=actor.workspace_id, user_id=target_user.id
     ).first_or_404()
+    if target.role == 'owner':
+        return jsonify({'error': 'Sahip takımdan çıkarılamaz'}), 403
     db.session.delete(target)
     db.session.commit()
     return jsonify({'ok': True})
@@ -616,6 +684,10 @@ def remove_member(slug):
 @api_bp.route('/workspaces/<int:ws_id>/members', methods=['GET'])
 @_login_required
 def get_workspace_members(ws_id):
+    user = _current_user()
+    _, denied = _require_workspace_access(user, ws_id)
+    if denied:
+        return denied
     members = WorkspaceMember.query.filter_by(workspace_id=ws_id).all()
     return jsonify([_member_to_dict(m) for m in members if m.user])
 
@@ -625,7 +697,11 @@ def get_workspace_members(ws_id):
 @api_bp.route('/projects/<int:project_id>/tasks', methods=['GET'])
 @_login_required
 def get_tasks(project_id):
+    user = _current_user()
     project = Project.query.get_or_404(project_id)
+    _, denied = _require_project_access(user, project)
+    if denied:
+        return denied
     return jsonify([t.to_dict() for t in project.tasks.all()])
 
 
@@ -636,12 +712,11 @@ def create_task(project_id):
     project = Project.query.get_or_404(project_id)
     data = request.get_json(silent=True) or {}
 
-    # Permission check
-    member = _current_member(user)
-    if member and member.role != 'owner':
-        perms = member.workspace_role.permissions if member.workspace_role else []
-        if 'manage_tasks' not in (perms or []):
-            return jsonify({'error': 'Görev oluşturma yetkiniz yok'}), 403
+    _, denied = _require_project_permission(
+        user, project, 'manage_tasks', 'Görev oluşturma yetkiniz yok'
+    )
+    if denied:
+        return denied
 
     title = (data.get('title') or '').strip()
     if not title:
@@ -700,7 +775,12 @@ def create_task(project_id):
 @api_bp.route('/tasks/<int:task_id>', methods=['GET'])
 @_login_required
 def get_task(task_id):
+    user = _current_user()
     task = Task.query.get_or_404(task_id)
+    project = Project.query.get_or_404(task.project_id)
+    _, denied = _require_project_access(user, project)
+    if denied:
+        return denied
     return jsonify(task.to_detail_dict())
 
 
@@ -709,6 +789,12 @@ def get_task(task_id):
 def update_task(task_id):
     user = _current_user()
     task = Task.query.get_or_404(task_id)
+    project = Project.query.get_or_404(task.project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_tasks', 'Görev düzenleme yetkiniz yok'
+    )
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
 
     if 'title' in data:
@@ -780,7 +866,14 @@ def update_task(task_id):
 @api_bp.route('/tasks/<int:task_id>', methods=['DELETE'])
 @_login_required
 def delete_task(task_id):
+    user = _current_user()
     task = Task.query.get_or_404(task_id)
+    project = Project.query.get_or_404(task.project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_tasks', 'Görev silme yetkiniz yok'
+    )
+    if denied:
+        return denied
     db.session.delete(task)
     db.session.commit()
     return jsonify({'ok': True})
@@ -791,14 +884,26 @@ def delete_task(task_id):
 @api_bp.route('/tasks/<int:task_id>/subtasks', methods=['GET'])
 @_login_required
 def get_subtasks(task_id):
+    user = _current_user()
     task = Task.query.get_or_404(task_id)
+    project = Project.query.get_or_404(task.project_id)
+    _, denied = _require_project_access(user, project)
+    if denied:
+        return denied
     return jsonify([s.to_dict() for s in task.subtasks])
 
 
 @api_bp.route('/tasks/<int:task_id>/subtasks', methods=['POST'])
 @_login_required
 def add_subtask(task_id):
+    user = _current_user()
     task = Task.query.get_or_404(task_id)
+    project = Project.query.get_or_404(task.project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_tasks', 'Alt görev ekleme yetkiniz yok'
+    )
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
     title = (data.get('title') or data.get('text') or '').strip()
     if not title:
@@ -813,7 +918,14 @@ def add_subtask(task_id):
 @api_bp.route('/subtasks/<int:subtask_id>', methods=['PATCH'])
 @_login_required
 def update_subtask(subtask_id):
+    user = _current_user()
     s = Subtask.query.get_or_404(subtask_id)
+    project = Project.query.get_or_404(s.task.project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_tasks', 'Alt görev düzenleme yetkiniz yok'
+    )
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
     if 'done' in data:
         s.done = bool(data['done'])
@@ -833,7 +945,14 @@ def update_subtask(subtask_id):
 @api_bp.route('/subtasks/<int:subtask_id>', methods=['DELETE'])
 @_login_required
 def delete_subtask(subtask_id):
+    user = _current_user()
     s = Subtask.query.get_or_404(subtask_id)
+    project = Project.query.get_or_404(s.task.project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_tasks', 'Alt görev silme yetkiniz yok'
+    )
+    if denied:
+        return denied
     db.session.delete(s)
     db.session.commit()
     return jsonify({'ok': True})
@@ -844,7 +963,12 @@ def delete_subtask(subtask_id):
 @api_bp.route('/tasks/<int:task_id>/comments', methods=['GET'])
 @_login_required
 def get_comments(task_id):
+    user = _current_user()
     task = Task.query.get_or_404(task_id)
+    project = Project.query.get_or_404(task.project_id)
+    _, denied = _require_project_access(user, project)
+    if denied:
+        return denied
     return jsonify([c.to_dict() for c in task.comments])
 
 
@@ -853,6 +977,10 @@ def get_comments(task_id):
 def add_comment(task_id):
     user = _current_user()
     task = Task.query.get_or_404(task_id)
+    project = Project.query.get_or_404(task.project_id)
+    _, denied = _require_project_access(user, project)
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
     text = (data.get('text') or '').strip()
     if not text:
@@ -895,7 +1023,11 @@ def delete_comment(comment_id):
 @api_bp.route('/projects/<int:project_id>/columns', methods=['GET'])
 @_login_required
 def get_columns(project_id):
+    user = _current_user()
     project = Project.query.get_or_404(project_id)
+    _, denied = _require_project_access(user, project)
+    if denied:
+        return denied
     return jsonify([c.to_dict() for c in project.columns])
 
 
@@ -904,12 +1036,11 @@ def get_columns(project_id):
 def create_column(project_id):
     user = _current_user()
     project = Project.query.get_or_404(project_id)
-    member = WorkspaceMember.query.filter_by(
-        workspace_id=project.workspace_id,
-        user_id=user.id,
-    ).first()
-    if not member:
-        return jsonify({'error': 'Bu işlem için yetkiniz yok'}), 403
+    _, denied = _require_project_permission(
+        user, project, 'manage_projects', 'Kolon oluşturma yetkiniz yok'
+    )
+    if denied:
+        return denied
 
     data = request.get_json(silent=True) or {}
     title = (data.get('title') or '').strip()
@@ -935,7 +1066,14 @@ def create_column(project_id):
 @api_bp.route('/columns/<int:col_id>', methods=['PATCH'])
 @_login_required
 def update_column(col_id):
+    user = _current_user()
     col = BoardColumn.query.get_or_404(col_id)
+    project = Project.query.get_or_404(col.project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_projects', 'Kolon düzenleme yetkiniz yok'
+    )
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
     if 'title' in data:
         col.title = data['title']
@@ -950,7 +1088,14 @@ def update_column(col_id):
 @api_bp.route('/columns/<int:col_id>', methods=['DELETE'])
 @_login_required
 def delete_column(col_id):
+    user = _current_user()
     col = BoardColumn.query.get_or_404(col_id)
+    project = Project.query.get_or_404(col.project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_projects', 'Kolon silme yetkiniz yok'
+    )
+    if denied:
+        return denied
     db.session.delete(col)
     db.session.commit()
     return jsonify({'ok': True})
@@ -961,14 +1106,24 @@ def delete_column(col_id):
 @api_bp.route('/projects/<int:project_id>/labels', methods=['GET'])
 @_login_required
 def get_labels(project_id):
+    user = _current_user()
     project = Project.query.get_or_404(project_id)
+    _, denied = _require_project_access(user, project)
+    if denied:
+        return denied
     return jsonify({lbl.slug: lbl.to_dict_value() for lbl in project.labels})
 
 
 @api_bp.route('/projects/<int:project_id>/labels', methods=['POST'])
 @_login_required
 def create_label(project_id):
-    Project.query.get_or_404(project_id)
+    user = _current_user()
+    project = Project.query.get_or_404(project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_projects', 'Etiket oluşturma yetkiniz yok'
+    )
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
     slug = (data.get('slug') or '').strip()
     name_en = (data.get('name_en') or data.get('name') or '').strip()
@@ -1057,10 +1212,36 @@ def create_notification():
 
 # ── Users ──────────────────────────────────────────────────────────────────
 
+def _delete_project_tree(project):
+    tasks = Task.query.filter_by(project_id=project.id).all()
+    for task in tasks:
+        TaskAssignee.query.filter_by(task_id=task.id).delete()
+        TaskLabel.query.filter_by(task_id=task.id).delete()
+        Subtask.query.filter_by(task_id=task.id).delete()
+        Comment.query.filter_by(task_id=task.id).delete()
+        db.session.delete(task)
+
+    db.session.flush()
+    Label.query.filter_by(project_id=project.id).delete()
+    BoardColumn.query.filter_by(project_id=project.id).delete()
+    ActivityLog.query.filter_by(project_id=project.id).delete()
+    db.session.delete(project)
+
+
+def _delete_workspace_tree(workspace):
+    for project in Project.query.filter_by(workspace_id=workspace.id).all():
+        _delete_project_tree(project)
+
+    ChatMessage.query.filter_by(workspace_id=workspace.id).delete()
+    WorkspaceMember.query.filter_by(workspace_id=workspace.id).delete()
+    WorkspaceRole.query.filter_by(workspace_id=workspace.id).delete()
+    db.session.delete(workspace)
+
+
 @api_bp.route('/users/me', methods=['GET'])
 @_login_required
 def get_me():
-    return jsonify(_current_user().to_dict())
+    return jsonify(_user_private_dict(_current_user()))
 
 
 @api_bp.route('/users/me', methods=['PUT'])
@@ -1089,10 +1270,50 @@ def update_me():
         user.set_password(data['password'])
 
     db.session.commit()
-    return jsonify(user.to_dict())
+    return jsonify(_user_private_dict(user))
 
 
 # ── Projects ───────────────────────────────────────────────────────────────
+
+@api_bp.route('/users/me', methods=['DELETE'])
+@_login_required
+def delete_me():
+    user = _current_user()
+    data = request.get_json(silent=True) or {}
+    confirm_email = (data.get('email') or data.get('confirm_email') or '').strip().lower()
+
+    if confirm_email != (user.email or '').lower():
+        return jsonify({'error': 'Hesabı silmek için e-posta adresinizi doğru yazın'}), 400
+
+    for ws in Workspace.query.filter_by(owner_id=user.id).all():
+        replacement = (
+            WorkspaceMember.query
+            .filter(WorkspaceMember.workspace_id == ws.id, WorkspaceMember.user_id != user.id)
+            .first()
+        )
+        if replacement:
+            ws.owner_id = replacement.user_id
+            replacement.role = 'owner'
+            replacement.role_id = None
+        else:
+            _delete_workspace_tree(ws)
+
+    TaskAssignee.query.filter_by(user_id=user.id).delete()
+    Notification.query.filter_by(user_id=user.id).delete()
+    Comment.query.filter_by(user_id=user.id).delete()
+    ChatMessage.query.filter(
+        or_(ChatMessage.sender_id == user.id, ChatMessage.receiver_id == user.id)
+    ).delete(synchronize_session=False)
+    ActivityLog.query.filter_by(user_id=user.id).update({'user_id': None})
+    Task.query.filter_by(created_by=user.id).update({'created_by': None})
+    WorkspaceMember.query.filter_by(user_id=user.id).delete()
+
+    online_state.set_offline(user.id)
+    db.session.delete(user)
+    db.session.commit()
+    session.clear()
+    return jsonify({'ok': True})
+
 
 @api_bp.route('/projects', methods=['GET'])
 @_login_required
@@ -1118,11 +1339,8 @@ def create_project():
     if not member:
         return jsonify({'error': 'Çalışma alanı bulunamadı'}), 404
 
-    # Permission check
-    if member.role != 'owner':
-        perms = member.workspace_role.permissions if member.workspace_role else []
-        if 'manage_projects' not in (perms or []):
-            return jsonify({'error': 'Proje oluşturma yetkiniz yok'}), 403
+    if not _has_permission(member, 'manage_projects'):
+        return jsonify({'error': 'Proje oluşturma yetkiniz yok'}), 403
 
     project = Project(
         workspace_id=member.workspace_id,
@@ -1153,7 +1371,13 @@ def create_project():
 @api_bp.route('/projects/<int:project_id>', methods=['PATCH'])
 @_login_required
 def update_project(project_id):
+    user = _current_user()
     project = Project.query.get_or_404(project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_projects', 'Proje düzenleme yetkiniz yok'
+    )
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
     if 'name' in data:
         project.name = data['name']
@@ -1168,7 +1392,13 @@ def update_project(project_id):
 @api_bp.route('/projects/<int:project_id>', methods=['DELETE'])
 @_login_required
 def delete_project(project_id):
+    user = _current_user()
     project = Project.query.get_or_404(project_id)
+    _, denied = _require_project_permission(
+        user, project, 'manage_projects', 'Proje silme yetkiniz yok'
+    )
+    if denied:
+        return denied
     db.session.delete(project)
     db.session.commit()
     return jsonify({'ok': True})

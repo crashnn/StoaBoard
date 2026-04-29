@@ -2,7 +2,7 @@
 
 const { useState: useBoardState, useRef: useBoardRef, useEffect: useBoardEf } = React;
 
-function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleChange }) {
+function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleChange, canManageTasks }) {
   const members = (task.assignees || []).map(id => DATA.MEMBERS.find(m => m.id === id)).filter(Boolean);
   const isDone = task.col === 'done';
   const overdue = DATA.isOverdue(task.due, task.col);
@@ -32,7 +32,7 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
   return (
     <div
       className="card"
-      draggable={!editing}
+      draggable={!editing && canManageTasks}
       data-dragging={dragging}
       data-done={isDone}
       data-show-progress={tweaks.showProgress}
@@ -56,7 +56,7 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
         className="card-title"
         contentEditable={editing}
         suppressContentEditableWarning
-        onDoubleClick={handleTitleDblClick}
+        onDoubleClick={canManageTasks ? handleTitleDblClick : undefined}
         onBlur={handleTitleBlur}
         onKeyDown={handleTitleKey}
       >
@@ -104,7 +104,7 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
   );
 }
 
-function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange }) {
+function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange, canManageTasks }) {
   const [dragOver, setDragOver] = useBoardState(false);
 
   return (
@@ -114,16 +114,16 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
         <span className="col-title">{col.title_tr}</span>
         <span className="col-count">{tasks.length}</span>
         <div className="col-actions">
-          <button onClick={() => onOpenModal(col.id)} title="Yeni görev"><Icon name="plus" size={14} /></button>
+          {canManageTasks && <button onClick={() => onOpenModal(col.id)} title="Yeni görev"><Icon name="plus" size={14} /></button>}
           <button title="Daha fazla"><Icon name="moreH" size={14} /></button>
         </div>
       </div>
       <div
         className="col-body"
         data-drag-over={dragOver}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => { if (!canManageTasks) return; e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); onDropCard(col.id); }}
+        onDrop={(e) => { if (!canManageTasks) return; e.preventDefault(); setDragOver(false); onDropCard(col.id); }}
       >
         {tasks.map(t => (
           <Card
@@ -135,17 +135,20 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
             dragging={dragging === t.id}
             tweaks={tweaks}
             onTitleChange={onTitleChange}
+            canManageTasks={canManageTasks}
           />
         ))}
-        <button className="col-add" onClick={() => onOpenModal(col.id)}>
-          <Icon name="plus" size={13} /> Görev ekle
-        </button>
+        {canManageTasks && (
+          <button className="col-add" onClick={() => onOpenModal(col.id)}>
+            <Icon name="plus" size={13} /> Görev ekle
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitleChange }) {
+function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects }) {
   const [draggingId, setDraggingId] = useBoardState(null);
   const [columns, setColumns] = useBoardState(() => DATA.COLUMNS || []);
   const [isAddingColumn, setIsAddingColumn] = useBoardState(false);
@@ -202,9 +205,10 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
           tweaks={tweaks}
           onOpenModal={onOpenModal}
           onTitleChange={onTitleChange}
+          canManageTasks={canManageTasks}
         />
       ))}
-      {isAddingColumn ? (
+      {canManageProjects && (isAddingColumn ? (
         <div className="add-column-form">
           <input
             autoFocus
@@ -226,7 +230,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
         <button className="add-column-btn" onClick={() => setIsAddingColumn(true)}>
           <Icon name="plus" size={14} /> Kolon ekle
         </button>
-      )}
+      ))}
     </div>
   );
 }
