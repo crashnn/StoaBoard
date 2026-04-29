@@ -36,9 +36,13 @@ Railway service variables icine sunlari ekle:
 ```env
 DATABASE_URL=postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require
 SECRET_KEY=long-random-secret
+FLASK_ENV=production
 SESSION_COOKIE_SECURE=true
 SOCKETIO_ASYNC_MODE=eventlet
 ```
+
+Repo kokundeki `.python-version` Railway/Nixpacks icin Python 3.12 secer. Bu, eventlet
+ve PostgreSQL paketleri icin daha stabil bir production runtime saglar.
 
 `CORS_ORIGINS` bos kalabilir, cunku frontend ve backend ayni Flask domaininden servis
 ediliyor. Daha sonra frontend ayri domain'e tasinirsa ekle:

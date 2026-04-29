@@ -45,3 +45,6 @@ static/uploads/
 
 # Logs
 *.log
+
+#Deployment configs
+.DEPLOYMENT.md
