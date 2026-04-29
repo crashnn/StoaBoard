@@ -88,9 +88,9 @@ def _get_db_url():
         url = 'sqlite:///' + os.path.join(BASE_DIR, 'stoaboard.db')
 
     if url.startswith('postgres://'):
-        url = 'postgresql+psycopg2://' + url[len('postgres://'):]
+        url = 'postgresql+psycopg://' + url[len('postgres://'):]
     elif url.startswith('postgresql://'):
-        url = 'postgresql+psycopg2://' + url[len('postgresql://'):]
+        url = 'postgresql+psycopg://' + url[len('postgresql://'):]
     return _add_neon_sslmode(url)
 
 
