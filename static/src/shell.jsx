@@ -124,6 +124,7 @@ function Sidebar({
   workspaces, wsLogoUrl, onSwitchWorkspace, onAddWorkspace,
   wsSwitcherOpen, onWsSwitcherToggle,
   currentStatus, onStatusChange,
+  mobileOpen, onMobileClose,
 }) {
   const me = window.CURRENT_USER || {};
   const online = onlineUsers || new Set();
@@ -133,7 +134,7 @@ function Sidebar({
   const myStatus = typeof currentStatus === 'string' ? currentStatus : (currentStatus?.current || 'online');
 
   return (
-    <aside className="sidebar" data-collapsed={collapsed}>
+    <aside className="sidebar" data-collapsed={collapsed} data-mobile-open={mobileOpen}>
 
       {/* Header — logo doubles as expand button when collapsed */}
       <div className="sidebar-header">
@@ -368,9 +369,12 @@ function NavItem({ icon, label, sub, badge, active, onClick }) {
   );
 }
 
-function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onChatOpen, notifCount, canManageTasks }) {
+function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onChatOpen, notifCount, canManageTasks, onMobileMenuToggle }) {
   return (
     <div className="topbar">
+      <button className="mobile-menu-btn" onClick={onMobileMenuToggle} title="Menü">
+        <Icon name="menu" size={18} />
+      </button>
       <div className="topbar-crumbs">
         <span>{DATA.WORKSPACE?.name || 'StoaBoard'}</span>
         <span className="sep"><Icon name="chevronRight" size={12} /></span>

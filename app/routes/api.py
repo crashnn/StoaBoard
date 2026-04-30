@@ -1279,7 +1279,7 @@ def update_me():
 @_login_required
 def delete_me():
     user = _current_user()
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True, silent=True) or {}
     confirm_email = (data.get('email') or data.get('confirm_email') or '').strip().lower()
 
     if confirm_email != (user.email or '').lower():

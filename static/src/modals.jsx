@@ -171,7 +171,12 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
   const openDropdown = (btnRef, setPos, setOpenFn) => {
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+      const menuH = 200;
+      const spaceBelow = window.innerHeight - r.bottom - 16;
+      const top = spaceBelow >= menuH ? r.bottom + 6 : r.top - menuH - 6;
+      const left = Math.max(8, r.left);
+      const width = Math.min(r.width + 8, window.innerWidth - 16);
+      setPos({ top, left, width });
     }
     setOpenFn(o => !o);
   };

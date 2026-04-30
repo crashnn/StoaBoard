@@ -2,12 +2,13 @@
 
 const { useState: useBoardState, useRef: useBoardRef, useEffect: useBoardEf } = React;
 
-function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleChange, canManageTasks }) {
+function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleChange, canManageTasks, onTouchLongPress }) {
   const members = (task.assignees || []).map(id => DATA.MEMBERS.find(m => m.id === id)).filter(Boolean);
   const isDone = task.col === 'done';
   const overdue = DATA.isOverdue(task.due, task.col);
   const titleRef = useBoardRef(null);
   const [editing, setEditing] = useBoardState(false);
+  const touchState = useBoardRef({ timer: null, startX: 0, startY: 0, moved: false });
 
   const handleTitleDblClick = (e) => {
     e.stopPropagation();
@@ -29,6 +30,33 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
     if (e.key === 'Escape') { e.preventDefault(); titleRef.current.textContent = task.title; titleRef.current?.blur(); }
   };
 
+  const handleTouchStart = (e) => {
+    if (!canManageTasks || editing) return;
+    const touch = e.touches[0];
+    touchState.current = { timer: null, startX: touch.clientX, startY: touch.clientY, moved: false };
+    touchState.current.timer = setTimeout(() => {
+      if (!touchState.current.moved) {
+        onTouchLongPress?.(task, touchState.current.startX, touchState.current.startY);
+      }
+    }, 400);
+  };
+
+  const handleTouchMove = (e) => {
+    const ts = touchState.current;
+    if (!ts.timer) return;
+    const touch = e.touches[0];
+    if (Math.abs(touch.clientX - ts.startX) > 8 || Math.abs(touch.clientY - ts.startY) > 8) {
+      ts.moved = true;
+      clearTimeout(ts.timer);
+      ts.timer = null;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    clearTimeout(touchState.current?.timer);
+    touchState.current.timer = null;
+  };
+
   return (
     <div
       className="card"
@@ -40,6 +68,9 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
       onClick={() => !editing && onOpen(task)}
       onDragStart={(e) => onDragStart(e, task)}
       onDragEnd={onDragEnd}
+      onTouchStart={canManageTasks ? handleTouchStart : undefined}
+      onTouchMove={canManageTasks ? handleTouchMove : undefined}
+      onTouchEnd={handleTouchEnd}
     >
       {(task.labels || []).length > 0 && (
         <div className="card-tags">
@@ -104,18 +135,113 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
   );
 }
 
-function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange, canManageTasks }) {
+function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, onDeleteColumn, onUpdateColumn, onTouchLongPress }) {
   const [dragOver, setDragOver] = useBoardState(false);
+  const [menuOpen, setMenuOpen] = useBoardState(false);
+  const [renaming, setRenaming] = useBoardState(false);
+  const [renameVal, setRenameVal] = useBoardState(col.title_tr || col.title || '');
+  const [columnDragging, setColumnDragging] = useBoardState(false);
+  const menuRef = useBoardRef(null);
+  const moreRef = useBoardRef(null);
+  const headerRef = useBoardRef(null);
+  const touchState = useBoardRef({ timer: null, startX: 0, startY: 0, moved: false });
+
+  useBoardEf(() => {
+    if (!menuOpen) return;
+    const onDown = (e) => {
+      if (!menuRef.current?.contains(e.target) && !moreRef.current?.contains(e.target))
+        setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [menuOpen]);
+
+  const handleColumnTouchStart = (e) => {
+    if (!canManageProjects || renaming || menuOpen) return;
+    const touch = e.touches[0];
+    touchState.current = { timer: null, startX: touch.clientX, startY: touch.clientY, moved: false };
+    touchState.current.timer = setTimeout(() => {
+      if (!touchState.current.moved) {
+        // Long press detected - start dragging column for deletion
+        setColumnDragging(true);
+      }
+    }, 500);
+  };
+
+  const handleColumnTouchMove = (e) => {
+    const ts = touchState.current;
+    if (!ts.timer) return;
+    const touch = e.touches[0];
+    if (Math.abs(touch.clientX - ts.startX) > 10 || Math.abs(touch.clientY - ts.startY) > 10) {
+      ts.moved = true;
+      clearTimeout(ts.timer);
+    }
+  };
+
+  const handleColumnTouchEnd = () => {
+    const ts = touchState.current;
+    clearTimeout(ts?.timer);
+    setColumnDragging(false);
+  };
+
+  const handleRename = async () => {
+    const newTitle = renameVal.trim();
+    setRenaming(false);
+    if (!newTitle || newTitle === col.title_tr) return;
+    await onUpdateColumn?.(col.db_id, { title: newTitle, title_tr: newTitle });
+  };
 
   return (
     <div className="column">
-      <div className="col-header">
+      <div 
+        className="col-header"
+        ref={headerRef}
+        data-dragging={columnDragging}
+        onTouchStart={handleColumnTouchStart}
+        onTouchMove={handleColumnTouchMove}
+        onTouchEnd={handleColumnTouchEnd}
+        onTouchCancel={handleColumnTouchEnd}
+      >
         <div className="col-dot" style={{ background: col.color }} />
-        <span className="col-title">{col.title_tr}</span>
+        {renaming ? (
+          <input
+            value={renameVal}
+            onChange={e => setRenameVal(e.target.value)}
+            onBlur={handleRename}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleRename();
+              if (e.key === 'Escape') { setRenaming(false); setRenameVal(col.title_tr || ''); }
+            }}
+            autoFocus
+            style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--accent)', outline: 'none', color: 'var(--ink)', fontSize: 13, fontWeight: 600, padding: '1px 0', minWidth: 0 }}
+          />
+        ) : (
+          <span className="col-title">{col.title_tr}</span>
+        )}
         <span className="col-count">{tasks.length}</span>
         <div className="col-actions">
           {canManageTasks && <button onClick={() => onOpenModal(col.id)} title="Yeni görev"><Icon name="plus" size={14} /></button>}
-          <button title="Daha fazla"><Icon name="moreH" size={14} /></button>
+          <div style={{ position: 'relative' }}>
+            <button ref={moreRef} title="Daha fazla" onClick={() => setMenuOpen(v => !v)}>
+              <Icon name="moreH" size={14} />
+            </button>
+            {menuOpen && (
+              <div ref={menuRef} className="col-menu">
+                <div className="col-menu-info">{tasks.length} görev · {col.title_tr}</div>
+                {canManageProjects && (
+                  <>
+                    <div className="col-menu-divider" />
+                    <button className="col-menu-item" onClick={() => { setMenuOpen(false); setRenaming(true); setRenameVal(col.title_tr || col.title || ''); }}>
+                      <Icon name="edit" size={13} /> Yeniden adlandır
+                    </button>
+                    <button className="col-menu-item col-menu-item-danger" onClick={() => { setMenuOpen(false); onDeleteColumn?.(col.db_id, col.id); }}>
+                      <Icon name="trash" size={13} /> Kolonu sil
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div
@@ -136,6 +262,7 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
             tweaks={tweaks}
             onTitleChange={onTitleChange}
             canManageTasks={canManageTasks}
+            onTouchLongPress={onTouchLongPress}
           />
         ))}
         {canManageTasks && (
@@ -148,29 +275,144 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
   );
 }
 
-function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects }) {
+function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects }) {
   const [draggingId, setDraggingId] = useBoardState(null);
-  const [columns, setColumns] = useBoardState(() => DATA.COLUMNS || []);
+  const [trashHover, setTrashHover] = useBoardState(false);
+  const [columns, setColumns] = useBoardState(() => {
+    // Initial load: deduplicate from DATA.COLUMNS
+    const cols = DATA.COLUMNS || [];
+    const seen = new Set();
+    return cols.filter(col => {
+      if (seen.has(col.id)) return false;
+      seen.add(col.id);
+      return true;
+    });
+  });
   const [isAddingColumn, setIsAddingColumn] = useBoardState(false);
   const [newColumnTitle, setNewColumnTitle] = useBoardState("");
+  const [addingColumnBusy, setAddingColumnBusy] = useBoardState(false);
+  const initialColumnsSet = useBoardRef(false);
 
+  const trashZoneRef = useBoardRef(null);
+  const touchGhostRef = useBoardRef(null);
+
+  // Sync columns ONLY on initial load, not on every tasks change
   useBoardEf(() => {
-    setColumns(DATA.COLUMNS || []);
-  }, [tasks]);
+    if (initialColumnsSet.current) return; // Already initialized
+    initialColumnsSet.current = true;
+    
+    const newCols = DATA.COLUMNS || [];
+    const seen = new Set();
+    const dedupedCols = newCols.filter(col => {
+      if (seen.has(col.id)) return false;
+      seen.add(col.id);
+      return true;
+    });
+    setColumns(dedupedCols);
+  }, []); // Empty dependency — only run once on mount
 
   const handleDragStart = (e, task) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', task.id);
     setDraggingId(task.id);
   };
-  const handleDragEnd = () => setDraggingId(null);
+  const handleDragEnd = () => { setDraggingId(null); setTrashHover(false); };
   const handleDrop = (targetColId) => {
     if (draggingId) { onMoveTask(draggingId, targetColId); setDraggingId(null); }
   };
 
+  const handleTouchLongPress = (task, startX, startY) => {
+    if (!canManageTasks) return;
+
+    setDraggingId(task.id);
+
+    const ghost = document.createElement('div');
+    ghost.className = 'card-touch-ghost';
+    ghost.textContent = task.title;
+    ghost.style.left = `${startX - 60}px`;
+    ghost.style.top  = `${startY - 22}px`;
+    document.body.appendChild(ghost);
+    touchGhostRef.current = ghost;
+
+    const isOverTrash = (x, y) => {
+      const el = trashZoneRef.current;
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    };
+
+    const taskId = task.id;
+
+    const onMove = (e) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      if (touchGhostRef.current) {
+        touchGhostRef.current.style.left = `${t.clientX - 60}px`;
+        touchGhostRef.current.style.top  = `${t.clientY - 22}px`;
+      }
+      setTrashHover(isOverTrash(t.clientX, t.clientY));
+    };
+
+    const onEnd = (e) => {
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+      touchGhostRef.current?.remove();
+      touchGhostRef.current = null;
+      const t = e.changedTouches[0];
+      const shouldDelete = isOverTrash(t.clientX, t.clientY);
+      setDraggingId(null);
+      setTrashHover(false);
+      if (shouldDelete) onDeleteTask?.(taskId);
+    };
+
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
+  };
+
+  const handleDeleteColumn = async (dbId, slugId) => {
+    if (!confirm('Bu kolonu silmek istediğinize emin misiniz?')) return;
+    
+    // Optimistic update — remove immediately from state
+    const prevColumns = columns;
+    const nextColumns = columns.filter(c => c.id !== slugId);
+    setColumns(nextColumns);
+    window.DATA.COLUMNS = nextColumns;
+    
+    try {
+      await API.deleteColumn(dbId);
+    } catch (e) {
+      // Revert on error
+      setColumns(prevColumns);
+      window.DATA.COLUMNS = prevColumns;
+      alert('Kolon silinemedi: ' + e.message);
+    }
+  };
+
+  const handleUpdateColumn = async (dbId, data) => {
+    // Optimistic update
+    const prevColumns = columns;
+    const nextColumns = columns.map(c => c.db_id === dbId ? { ...c, ...data } : c);
+    setColumns(nextColumns);
+    window.DATA.COLUMNS = nextColumns;
+    
+    try {
+      const updated = await API.updateColumn(dbId, data);
+      const finalColumns = columns.map(c => c.db_id === dbId ? { ...c, ...updated } : c);
+      setColumns(finalColumns);
+      window.DATA.COLUMNS = finalColumns;
+    } catch (e) {
+      // Revert on error
+      setColumns(prevColumns);
+      window.DATA.COLUMNS = prevColumns;
+      alert('Kolon güncellenemedi: ' + e.message);
+    }
+  };
+
   const handleAddColumn = async () => {
     const title = newColumnTitle.trim();
-    if (!title) return;
+    if (!title || addingColumnBusy) return;
 
     const projectId = window.CURRENT_PROJECT_ID || DATA.currentProject?.id;
     if (!projectId) {
@@ -178,19 +420,24 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
       return;
     }
 
+    setAddingColumnBusy(true);
     try {
       const created = await API.createColumn(projectId, { title });
-      window.DATA.COLUMNS = [...(window.DATA.COLUMNS || []), created];
-      setColumns(prev => [...prev, created]);
+      // Optimistic update - add to state immediately
+      const nextColumns = [...columns, created];
+      setColumns(nextColumns);
+      window.DATA.COLUMNS = nextColumns;
       setNewColumnTitle("");
       setIsAddingColumn(false);
     } catch (e) {
       alert('Kolon oluşturulamadı: ' + e.message);
-      console.error('createColumn error:', e);
+    } finally {
+      setAddingColumnBusy(false);
     }
   };
 
   return (
+    <>
     <div className="board">
       {columns.map(col => (
         <Column
@@ -206,6 +453,10 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
           onOpenModal={onOpenModal}
           onTitleChange={onTitleChange}
           canManageTasks={canManageTasks}
+          canManageProjects={canManageProjects}
+          onDeleteColumn={handleDeleteColumn}
+          onUpdateColumn={handleUpdateColumn}
+          onTouchLongPress={handleTouchLongPress}
         />
       ))}
       {canManageProjects && (isAddingColumn ? (
@@ -222,8 +473,10 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
             }}
           />
           <div className="add-column-actions">
-            <button className="btn-save" onClick={handleAddColumn}>Ekle</button>
-            <button className="btn-cancel" onClick={() => setIsAddingColumn(false)}>İptal</button>
+            <button className="btn-save" onClick={handleAddColumn} disabled={addingColumnBusy || !newColumnTitle.trim()}>
+              {addingColumnBusy ? 'Ekleniyor…' : 'Ekle'}
+            </button>
+            <button className="btn-cancel" onClick={() => { setIsAddingColumn(false); setNewColumnTitle(''); }} disabled={addingColumnBusy}>İptal</button>
           </div>
         </div>
       ) : (
@@ -232,6 +485,25 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
         </button>
       ))}
     </div>
+    {draggingId && canManageTasks && (
+      <div
+        ref={trashZoneRef}
+        className="board-trash-zone"
+        data-hover={trashHover}
+        onDragOver={(e) => { e.preventDefault(); setTrashHover(true); }}
+        onDragLeave={() => setTrashHover(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setTrashHover(false);
+          onDeleteTask?.(draggingId);
+          setDraggingId(null);
+        }}
+      >
+        <Icon name="trash" size={16} />
+        <span>{trashHover ? 'Bırak ve sil' : 'Silmek için buraya sürükle'}</span>
+      </div>
+    )}
+    </>
   );
 }
 

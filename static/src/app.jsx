@@ -25,6 +25,7 @@ function App() {
   const [wsSwitcherOpen, setWsSwitcherOpen] = useS(false);
   const [wsJoinModalOpen, setWsJoinModalOpen] = useS(false);
   const [wsLogoUrl, setWsLogoUrl]           = useS(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useS(false);
 
   const activityTimer  = useRef(null);
   const currentStatus  = useRef('online');
@@ -496,18 +497,23 @@ function App() {
   return (
     <div className="app">
       <ToastContainer />
+      <div
+        className="sidebar-backdrop"
+        data-open={mobileSidebarOpen}
+        onClick={() => setMobileSidebarOpen(false)}
+      />
       <Sidebar
         collapsed={tweaks.sidebarCollapsed}
         onCollapseToggle={() => setTweak('sidebarCollapsed', !tweaks.sidebarCollapsed)}
-        view={view} onView={setView}
+        view={view} onView={(v) => { setView(v); setMobileSidebarOpen(false); }}
         projects={DATA.PROJECTS}
         members={members}
-        openCmd={() => setCmdOpen(true)}
+        openCmd={() => { setCmdOpen(true); setMobileSidebarOpen(false); }}
         onlineUsers={onlineSet}
         onlineStatuses={onlineUsers}
-        onChatOpen={openChat}
-        onSwitchProject={switchProject}
-        onNewProject={() => setProjectModal(true)}
+        onChatOpen={(...args) => { openChat(...args); setMobileSidebarOpen(false); }}
+        onSwitchProject={(id) => { switchProject(id); setMobileSidebarOpen(false); }}
+        onNewProject={() => { setProjectModal(true); setMobileSidebarOpen(false); }}
         canManageProjects={canManageProjects}
         workspaces={workspaces}
         wsLogoUrl={wsLogoUrl}
@@ -525,6 +531,8 @@ function App() {
             }, ((window.CURRENT_USER?.away_timeout) || 15) * 60 * 1000);
           }
         }}
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
       />
       <div className="main">
         <Topbar
@@ -536,6 +544,7 @@ function App() {
           onChatOpen={() => openChat()}
           notifCount={notifCount}
           canManageTasks={canManageTasks}
+          onMobileMenuToggle={() => setMobileSidebarOpen(v => !v)}
         />
 
         {noProject && view !== 'settings' ? (
@@ -551,7 +560,7 @@ function App() {
           </div>
         ) : (
           <>
-            {view === 'board'     && <BoardView tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} canManageTasks={canManageTasks} canManageProjects={canManageProjects} />}
+            {view === 'board'     && <BoardView tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} onDeleteTask={deleteTask} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} canManageTasks={canManageTasks} canManageProjects={canManageProjects} />}
             {view === 'list'      && <ListView tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} canManageTasks={canManageTasks} />}
             {view === 'calendar'  && <CalendarView tasks={tasks} onOpenTask={openDrawer} />}
             {view === 'dashboard' && <DashboardView tasks={tasks} onOpenTask={openDrawer} />}

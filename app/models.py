@@ -166,6 +166,7 @@ class BoardColumn(db.Model):
     def to_dict(self):
         return {
             'id': self.slug,
+            'db_id': self.id,
             'title': self.title,
             'title_tr': self.title_tr or self.title,
             'color': self.color or 'oklch(55% 0.02 250)',

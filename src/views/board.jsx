@@ -147,13 +147,34 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
 
 function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitleChange }) {
   const [draggingId, setDraggingId] = useBoardState(null);
-  const [columns, setColumns] = useBoardState(() => DATA.COLUMNS || []);
+  const [columns, setColumns] = useBoardState(() => {
+    // Initial load: deduplicate from DATA.COLUMNS
+    const cols = DATA.COLUMNS || [];
+    const seen = new Set();
+    return cols.filter(col => {
+      if (seen.has(col.id)) return false;
+      seen.add(col.id);
+      return true;
+    });
+  });
   const [isAddingColumn, setIsAddingColumn] = useBoardState(false);
   const [newColumnTitle, setNewColumnTitle] = useBoardState("");
+  const initialColumnsSet = useBoardRef(false);
 
+  // Sync columns ONLY on initial load, not on every tasks change
   useBoardEf(() => {
-    setColumns(DATA.COLUMNS || []);
-  }, [tasks]);
+    if (initialColumnsSet.current) return; // Already initialized
+    initialColumnsSet.current = true;
+    
+    const newCols = DATA.COLUMNS || [];
+    const seen = new Set();
+    const dedupedCols = newCols.filter(col => {
+      if (seen.has(col.id)) return false;
+      seen.add(col.id);
+      return true;
+    });
+    setColumns(dedupedCols);
+  }, []); // Empty dependency — only run once on mount
 
   const handleDragStart = (e, task) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -182,8 +203,10 @@ function BoardView({ tasks, onOpenTask, onMoveTask, tweaks, onOpenModal, onTitle
 
     try {
       const createdColumn = await API.createColumn(projectId, { title });
-      window.DATA.COLUMNS = [...(window.DATA.COLUMNS || []), createdColumn];
-      setColumns(prev => [...prev, createdColumn]);
+      // Optimistic update - add to state immediately
+      const nextColumns = [...columns, createdColumn];
+      setColumns(nextColumns);
+      window.DATA.COLUMNS = nextColumns;
       setNewColumnTitle("");
       setIsAddingColumn(false);
     } catch (e) {
