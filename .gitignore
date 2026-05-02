@@ -1,0 +1,50 @@
+# Environment & secrets
+.env
+.secret_key
+
+# Database (local data — don't commit)
+stoaboard.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+venv/
+env/
+.venv/
+pip-wheel-metadata/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Old project copy (merged, no longer needed)
+StoaBoard-main/
+
+# Uploads (user-generated content)
+static/uploads/
+
+# Logs
+*.log
+
+#Deployment configs
+.DEPLOYMENT.md
