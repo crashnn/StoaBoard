@@ -258,7 +258,15 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
   const [lightbox, setLightbox]   = useChatS(null);
   const [pendingFile, setPendingFile] = useChatS(null);
   const [hoveredMsg, setHoveredMsg] = useChatS(null);
-  const [deleteMenu, setDeleteMenu] = useChatS(null); // {msgId, isMine, x, y}
+  const [deleteMenu, setDeleteMenu] = useChatS(null); // {msgId, isMine, starred, x, y}
+  const [starredMsgs, setStarredMsgs] = useChatS(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('stoa.starred') || '[]').map(m => String(m.id || m))); }
+    catch { return new Set(); }
+  });
+  const [starredData, setStarredData] = useChatS(() => {
+    try { return JSON.parse(localStorage.getItem('stoa.starredData') || '[]'); }
+    catch { return []; }
+  });
 
   const bottomRef   = useChatRef(null);
   const typingTimer = useChatRef(null);
@@ -356,7 +364,7 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
         const notifyEnabled = tweaks.notifyMessages !== false;
         const toastEnabled  = tweaks.notifyToasts   !== false;
         const myStatus = window.__MY_STATUS__ || 'online';
-        if (notifyEnabled && toastEnabled && myStatus !== 'dnd') {
+        if (notifyEnabled && toastEnabled && myStatus !== 'dnd' && !window.__CHAT_OPEN__) {
           const sender = allMembers.find(m => m.id === msg.from);
           if (sender && window.showToast) {
             window.showToast(chatToastPayload(msg, sender), 'message');
@@ -504,6 +512,27 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
   const openDm = (slug) => { setDmWith(slug); setMessages([]); setTypingUser(null); setPendingFile(null); };
   const backToGeneral = () => { setDmWith(null); setMessages([]); setPendingFile(null); };
 
+  const toggleStar = (msg) => {
+    const id = String(msg.id);
+    setStarredMsgs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        const nextData = starredData.filter(m => String(m.id) !== id);
+        setStarredData(nextData);
+        localStorage.setItem('stoa.starredData', JSON.stringify(nextData));
+      } else {
+        next.add(id);
+        const nextData = [...starredData.filter(m => String(m.id) !== id), { ...msg }];
+        setStarredData(nextData);
+        localStorage.setItem('stoa.starredData', JSON.stringify(nextData));
+      }
+      localStorage.setItem('stoa.starred', JSON.stringify([...next]));
+      return next;
+    });
+    setDeleteMenu(null);
+  };
+
   const handleDeleteMessage = async (msgId, scope) => {
     setDeleteMenu(null);
     if (scope === 'self') {
@@ -540,14 +569,18 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
           <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setDeleteMenu(null)} />
           <div style={{
             position: 'fixed',
-            top: Math.min(deleteMenu.y, window.innerHeight - 100),
-            left: Math.min(deleteMenu.x, window.innerWidth - 180),
+            top: Math.min(deleteMenu.y, window.innerHeight - 130),
+            left: Math.max(4, Math.min(deleteMenu.x, window.innerWidth - 184)),
             zIndex: 9999,
             background: 'var(--bg-raised)', border: '1px solid var(--line)',
-            borderRadius: 10, boxShadow: 'var(--shadow-lg)', overflow: 'hidden', minWidth: 160,
+            borderRadius: 10, boxShadow: 'var(--shadow-lg)', overflow: 'hidden', minWidth: 180,
           }}>
-            <button
-              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', fontSize: 13, color: 'var(--ink)', background: 'none', cursor: 'pointer', textAlign: 'left' }}
+            <button className="chat-menu-item"
+              onClick={() => toggleStar(deleteMenu.msg)}>
+              <Icon name="star" size={13} style={{ color: deleteMenu.starred ? 'var(--status-yellow)' : 'var(--ink-muted)' }} />
+              {deleteMenu.starred ? 'Yıldızı kaldır' : 'Yıldızla'}
+            </button>
+            <button className="chat-menu-item" style={{ borderTop: '1px solid var(--line)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
               onMouseLeave={e => e.currentTarget.style.background = 'none'}
               onClick={() => handleDeleteMessage(deleteMenu.msgId, 'self')}
@@ -555,8 +588,7 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
               <Icon name="eyeOff" size={13} style={{ color: 'var(--ink-muted)' }} /> Benden sil
             </button>
             {deleteMenu.isMine && (
-              <button
-                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', fontSize: 13, color: 'var(--status-rose)', background: 'none', cursor: 'pointer', textAlign: 'left', borderTop: '1px solid var(--line)' }}
+              <button className="chat-menu-item" style={{ borderTop: '1px solid var(--line)', color: 'var(--status-rose)' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
                 onClick={() => handleDeleteMessage(deleteMenu.msgId, 'all')}
@@ -609,12 +641,46 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
             <button data-active={tab === 'media'} onClick={() => setTab('media')}>
               <Icon name="paperclip" size={13} /> Medya
             </button>
+            <button data-active={tab === 'starred'} onClick={() => setTab('starred')}>
+              <Icon name="star" size={13} /> Yıldız
+              {starredMsgs.size > 0 && <span className="chat-tab-count">{starredMsgs.size}</span>}
+            </button>
           </div>
         )}
 
         {/* Media gallery tab */}
         {!dmWith && tab === 'media' ? (
           <MediaGallery allMembers={allMembers} onImageClick={setLightbox} />
+        ) : !dmWith && tab === 'starred' ? (
+          <div className="chat-starred-list">
+            {starredData.length === 0
+              ? <div className="chat-empty">Henüz yıldızlanmış mesaj yok.</div>
+              : [...starredData].reverse().map(msg => {
+                  const sender = allMembers.find(m => m.id === msg.from);
+                  const isMine = msg.from === me;
+                  return (
+                    <div key={msg.id} className="chat-starred-item">
+                      <div className="chat-starred-meta">
+                        <Avatar member={sender} size="sm" />
+                        <span className="chat-starred-name">{isMine ? 'Sen' : (sender?.name || msg.from)}</span>
+                        <span className="chat-starred-time">{fmtMsgTime(msg)}</span>
+                        <button className="icon-btn" style={{ marginLeft: 'auto', color: 'var(--status-yellow)' }}
+                          onClick={() => toggleStar(msg)}>
+                          <Icon name="star" size={13} />
+                        </button>
+                      </div>
+                      <div className="chat-starred-body">
+                        {msg.deleted
+                          ? <em style={{ color: 'var(--ink-faint)', fontSize: 12 }}>Bu mesaj silindi</em>
+                          : msg.file_url
+                            ? <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>📎 {msg.file_name || 'Dosya'}</span>
+                            : <span>{msg.text}</span>}
+                      </div>
+                    </div>
+                  );
+                })
+            }
+          </div>
         ) : !dmWith && tab === 'dm' ? (
           /* DM member list */
           <div className="chat-member-list">
@@ -668,33 +734,34 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
                         <Avatar member={sender} size="sm" />
                       </div>
                     )}
-                    <div className="chat-bubble-wrap" style={{ position: 'relative' }}>
+                    <div className="chat-bubble-wrap">
                       {showSender && !isMine && (
                         <div className="chat-sender-name">{sender?.name || msg.from}</div>
                       )}
-                      <div className={`chat-bubble ${msg._temp ? 'chat-bubble-sending' : ''} ${msg.deleted ? 'chat-bubble-deleted' : ''}`}>
-                        {msg.deleted
-                          ? <span style={{ fontStyle: 'italic', color: 'var(--ink-faint)', fontSize: 12 }}>Bu mesaj silindi</span>
-                          : <MsgContent msg={msg} onImageClick={setLightbox} />
-                        }
-                      </div>
-                      <div className="chat-msg-time" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {msg.ts
-                          ? new Date(msg.ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-                          : msg.time}
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, flexDirection: isMine ? 'row-reverse' : 'row' }}>
+                        <div className={`chat-bubble ${msg._temp ? 'chat-bubble-sending' : ''} ${msg.deleted ? 'chat-bubble-deleted' : ''}`}>
+                          {msg.deleted
+                            ? <span style={{ fontStyle: 'italic', color: 'var(--ink-faint)', fontSize: 12 }}>Bu mesaj silindi</span>
+                            : <MsgContent msg={msg} onImageClick={setLightbox} />
+                          }
+                          {starredMsgs.has(String(msg.id)) && (
+                            <span style={{ position: 'absolute', top: 4, right: 6, fontSize: 10, color: 'var(--status-yellow)', pointerEvents: 'none' }}>★</span>
+                          )}
+                        </div>
                         {canDelete && isHovered && (
                           <button
-                            className="icon-btn"
-                            style={{ padding: 2, opacity: 0.5, lineHeight: 1 }}
+                            className="chat-msg-action-btn"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setDeleteMenu({ msgId: msg.id, isMine, x: e.clientX, y: e.clientY });
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setDeleteMenu({ msgId: msg.id, isMine, starred: starredMsgs.has(String(msg.id)), msg, x: isMine ? rect.left - 160 : rect.right + 4, y: rect.top });
                             }}
                           >
-                            <Icon name="trash" size={11} />
+                            <Icon name="chevronDown" size={12} />
                           </button>
                         )}
                       </div>
+                      <div className="chat-msg-time">{fmtMsgTime(msg)}</div>
                     </div>
                   </div>
                 );
