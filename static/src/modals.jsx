@@ -22,8 +22,10 @@ function DatePicker({ value, onChange }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 600;
+
   const handleToggle = () => {
-    if (!open && btnRef.current) {
+    if (!open && !isMobile && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
       const menuH = 320;
       const spaceBelow = window.innerHeight - r.bottom - 8;
@@ -65,6 +67,65 @@ function DatePicker({ value, onChange }) {
     ? `${String(parsed.getDate()).padStart(2,'0')}.${String(parsed.getMonth()+1).padStart(2,'0')}.${parsed.getFullYear()}`
     : 'Tarih seç';
 
+  const calendarContent = (
+    <div ref={menuRef} style={isMobile ? {
+      marginTop: 8, background: 'var(--bg-raised)', border: '1px solid var(--line)',
+      borderRadius: 14, padding: '14px 16px', width: '100%',
+    } : {
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
+      background: 'var(--bg-raised)', border: '1px solid var(--line)',
+      borderRadius: 14, boxShadow: 'var(--shadow-lg)', padding: '14px 16px', width: 260,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontWeight: 600, fontSize: 13, flex: 1, color: 'var(--ink)' }}>
+          {TR_MONTHS[viewMonth]} {viewYear}
+        </span>
+        <button type="button" onClick={prevMonth} style={{ padding: 4, borderRadius: 6, color: 'var(--ink-muted)' }}>
+          <Icon name="arrowUp" size={14} />
+        </button>
+        <button type="button" onClick={nextMonth} style={{ padding: 4, borderRadius: 6, color: 'var(--ink-muted)', marginLeft: 2 }}>
+          <Icon name="arrowDown" size={14} />
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: 4 }}>
+        {TR_DAYS.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: 10.5, fontWeight: 500, color: 'var(--ink-faint)', padding: '2px 0' }}>{d}</div>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
+        {getDays().map((cell, i) => {
+          const sel = isSelected(cell.day, cell.other);
+          const tod = isToday(cell.day, cell.other);
+          return (
+            <button key={i} type="button" onClick={() => selectDay(cell.day, cell.other)} style={{
+              padding: '5px 2px', borderRadius: 7, fontSize: 12,
+              fontWeight: sel || tod ? 600 : 400, textAlign: 'center', cursor: 'pointer',
+              color: sel ? 'white' : tod ? 'var(--accent)' : cell.other ? 'var(--ink-dim)' : 'var(--ink)',
+              background: sel ? 'var(--accent)' : 'transparent',
+              border: tod && !sel ? '1.5px solid var(--accent)' : '1.5px solid transparent',
+            }}>
+              {cell.day}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+        <button type="button" onClick={() => { onChange(''); setOpen(false); }}
+          style={{ fontSize: 12, color: 'var(--ink-muted)', padding: '2px 6px', borderRadius: 5 }}>
+          Temizle
+        </button>
+        <button type="button" onClick={() => {
+          const t = new Date();
+          setViewYear(t.getFullYear()); setViewMonth(t.getMonth());
+          onChange(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`);
+          setOpen(false);
+        }} style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, padding: '2px 6px', borderRadius: 5 }}>
+          Bugün
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ position: 'relative', width: '100%' }}>
       <button ref={btnRef} type="button" onClick={handleToggle} style={{
@@ -77,62 +138,7 @@ function DatePicker({ value, onChange }) {
         <Icon name="calendar" size={14} />
       </button>
 
-      {open && ReactDOM.createPortal(
-        <div ref={menuRef} style={{
-          position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
-          background: 'var(--bg-raised)', border: '1px solid var(--line)',
-          borderRadius: 14, boxShadow: 'var(--shadow-lg)', padding: '14px 16px', width: 260,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-            <span style={{ fontWeight: 600, fontSize: 13, flex: 1, color: 'var(--ink)' }}>
-              {TR_MONTHS[viewMonth]} {viewYear}
-            </span>
-            <button type="button" onClick={prevMonth} style={{ padding: 4, borderRadius: 6, color: 'var(--ink-muted)' }}>
-              <Icon name="arrowUp" size={14} />
-            </button>
-            <button type="button" onClick={nextMonth} style={{ padding: 4, borderRadius: 6, color: 'var(--ink-muted)', marginLeft: 2 }}>
-              <Icon name="arrowDown" size={14} />
-            </button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: 4 }}>
-            {TR_DAYS.map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: 10.5, fontWeight: 500, color: 'var(--ink-faint)', padding: '2px 0' }}>{d}</div>
-            ))}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
-            {getDays().map((cell, i) => {
-              const sel = isSelected(cell.day, cell.other);
-              const tod = isToday(cell.day, cell.other);
-              return (
-                <button key={i} type="button" onClick={() => selectDay(cell.day, cell.other)} style={{
-                  padding: '5px 2px', borderRadius: 7, fontSize: 12,
-                  fontWeight: sel || tod ? 600 : 400, textAlign: 'center', cursor: 'pointer',
-                  color: sel ? 'white' : tod ? 'var(--accent)' : cell.other ? 'var(--ink-dim)' : 'var(--ink)',
-                  background: sel ? 'var(--accent)' : 'transparent',
-                  border: tod && !sel ? '1.5px solid var(--accent)' : '1.5px solid transparent',
-                }}>
-                  {cell.day}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
-            <button type="button" onClick={() => { onChange(''); setOpen(false); }}
-              style={{ fontSize: 12, color: 'var(--ink-muted)', padding: '2px 6px', borderRadius: 5 }}>
-              Temizle
-            </button>
-            <button type="button" onClick={() => {
-              const t = new Date();
-              setViewYear(t.getFullYear()); setViewMonth(t.getMonth());
-              onChange(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`);
-              setOpen(false);
-            }} style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, padding: '2px 6px', borderRadius: 5 }}>
-              Bugün
-            </button>
-          </div>
-        </div>,
-        document.body
-      )}
+      {open && (isMobile ? calendarContent : ReactDOM.createPortal(calendarContent, document.body))}
     </div>
   );
 }

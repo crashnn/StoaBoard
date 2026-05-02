@@ -13,12 +13,21 @@ def _migrate_db():
     """Apply small idempotent schema fixes for existing SQLite/Postgres DBs."""
     inspector = inspect(db.engine)
     tables = set(inspector.get_table_names())
+    is_pg = 'postgresql' in str(db.engine.url)
     migrations = [
         ('users', 'current_workspace_id', "ALTER TABLE users ADD COLUMN current_workspace_id INTEGER"),
         ('users', 'status', "ALTER TABLE users ADD COLUMN status VARCHAR(20) DEFAULT 'offline'"),
         ('users', 'away_timeout', "ALTER TABLE users ADD COLUMN away_timeout INTEGER DEFAULT 15"),
         ('workspaces', 'logo_url', "ALTER TABLE workspaces ADD COLUMN logo_url VARCHAR(255)"),
         ('projects', 'icon', "ALTER TABLE projects ADD COLUMN icon VARCHAR(50) DEFAULT 'folder'"),
+        ('chat_messages', 'is_deleted',
+            "ALTER TABLE chat_messages ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"
+            if is_pg else
+            "ALTER TABLE chat_messages ADD COLUMN is_deleted INTEGER DEFAULT 0"),
+        ('chat_messages', 'hidden_for',
+            "ALTER TABLE chat_messages ADD COLUMN hidden_for JSONB DEFAULT '[]'"
+            if is_pg else
+            "ALTER TABLE chat_messages ADD COLUMN hidden_for TEXT DEFAULT '[]'"),
     ]
 
     column_cache = {}
@@ -72,10 +81,15 @@ def create_app():
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-        if response.status_code == 200 and request.path.endswith(('.png', '.ico')):
+        if response.status_code == 200 and request.path.startswith('/static/uploads/'):
+            response.headers['Cache-Control'] = 'public, max-age=2592000'  # 30 days
+        elif response.status_code == 200 and request.path.endswith(('.png', '.ico')):
             response.headers['Cache-Control'] = 'public, max-age=86400'
         elif response.status_code == 200 and request.path.endswith(('.jsx', '.js', '.css')):
-            response.headers['Cache-Control'] = 'no-cache, must-revalidate'
+            if request.args.get('v'):
+                response.headers['Cache-Control'] = 'public, max-age=604800'
+            else:
+                response.headers['Cache-Control'] = 'no-cache, must-revalidate'
         return response
 
     return flask_app

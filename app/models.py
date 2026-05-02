@@ -354,21 +354,26 @@ class ChatMessage(db.Model):
     file_type = db.Column(db.String(20), nullable=True)   # 'image' | 'video' | 'file'
     file_name = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=_now)
+    is_deleted = db.Column(db.Boolean, default=False)
+    hidden_for = db.Column(db.JSON, default=list)  # list of user IDs who deleted "for self"
 
     sender = db.relationship('User', foreign_keys=[sender_id])
     receiver = db.relationship('User', foreign_keys=[receiver_id])
 
     def to_dict(self):
-        d = {
+        base = {
             'id': self.id,
             'from': self.sender.slug if self.sender else 'unknown',
             'to': self.receiver.slug if self.receiver else None,
-            'text': self.text or '',
             'time': self.created_at.strftime('%H:%M') if self.created_at else '',
             'ts': self.created_at.isoformat() if self.created_at else '',
         }
+        if self.is_deleted:
+            base['deleted'] = True
+            return base
+        base['text'] = self.text or ''
         if self.file_url:
-            d['file_url']  = self.file_url
-            d['file_type'] = self.file_type
-            d['file_name'] = self.file_name
-        return d
+            base['file_url']  = self.file_url
+            base['file_type'] = self.file_type
+            base['file_name'] = self.file_name
+        return base

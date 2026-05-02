@@ -17,6 +17,19 @@ from app import online_state
 api_bp = Blueprint('api', __name__)
 
 
+def _parse_hidden_for(val):
+    """Safely parse hidden_for field regardless of TEXT or JSON/JSONB column type."""
+    if not val:
+        return []
+    if isinstance(val, list):
+        return val
+    import json as _json
+    try:
+        return _json.loads(val)
+    except Exception:
+        return []
+
+
 def _current_user():
     uid = session.get('user_id')
     if not uid:
@@ -1645,7 +1658,57 @@ def get_chat_messages():
             .all()
         )
 
-    return jsonify([m.to_dict() for m in messages])
+    uid = user.id
+    result = []
+    for m in messages:
+        hidden = _parse_hidden_for(m.hidden_for)
+        if uid in hidden:
+            continue
+        result.append(m.to_dict())
+    return jsonify(result)
+
+
+@api_bp.route('/chat/messages/<int:msg_id>', methods=['DELETE'])
+@_login_required
+def delete_chat_message(msg_id):
+    user = _current_user()
+    if not user:
+        return jsonify({'error': 'Giriş yapmanız gerekiyor'}), 401
+    scope = (request.get_json(silent=True) or {}).get('scope', 'self')
+
+    msg = db.session.get(ChatMessage, msg_id)
+    if not msg:
+        return jsonify({'error': 'Mesaj bulunamadı'}), 404
+
+    is_sender = msg.sender_id == user.id
+    is_receiver = msg.receiver_id == user.id
+    if not is_sender and not is_receiver and msg.receiver_id is not None:
+        return jsonify({'error': 'Yetkiniz yok'}), 403
+    if not is_sender and msg.receiver_id is None:
+        return jsonify({'error': 'Yetkiniz yok'}), 403
+
+    if scope == 'all':
+        if not is_sender:
+            return jsonify({'error': 'Sadece gönderen herkesten silebilir'}), 403
+        msg.is_deleted = True
+        db.session.commit()
+        from app import socketio as _sio
+        try:
+            if msg.receiver_id:
+                _sio.emit('message_deleted', {'id': msg_id, 'scope': 'all'}, to=f'user_{msg.sender_id}')
+                _sio.emit('message_deleted', {'id': msg_id, 'scope': 'all'}, to=f'user_{msg.receiver_id}')
+            elif msg.workspace_id:
+                _sio.emit('message_deleted', {'id': msg_id, 'scope': 'all'}, to=f'ws_{msg.workspace_id}')
+        except Exception:
+            pass
+    else:
+        hidden = list(_parse_hidden_for(msg.hidden_for))
+        if user.id not in hidden:
+            hidden.append(user.id)
+            msg.hidden_for = hidden
+            db.session.commit()
+
+    return jsonify({'ok': True})
 
 
 @api_bp.route('/chat/media', methods=['GET'])

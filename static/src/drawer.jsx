@@ -8,6 +8,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, c
   const [submitting, setSubmitting] = useDrawerState(false);
   const [loadingDetail, setLoadingDetail] = useDrawerState(false);
   const [statusOpen, setStatusOpen] = useDrawerState(false);
+  const [confirmDelete, setConfirmDelete] = useDrawerState(false);
   const statusRef = useDrawerRef(null);
 
   // Fetch full task detail (doc + comments + subtasks) when drawer opens
@@ -94,9 +95,21 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, c
             <button className="icon-btn" title="Kopyala"><Icon name="copy" size={15} /></button>
             <button className="icon-btn" title="Tam ekran"><Icon name="expand" size={14} /></button>
             {onDelete && canManageTasks && (
-              <button className="icon-btn" title="Sil" onClick={() => { if (confirm('Bu kartı silmek istediğinize emin misiniz?')) onDelete(task.id); }}>
-                <Icon name="trash" size={14} />
-              </button>
+              confirmDelete ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 8px', color: 'var(--status-rose)', borderColor: 'var(--status-rose)' }}
+                    onClick={() => { onDelete(task.id); setConfirmDelete(false); }}>
+                    Sil
+                  </button>
+                  <button className="icon-btn" title="Vazgeç" onClick={() => setConfirmDelete(false)}>
+                    <Icon name="x" size={13} />
+                  </button>
+                </div>
+              ) : (
+                <button className="icon-btn" title="Sil" onClick={() => setConfirmDelete(true)}>
+                  <Icon name="trash" size={14} />
+                </button>
+              )
             )}
             <button className="icon-btn" title="Kapat" onClick={onClose}><Icon name="x" size={15} /></button>
           </div>

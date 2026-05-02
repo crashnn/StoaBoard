@@ -100,6 +100,8 @@ window.API = {
     apiFetch(withSlug ? `/api/chat/messages?with=${withSlug}` : '/api/chat/messages'),
   sendChatMessage: (data) =>
     apiFetch('/api/chat/messages', { method: 'POST', body: data }),
+  deleteChatMessage: (id, scope) =>
+    apiFetch(`/api/chat/messages/${id}`, { method: 'DELETE', body: { scope } }),
   getChatMedia: (type) => apiFetch('/api/chat/media' + (type ? '?type=' + type : '')),
 
   // Workspace setup & switching

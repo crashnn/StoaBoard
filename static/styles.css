@@ -3079,6 +3079,12 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   padding: 0 2px;
 }
 
+.chat-bubble-deleted {
+  opacity: 0.6;
+  border-style: dashed !important;
+}
+
+
 .chat-typing-indicator {
   display: flex;
   align-items: center;

@@ -73,7 +73,15 @@ function MsgContent({ msg, onImageClick }) {
           className="chat-media-img"
           onClick={() => onImageClick(msg.file_url)}
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.nextSibling && (e.currentTarget.nextSibling.style.display = 'flex');
+          }}
         />
+        <div style={{ display: 'none', alignItems: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-dim)', color: 'var(--ink-muted)', fontSize: 12 }}>
+          <Icon name="eyeOff" size={14} />
+          <span>{msg.file_name || 'Görsel bulunamadı'}</span>
+        </div>
         {msg.text && <div className="chat-bubble-text">{msg.text}</div>}
       </div>
     );
@@ -81,7 +89,17 @@ function MsgContent({ msg, onImageClick }) {
   if (msg.file_type === 'video') {
     return (
       <div className="chat-media-wrap">
-        <video src={msg.file_url} controls className="chat-media-video" />
+        <video src={msg.file_url} controls className="chat-media-video"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            const el = e.currentTarget.nextSibling;
+            if (el) el.style.display = 'flex';
+          }}
+        />
+        <div style={{ display: 'none', alignItems: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-dim)', color: 'var(--ink-muted)', fontSize: 12 }}>
+          <Icon name="paperclip" size={14} />
+          <span>{msg.file_name || 'Video bulunamadı'}</span>
+        </div>
         {msg.text && <div className="chat-bubble-text">{msg.text}</div>}
       </div>
     );
@@ -120,7 +138,9 @@ function MediaList({ media, allMembers, onImageClick }) {
               <div key={m.id} style={{ position: 'relative', paddingBottom: '100%', overflow: 'hidden', borderRadius: 6, background: 'var(--bg-dim)', cursor: 'zoom-in' }}
                 onClick={() => onImageClick(m.file_url)}
               >
-                <img src={m.file_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                <img src={m.file_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy"
+                  onError={(e) => { e.currentTarget.style.opacity = '0'; }}
+                />
               </div>
             ))}
           </div>
@@ -228,6 +248,8 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
   const [uploading, setUploading] = useChatS(false);
   const [lightbox, setLightbox]   = useChatS(null);
   const [pendingFile, setPendingFile] = useChatS(null);
+  const [hoveredMsg, setHoveredMsg] = useChatS(null);
+  const [deleteMenu, setDeleteMenu] = useChatS(null); // {msgId, isMine, x, y}
 
   const bottomRef   = useChatRef(null);
   const typingTimer = useChatRef(null);
@@ -315,19 +337,7 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
         return [...prev, msg];
       });
 
-      // Toast for incoming messages when panel is open (DND / settings check)
-      if (msg.from !== me) {
-        const tweaks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
-        const notifyEnabled = tweaks.notifyMessages !== false;
-        const toastEnabled  = tweaks.notifyToasts   !== false;
-        const myStatus = window.__MY_STATUS__ || 'online';
-        if (notifyEnabled && toastEnabled && myStatus !== 'dnd') {
-          const sender = allMembers.find(m => m.id === msg.from);
-          if (sender && window.showToast) {
-            window.showToast(chatToastPayload(msg, sender), 'message');
-          }
-        }
-      }
+      // Chat paneli açıkken bildirim gösterme
     };
 
     const onTyping = ({ user, typing }) => {
@@ -340,11 +350,21 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
       }
     };
 
+    const onMsgDeleted = ({ id, scope }) => {
+      if (scope === 'all') {
+        setMessages(prev => prev.map(m => String(m.id) === String(id) ? { ...m, deleted: true, text: '', file_url: undefined } : m));
+      } else {
+        setMessages(prev => prev.filter(m => String(m.id) !== String(id)));
+      }
+    };
+
     sock.on('chat_message', onMsg);
     sock.on('typing', onTyping);
+    sock.on('message_deleted', onMsgDeleted);
     return () => {
       sock.off('chat_message', onMsg);
       sock.off('typing', onTyping);
+      sock.off('message_deleted', onMsgDeleted);
     };
   }, [socket, dmWith, me]);
 
@@ -370,6 +390,7 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
       from: me, to: dmWith || null,
       text: t,
       time: nowTime,
+      ts: new Date().toISOString(),
       file_url:  pendingFile?.url  || undefined,
       file_type: pendingFile?.type || undefined,
       file_name: pendingFile?.name || undefined,
@@ -458,6 +479,16 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
   const openDm = (slug) => { setDmWith(slug); setMessages([]); setTypingUser(null); setPendingFile(null); };
   const backToGeneral = () => { setDmWith(null); setMessages([]); setPendingFile(null); };
 
+  const handleDeleteMessage = async (msgId, scope) => {
+    setDeleteMenu(null);
+    if (scope === 'self') {
+      setMessages(prev => prev.filter(m => String(m.id) !== String(msgId)));
+    } else {
+      setMessages(prev => prev.map(m => String(m.id) === String(msgId) ? { ...m, deleted: true, text: '', file_url: undefined } : m));
+    }
+    try { await API.deleteChatMessage(msgId, scope); } catch (e) { console.error('Mesaj silinemedi:', e.message); }
+  };
+
   const insertMention = useChatCb((member) => {
     const inputEl = inputRef.current;
     if (!inputEl) return;
@@ -478,6 +509,39 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
   return (
     <>
       {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
+      {deleteMenu && ReactDOM.createPortal(
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setDeleteMenu(null)} />
+          <div style={{
+            position: 'fixed',
+            top: Math.min(deleteMenu.y, window.innerHeight - 100),
+            left: Math.min(deleteMenu.x, window.innerWidth - 180),
+            zIndex: 9999,
+            background: 'var(--bg-raised)', border: '1px solid var(--line)',
+            borderRadius: 10, boxShadow: 'var(--shadow-lg)', overflow: 'hidden', minWidth: 160,
+          }}>
+            <button
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', fontSize: 13, color: 'var(--ink)', background: 'none', cursor: 'pointer', textAlign: 'left' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              onClick={() => handleDeleteMessage(deleteMenu.msgId, 'self')}
+            >
+              <Icon name="eyeOff" size={13} style={{ color: 'var(--ink-muted)' }} /> Benden sil
+            </button>
+            {deleteMenu.isMine && (
+              <button
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', fontSize: 13, color: 'var(--status-rose)', background: 'none', cursor: 'pointer', textAlign: 'left', borderTop: '1px solid var(--line)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                onClick={() => handleDeleteMessage(deleteMenu.msgId, 'all')}
+              >
+                <Icon name="trash" size={13} /> Herkesten sil
+              </button>
+            )}
+          </div>
+        </>,
+        document.body
+      )}
       <div className="chat-overlay" data-open={open} onClick={onClose} />
       <div className="chat-panel" data-open={open}>
 
@@ -565,21 +629,46 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
                 const sender = allMembers.find(m => m.id === msg.from);
                 const prevMsg = messages[i - 1];
                 const showSender = !isMine && (!prevMsg || prevMsg.from !== msg.from);
+                const isHovered = hoveredMsg === (msg.id || i);
+                const canDelete = !msg._temp && !msg.deleted;
                 return (
-                  <div key={msg.id || i} className={`chat-msg ${isMine ? 'mine' : 'theirs'}`}>
+                  <div key={msg.id || i} className={`chat-msg ${isMine ? 'mine' : 'theirs'}`}
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredMsg(msg.id || i)}
+                    onMouseLeave={() => setHoveredMsg(null)}
+                  >
                     {!isMine && (
                       <div className="chat-msg-avatar" style={{ visibility: showSender ? 'visible' : 'hidden' }}>
                         <Avatar member={sender} size="sm" />
                       </div>
                     )}
-                    <div className="chat-bubble-wrap">
+                    <div className="chat-bubble-wrap" style={{ position: 'relative' }}>
                       {showSender && !isMine && (
                         <div className="chat-sender-name">{sender?.name || msg.from}</div>
                       )}
-                      <div className={`chat-bubble ${msg._temp ? 'chat-bubble-sending' : ''}`}>
-                        <MsgContent msg={msg} onImageClick={setLightbox} />
+                      <div className={`chat-bubble ${msg._temp ? 'chat-bubble-sending' : ''} ${msg.deleted ? 'chat-bubble-deleted' : ''}`}>
+                        {msg.deleted
+                          ? <span style={{ fontStyle: 'italic', color: 'var(--ink-faint)', fontSize: 12 }}>Bu mesaj silindi</span>
+                          : <MsgContent msg={msg} onImageClick={setLightbox} />
+                        }
                       </div>
-                      <div className="chat-msg-time">{msg.time}</div>
+                      <div className="chat-msg-time" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {msg.ts
+                          ? new Date(msg.ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+                          : msg.time}
+                        {canDelete && isHovered && (
+                          <button
+                            className="icon-btn"
+                            style={{ padding: 2, opacity: 0.5, lineHeight: 1 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteMenu({ msgId: msg.id, isMine, x: e.clientX, y: e.clientY });
+                            }}
+                          >
+                            <Icon name="trash" size={11} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
