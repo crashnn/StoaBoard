@@ -33,6 +33,15 @@ function fmtSize(bytes) {
   return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
+// ── Time formatter (converts UTC ISO timestamp to local HH:MM) ────────────
+function fmtMsgTime(msg) {
+  if (msg.ts) {
+    try {
+      return new Date(msg.ts + 'Z').toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    } catch(e) {}
+  }
+  return msg.time || '';
+}
 // ── Status dot ────────────────────────────────────────────────────────────
 function StatusDot({ status }) {
   const colors = {
@@ -328,7 +337,11 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
       msgIds.current.add(msgKey);
 
       setMessages(prev => {
-        const optIdx = prev.findIndex(m => m._temp && m.from === msg.from && m.text === msg.text && !msg.file_url);
+        const optIdx = prev.findIndex(m =>
+          m._temp && m.from === msg.from &&
+          ((!m.file_url && !msg.file_url && m.text === msg.text) ||
+           (m.file_url && m.file_url === msg.file_url))
+        );
         if (optIdx !== -1) {
           const next = [...prev];
           next[optIdx] = msg;
@@ -337,7 +350,19 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
         return [...prev, msg];
       });
 
-      // Chat paneli açıkken bildirim gösterme
+      // Toast for incoming messages when panel is open (DND / settings check)
+      if (msg.from !== me) {
+        const tweaks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
+        const notifyEnabled = tweaks.notifyMessages !== false;
+        const toastEnabled  = tweaks.notifyToasts   !== false;
+        const myStatus = window.__MY_STATUS__ || 'online';
+        if (notifyEnabled && toastEnabled && myStatus !== 'dnd') {
+          const sender = allMembers.find(m => m.id === msg.from);
+          if (sender && window.showToast) {
+            window.showToast(chatToastPayload(msg, sender), 'message');
+          }
+        }
+      }
     };
 
     const onTyping = ({ user, typing }) => {
@@ -489,6 +514,7 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
     try { await API.deleteChatMessage(msgId, scope); } catch (e) { console.error('Mesaj silinemedi:', e.message); }
   };
 
+
   const insertMention = useChatCb((member) => {
     const inputEl = inputRef.current;
     if (!inputEl) return;
@@ -625,7 +651,7 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
                 </div>
               )}
               {messages.map((msg, i) => {
-                const isMine = msg.from === me;
+                const isMine = dmWith ? msg.to === dmWith : msg.from === me;
                 const sender = allMembers.find(m => m.id === msg.from);
                 const prevMsg = messages[i - 1];
                 const showSender = !isMine && (!prevMsg || prevMsg.from !== msg.from);

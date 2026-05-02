@@ -1,5 +1,98 @@
 // Settings view — profile, appearance, workspace (invite code + roles + members)
 
+function RoleDropdown({ value, roles, onChange, disabled }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const current = roles.find(r => r.id === value);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen(o => !o)}
+        disabled={disabled}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '5px 10px', borderRadius: 8,
+          border: '1px solid var(--line)',
+          background: open ? 'var(--bg-raised)' : 'var(--bg-subtle)',
+          color: current ? 'var(--ink)' : 'var(--ink-muted)',
+          fontSize: 12, fontFamily: 'var(--font-ui)',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.5 : 1,
+          minWidth: 110, justifyContent: 'space-between',
+          transition: 'border-color 0.15s, background 0.15s',
+          borderColor: open ? 'var(--accent)' : 'var(--line)',
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {current ? current.name : '— Rol seç —'}
+        </span>
+        <span style={{ color: 'var(--ink-faint)', flexShrink: 0, display: 'flex', transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }}>
+          <Icon name="chevronDown" size={11} />
+        </span>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 200,
+          background: 'var(--bg-raised)', border: '1px solid var(--line)',
+          borderRadius: 10, boxShadow: 'var(--shadow-md)',
+          minWidth: 148, overflow: 'hidden',
+        }}>
+          {value && (
+            <button
+              type="button"
+              onClick={() => { onChange(null); setOpen(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '8px 12px', textAlign: 'left',
+                fontSize: 11.5, color: 'var(--ink-muted)',
+                background: 'none', borderBottom: '1px solid var(--line)',
+                fontFamily: 'var(--font-ui)', cursor: 'pointer',
+              }}
+            >
+              — Rol seç —
+            </button>
+          )}
+          {roles.map(r => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => { onChange(r.id); setOpen(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '9px 12px', textAlign: 'left',
+                fontSize: 12, fontWeight: r.id === value ? 500 : 400,
+                color: r.id === value ? 'var(--accent)' : 'var(--ink)',
+                background: r.id === value ? 'var(--accent-soft)' : 'none',
+                fontFamily: 'var(--font-ui)', cursor: 'pointer',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => { if (r.id !== value) e.currentTarget.style.background = 'var(--bg-subtle)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = r.id === value ? 'var(--accent-soft)' : 'none'; }}
+            >
+              {r.color && (
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
+              )}
+              <span style={{ flex: 1 }}>{r.name}</span>
+              {r.id === value && <Icon name="check" size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const PERM_LABELS = {
   manage_tasks:    'Görevleri yönet',
   manage_projects: 'Projeleri yönet',
@@ -577,35 +670,30 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
             <h3>Takım Üyeleri</h3>
             <p className="desc">{members.length} üye · {ws.name}</p>
           </div>
-          <div className="settings-card settings-panel">
+          <div className="settings-card settings-panel members-panel">
             {members.map(m => {
               const workspaceRole = m.ws_role === 'owner' ? 'Sahip' : (m.role_name || 'Üye');
               const profileRole = m.role && m.role !== workspaceRole ? ` · ${m.role}` : '';
               return (
-              <div key={m.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', background:'var(--bg-raised)', border:'1px solid var(--line)', borderRadius:9 }}>
+              <div key={m.id} className="member-row">
                 <Avatar member={m} size="md" />
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontWeight:500, fontSize:13 }}>
+                  <div style={{ fontWeight:500, fontSize:13, display:'flex', alignItems:'center', gap:6 }}>
                     {m.name}
                     {m.ws_role === 'owner' && (
-                      <span style={{ marginLeft:6, fontSize:10, padding:'2px 6px', background:'oklch(65% 0.11 70 / 0.2)', color:'oklch(50% 0.1 70)', borderRadius:4 }}>Sahip</span>
+                      <span className="member-badge">Sahip</span>
                     )}
                   </div>
-                  <div style={{ fontSize:11, color:'var(--ink-muted)' }}>{workspaceRole}{profileRole}</div>
+                  <div style={{ fontSize:11, color:'var(--ink-muted)', marginTop:1 }}>{workspaceRole}{profileRole}</div>
                 </div>
                 {canManageMembers && m.ws_role !== 'owner' && (
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <select
-                      value={m.role_id || ''}
-                      onChange={e => changeMemberRole(m.id, e.target.value ? parseInt(e.target.value) : null)}
+                    <RoleDropdown
+                      value={m.role_id || null}
+                      roles={roles}
+                      onChange={roleId => changeMemberRole(m.id, roleId)}
                       disabled={memberBusy === m.id}
-                      style={{ fontSize:12, padding:'4px 8px', borderRadius:6, border:'1px solid var(--line)', background:'var(--bg)', color:'var(--ink)', cursor:'pointer' }}
-                    >
-                      <option value="">— Rol seç —</option>
-                      {roles.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                      ))}
-                    </select>
+                    />
                     <button
                       className="icon-btn"
                       title="Üyeyi çıkar"

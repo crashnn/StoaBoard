@@ -3,13 +3,15 @@
 const { useState: useDrawerState, useEffect: useDrawerEffect, useRef: useDrawerRef } = React;
 
 function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, canManageTasks = true }) {
-  const [detail, setDetail]       = useDrawerState(null);
-  const [newComment, setNewComment] = useDrawerState('');
-  const [submitting, setSubmitting] = useDrawerState(false);
+  const [detail, setDetail]             = useDrawerState(null);
+  const [newComment, setNewComment]     = useDrawerState('');
+  const [submitting, setSubmitting]     = useDrawerState(false);
   const [loadingDetail, setLoadingDetail] = useDrawerState(false);
-  const [statusOpen, setStatusOpen] = useDrawerState(false);
+  const [statusOpen, setStatusOpen]     = useDrawerState(false);
   const [confirmDelete, setConfirmDelete] = useDrawerState(false);
-  const statusRef = useDrawerRef(null);
+  const [mentionQuery, setMentionQuery] = useDrawerState(null);
+  const statusRef   = useDrawerRef(null);
+  const textareaRef = useDrawerRef(null);
 
   // Fetch full task detail (doc + comments + subtasks) when drawer opens
   useDrawerEffect(() => {
@@ -50,6 +52,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, c
       const comment = await API.addComment(task.id, text);
       setDetail(d => ({ ...(d || {}), comments_list: [...(d?.comments_list || []), comment] }));
       setNewComment('');
+      setMentionQuery(null);
       onTaskUpdate({ id: task.id, comments: (task.comments || 0) + 1 });
     } catch (e) {
       alert('Yorum gönderilemedi: ' + e.message);
@@ -57,6 +60,33 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, c
       setSubmitting(false);
     }
   };
+
+  // ── @ Mention logic ─────────────────────────────────────────────────────
+  const handleCommentChange = (e) => {
+    const val = e.target.value;
+    setNewComment(val);
+    const cursor = e.target.selectionStart;
+    const before = val.slice(0, cursor);
+    const match  = before.match(/@([\wçğıöşüÇĞİÖŞÜ]*)$/i);
+    setMentionQuery(match ? match[1].toLowerCase() : null);
+  };
+
+  const insertMention = (member) => {
+    const el     = textareaRef.current;
+    const cursor = el ? el.selectionStart : newComment.length;
+    const before = newComment.slice(0, cursor);
+    const after  = newComment.slice(cursor);
+    const match  = before.match(/@([\wçğıöşüÇĞİÖŞÜ]*)$/i);
+    const firstName = member.name.split(' ')[0];
+    const prefix = match ? before.slice(0, before.length - match[0].length) : before;
+    setNewComment(prefix + '@' + firstName + ' ' + after);
+    setMentionQuery(null);
+    setTimeout(() => el && el.focus(), 0);
+  };
+
+  const mentionMembers = mentionQuery !== null
+    ? DATA.MEMBERS.filter(m => m.name.toLowerCase().includes(mentionQuery))
+    : [];
 
   // ── Toggle subtask ──────────────────────────────────────────────────────
   const handleSubtaskToggle = async (subId, currentDone) => {
@@ -228,12 +258,33 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, c
             })}
             <div className="comment-compose">
               <Avatar member={DATA.MEMBERS.find(m => m.id === window.CURRENT_USER?.id) || DATA.MEMBERS[0]} size="sm" />
-              <textarea
-                placeholder="Yorum yaz… @ ile bahset"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleCommentSubmit(); }}
-              />
+              <div className="comment-input-wrap">
+                {mentionMembers.length > 0 && (
+                  <div className="mention-dropdown">
+                    {mentionMembers.map(m => (
+                      <button
+                        key={m.id}
+                        className="mention-item"
+                        onMouseDown={(e) => { e.preventDefault(); insertMention(m); }}
+                      >
+                        <Avatar member={m} size="sm" />
+                        <span className="mention-name">{m.name}</span>
+                        <span className="mention-role">{m.role}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <textarea
+                  ref={textareaRef}
+                  placeholder="Yorum yaz… @ ile bahset"
+                  value={newComment}
+                  onChange={handleCommentChange}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') { setMentionQuery(null); return; }
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleCommentSubmit();
+                  }}
+                />
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 8 }}>
               <button className="btn btn-ghost" onClick={() => setNewComment('')}>İptal</button>

@@ -30,6 +30,7 @@ def _parse_hidden_for(val):
         return []
 
 
+
 def _current_user():
     uid = session.get('user_id')
     if not uid:
