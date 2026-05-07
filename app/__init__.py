@@ -33,6 +33,8 @@ def _migrate_db():
             "ALTER TABLE board_columns ADD COLUMN is_done BOOLEAN DEFAULT FALSE"
             if is_pg else
             "ALTER TABLE board_columns ADD COLUMN is_done INTEGER DEFAULT 0"),
+        ('notifications', 'task_id', "ALTER TABLE notifications ADD COLUMN task_id INTEGER"),
+        ('notifications', 'sender_slug', "ALTER TABLE notifications ADD COLUMN sender_slug VARCHAR(80)"),
     ]
 
     column_cache = {}

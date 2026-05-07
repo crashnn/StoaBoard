@@ -267,6 +267,10 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
     try { return JSON.parse(localStorage.getItem('stoa.starredData') || '[]'); }
     catch { return []; }
   });
+  const [mutedUsers, setMutedUsers] = useChatS(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('stoa.muted') || '[]')); }
+    catch { return new Set(); }
+  });
 
   const bottomRef   = useChatRef(null);
   const typingTimer = useChatRef(null);
@@ -310,19 +314,21 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
     }
   }, [open, initialDmWith]);
 
-  // ── Load history ──────────────────────────────────────────────────────
+  // ── Load history — AbortController prevents stale responses on rapid DM switches ──
   useChatE(() => {
     if (!open) return;
+    const controller = new AbortController();
     msgIds.current = new Set();
     const url = dmWith ? `/api/chat/messages?with=${dmWith}` : '/api/chat/messages';
-    fetch(url)
+    fetch(url, { signal: controller.signal })
       .then(r => r.json())
       .then(msgs => {
         if (!Array.isArray(msgs)) return;
         msgs.forEach(m => msgIds.current.add(String(m.id)));
         setMessages(msgs);
       })
-      .catch(() => setMessages([]));
+      .catch(err => { if (err.name !== 'AbortError') setMessages([]); });
+    return () => controller.abort();
   }, [open, dmWith]);
 
   // ── Socket listeners — use `socket` prop as dependency (fixes stale/null issue) ──
@@ -450,10 +456,10 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
       fd.append('file', file);
       const res = await fetch('/api/chat/upload', { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok) { alert(data.error || 'Yükleme başarısız'); return; }
+      if (!res.ok) { window.showToast?.(data.error || 'Yükleme başarısız', 'error'); return; }
       setPendingFile({ url: data.url, type: data.type, name: data.name, size: data.size });
     } catch (err) {
-      alert('Yükleme sırasında hata: ' + err.message);
+      window.showToast?.('Yükleme sırasında hata: ' + err.message, 'error');
     } finally {
       setUploading(false);
       inputRef.current?.focus();
@@ -498,6 +504,16 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
 
   const openDm = (slug) => { setDmWith(slug); setMessages([]); setTypingUser(null); setPendingFile(null); };
   const backToGeneral = () => { setDmWith(null); setMessages([]); setPendingFile(null); };
+
+  const toggleMute = (userId) => {
+    setMutedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId); else next.add(userId);
+      localStorage.setItem('stoa.muted', JSON.stringify([...next]));
+      window.__MUTED_USERS__ = next;
+      return next;
+    });
+  };
 
   const toggleStar = (msg) => {
     const id = String(msg.id);
@@ -595,23 +611,31 @@ function ChatPanel({ open, onClose, onlineUsers, onlineStatuses, members: member
           {dmWith ? (
             <>
               <button className="icon-btn" onClick={backToGeneral}><Icon name="chevronLeft" size={16} /></button>
-              <div style={{ position: 'relative', display: 'flex' }}>
+              <div style={{ position: 'relative', display: 'flex', flexShrink: 0 }}>
                 <Avatar member={dmUser} size="sm" />
                 <span style={{ position: 'absolute', bottom: -1, right: -1 }}>
                   <StatusDot status={statuses.get(dmWith) || (online.has(dmWith) ? 'online' : 'offline')} />
                 </span>
               </div>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="chat-head-title">{dmUser?.name || dmWith}</div>
                 <div style={{ fontSize: 11, lineHeight: 1.2, color: 'var(--ink-faint)' }}>
                   {_statusLabel(statuses.get(dmWith) || (online.has(dmWith) ? 'online' : 'offline'))}
                 </div>
               </div>
+              <button
+                className="icon-btn"
+                style={{ flexShrink: 0, color: mutedUsers.has(dmWith) ? 'var(--status-rose)' : 'var(--ink-muted)' }}
+                title={mutedUsers.has(dmWith) ? 'Bildirimleri aç' : 'Bildirimleri sustur'}
+                onClick={() => toggleMute(dmWith)}
+              >
+                <Icon name={mutedUsers.has(dmWith) ? 'bellOff' : 'bell'} size={14} />
+              </button>
             </>
           ) : (
-            <span className="chat-head-title">Takım Sohbeti</span>
+            <span className="chat-head-title" style={{ flex: 1 }}>Takım Sohbeti</span>
           )}
-          <button className="icon-btn" style={{ marginLeft: 'auto' }} onClick={onClose}>
+          <button className="icon-btn" style={{ flexShrink: 0 }} onClick={onClose}>
             <Icon name="x" size={14} />
           </button>
         </div>

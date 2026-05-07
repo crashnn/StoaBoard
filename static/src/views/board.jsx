@@ -4,9 +4,9 @@ const { useState: useBoardState, useRef: useBoardRef, useEffect: useBoardEf } = 
 
 const COL_NAME_MAX = 30;
 
-function FilterBar({ activeLabels, activePriority, onToggleLabel, onTogglePriority, onClear }) {
+function FilterBar({ activeLabels, activePriority, activeOverdue, onToggleLabel, onTogglePriority, onToggleOverdue, onClear }) {
   const labelEntries = Object.entries(DATA.LABELS || {});
-  const hasFilters = activeLabels.size > 0 || activePriority !== null;
+  const hasFilters = activeLabels.size > 0 || activePriority !== null || activeOverdue;
   const priorities = [
     { id: 'high', label: 'Yüksek' },
     { id: 'mid',  label: 'Orta'   },
@@ -15,7 +15,6 @@ function FilterBar({ activeLabels, activePriority, onToggleLabel, onTogglePriori
 
   return (
     <div className="filter-bar">
-      <Icon name="filter" size={13} />
       {labelEntries.length > 0 && (
         <div className="filter-bar-section">
           {labelEntries.map(([slug, lab]) => (
@@ -40,6 +39,11 @@ function FilterBar({ activeLabels, activePriority, onToggleLabel, onTogglePriori
             {p.label}
           </button>
         ))}
+        <div className="filter-bar-divider" />
+        <button className="filter-priority-chip" data-active={activeOverdue} onClick={onToggleOverdue}>
+          <Icon name="calendar" size={11} />
+          Süresi geçmiş
+        </button>
       </div>
       {hasFilters && (
         <button className="filter-clear-btn" onClick={onClear}>
@@ -112,6 +116,7 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
       draggable={!editing && canManageTasks}
       data-dragging={dragging}
       data-done={isDone}
+      data-overdue={overdue && !isDone}
       data-show-progress={tweaks.showProgress}
       data-show-tags={tweaks.showTags}
       onClick={() => !editing && onOpen(task)}
@@ -187,6 +192,8 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
 function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, onDeleteColumn, onUpdateColumn, onTouchLongPress, onToggleDone }) {
   const [dragOver, setDragOver] = useBoardState(false);
   const [menuOpen, setMenuOpen] = useBoardState(false);
+  const [menuPos, setMenuPos] = useBoardState(null);
+  const [confirmDelete, setConfirmDelete] = useBoardState(false);
   const [renaming, setRenaming] = useBoardState(false);
   const [renameVal, setRenameVal] = useBoardState(col.title_tr || col.title || '');
   const [columnDragging, setColumnDragging] = useBoardState(false);
@@ -196,7 +203,7 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
   const touchState = useBoardRef({ timer: null, startX: 0, startY: 0, moved: false });
 
   useBoardEf(() => {
-    if (!menuOpen) return;
+    if (!menuOpen) { setConfirmDelete(false); return; }
     const onDown = (e) => {
       if (!menuRef.current?.contains(e.target) && !moreRef.current?.contains(e.target))
         setMenuOpen(false);
@@ -279,11 +286,17 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
         <div className="col-actions">
           {canManageTasks && <button onClick={() => onOpenModal(col.id)} title="Yeni görev"><Icon name="plus" size={14} /></button>}
           <div style={{ position: 'relative' }}>
-            <button ref={moreRef} title="Daha fazla" onClick={() => setMenuOpen(v => !v)}>
+            <button ref={moreRef} title="Daha fazla" onClick={() => {
+              if (!menuOpen && moreRef.current) {
+                const r = moreRef.current.getBoundingClientRect();
+                setMenuPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+              }
+              setMenuOpen(v => !v);
+            }}>
               <Icon name="moreH" size={14} />
             </button>
-            {menuOpen && (
-              <div ref={menuRef} className="col-menu">
+            {menuOpen && menuPos && (
+              <div ref={menuRef} className="col-menu" style={{ top: menuPos.top, right: menuPos.right }}>
                 <div className="col-menu-info">{tasks.length} görev · {col.title_tr}</div>
                 {canManageProjects && (
                   <>
@@ -295,9 +308,17 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
                     <button className="col-menu-item" onClick={() => { setMenuOpen(false); setRenaming(true); setRenameVal(col.title_tr || col.title || ''); }}>
                       <Icon name="edit" size={13} /> Yeniden adlandır
                     </button>
-                    <button className="col-menu-item col-menu-item-danger" onClick={() => { setMenuOpen(false); onDeleteColumn?.(col.db_id, col.id); }}>
-                      <Icon name="trash" size={13} /> Kolonu sil
-                    </button>
+                    {confirmDelete ? (
+                      <div className="col-menu-confirm">
+                        <span>Emin misiniz?</span>
+                        <button className="col-menu-confirm-yes" onClick={() => { setConfirmDelete(false); setMenuOpen(false); onDeleteColumn?.(col.db_id, col.id); }}>Sil</button>
+                        <button className="col-menu-confirm-no" onClick={() => setConfirmDelete(false)}>İptal</button>
+                      </div>
+                    ) : (
+                      <button className="col-menu-item col-menu-item-danger" onClick={() => setConfirmDelete(true)}>
+                        <Icon name="trash" size={13} /> Kolonu sil
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -339,8 +360,10 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
 function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects }) {
   const [draggingId, setDraggingId] = useBoardState(null);
   const [trashHover, setTrashHover] = useBoardState(false);
+  const [filterOpen, setFilterOpen] = useBoardState(false);
   const [activeLabels, setActiveLabels] = useBoardState(new Set());
   const [activePriority, setActivePriority] = useBoardState(null);
+  const [activeOverdue, setActiveOverdue] = useBoardState(false);
   const [columns, setColumns] = useBoardState(() => {
     // Initial load: deduplicate from DATA.COLUMNS
     const cols = DATA.COLUMNS || [];
@@ -464,13 +487,17 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
     return next;
   });
   const togglePriority = (p) => setActivePriority(prev => prev === p ? null : p);
-  const clearFilters = () => { setActiveLabels(new Set()); setActivePriority(null); };
+  const toggleOverdue = () => setActiveOverdue(prev => !prev);
+  const clearFilters = () => { setActiveLabels(new Set()); setActivePriority(null); setActiveOverdue(false); };
 
   const visibleTasks = tasks.filter(t => {
     if (activePriority && t.priority !== activePriority) return false;
     if (activeLabels.size > 0 && !(t.labels || []).some(l => activeLabels.has(l))) return false;
+    if (activeOverdue && !DATA.isOverdue(t.due, t.col)) return false;
     return true;
   });
+
+  const activeFilterCount = (activePriority ? 1 : 0) + activeLabels.size + (activeOverdue ? 1 : 0);
 
   const handleToggleDone = async (col) => {
     const newIsDone = !col.is_done;
@@ -482,41 +509,33 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
   };
 
   const handleDeleteColumn = async (dbId, slugId) => {
-    if (!confirm('Bu kolonu silmek istediğinize emin misiniz?')) return;
-    
-    // Optimistic update — remove immediately from state
     const prevColumns = columns;
     const nextColumns = columns.filter(c => c.id !== slugId);
     setColumns(nextColumns);
     window.DATA.COLUMNS = nextColumns;
-    
     try {
       await API.deleteColumn(dbId);
     } catch (e) {
-      // Revert on error
       setColumns(prevColumns);
       window.DATA.COLUMNS = prevColumns;
-      alert('Kolon silinemedi: ' + e.message);
+      window.showToast?.('Kolon silinemedi: ' + e.message, 'error');
     }
   };
 
   const handleUpdateColumn = async (dbId, data) => {
-    // Optimistic update
     const prevColumns = columns;
     const nextColumns = columns.map(c => c.db_id === dbId ? { ...c, ...data } : c);
     setColumns(nextColumns);
     window.DATA.COLUMNS = nextColumns;
-    
     try {
       const updated = await API.updateColumn(dbId, data);
       const finalColumns = columns.map(c => c.db_id === dbId ? { ...c, ...updated } : c);
       setColumns(finalColumns);
       window.DATA.COLUMNS = finalColumns;
     } catch (e) {
-      // Revert on error
       setColumns(prevColumns);
       window.DATA.COLUMNS = prevColumns;
-      alert('Kolon güncellenemedi: ' + e.message);
+      window.showToast?.('Kolon güncellenemedi: ' + e.message, 'error');
     }
   };
 
@@ -526,21 +545,20 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
 
     const projectId = window.CURRENT_PROJECT_ID || DATA.currentProject?.id;
     if (!projectId) {
-      alert('Proje seçili değil.');
+      window.showToast?.('Proje seçili değil.', 'error');
       return;
     }
 
     setAddingColumnBusy(true);
     try {
       const created = await API.createColumn(projectId, { title });
-      // Optimistic update - add to state immediately
       const nextColumns = [...columns, created];
       setColumns(nextColumns);
       window.DATA.COLUMNS = nextColumns;
       setNewColumnTitle("");
       setIsAddingColumn(false);
     } catch (e) {
-      alert('Kolon oluşturulamadı: ' + e.message);
+      window.showToast?.('Kolon oluşturulamadı: ' + e.message, 'error');
     } finally {
       setAddingColumnBusy(false);
     }
@@ -548,13 +566,28 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
 
   return (
     <>
-    <FilterBar
-      activeLabels={activeLabels}
-      activePriority={activePriority}
-      onToggleLabel={toggleLabel}
-      onTogglePriority={togglePriority}
-      onClear={clearFilters}
-    />
+    <div className="board-toolbar">
+      <button
+        className="filter-toggle-btn"
+        data-active={filterOpen || activeFilterCount > 0}
+        onClick={() => setFilterOpen(v => !v)}
+      >
+        <Icon name="filter" size={13} />
+        Filtrele
+        {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
+      </button>
+    </div>
+    {filterOpen && (
+      <FilterBar
+        activeLabels={activeLabels}
+        activePriority={activePriority}
+        activeOverdue={activeOverdue}
+        onToggleLabel={toggleLabel}
+        onTogglePriority={togglePriority}
+        onToggleOverdue={toggleOverdue}
+        onClear={clearFilters}
+      />
+    )}
     <div className="board" ref={boardRef} onDragOver={handleBoardDragOver} onDragEnd={stopAutoScroll}>
       {columns.map(col => (
         <Column

@@ -318,6 +318,8 @@ class Notification(db.Model):
     text = db.Column(db.Text, nullable=False)
     read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=_now)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id', ondelete='SET NULL'), nullable=True)
+    sender_slug = db.Column(db.String(80), nullable=True)
 
     def to_dict(self):
         return {
@@ -325,6 +327,8 @@ class Notification(db.Model):
             'unread': not self.read,
             'time': _time_ago(self.created_at),
             'text': self.text,
+            'task_id': self.task_id,
+            'sender_slug': self.sender_slug,
         }
 
 

@@ -39,19 +39,8 @@ function DashboardView({ tasks, onOpenTask, onView }) {
   const chartData = chartPeriod === 'week' ? throughput : monthData;
   const maxBar    = Math.max(...chartData.map(d => d.done + d.review + d.progress), 1);
 
-  // Little's Law
-  const wip        = tasks.filter(t => !['done', 'backlog'].includes(t.col)).length;
-  const weeklyDone = throughput.reduce((s, d) => s + d.done, 0);
-  const dailyRate  = weeklyDone / Math.max(throughput.length, 1);
-  const cycleDays  = dailyRate > 0 ? (wip / dailyRate).toFixed(1) : null;
-  const halfLen    = Math.floor(throughput.length / 2);
-  const rateFirst  = halfLen > 0 ? throughput.slice(0, halfLen).reduce((s, d) => s + d.done, 0) / halfLen : 0;
-  const rateLast   = halfLen > 0 ? throughput.slice(-halfLen).reduce((s, d) => s + d.done, 0) / halfLen : 0;
-  const cycleFirst = rateFirst > 0 ? wip / rateFirst : null;
-  const cycleLast  = rateLast  > 0 ? wip / rateLast  : null;
-  const cycleDelta = (cycleFirst !== null && cycleLast !== null)
-    ? (cycleLast - cycleFirst).toFixed(1)
-    : null;
+  const weeklyDone  = throughput.reduce((s, d) => s + d.done, 0);
+  const highPriority = tasks.filter(t => t.priority === 'high' && !doneColIds.has(t.col)).length;
 
   const currentFirstName = (window.CURRENT_USER?.name || DATA.MEMBERS[0]?.name || 'Kullanıcı').split(' ')[0];
 
@@ -70,7 +59,7 @@ function DashboardView({ tasks, onOpenTask, onView }) {
   ];
   const peopleStats = DATA.MEMBERS.map(m => {
     const owned = tasks.filter(t => (t.assignees || []).includes(m.id));
-    const doneC = owned.filter(t => t.col === 'done').length;
+    const doneC = owned.filter(t => doneColIds.has(t.col)).length;
     const openC = owned.length - doneC;
     return { ...m, total: owned.length, done: doneC, open: openC };
   });
@@ -94,35 +83,37 @@ function DashboardView({ tasks, onOpenTask, onView }) {
         <div className="stat-card">
           <div className="stat-label">Aktif kartlar</div>
           <div className="stat-value">{total - done}</div>
-          <div className="stat-delta" data-up="true"><Icon name="arrowUp" size={11} strokeWidth={2} /> bu hafta +4</div>
+          <div className="stat-delta" data-up={weeklyDone > 0}>
+            {weeklyDone > 0
+              ? <><Icon name="arrowUp" size={11} strokeWidth={2} /> bu hafta +{weeklyDone} tamamlandı</>
+              : <span style={{ color: 'var(--ink-dim)' }}>bu hafta veri yok</span>}
+          </div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Tamamlanan</div>
           <div className="stat-value">{done}</div>
-          <div className="stat-delta" data-up="true"><Icon name="arrowUp" size={11} strokeWidth={2} /> bu hafta +3</div>
+          <div className="stat-delta" data-up={weeklyDone > 0}>
+            {weeklyDone > 0
+              ? <><Icon name="check" size={11} strokeWidth={2} /> bu hafta {weeklyDone}</>
+              : <span style={{ color: 'var(--ink-dim)' }}>bu hafta veri yok</span>}
+          </div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Son tarih geçmiş</div>
-          <div className="stat-value">{overdue}</div>
+          <div className="stat-value" style={overdue > 0 ? { color: 'var(--status-rose)' } : {}}>{overdue}</div>
           <div className="stat-delta" data-down={overdue > 0}>
             {overdue > 0
-              ? <><Icon name="arrowUp" size={11} strokeWidth={2} /> dikkat</>
+              ? <><Icon name="arrowUp" size={11} strokeWidth={2} /> dikkat — temizle</>
               : <><Icon name="check" size={11} strokeWidth={2} /> hepsi zamanında</>}
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Ortalama döngü</div>
-          <div className="stat-value">
-            {cycleDays !== null
-              ? <>{cycleDays}<span style={{ fontSize: 18, color: 'var(--ink-muted)' }}>gün</span></>
-              : <span style={{ fontSize: 18, color: 'var(--ink-muted)' }}>—</span>}
-          </div>
-          <div className="stat-delta"
-            data-up={cycleDelta !== null && parseFloat(cycleDelta) < 0}
-            data-down={cycleDelta !== null && parseFloat(cycleDelta) > 0}>
-            {cycleDelta !== null
-              ? <><Icon name={parseFloat(cycleDelta) <= 0 ? 'arrowDown' : 'arrowUp'} size={11} strokeWidth={2} /> {parseFloat(cycleDelta) > 0 ? '+' : ''}{cycleDelta} gün</>
-              : <span style={{ color: 'var(--ink-dim)' }}>veri yok</span>}
+          <div className="stat-label">Yüksek öncelikli</div>
+          <div className="stat-value" style={highPriority > 0 ? { color: 'var(--status-rose)' } : {}}>{highPriority}</div>
+          <div className="stat-delta" data-down={highPriority > 0}>
+            {highPriority > 0
+              ? <><Icon name="arrowUp" size={11} strokeWidth={2} /> öncelikli görev var</>
+              : <><Icon name="check" size={11} strokeWidth={2} /> öncelikli görev yok</>}
           </div>
         </div>
       </div>
@@ -146,25 +137,33 @@ function DashboardView({ tasks, onOpenTask, onView }) {
             </div>
           </div>
           <div className="panel-body">
-            <div className="chart">
-              {chartData.map(d => {
-                const totalD = d.done + d.review + d.progress;
-                const h = totalD ? (totalD / maxBar) * 160 : 0;
-                return (
-                  <div className="bar" key={d.day}>
-                    <div className="bar-tooltip">
-                      {d.day}: <b>{d.done}</b> tamamlandı · <b>{d.review}</b> incele · <b>{d.progress}</b> devam
+            {chartData.length === 0 || maxBar <= 1 ? (
+              <div className="dash-empty-state">
+                <Icon name="chart" size={28} />
+                <div>Henüz ilerleme verisi yok</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-dim)' }}>Görevleri tamamladıkça burada görünecek</div>
+              </div>
+            ) : (
+              <div className="chart">
+                {chartData.map(d => {
+                  const totalD = d.done + d.review + d.progress;
+                  const h = totalD ? (totalD / maxBar) * 160 : 0;
+                  return (
+                    <div className="bar" key={d.day}>
+                      <div className="bar-tooltip">
+                        {d.day}: <b>{d.done}</b> tamamlandı · <b>{d.review}</b> incele · <b>{d.progress}</b> devam
+                      </div>
+                      <div className="bar-stack" style={{ height: h }}>
+                        <div className="bar-seg" data-t="progress" style={{ height: `${totalD ? (d.progress/totalD)*100 : 0}%` }} />
+                        <div className="bar-seg" data-t="review"   style={{ height: `${totalD ? (d.review/totalD)*100 : 0}%` }} />
+                        <div className="bar-seg" data-t="done"     style={{ height: `${totalD ? (d.done/totalD)*100 : 0}%` }} />
+                      </div>
+                      <div className="bar-label">{d.day}</div>
                     </div>
-                    <div className="bar-stack" style={{ height: h }}>
-                      <div className="bar-seg" data-t="progress" style={{ height: `${totalD ? (d.progress/totalD)*100 : 0}%` }} />
-                      <div className="bar-seg" data-t="review"   style={{ height: `${totalD ? (d.review/totalD)*100 : 0}%` }} />
-                      <div className="bar-seg" data-t="done"     style={{ height: `${totalD ? (d.done/totalD)*100 : 0}%` }} />
-                    </div>
-                    <div className="bar-label">{d.day}</div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className="legend">
             <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--ink)' }} /> Tamamlandı</div>
@@ -226,33 +225,45 @@ function DashboardView({ tasks, onOpenTask, onView }) {
             <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => onView && onView('list')}>Tümünü gör <Icon name="arrowRight" size={12} /></button>
           </div>
           <div className="panel-body" style={{ padding: '0 0 12px' }}>
-            <table className="list-table">
-              <tbody>
-                {tasks
-                  .filter(t => t.due && t.col !== 'done')
-                  .sort((a, b) => a.due.localeCompare(b.due))
-                  .slice(0, 5)
-                  .map(t => {
-                    const rowMembers = (t.assignees || []).map(id => DATA.MEMBERS.find(m => m.id === id)).filter(Boolean);
-                    const overdueRow = DATA.isOverdue(t.due, t.col);
-                    const colObj = DATA.COLUMNS.find(c => c.id === t.col);
-                    return (
-                      <tr key={t.id} onClick={() => onOpenTask(t)} style={{ cursor: 'pointer' }}>
-                        <td style={{ paddingLeft: 18 }}>
-                          <span className="meta-item" data-warn={overdueRow}>
-                            <Icon name="calendar" size={12} /> {DATA.fmtDate(t.due)}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 500 }}>{t.title}</td>
-                        <td style={{ width: 100 }}><AvatarStack members={rowMembers} size="sm" max={3} /></td>
-                        <td style={{ width: 90, paddingRight: 18 }}>
-                          <span className="status-pill">{colObj?.title_tr || t.col}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
+            {(() => {
+              const upcomingTasks = tasks
+                .filter(t => t.due && !doneColIds.has(t.col))
+                .sort((a, b) => a.due.localeCompare(b.due))
+                .slice(0, 5);
+              if (upcomingTasks.length === 0) {
+                return (
+                  <div className="dash-empty-state" style={{ padding: '24px 18px' }}>
+                    <Icon name="calendar" size={24} />
+                    <div>Son tarihli görev yok</div>
+                  </div>
+                );
+              }
+              return (
+                <table className="list-table">
+                  <tbody>
+                    {upcomingTasks.map(t => {
+                      const rowMembers = (t.assignees || []).map(id => DATA.MEMBERS.find(m => m.id === id)).filter(Boolean);
+                      const overdueRow = DATA.isOverdue(t.due, t.col);
+                      const colObj = DATA.COLUMNS.find(c => c.id === t.col);
+                      return (
+                        <tr key={t.id} onClick={() => onOpenTask(t)} style={{ cursor: 'pointer' }}>
+                          <td style={{ paddingLeft: 18 }}>
+                            <span className="meta-item" data-warn={overdueRow}>
+                              <Icon name="calendar" size={12} /> {DATA.fmtDate(t.due)}
+                            </span>
+                          </td>
+                          <td style={{ fontWeight: 500 }}>{t.title}</td>
+                          <td style={{ width: 100 }}><AvatarStack members={rowMembers} size="sm" max={3} /></td>
+                          <td style={{ width: 90, paddingRight: 18 }}>
+                            <span className="status-pill">{colObj?.title_tr || t.col}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              );
+            })()}
           </div>
         </div>
 
@@ -261,7 +272,12 @@ function DashboardView({ tasks, onOpenTask, onView }) {
             <div className="panel-title">Takım hareketleri</div>
           </div>
           <div className="panel-body">
-            {(DATA.ACTIVITY || []).map((a, i) => {
+            {(DATA.ACTIVITY || []).length === 0 ? (
+              <div className="dash-empty-state">
+                <Icon name="users" size={24} />
+                <div>Henüz takım hareketi yok</div>
+              </div>
+            ) : (DATA.ACTIVITY || []).map((a, i) => {
               const m = DATA.MEMBERS.find(m => m.name && m.name.startsWith(a.who));
               return (
                 <div className="activity-item" key={i}>

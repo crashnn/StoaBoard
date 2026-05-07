@@ -5,6 +5,7 @@ const { useState: useListState } = React;
 function ListView({ tasks, onOpenTask, onMoveTask, canManageTasks = true }) {
   const [activeLabels, setActiveLabels] = useListState(new Set());
   const [activePriority, setActivePriority] = useListState(null);
+  const [activeOverdue, setActiveOverdue] = useListState(false);
 
   const toggleLabel = (slug) => setActiveLabels(prev => {
     const next = new Set(prev);
@@ -12,11 +13,13 @@ function ListView({ tasks, onOpenTask, onMoveTask, canManageTasks = true }) {
     return next;
   });
   const togglePriority = (p) => setActivePriority(prev => prev === p ? null : p);
-  const clearFilters = () => { setActiveLabels(new Set()); setActivePriority(null); };
+  const toggleOverdue = () => setActiveOverdue(prev => !prev);
+  const clearFilters = () => { setActiveLabels(new Set()); setActivePriority(null); setActiveOverdue(false); };
 
   const visibleTasks = tasks.filter(t => {
     if (activePriority && t.priority !== activePriority) return false;
     if (activeLabels.size > 0 && !(t.labels || []).some(l => activeLabels.has(l))) return false;
+    if (activeOverdue && !DATA.isOverdue(t.due, t.col)) return false;
     return true;
   });
 
@@ -30,8 +33,10 @@ function ListView({ tasks, onOpenTask, onMoveTask, canManageTasks = true }) {
     <FilterBar
       activeLabels={activeLabels}
       activePriority={activePriority}
+      activeOverdue={activeOverdue}
       onToggleLabel={toggleLabel}
       onTogglePriority={togglePriority}
+      onToggleOverdue={toggleOverdue}
       onClear={clearFilters}
     />
     <div className="list-view">
@@ -51,7 +56,7 @@ function ListView({ tasks, onOpenTask, onMoveTask, canManageTasks = true }) {
                 <th style={{ width: 110 }}>Öncelik</th>
                 <th style={{ width: 110 }}>Bitiş</th>
                 <th style={{ width: 120 }}>Atanan</th>
-                <th style={{ width: 90 }}>İlerleme</th>
+                <th style={{ width: 90 }}>Alt görev</th>
               </tr>
             </thead>
             <tbody>
@@ -104,12 +109,20 @@ function ListView({ tasks, onOpenTask, onMoveTask, canManageTasks = true }) {
                     </td>
                     <td><AvatarStack members={members} size="sm" max={3} /></td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div className="progress-bar" style={{ width: 60 }}>
-                          <div className="progress-fill" style={{ width: `${t.progress || 0}%` }} />
-                        </div>
-                        <span style={{ fontSize: 11, color: 'var(--ink-muted)', width: 26, textAlign: 'right' }}>{t.progress || 0}%</span>
-                      </div>
+                      {t.subtasks ? (() => {
+                        const parts = String(t.subtasks).split('/');
+                        const done = parseInt(parts[0]) || 0;
+                        const total = parts.length > 1 ? (parseInt(parts[1]) || 0) : done;
+                        const pct = total > 0 ? Math.round(done / total * 100) : 0;
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div className="progress-bar" style={{ width: 50 }}>
+                              <div className="progress-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span style={{ fontSize: 11, color: 'var(--ink-muted)', whiteSpace: 'nowrap' }}>{t.subtasks}</span>
+                          </div>
+                        );
+                      })() : <span style={{ color: 'var(--ink-faint)', fontSize: 12 }}>—</span>}
                     </td>
                   </tr>
                 );

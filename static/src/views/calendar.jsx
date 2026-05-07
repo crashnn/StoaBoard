@@ -110,8 +110,9 @@ function CalendarView({ tasks, onOpenTask }) {
           {CAL_DAYS_SHORT.map(w => <div key={w} className="cal-weekday">{w}</div>)}
           {cells.map((c, i) => {
             const dayTasks = c.dateStr ? tasksFor(c.dateStr) : [];
-            const visible = dayTasks.slice(0, 3);
-            const rest    = dayTasks.length - 3;
+            const MAX_VISIBLE = 3;
+            const visible = dayTasks.slice(0, MAX_VISIBLE);
+            const rest    = dayTasks.length - MAX_VISIBLE;
             return (
               <div key={i} className="cal-day" data-other={c.other} data-today={c.isToday}>
                 <div className="day-num">{c.day}</div>

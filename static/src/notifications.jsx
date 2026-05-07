@@ -1,24 +1,43 @@
 // Notifications panel — API-backed
 
-function NotifPanel({ open, onClose, socket }) {
+function _notifType(text) {
+  if (!text) return 'info';
+  const t = text.toLowerCase();
+  if (/mesaj gönderdi|gönderdi:/.test(t)) return 'message';
+  if (/atadı|görev|atand/.test(t)) return 'task';
+  if (/@/.test(t)) return 'mention';
+  return 'info';
+}
+
+function _notifIcon(type) {
+  return { message: 'msg', task: 'circleCheck', mention: 'tag', info: 'bell' }[type] || 'bell';
+}
+
+function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat }) {
   const [tab, setTab]     = React.useState('all');
   const [items, setItems] = React.useState(() => DATA.NOTIFICATIONS || []);
+  const panelRef = React.useRef(null);
 
-  // Update when panel opens OR when new notifications arrive
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
   React.useEffect(() => {
     if (open) {
-      // Fetch from API when opening
       API.getNotifications()
         .then(notifs => { setItems(notifs); DATA.NOTIFICATIONS = notifs; })
         .catch(() => {});
     }
   }, [open]);
 
-  // Listen for real-time notifications — re-register when socket prop changes
   React.useEffect(() => {
     const sock = socket || window.SOCKET;
     if (!sock) return;
-
     const onNewNotification = (notif) => {
       setItems(prev => {
         if (prev.some(n => n.id === notif.id)) return prev;
@@ -27,7 +46,6 @@ function NotifPanel({ open, onClose, socket }) {
         return newItems;
       });
     };
-
     sock.on('notification', onNewNotification);
     return () => sock.off('notification', onNewNotification);
   }, [socket]);
@@ -48,13 +66,26 @@ function NotifPanel({ open, onClose, socket }) {
     try { await API.deleteNotif(id); } catch (_) {}
   };
 
+  const handleNotifClick = (n) => {
+    markRead(n.id);
+    if (n.task_id) {
+      const task = (window.DATA?.tasks || []).find(t => String(t.id) === String(n.task_id))
+                || (window.__APP_TASKS__ || []).find(t => String(t.id) === String(n.task_id));
+      if (task) { onOpenTask?.(task); onClose(); return; }
+      if (window.__OPEN_TASK_BY_ID__) { window.__OPEN_TASK_BY_ID__(n.task_id); onClose(); return; }
+    }
+    if (n.sender_slug) {
+      onOpenChat?.(n.sender_slug);
+      onClose();
+    }
+  };
+
   const filtered    = tab === 'unread' ? items.filter(n => n.unread) : items;
   const unreadCount = items.filter(n => n.unread).length;
 
   return (
     <>
-      {open && <div style={{ position: 'fixed', inset: 0, zIndex: 69 }} onClick={onClose} />}
-      <div className="notif-panel" data-open={open}>
+      <div className="notif-panel" ref={panelRef} data-open={open}>
         <div className="notif-head">
           <div className="notif-title">Bildirimler</div>
           {unreadCount > 0 && <div className="notif-count">{unreadCount}</div>}
@@ -70,31 +101,36 @@ function NotifPanel({ open, onClose, socket }) {
               <Icon name="check" size={20} /><br />Hepsi bu kadar.
             </div>
           )}
-          {filtered.map(n => (
-            <div
-              key={n.id}
-              className="notif-item"
-              data-unread={n.unread}
-              onClick={() => markRead(n.id)}
-              style={{ position: 'relative' }}
-            >
-              <div className="notif-body">
-                <div className="notif-text" dangerouslySetInnerHTML={{ __html: n.text }} />
-                <div className="notif-time">{n.time}</div>
-              </div>
-              <button
-                onClick={(e) => dismiss(e, n.id)}
-                style={{
-                  position: 'absolute', top: 8, right: 8,
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--ink-faint)', padding: 2, lineHeight: 1,
-                }}
-                title="Kaldır"
+          {filtered.map(n => {
+            const type = n.type || _notifType(n.text);
+            return (
+              <div
+                key={n.id}
+                className={`notif-item notif-type-${type}`}
+                data-unread={n.unread}
+                onClick={() => handleNotifClick(n)}
+                style={{ cursor: (n.task_id || n.sender_slug) ? 'pointer' : 'default' }}
               >
-                <Icon name="x" size={12} />
-              </button>
-            </div>
-          ))}
+                <div className="notif-icon-badge">
+                  <Icon name={_notifIcon(type)} size={13} />
+                </div>
+                <div className="notif-body">
+                  <div className="notif-text" dangerouslySetInnerHTML={{ __html: n.text }} />
+                  <div className="notif-time">{n.time}</div>
+                </div>
+                {(n.task_id || n.sender_slug) && (
+                  <Icon name="arrowRight" size={11} style={{ color: 'var(--ink-faint)', flexShrink: 0, marginRight: 24 }} />
+                )}
+                <button
+                  className="notif-dismiss"
+                  onClick={(e) => dismiss(e, n.id)}
+                  title="Kaldır"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', fontSize: 12 }}>

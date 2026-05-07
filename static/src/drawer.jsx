@@ -72,7 +72,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       if (onCreateTask) onCreateTask(newTask);
       onClose();
     } catch (e) {
-      alert('Görev kopyalanamadı: ' + e.message);
+      window.showToast?.('Görev kopyalanamadı: ' + e.message, 'error');
     } finally {
       setDuplicating(false);
     }
@@ -101,7 +101,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       setMentionQuery(null);
       onTaskUpdate({ id: task.id, comments: (task.comments || 0) + 1 });
     } catch (e) {
-      alert('Yorum gönderilemedi: ' + e.message);
+      window.showToast?.('Yorum gönderilemedi: ' + e.message, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -171,7 +171,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
             <button className="icon-btn" title="Kopyala" onClick={handleDuplicate} disabled={duplicating}>
               <Icon name="copy" size={15} />
             </button>
-            <button className="icon-btn" title={fullscreen ? 'Küçült' : 'Tam ekran'} onClick={() => setFullscreen(f => !f)}>
+            <button className="icon-btn drawer-fullscreen-btn" title={fullscreen ? 'Küçült' : 'Tam ekran'} onClick={() => setFullscreen(f => !f)}>
               <Icon name={fullscreen ? 'minimize' : 'expand'} size={14} />
             </button>
             {onDelete && canManageTasks && (
@@ -214,7 +214,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
             <div className="prop-label"><Icon name="circleHalf" size={13} /> Durum</div>
             <div className="prop-value custom-dropdown" ref={statusRef}>
               <button type="button" className="custom-dropdown-btn" disabled={!canManageTasks} onClick={() => canManageTasks && setStatusOpen(o => !o)}>
-                <span>{col.title_tr}</span>
+                <span className="dropdown-label">{col.title_tr}</span>
                 <Icon name="chevronDown" size={12} />
               </button>
               {statusOpen && canManageTasks && (
@@ -238,7 +238,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
               <button type="button" className="custom-dropdown-btn" disabled={!canManageTasks}
                 onClick={() => canManageTasks && setPriorityOpen(o => !o)}>
                 <span className="priority-dot" data-p={task.priority} />
-                <span>{task.priority === 'high' ? 'Yüksek' : task.priority === 'mid' ? 'Orta' : 'Düşük'}</span>
+                <span className="dropdown-label">{task.priority === 'high' ? 'Yüksek' : task.priority === 'mid' ? 'Orta' : 'Düşük'}</span>
                 {canManageTasks && <Icon name="chevronDown" size={12} />}
               </button>
               {priorityOpen && canManageTasks && (
@@ -289,24 +289,16 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
 
             <div className="prop-label"><Icon name="calendar" size={13} /> Bitiş</div>
             <div className="prop-value" style={{ gap: 6 }}>
-              <input
-                type="date"
-                value={dueVal}
-                disabled={!canManageTasks}
-                onChange={e => { setDueVal(e.target.value); patchTask({ due: e.target.value || null }); }}
-                style={{
-                  background:'transparent', border:'1px solid var(--line)', borderRadius:6,
-                  padding:'2px 6px', fontSize:13, cursor: canManageTasks ? 'pointer' : 'default',
-                  color: dueVal && DATA.isOverdue(dueVal, task.col) ? 'var(--status-rose)' : 'var(--ink)',
-                }}
-              />
-              {dueVal && canManageTasks && (
-                <button className="icon-btn" title="Tarihi kaldır"
-                  onClick={() => { setDueVal(''); patchTask({ due: null }); }}>
-                  <Icon name="x" size={11} />
-                </button>
+              {canManageTasks ? (
+                <DatePicker
+                  value={dueVal}
+                  onChange={(v) => { setDueVal(v || ''); patchTask({ due: v || null }); }}
+                />
+              ) : (
+                dueVal
+                  ? <span style={{ fontSize: 13, color: DATA.isOverdue(dueVal, task.col) ? 'var(--status-rose)' : 'var(--ink)' }}>{DATA.fmtDate(dueVal)}</span>
+                  : <span style={{ color: 'var(--ink-muted)', fontSize: 13 }}>—</span>
               )}
-              {!dueVal && <span style={{ color:'var(--ink-muted)', fontSize:13 }}>Tarih ekle</span>}
             </div>
 
             <div className="prop-label"><Icon name="tag" size={13} /> Etiketler</div>

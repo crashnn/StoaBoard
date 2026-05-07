@@ -34,7 +34,7 @@ function LabelsSection({ canManage }) {
       delete next[slug];
       setLabels(next);
       DATA.LABELS = next;
-    } catch (e) { alert('Etiket silinemedi: ' + e.message); }
+    } catch (e) { window.showToast?.('Etiket silinemedi: ' + e.message, 'error'); }
   };
 
   const handleAdd = async () => {
@@ -254,6 +254,8 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
 
   const [members, setMembers]         = React.useState([...DATA.MEMBERS]);
   const [memberBusy, setMemberBusy]   = React.useState(null);
+  const [confirmDeleteRoleId, setConfirmDeleteRoleId] = React.useState(null);
+  const [confirmRemoveMemberId, setConfirmRemoveMemberId] = React.useState(null);
 
   const syncMembers = (nextMembers) => {
     setMembers(nextMembers);
@@ -276,7 +278,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       setLogoUrl(res.logo_url);
       window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, logo_url: res.logo_url };
       if (onWsLogoChange) onWsLogoChange(res.logo_url);
-    } catch (err) { alert('Logo yüklenemedi: ' + err.message); }
+    } catch (err) { window.showToast?.('Logo yüklenemedi: ' + err.message, 'error'); }
     finally { setLogoBusy(false); }
   };
 
@@ -289,7 +291,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       if (idx >= 0) DATA.MEMBERS[idx] = { ...DATA.MEMBERS[idx], ...updated };
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch (e) { alert('Kaydedilemedi: ' + e.message); }
+    } catch (e) { window.showToast?.('Kaydedilemedi: ' + e.message, 'error'); }
     finally { setBusy(false); }
   };
 
@@ -309,7 +311,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       const res = await API.regenInviteCode();
       setInviteCode(res.invite_code);
       window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, invite_code: res.invite_code };
-    } catch (e) { alert(e.message); }
+    } catch (e) { window.showToast?.(e.message, 'error'); }
     finally { setCodeLoading(false); }
   };
 
@@ -320,7 +322,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       await API.deleteInviteCode();
       setInviteCode(null);
       window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, invite_code: null };
-    } catch (e) { alert(e.message); }
+    } catch (e) { window.showToast?.(e.message, 'error'); }
     finally { setCodeLoading(false); }
   };
 
@@ -330,7 +332,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       const res = await API.regenInviteCode();
       setInviteCode(res.invite_code);
       window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, invite_code: res.invite_code };
-    } catch (e) { alert(e.message); }
+    } catch (e) { window.showToast?.(e.message, 'error'); }
     finally { setCodeLoading(false); }
   };
 
@@ -374,12 +376,12 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
         window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, roles: nextRoles };
       }
       setRoleForm(null);
-    } catch (e) { alert(e.message); }
+    } catch (e) { window.showToast?.(e.message, 'error'); }
     finally { setRoleBusy(false); }
   };
 
   const deleteRoleById = async (id) => {
-    if (!confirm('Bu rol silinecek. Üyelerden kaldırılacak. Devam et?')) return;
+    setConfirmDeleteRoleId(null);
     try {
       await API.deleteRole(id);
       const nextRoles = roles.filter(r => r.id !== id);
@@ -387,7 +389,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, roles: nextRoles };
       const nextMembers = members.map(m => m.role_id === id ? { ...m, role_id: null, role_name: '', role_permissions: [] } : m);
       syncMembers(nextMembers);
-    } catch (e) { alert(e.message); }
+    } catch (e) { window.showToast?.(e.message, 'error'); }
   };
 
   // ── Members ───────────────────────────────────────────────────────────────
@@ -398,16 +400,16 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       const updated = await API.updateMember(slug, { role_id: roleId || null });
       const nextMembers = members.map(m => m.id === slug ? { ...m, ...updated } : m);
       syncMembers(nextMembers);
-    } catch (e) { alert(e.message); }
+    } catch (e) { window.showToast?.(e.message, 'error'); }
     finally { setMemberBusy(null); }
   };
 
   const removeMember = async (slug) => {
-    if (!confirm('Bu üyeyi takımdan çıkar?')) return;
+    setConfirmRemoveMemberId(null);
     try {
       await API.removeMember(slug);
       syncMembers(members.filter(m => m.id !== slug));
-    } catch (e) { alert(e.message); }
+    } catch (e) { window.showToast?.(e.message, 'error'); }
   };
 
   const deleteAccount = async () => {
@@ -440,7 +442,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       setProjects(ps => ps.map(p => p.id === updated.id ? { ...p, ...updated } : p));
       DATA.PROJECTS = DATA.PROJECTS.map(p => p.id === updated.id ? { ...p, ...updated } : p);
       setEditingProject(null);
-    } catch (e) { alert(e.message); }
+    } catch (e) { window.showToast?.(e.message, 'error'); }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -557,7 +559,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                           setLogoUrl(null);
                           window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, logo_url: null };
                           if (onWsLogoChange) onWsLogoChange(null);
-                        } catch(err) { alert(err.message); }
+                        } catch(err) { window.showToast?.(err.message, 'error'); }
                       }}>
                       Kaldır
                     </button>
@@ -644,7 +646,14 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                   {r.is_default && <span style={{ fontSize:10, padding:'2px 6px', background:'var(--accent-soft)', color:'var(--accent-ink)', borderRadius:4 }}>Varsayılan</span>}
                   <div style={{ display:'flex', gap:4 }}>
                     <button className="icon-btn" title="Düzenle" onClick={() => openRoleForm(r)}><Icon name="edit" size={13} /></button>
-                    <button className="icon-btn" title="Sil" onClick={() => deleteRoleById(r.id)} style={{ color:'var(--status-rose)' }}><Icon name="trash" size={13} /></button>
+                    {confirmDeleteRoleId === r.id ? (
+                      <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:11 }}>
+                        <button className="col-menu-confirm-yes" onClick={() => deleteRoleById(r.id)}>Sil</button>
+                        <button className="col-menu-confirm-no" onClick={() => setConfirmDeleteRoleId(null)}>İptal</button>
+                      </div>
+                    ) : (
+                      <button className="icon-btn" title="Sil" onClick={() => setConfirmDeleteRoleId(r.id)} style={{ color:'var(--status-rose)' }}><Icon name="trash" size={13} /></button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -811,14 +820,21 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                       onChange={roleId => changeMemberRole(m.id, roleId)}
                       disabled={memberBusy === m.id}
                     />
+                    {confirmRemoveMemberId === m.id ? (
+                      <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:11 }}>
+                        <button className="col-menu-confirm-yes" onClick={() => removeMember(m.id)}>Çıkar</button>
+                        <button className="col-menu-confirm-no" onClick={() => setConfirmRemoveMemberId(null)}>İptal</button>
+                      </div>
+                    ) : (
                     <button
                       className="icon-btn"
                       title="Üyeyi çıkar"
-                      onClick={() => removeMember(m.id)}
+                      onClick={() => setConfirmRemoveMemberId(m.id)}
                       style={{ color:'var(--status-rose)' }}
                     >
                       <Icon name="trash" size={13} />
                     </button>
+                    )}
                   </div>
                 )}
               </div>

@@ -155,6 +155,7 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
   const [assignees, setAssignees] = useModalState([]);
   const [busy, setBusy]           = useModalState(false);
   const [titleError, setTitleError] = useModalState(false);
+  const [dueError, setDueError]     = useModalState(false);
   const [colOpen, setColOpen]           = useModalState(false);
   const [priorityOpen, setPriorityOpen] = useModalState(false);
   const [colPos, setColPos]             = useModalState({ top: 0, left: 0, width: 0 });
@@ -190,7 +191,7 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
 
   React.useEffect(() => { if (defaultCol) setCol(defaultCol); }, [defaultCol, open]);
   React.useEffect(() => {
-    if (!open) { setTitle(''); setDesc(''); setLabels([]); setBusy(false); setTitleError(false); }
+    if (!open) { setTitle(''); setDesc(''); setLabels([]); setBusy(false); setTitleError(false); setDueError(false); setDue(''); }
     if (open) {
       const me = window.CURRENT_USER;
       setAssignees(me ? [me.id] : []);
@@ -202,16 +203,14 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
 
   const submit = async () => {
     if (busy) return;
-    if (!title.trim()) {
-      setTitleError(true);
-      return;
-    }
+    if (!title.trim()) { setTitleError(true); return; }
+    if (!due) { setDueError(true); return; }
     setBusy(true);
     try {
       await onCreate({ title: title.trim(), desc, col, priority, due: due || null, labels, assignees });
       onClose();
     } catch (e) {
-      alert('Görev oluşturulamadı: ' + e.message);
+      window.showToast?.('Görev oluşturulamadı: ' + e.message, 'error');
     } finally {
       setBusy(false);
     }
@@ -290,8 +289,11 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate }) {
               </div>
             </div>
             <div className="field">
-              <label>Bitiş</label>
-              <DatePicker value={due} onChange={setDue} />
+              <label style={{ color: dueError ? 'var(--status-rose)' : undefined }}>
+                Bitiş <span style={{ color: 'var(--status-rose)' }}>*</span>
+              </label>
+              <DatePicker value={due} onChange={(v) => { setDue(v); setDueError(false); }} />
+              {dueError && <span style={{ fontSize: 11, color: 'var(--status-rose)' }}>Bitiş tarihi zorunludur</span>}
             </div>
           </div>
           <div className="field">

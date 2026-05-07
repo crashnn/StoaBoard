@@ -171,6 +171,7 @@ def on_chat_message(data):
         notif = Notification(
             user_id=receiver.id,
             text=f'<strong>{user.name}</strong> sana mesaj gönderdi: {(text or "")[:80]}',
+            sender_slug=user.slug,
         )
         db.session.add(notif)
         db.session.flush()

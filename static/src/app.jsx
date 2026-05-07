@@ -176,30 +176,40 @@ function App() {
       }
     });
 
-    // Global chat_message handler — shows toast when chat panel is closed
+    // Global chat_message handler — shows toast when not viewing that conversation
     if (!window.__TOAST_LAST_MSG__) window.__TOAST_LAST_MSG__ = {};
     sock.on('chat_message', (msg) => {
       const me = window.CURRENT_USER?.id;
       if (!msg || msg.from === me) return;
-      if (window.__CHAT_OPEN__) return;
+
+      const isDM = !!msg.to;
+      const chatOpen    = window.__CHAT_OPEN__;
+      const chatDmWith  = window.__CHAT_DM_WITH__;
+
+      // Suppress if user is already viewing this exact conversation
+      if (chatOpen) {
+        if (!isDM && !chatDmWith) return;          // genel kanalda
+        if (isDM && chatDmWith === msg.from) return; // o kişiyle DM'de
+      }
+
+      // Muted check
+      const muted = window.__MUTED_USERS__ ||
+        new Set(JSON.parse(localStorage.getItem('stoa.muted') || '[]'));
+      if (muted.has(msg.from)) return;
 
       const twks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
       if (twks.notifyMessages === false || twks.notifyToasts === false) return;
       if ((window.__MY_STATUS__ || 'online') === 'dnd') return;
 
-      // Per-type filtering
-      const isDM = !!msg.to;
       if (isDM  && twks.notifyDMs       === false) return;
       if (!isDM && twks.notifyGroupChat === false) return;
 
-      // Debounce: aynı göndericiden 2 sn içinde birden fazla toast gösterme
       const now = Date.now();
       const key = String(msg.from);
       const lastTimes = window.__TOAST_LAST_MSG__;
       if (lastTimes[key] && (now - lastTimes[key]) < 2000) return;
       lastTimes[key] = now;
 
-      // Max 3 toast aynı anda
       if ((window.TOAST_QUEUE || []).length >= 3) return;
 
       const allMembers = window.DATA?.MEMBERS || [];
@@ -217,8 +227,9 @@ function App() {
   }, [authed, needsWorkspace]);
 
   useEf(() => {
-    window.__CHAT_OPEN__ = chatOpen;
-  }, [chatOpen]);
+    window.__CHAT_OPEN__    = chatOpen;
+    window.__CHAT_DM_WITH__ = chatDmWith;
+  }, [chatOpen, chatDmWith]);
 
   // ── Activity tracking → presence status ─────────────────────────────────
   useEf(() => {
@@ -355,7 +366,7 @@ function App() {
         if (data.workspaces)   setWorkspaces(data.workspaces);
         setNeedsWorkspace(false);
       })
-      .catch((e) => alert('Veriler yüklenemedi: ' + e.message));
+      .catch((e) => window.showToast?.('Veriler yüklenemedi: ' + e.message, 'error'));
   };
 
   // ── Workspace switching ───────────────────────────────────────────────────
@@ -371,7 +382,7 @@ function App() {
       if (data.online_users) _applyOnlineUsers(data.online_users);
       if (data.workspaces)   setWorkspaces(data.workspaces);
       setWsSwitcherOpen(false);
-    } catch (e) { alert('Çalışma alanı değiştirilemedi: ' + e.message); }
+    } catch (e) { window.showToast?.('Çalışma alanı değiştirilemedi: ' + e.message, 'error'); }
   };
 
   const handleWsLogoChange = (logoUrl) => {
@@ -408,7 +419,7 @@ function App() {
     try {
       const created = await API.createTask(projectId, formData);
       setTasks(prev => [created, ...prev]);
-    } catch (e) { alert('Görev oluşturulamadı: ' + e.message); }
+    } catch (e) { window.showToast?.('Görev oluşturulamadı: ' + e.message, 'error'); }
   };
 
   const deleteTask = async (id) => {
@@ -435,7 +446,7 @@ function App() {
       window.DATA.PROJECTS = [...(window.DATA.PROJECTS || []), p];
       await switchProject(p.id);
       setProjectModal(false);
-    } catch (e) { alert('Proje oluşturulamadı: ' + e.message); }
+    } catch (e) { window.showToast?.('Proje oluşturulamadı: ' + e.message, 'error'); }
   };
 
   const openChat = (dmWithSlug) => {
@@ -445,6 +456,11 @@ function App() {
     window.__CHAT_OPEN__ = true;
   };
   window.__OPEN_CHAT__ = openChat;
+  window.__APP_TASKS__ = tasks;
+  window.__OPEN_TASK_BY_ID__ = (taskId) => {
+    const t = tasks.find(x => String(x.id) === String(taskId));
+    if (t) { setDrawerTask(t); setNotifOpen(false); }
+  };
 
   const handleCmd = (action) => {
     if (action.startsWith('goto:'))       setView(action.slice(5));
@@ -477,7 +493,7 @@ function App() {
         if (data.workspaces)   setWorkspaces(data.workspaces);
         setAuthed(true); setNeedsWorkspace(false);
       })
-      .catch((e) => alert('Veri yüklenemedi: ' + e.message));
+      .catch((e) => window.showToast?.('Veri yüklenemedi: ' + e.message, 'error'));
   };
 
   const handleLogout = async () => {
@@ -628,7 +644,13 @@ function App() {
       />
       <AddTaskModal open={canManageTasks && modalOpen} onClose={() => setModalOpen(false)} defaultCol={modalCol} onCreate={createTask} />
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onAction={handleCmd} />
-      <NotifPanel open={notifOpen} onClose={() => { setNotifOpen(false); setNotifCount(0); }} socket={socket} />
+      <NotifPanel
+        open={notifOpen}
+        onClose={() => { setNotifOpen(false); setNotifCount(0); }}
+        socket={socket}
+        onOpenTask={(task) => { setNotifOpen(false); setDrawerTask(task); }}
+        onOpenChat={(slug) => { setNotifOpen(false); openChat(slug); }}
+      />
       <ChatPanel
         open={chatOpen}
         onClose={() => { setChatOpen(false); setChatDmWith(null); window.__CHAT_OPEN__ = false; }}
@@ -780,9 +802,9 @@ function AddWorkspaceModal({ onClose, onDone }) {
           <div className="modal-sub">Yeni bir takım kur veya mevcut bir takıma katıl.</div>
         </div>
         <div className="modal-body" style={{ paddingTop: 0 }}>
-          <div className="auth-tabs" style={{ marginBottom: 16 }}>
-            <button data-active={tab === 'create'} onClick={() => { setTab('create'); setError(''); }}>Takım Kur</button>
-            <button data-active={tab === 'join'}   onClick={() => { setTab('join');   setError(''); }}>Takıma Katıl</button>
+          <div className="modal-tabs" style={{ marginBottom: 20 }}>
+            <button className="modal-tab-btn" data-active={tab === 'create'} onClick={() => { setTab('create'); setError(''); }}>Takım Kur</button>
+            <button className="modal-tab-btn" data-active={tab === 'join'}   onClick={() => { setTab('join');   setError(''); }}>Takıma Katıl</button>
           </div>
           {error && (
             <div style={{ padding:'8px 12px', borderRadius:8, background:'oklch(58% 0.13 10 / 0.12)', color:'var(--status-rose)', fontSize:12, marginBottom:12 }}>

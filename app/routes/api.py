@@ -776,15 +776,16 @@ def create_task(project_id):
                     f'<em>{user.name}</em> seni '
                     f'<strong>{title}</strong> görevine atadı'
                 )
-                notif = Notification(user_id=assignee.id, text=notif_text)
+                notif = Notification(user_id=assignee.id, text=notif_text, sender_slug=user.slug)
                 db.session.add(notif)
                 notifs_to_push.append((assignee.id, notif))
 
     _log_activity(project_id, user, f'yeni kart oluşturdu: <em>{title}</em>')
     db.session.flush()
 
-    # flush sonrası ID atandığından artık to_dict() çalışır
+    # task.id and notif.id are set after flush — attach task_id now
     for assignee_id, notif in notifs_to_push:
+        notif.task_id = task.id
         _push_notification(assignee_id, notif)
 
     db.session.commit()
@@ -869,11 +870,11 @@ def update_task(task_id):
                     f'<em>{user.name}</em> seni '
                     f'<strong>{task.title}</strong> görevine atadı'
                 )
-                notif = Notification(user_id=aid, text=notif_text)
+                notif = Notification(user_id=aid, text=notif_text, task_id=task.id, sender_slug=user.slug)
                 db.session.add(notif)
                 notifs_to_push.append((aid, notif))
 
-        db.session.flush()  # notif ID'leri oluşsun
+        db.session.flush()
 
         for aid, notif in notifs_to_push:
             _push_notification(aid, notif)
@@ -1012,7 +1013,7 @@ def add_comment(task_id):
     for ta in task.assignees:
         if ta.user_id != user.id:
             notif_text = f'<em>{user.name}</em> yorum yazdı: "{text[:60]}{"..." if len(text) > 60 else ""}"'
-            notif = Notification(user_id=ta.user_id, text=notif_text)
+            notif = Notification(user_id=ta.user_id, text=notif_text, task_id=task_id, sender_slug=user.slug)
             db.session.add(notif)
             notifs_to_push.append((ta.user_id, notif))
 
@@ -1631,6 +1632,7 @@ def create_chat_message():
         notif = Notification(
             user_id=receiver.id,
             text=f'<strong>{user.name}</strong> sana mesaj gönderdi: {text[:80]}',
+            sender_slug=user.slug,
         )
         db.session.add(notif)
         db.session.flush()

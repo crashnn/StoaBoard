@@ -171,7 +171,7 @@ function AuthPage({ onSignIn }) {
     setForgotBusy(true);
     try {
       await window.API.resetPassword(forgotEmail, forgotNewPass);
-      alert('Şifreniz başarıyla güncellendi!');
+      window.showToast?.('Şifreniz başarıyla güncellendi!', 'success');
       setShowForgot(false); setForgotStep('email');
       setForgotEmail(''); setForgotCode(''); setForgotNewPass(''); setForgotConfirmPass('');
     } catch { setForgotError('Şifre güncellenirken hata oluştu.'); }
