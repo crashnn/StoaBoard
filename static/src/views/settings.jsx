@@ -790,6 +790,28 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                     {codeCopied ? '✓ Kopyalandı' : 'Kopyala'}
                   </button>
                 </div>
+                <div style={{ display:'flex', gap:16, alignItems:'flex-start', marginBottom:12, flexWrap:'wrap' }}>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(inviteCode)}&bgcolor=ffffff&color=1d3461&qzone=1&format=png`}
+                      alt="QR Kod"
+                      style={{ width:140, height:140, borderRadius:8, border:'1px solid var(--line)', display:'block' }}
+                    />
+                    <span style={{ fontSize:11, color:'var(--ink-faint)' }}>QR ile katıl</span>
+                  </div>
+                  <div style={{ flex:1, minWidth:160 }}>
+                    <div style={{ fontSize:12, color:'var(--ink-muted)', lineHeight:1.6, marginBottom:10 }}>
+                      Kameranızı bu koda tutun veya kodu paylaşarak takıma üye ekleyin.
+                    </div>
+                    <button className="btn btn-ghost" style={{ fontSize:12, padding:'5px 10px' }} onClick={() => {
+                      const joinUrl = `${window.location.origin}/?join=${inviteCode}`;
+                      navigator.clipboard.writeText(joinUrl).catch(() => {});
+                      window.showToast?.('Katılım linki kopyalandı!', 'success');
+                    }}>
+                      <Icon name="link" size={13} /> Linki Kopyala
+                    </button>
+                  </div>
+                </div>
                 <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                   {confirmRegen ? (
                     <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'var(--bg-subtle)', borderRadius:8, border:'1px solid var(--line)', fontSize:13 }}>

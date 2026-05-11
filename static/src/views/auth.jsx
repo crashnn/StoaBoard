@@ -98,7 +98,6 @@ function AuthPage({ onSignIn }) {
   const [forgotError, setForgotError] = useAuthState('');
   const [forgotBusy, setForgotBusy] = useAuthState(false);
   const [forgotShowNewPass, setForgotShowNewPass] = useAuthState(false);
-  const [oauthError, setOauthError] = useAuthState(null);
   const [greeting, setGreeting] = useAuthState('Tekrar hoşgeldin.');
 
   // YENİ FOTOĞRAFLAR - zoom azaltıldı
@@ -183,12 +182,6 @@ function AuthPage({ onSignIn }) {
     setForgotEmail(''); setForgotCode(''); setForgotNewPass(''); setForgotConfirmPass(''); setForgotError('');
   };
 
-  const handleOAuth = async (provider) => {
-    setOauthError(null);
-    try { await window.API.oauthLogin(provider); onSignIn(); }
-    catch (err) { setOauthError({ provider, message: err.message || `${provider} hesabıyla eşleşen kayıt bulunamadı. E-posta ile kayıt olun.` }); }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault(); setError('');
     if (mode === 'signup' && !isValidEmailDomain(form.email)) {
@@ -241,20 +234,6 @@ function AuthPage({ onSignIn }) {
 
       <div className="auth-form-wrap">
         <div className="auth-form">
-          {oauthError && (
-            <div className="oauth-error-popup">
-              <div className="oauth-error-icon">⚠️</div>
-              <div className="oauth-error-text">
-                <strong>{oauthError.provider} ile giriş başarısız</strong>
-                <p>{oauthError.message}</p>
-              </div>
-              <button className="oauth-error-close" onClick={() => setOauthError(null)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
-              <button className="oauth-error-back" onClick={() => setOauthError(null)}>← Geri Dön</button>
-            </div>
-          )}
-
           {showForgot ? (
             <div style={{ animation: 'fadeIn 0.3s ease' }}>
               {forgotStep === 'email' && (<>
@@ -342,21 +321,6 @@ function AuthPage({ onSignIn }) {
                   {busy ? 'DOĞRULANIYOR…' : (mode === 'signin' ? 'GİRİŞ YAP' : 'HESAP OLUŞTUR')}
                 </button>
               </form>
-              {mode === 'signin' && (
-                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                  <div className="auth-divider">VEYA</div>
-                  <div className="auth-oauth-list">
-                    <button className="oauth-btn" onClick={() => handleOAuth('GitHub')}>
-                      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" /></svg>
-                      GitHub ile devam et
-                    </button>
-                    <button className="oauth-btn" onClick={() => handleOAuth('Gmail')}>
-                      <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" /><path fill="#4285F4" d="M46.64 24.32c0-1.55-.13-3.04-.36-4.5H24v9.06h12.7c-.55 2.87-2.17 5.3-4.61 6.94l7.6 5.89C44.13 36.67 46.64 31.02 46.64 24.32z" /><path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59L2.56 13.22C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z" /><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.6-5.89c-2.15 1.45-4.92 2.3-8.29 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" /><path fill="none" d="M0 0h48v48H0z" /></svg>
-                      Gmail ile devam et
-                    </button>
-                  </div>
-                </div>
-              )}
               <div className="auth-foot">
                 {mode === 'signin'
                   ? <><span>Hesabın yok mu?</span> <a onClick={() => { setMode('signup'); setError(''); }}>Ücretsiz kaydol</a></>
@@ -522,14 +486,88 @@ const SecurityNote = () => (
   </div>
 );
 
+// ── BEKLEME LOBİSİ ───────────────────────────────────────────────────────────────
+function PendingLobby({ joinedAt, onApproved, onRejected }) {
+  const [elapsed, setElapsed] = useAuthState(0);
+  const [rejected, setRejected] = useAuthState(false);
+
+  useAuthEffect(() => {
+    const timer = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - joinedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [joinedAt]);
+
+  useAuthEffect(() => {
+    if (!window.io) return;
+    const sock = window.io({ transports: ['websocket', 'polling'] });
+    sock.on('join_request_approved', () => { sock.disconnect(); onApproved(); });
+    sock.on('join_request_rejected', () => { sock.disconnect(); setRejected(true); });
+    return () => sock.disconnect();
+  }, []);
+
+  const fmtElapsed = (s) => {
+    const m = Math.floor(s / 60);
+    return m > 0 ? `${m} dk ${s % 60} sn` : `${s} saniye`;
+  };
+
+  if (rejected) {
+    return (
+      <div style={{ textAlign: 'center', padding: '32px 0' }}>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>🚫</div>
+        <h2 style={{ color: '#ef4444', marginBottom: 8 }}>İstek Reddedildi</h2>
+        <p style={{ fontSize: 13, color: 'var(--color-ink-muted, #888)', marginBottom: 28, lineHeight: 1.6 }}>
+          Takım sahibi katılım isteğinizi reddetti.<br />Farklı bir kod deneyebilirsiniz.
+        </p>
+        <button className="auth-submit" onClick={onRejected}>Geri Dön</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ textAlign: 'center', padding: '24px 0' }}>
+      <style>{`@keyframes stoa-ping{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.9);opacity:0}}`}</style>
+      <div style={{ position: 'relative', width: 84, height: 84, margin: '0 auto 22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid #1d3461', animation: 'stoa-ping 1.6s ease-out infinite' }} />
+        <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', border: '2px solid #1d3461', animation: 'stoa-ping 1.6s ease-out infinite 0.4s' }} />
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#1d3461', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+      </div>
+      <h2 style={{ marginBottom: 8, fontSize: 20 }}>Onay Bekleniyor</h2>
+      <p style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 22, opacity: 0.65 }}>
+        Katılım isteğiniz takım sahibine iletildi.<br />
+        Onaylandığında otomatik olarak içeri alınacaksınız.
+      </p>
+      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '12px 28px', borderRadius: 12, background: 'rgba(29,52,97,0.06)', border: '1px solid rgba(29,52,97,0.15)', marginBottom: 22 }}>
+        <div style={{ fontSize: 11, opacity: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bekleme Süresi</div>
+        <div style={{ fontSize: 24, fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: '#1d3461' }}>
+          {fmtElapsed(elapsed)}
+        </div>
+      </div>
+      <div style={{ fontSize: 12, opacity: 0.4 }}>
+        Bu pencereyi açık tutun — onay geldiğinde otomatik yönlendirilirsiniz.
+      </div>
+    </div>
+  );
+}
+
 // ── 2. ÇALIŞMA ALANI SAYFASI ─────────────────────────────────────────────────────
 function WorkspaceSetupPage({ onReady, onLogout }) {
-  const [tab, setTab] = React.useState('create');
+  const [tab, setTab] = React.useState(() => {
+    try { return new URLSearchParams(window.location.search).get('join') ? 'join' : 'create'; } catch { return 'create'; }
+  });
   const [wsName, setWsName] = React.useState('');
   const [wsTemplate, setWsTemplate] = React.useState('software');
-  const [code, setCode] = React.useState('');
+  const [code, setCode] = React.useState(() => {
+    try { return new URLSearchParams(window.location.search).get('join') || ''; } catch { return ''; }
+  });
   const [error, setError] = React.useState('');
   const [busy, setBusy] = React.useState(false);
+  const [pendingLobby, setPendingLobby] = React.useState(false);
+  const [pendingJoinedAt, setPendingJoinedAt] = React.useState(null);
   const me = window.CURRENT_USER || {};
 
   const [isOnline, setIsOnline] = React.useState(navigator.onLine);
@@ -557,7 +595,15 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
     e.preventDefault();
     if (!isOnline) { setError('Ağ bağlantısı yok.'); return; }
     setError(''); setBusy(true);
-    try { await window.API.joinWorkspace(code.trim()); onReady(); }
+    try {
+      const res = await window.API.joinWorkspace(code.trim());
+      if (res && res.pending) {
+        setPendingJoinedAt(Date.now());
+        setPendingLobby(true);
+      } else {
+        onReady();
+      }
+    }
     catch (err) { setError(err.message || 'Geçersiz davet kodu'); }
     finally { setBusy(false); }
   };
@@ -570,6 +616,44 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
 
   // Sağ taraf theme: create → siyah (ink), join → mavi
   const dataVariant = joinActive ? 'ws-join' : 'ws-create';
+
+  if (pendingLobby) {
+    return (
+      <div className="auth-page workspace-page" data-variant="ws-join">
+        <div className="auth-visual ws-blueprint-bg" style={{ background: '#0a1628' }}>
+          <div className="ws-bp-overlay" style={{ background: 'radial-gradient(ellipse at 30% 40%, rgba(29,52,97,0.5) 0%, transparent 70%)' }} />
+          <div className="ws-blueprint-content">
+            <div className="auth-brand-row" style={{ marginBottom: 28 }}>
+              <StoaLogo color="rgba(160,220,255,0.9)" size={36} />
+              <div className="auth-brand-text ws-brand" style={{ color: 'rgba(200,230,255,0.95)' }}>
+                Stoa<em style={{ color: 'rgba(120,190,255,0.9)' }}>Board</em>
+              </div>
+            </div>
+            <div className="ws-blueprint-drawing"><BlueprintSVG /></div>
+            <div className="ws-bp-bottom">
+              <div className="ws-bp-title" style={{ color: 'rgba(200,230,255,0.95)' }}>İsteğin <em style={{ color: 'rgba(120,190,255,0.9)' }}>iletildi.</em></div>
+              <div className="ws-bp-subtitle" style={{ color: 'rgba(160,200,255,0.65)' }}>Takım sahibi isteğini inceledikten sonra otomatik olarak ekleneceksin.</div>
+            </div>
+          </div>
+        </div>
+        <div className="auth-form-wrap">
+          <div className="auth-form">
+            <PendingLobby
+              joinedAt={pendingJoinedAt}
+              onApproved={onReady}
+              onRejected={() => { setPendingLobby(false); setPendingJoinedAt(null); setError(''); }}
+            />
+            <div className="auth-foot">
+              <a onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+                Sistemi Kapat (Çıkış)
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page workspace-page" data-variant={dataVariant}>

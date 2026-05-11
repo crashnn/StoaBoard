@@ -120,6 +120,18 @@ function Sidebar({
   const generalUnread = unreads[generalKey] || 0;
 
   const myStatus = typeof currentStatus === 'string' ? currentStatus : (currentStatus?.current || 'online');
+  const wsSwitcherRef = React.useRef(null);
+
+  useEffect(() => {
+    if (!wsSwitcherOpen) return;
+    const handler = (e) => {
+      if (wsSwitcherRef.current && !wsSwitcherRef.current.contains(e.target)) {
+        onWsSwitcherToggle?.();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [wsSwitcherOpen]);
 
   return (
     <aside className="sidebar" data-collapsed={collapsed} data-mobile-open={mobileOpen}>
@@ -144,7 +156,7 @@ function Sidebar({
       </div>
 
       {/* Workspace switcher */}
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }} ref={wsSwitcherRef}>
         <div className="workspace-switcher" title={DATA.WORKSPACE?.name || 'StoaBoard'}
           onClick={onWsSwitcherToggle}
           style={{ cursor: 'pointer', userSelect: 'none' }}
