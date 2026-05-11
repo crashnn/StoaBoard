@@ -4388,7 +4388,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .ws-bp-stats { grid-template-columns: repeat(2, 1fr) !important; }
 
   /* ── Alan satırları: alt alta ── */
-  .field-row { flex-direction: column; gap: 12px; }
+  .field-row { grid-template-columns: 1fr; gap: 12px; }
 
   /* ── Alt bar ── */
   .subbar { padding: 8px 12px; gap: 6px; overflow-x: auto; }

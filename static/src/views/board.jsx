@@ -177,10 +177,10 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
             {task.priority === 'high' ? 'Yüksek' : task.priority === 'mid' ? 'Orta' : 'Düşük'}
           </span>
         </div>
-        {task.due && (
+        {(task.start || task.due) && (
           <div className="meta-item" data-warn={overdue} data-done={isDone}>
             <Icon name="calendar" size={12} />
-            {DATA.fmtDate(task.due)}
+            {task.start ? `${DATA.fmtDate(task.start)} – ${task.due ? DATA.fmtDate(task.due) : '?'}` : DATA.fmtDate(task.due)}
           </div>
         )}
         {task.subtasks && (

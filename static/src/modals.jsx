@@ -3,7 +3,7 @@
 const { useState: useModalState, useEffect: useModalEffect, useRef: useModalRef } = React;
 
 // ── Custom Date Picker ─────────────────────────────────────────────────────
-function DatePicker({ value, onChange }) {
+function DatePicker({ value, onChange, error }) {
   const [open, setOpen] = React.useState(false);
   const [pos, setPos]   = React.useState({ top: 0, left: 0 });
   const btnRef = React.useRef(null);
@@ -133,6 +133,7 @@ function DatePicker({ value, onChange }) {
         padding: '12px 14px', background: 'var(--bg-raised)', border: '1px solid var(--line)',
         borderRadius: 999, fontSize: 14, color: parsed ? 'var(--ink)' : 'var(--ink-muted)',
         cursor: 'pointer', fontFamily: 'inherit',
+        ...(error ? { borderColor: 'var(--status-rose)', background: 'oklch(58% 0.13 10 / 0.05)' } : {}),
       }}>
         <span>{displayVal}</span>
         <Icon name="calendar" size={14} />
@@ -157,8 +158,9 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates }) {
   const [assigneeDates, setAssigneeDates] = useModalState({});
   const [showPerAssignee, setShowPerAssignee] = useModalState(false);
   const [busy, setBusy]           = useModalState(false);
-  const [titleError, setTitleError] = useModalState(false);
-  const [dueError, setDueError]     = useModalState(false);
+  const [titleError, setTitleError]   = useModalState(false);
+  const [startError, setStartError]   = useModalState(false);
+  const [dueError, setDueError]       = useModalState(false);
   const [colOpen, setColOpen]           = useModalState(false);
   const [priorityOpen, setPriorityOpen] = useModalState(false);
   const [colPos, setColPos]             = useModalState({ top: 0, left: 0, width: 0 });
@@ -215,7 +217,11 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates }) {
 
   const submit = async () => {
     if (busy) return;
-    if (!title.trim()) { setTitleError(true); return; }
+    let hasErr = false;
+    if (!title.trim()) { setTitleError(true); hasErr = true; }
+    if (!startDate) { setStartError(true); hasErr = true; }
+    if (!due) { setDueError(true); hasErr = true; }
+    if (hasErr) return;
     setBusy(true);
     const cleanAd = {};
     for (const [slug, d] of Object.entries(assigneeDates)) {
@@ -311,12 +317,12 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates }) {
           </div>
           <div className="field-row">
             <div className="field">
-              <label>Başlangıç</label>
-              <DatePicker value={startDate} onChange={(v) => setStartDate(v)} />
+              <label>Başlangıç {startError && <span style={{ color: 'var(--status-rose)', fontWeight: 400, fontSize: 11 }}>— gerekli</span>}</label>
+              <DatePicker value={startDate} onChange={(v) => { setStartDate(v); setStartError(false); }} error={startError} />
             </div>
             <div className="field">
-              <label>Bitiş</label>
-              <DatePicker value={due} onChange={(v) => { setDue(v); setDueError(false); }} />
+              <label>Bitiş {dueError && <span style={{ color: 'var(--status-rose)', fontWeight: 400, fontSize: 11 }}>— gerekli</span>}</label>
+              <DatePicker value={due} onChange={(v) => { setDue(v); setDueError(false); }} error={dueError} />
             </div>
           </div>
           {assignees.length > 1 && (
