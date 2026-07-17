@@ -20,6 +20,7 @@ import { DashboardView } from './views/dashboard.jsx';
 import { NotesView } from './views/notes.jsx';
 import { SettingsView } from './views/settings.jsx';
 import { TrashView } from './views/trash.jsx';
+import { LegalPage } from './views/legal.jsx';
 
 function _playDing() {
   try {
@@ -46,6 +47,10 @@ function App() {
   const [loading, setLoading]               = useS(true);
   const [needsWorkspace, setNeedsWorkspace] = useS(false);
   const [view, setView]                     = useS(() => {
+    const path = window.location.pathname;
+    if (path === '/gizlilik-sartlari') return 'gizlilik-sartlari';
+    if (path === '/hizmet-sartlari') return 'hizmet-sartlari';
+
     const stored = localStorage.getItem('stoa.view') || 'board';
     // Legacy: 'list' view migrated to 'board' with list sub-view
     if (stored === 'list') {
@@ -127,7 +132,35 @@ function App() {
   const canDeleteMessages = isOwner || myPerms.includes('delete_messages');
   const canManageMembers = isOwner || myPerms.includes('manage_members');
 
-  useEf(() => localStorage.setItem('stoa.view', view), [view]);
+  useEf(() => {
+    if (view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') {
+      if (window.location.pathname !== `/${view}`) {
+        window.history.pushState({}, '', `/${view}`);
+      }
+    } else if (view === 'auth') {
+      if (window.location.pathname !== '/') {
+        window.history.pushState({}, '', '/');
+      }
+    } else {
+      localStorage.setItem('stoa.view', view);
+      if (window.location.pathname === '/gizlilik-sartlari' || window.location.pathname === '/hizmet-sartlari') {
+        window.history.pushState({}, '', '/');
+      }
+    }
+  }, [view]);
+
+  useEf(() => {
+    const handlePop = () => {
+      const path = window.location.pathname;
+      if (path === '/gizlilik-sartlari' || path === '/hizmet-sartlari') {
+        setView(path.slice(1));
+      } else {
+        setView(localStorage.getItem('stoa.view') || 'board');
+      }
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
   useEf(() => { document.documentElement.dataset.theme    = tweaks.theme;    }, [tweaks.theme]);
   useEf(() => { document.documentElement.dataset.accent   = tweaks.accent;   }, [tweaks.accent]);
   useEf(() => { document.documentElement.dataset.fontpair = tweaks.fontPair; }, [tweaks.fontPair]);
@@ -883,6 +916,13 @@ function App() {
   }
 
   if (!authed) {
+    if (view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') {
+      return (
+        <div className="app" data-auth="true">
+          <LegalPage type={view} onViewChange={setView} authed={authed} />
+        </div>
+      );
+    }
     return (
       <div className="app" data-auth="true">
         <AuthPage onSignIn={handleSignIn} />
@@ -898,7 +938,19 @@ function App() {
     );
   }
 
-  const crumb = { board:window.t('crumb_board'), 'board-list':window.t('crumb_list'), calendar:window.t('crumb_calendar'), dashboard:window.t('crumb_dashboard'), settings:window.t('crumb_settings'), chat:window.t('crumb_chat'), notifications:window.t('crumb_notifications'), notes:window.t('crumb_notes'), trash: window.t?.('nav_trash') || 'Çöp Kutusu' }[view] || window.t('crumb_board');
+  const crumb = {
+    board:window.t('crumb_board'),
+    'board-list':window.t('crumb_list'),
+    calendar:window.t('crumb_calendar'),
+    dashboard:window.t('crumb_dashboard'),
+    settings:window.t('crumb_settings'),
+    chat:window.t('crumb_chat'),
+    notifications:window.t('crumb_notifications'),
+    notes:window.t('crumb_notes'),
+    trash: window.t?.('nav_trash') || 'Çöp Kutusu',
+    'gizlilik-sartlari': 'Gizlilik Sözleşmesi',
+    'hizmet-sartlari': 'Hizmet Şartları'
+  }[view] || window.t('crumb_board');
 
   // My-tasks open count (assigned to me, not in a done column)
   const myId = window.CURRENT_USER?.id;
@@ -973,7 +1025,7 @@ function App() {
           onMobileMenuToggle={() => setMobileSidebarOpen(v => !v)}
         />
 
-        {noProject && view !== 'settings' ? (
+        {noProject && view !== 'settings' && view !== 'gizlilik-sartlari' && view !== 'hizmet-sartlari' ? (
           <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16, color:'var(--ink-muted)' }}>
             <Icon name="layoutBoard" size={48} strokeWidth={1} />
             <div style={{ fontSize:22, fontFamily:'var(--font-display)', color:'var(--ink)' }}>{window.t('nav_no_projects')}</div>
@@ -1002,6 +1054,9 @@ function App() {
                 canManageTasks={canManageTasks}
               />
             ) : null}
+            {(view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') && (
+              <LegalPage type={view} onViewChange={setView} authed={authed} />
+            )}
             {!taskPageTask && view === 'board'     && <BoardView key={currentProject?.id || 'default'} tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} onDeleteTask={deleteTask} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} canManageTasks={canManageTasks} canManageProjects={canManageProjects} switching={projectSwitching} />}
             {view === 'notifications' && (
               <NotifPanel
