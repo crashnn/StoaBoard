@@ -65,3 +65,24 @@ export async function logActivity(client, projectId, userId, text) {
     data: { projectId, userId, text },
   });
 }
+
+/**
+ * Görevin ilerlemesini alt görevlere göre yeniden hesaplar.
+ *
+ * Alt görev yoksa dokunmaz — ilerleme o durumda elle/kolon üzerinden yönetiliyor.
+ * `client` transaction da olabilir, normal prisma da.
+ *
+ * Not: eskiden bu hesap yalnızca PATCH /subtasks/:id içinde yapılıyordu; alt görev
+ * eklenince/silinince ve kart "tamamlandı" kolonundan çıkınca ilerleme bayat kalıyordu.
+ */
+export async function recalcTaskProgress(client, taskId) {
+  const subs = await client.subtask.findMany({
+    where: { taskId },
+    select: { done: true },
+  });
+  if (!subs.length) return null;
+  const done = subs.filter((s) => s.done).length;
+  const progress = Math.round((done / subs.length) * 100);
+  await client.task.update({ where: { id: taskId }, data: { progress } });
+  return progress;
+}

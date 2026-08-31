@@ -430,6 +430,19 @@ input, textarea, select, [contenteditable="true"] {
   overflow: hidden;
   position: relative;
 }
+/* Sidebar orta blogu: nav + projeler + DM'ler birlikte kayar.
+   Cubuk gizli ama tekerlek/trackpad/klavye ile gezinme calisir. */
+.sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* eski Edge */
+}
+.sidebar-scroll::-webkit-scrollbar { width: 0; height: 0; }
+
 /* ── Collapsed sidebar ─────────────────────────────────────────── */
 .sidebar[data-collapsed="true"] { width: 60px; }
 
@@ -936,6 +949,23 @@ input, textarea, select, [contenteditable="true"] {
   border-bottom: 1px solid var(--line);
   background: var(--bg);
   flex-shrink: 0;
+}
+
+/* Dar ekranda arac cubugu tasip kirpiliyordu: Liste/Kanban/Tablo/Cizelge
+   sekmeleri ve filtre ekran disinda kalip erisilemez oluyordu. Artik yatay
+   kayiyor; cubuk gizli ama parmak/trackpad ile geziniyor. */
+@media (max-width: 768px) {
+  .board-toolbar {
+    padding: 7px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .board-toolbar::-webkit-scrollbar { width: 0; height: 0; }
+  .board-toolbar > * { flex-shrink: 0; }
+  .board-search-wrap { min-width: 150px; }
 }
 .filter-toggle-btn {
   display: inline-flex;
@@ -4224,6 +4254,18 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .settings-nav-head { display: none; }
   .settings-nav-list { flex-direction: row; border-top: none; padding: 0; gap: 6px; }
   .settings-nav-item { flex-shrink: 0; }
+
+  /* 13 sekme dar ekrana sigmiyor. Yatay kaydirma zaten vardi ama cubuk
+     cirkin duruyor ve devami oldugu belli olmuyordu: cubugu gizleyip
+     sag kenara soluma ipucu koyduk. */
+  .settings-nav {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+            mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  }
+  .settings-nav::-webkit-scrollbar { width: 0; height: 0; }
 }
 .settings-wrap h1 {
   font-family: var(--font-display);
@@ -5145,6 +5187,11 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   flex: 1;
   overflow-y: auto;
   padding: 32px 36px;
+}
+/* Satirlar okunabilir genislikte kalsin, ama gorunum diger view'lar gibi
+   alani doldursun. Onceden .trash-view max-width:760px idi ve ortalanmadigi
+   icin sayfa sola yapisip sagda buyuk bir bosluk kaliyordu. */
+.trash-view > * {
   max-width: 760px;
 }
 .trash-header {
@@ -6393,12 +6440,21 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
 .chat-fp-back-btn { display: none; }
 
 /* Responsive: collapse right panel below 1100px, left below 760px */
+/* Asagidaki :has() varyantlari da yazilmali: yukarida (.chat-fp-grid:has(...))
+   kurallari (0,2,0) ozgullugunde ve medya sorgusu ozgulluk eklemedigi icin sade
+   .chat-fp-grid (0,1,0) onlari ezemiyordu. Sonucta panel display:none olsa bile
+   sutunu gridde yer kaplamaya devam ediyor, sohbet dar bir sutuna sikisip
+   yaninda buyuk bir bosluk birakiyordu. */
 @media (max-width: 1100px) {
-  .chat-fp-grid { grid-template-columns: 260px minmax(0, 1fr); }
+  .chat-fp-grid,
+  .chat-fp-grid:has(.chat-fp-right),
+  .chat-fp-grid:not(:has(.chat-fp-right)) { grid-template-columns: 260px minmax(0, 1fr); }
   .chat-fp-right { display: none; }
 }
 @media (max-width: 760px) {
-  .chat-fp-grid { grid-template-columns: minmax(0, 1fr); }
+  .chat-fp-grid,
+  .chat-fp-grid:has(.chat-fp-right),
+  .chat-fp-grid:not(:has(.chat-fp-right)) { grid-template-columns: minmax(0, 1fr); }
   .chat-fp-left { display: none; }
   .chat-fp-back-btn { display: flex; }
 }

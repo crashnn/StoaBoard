@@ -249,6 +249,8 @@ function Sidebar({
         <kbd className="sidebar-label">Ctrl K</kbd>
       </div>
 
+      {/* Orta blok kaydirilabilir: proje/DM birikince alt kisim erisilemez oluyordu */}
+      <div className="sidebar-scroll">
       <div className="sidebar-section">
         <NavItem icon="home"          label={window.t?.('nav_home') || 'Ana Sayfa'}   sub="Dashboard" onClick={() => onView('dashboard')} active={view === 'dashboard'} />
         <NavItem icon="circleCheck"   label={window.t?.('nav_tasks') || 'Görevlerim'}  sub="My Tasks"
@@ -334,6 +336,7 @@ function Sidebar({
             <span className="sidebar-label">{window.t?.('nav_no_members') || 'Henüz başka üye yok'}</span>
           </div>
         )}
+      </div>
       </div>
 
       <div className="sidebar-footer">
@@ -501,7 +504,7 @@ function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onC
         >
           <Icon name="msg" size={16} />
         </button>
-        <button className="icon-btn" onClick={openNotifs} title="Bildirimler" style={{ position: 'relative' }}>
+        <button className="icon-btn" data-notif-toggle="true" onClick={openNotifs} title={window.t?.('topbar_notifications') || 'Bildirimler'} style={{ position: 'relative' }}>
           <Icon name="bell" size={16} />
           {notifCount > 0
             ? <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 14, height: 14, borderRadius: 7, background: 'var(--status-rose)', color: 'white', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px', lineHeight: 1 }}>{notifCount > 9 ? '9+' : notifCount}</span>

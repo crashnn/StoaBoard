@@ -58,6 +58,9 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
     // hemen dashboard'a dönüyordu.
     if (fullPage) return;
     const handler = (e) => {
+      // Zil butonuna tiklamayi "disari tiklama" sayma: mousedown paneli kapatiyor,
+      // ardindan butonun click'i tekrar aciyordu — panel bir turlu kapanmiyordu.
+      if (e.target.closest?.('[data-notif-toggle]')) return;
       if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
     };
     document.addEventListener('mousedown', handler);

@@ -31,6 +31,7 @@ import {
   parseDate,
   nextTaskPosition,
   logActivity,
+  recalcTaskProgress,
 } from '../lib/projects.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 
@@ -289,13 +290,17 @@ tasksRouter.patch(
 
     // Column move (+ aktivite log + is_done ise progress=100)
     let movedActivity = null;
+    let recalcAfterMove = false;
     if ('col' in data) {
       const newCol = await prisma.boardColumn.findFirst({
         where: { projectId: task.projectId, slug: data.col },
       });
       if (newCol && newCol.id !== task.columnId) {
         updates.columnId = newCol.id;
+        // Tamamlandi kolonuna girince 100; cikinca alt gorevlerden yeniden hesapla
+        // (alt gorev yoksa recalcAfterMove null doner ve ilerlemeye dokunulmaz).
         if (newCol.isDone) updates.progress = 100;
+        else if (task.progress === 100) recalcAfterMove = true;
         movedActivity = buildNotificationText('task_moved', {
           task: data.title?.trim() || task.title,
           col: newCol.titleTr || newCol.title,
@@ -355,6 +360,9 @@ tasksRouter.patch(
 
       if (movedActivity) {
         await logActivity(tx, task.projectId, user.id, movedActivity);
+      }
+      if (recalcAfterMove) {
+        await recalcTaskProgress(tx, taskId);
       }
     });
 
@@ -467,6 +475,9 @@ tasksRouter.post(
     const s = await prisma.subtask.create({
       data: { taskId, title, done: false, position: count },
     });
+    // Yeni alt görev toplamı değiştirdiği için ilerleme yeniden hesaplanmalı;
+    // aksi halde 2/2 (%100) bir göreve üçüncü alt görev eklenince %100 kalıyordu.
+    await recalcTaskProgress(prisma, taskId);
     res.status(201).json(subtaskToDict(s));
   }),
 );
@@ -541,6 +552,7 @@ subtasksRouter.delete(
       return res.status(403).json({ error: 'Alt görev silme yetkiniz yok' });
     }
     await prisma.subtask.delete({ where: { id: subtaskId } });
+    await recalcTaskProgress(prisma, s.taskId);
     res.json({ ok: true });
   }),
 );

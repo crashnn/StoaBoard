@@ -25,10 +25,10 @@ Takımlar için gerçek zamanlı proje yönetim uygulaması. Workspace, proje, b
 - express-session + connect-pg-simple (PostgreSQL-backed sessions)
 - google-auth-library, nodemailer, multer
 
-**Frontend** (`static/`)
-- React 18 (CDN, Babel JSX in-browser)
-- Tek sayfa SPA, `server/views/index.html` üzerinden bootstrap
-- `static/src/` altında modüler JSX (views, modals, drawer, chat, notifications, palette, tweaks)
+**Frontend** (`client/`)
+- React 18 + Vite 6
+- Tek sayfa SPA; `client/src/` altında modüler JSX (views, modals, drawer, chat, notifications, palette, tweaks)
+- `npm run build` çıktıyı `static/dist/`e yazar, sunucu oradan servis eder — ayrı bir frontend sunucusu yok
 
 ## Proje Yapısı
 
@@ -47,11 +47,21 @@ StoaBoard/
 │   │                           # channels, notes, projects, uploads, serializers
 │   ├── prisma/
 │   │   └── schema.prisma       # DB şeması (Neon ile senkron)
-│   ├── views/index.html        # SPA bootstrap (Babel + React CDN)
 │   └── package.json
+├── client/
+│   ├── src/
+│   │   ├── main.jsx            # React giriş noktası
+│   │   ├── app.jsx             # Uygulama kabuğu, state, socket
+│   │   ├── shell.jsx           # Sidebar + topbar
+│   │   ├── views/              # dashboard, board, list, calendar,
+│   │   │                       # notes, settings, trash, auth, legal
+│   │   ├── chat.jsx            # Sohbet paneli ve tam ekran sohbet
+│   │   ├── data.jsx            # API sarmalayıcı + i18n (tr, en, de, es, ru)
+│   │   └── styles.css          # oklch tabanlı tema
+│   ├── index.html
+│   └── vite.config.js          # build → ../static/dist, dev proxy → :5000
 ├── static/
-│   ├── src/                    # React kaynak dosyaları
-│   ├── styles.css              # oklch tabanlı tema
+│   ├── dist/                   # Vite build çıktısı (versiyonlanmaz)
 │   └── *.png/svg               # marka asset'leri
 ├── railway.toml                # Railway deploy config
 ├── nixpacks.toml               # Node 20 pin
@@ -66,28 +76,47 @@ StoaBoard/
 
 ### Adımlar
 
+Sunucu ve istemci ayrı paketler; ikisinin de bağımlılıkları kurulmalı.
+
+**1. Sunucu**
+
 ```bash
 git clone https://github.com/crashnn/StoaBoard.git
 cd StoaBoard/server
 
-# Bağımlılıklar (postinstall ile Prisma Client de generate edilir)
-npm install
-
-# .env oluştur
+# .env önce oluşturulmalı: postinstall, Prisma Client üretip
+# DATABASE_URL'e şema gönderiyor.
 cp .env.example .env
 # DATABASE_URL, SECRET_KEY, GOOGLE_CLIENT_ID değerlerini doldur
 
-# Mevcut DB şemasını çek (ilk kurulumda)
-npm run prisma:pull
-npm run prisma:generate
-
-# Çalıştır
-npm run dev          # nodemon + hot reload
-# veya
-npm start            # production modu
+npm install          # postinstall: prisma generate + prisma db push
+npm run dev          # nodemon, :5000
 ```
 
-Uygulama [http://localhost:5000](http://localhost:5000) adresinde açılır.
+> **Uyarı:** `postinstall` ve `npm start`, `prisma db push --accept-data-loss`
+> çalıştırıyor. `DATABASE_URL`'in geliştirme veritabanını gösterdiğinden emin ol.
+
+**2. İstemci**
+
+```bash
+cd ../client
+npm install
+
+# Google ile giriş butonu isteniyorsa (opsiyonel)
+echo "VITE_GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com" > .env
+
+npm run dev          # Vite, :5173 — /api ve /socket.io :5000'e proxy'lenir
+```
+
+Geliştirmede [http://localhost:5173](http://localhost:5173) kullanılır; Vite
+API ve websocket isteklerini sunucuya yönlendirir.
+
+Tek süreçte production gibi çalıştırmak için istemciyi derleyip sunucuyu başlat:
+
+```bash
+cd client && npm run build     # → static/dist
+cd ../server && npm start      # → http://localhost:5000
+```
 
 ### Önemli env değişkenleri
 
@@ -111,6 +140,16 @@ SMTP_PASS=...
 SMTP_FROM=no-reply@stoaboard.app
 ```
 
+İstemci tarafında derleme anında okunan tek değişken var (`client/.env`):
+
+```env
+VITE_GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+```
+
+Sunucudaki `GOOGLE_CLIENT_ID` token'ı doğrular, istemcideki `VITE_GOOGLE_CLIENT_ID`
+ise giriş butonunu çizer. **İkisi de aynı değeri almalı**; yalnızca biri verilirse
+Google girişi çalışmaz.
+
 ## Production Deploy (Railway)
 
 `GitHub → Railway → Neon PostgreSQL` akışı:
@@ -125,9 +164,13 @@ SMTP_FROM=no-reply@stoaboard.app
 3. Deploy otomatik tetiklenir
 
 [railway.toml](railway.toml) build ve start komutlarını yönetir:
-- Build: `cd server && npm ci && npx prisma generate`
+- Build: `cd client && npm ci && npm run build && cd ../server && npm ci && npx prisma db push`
 - Start: `cd server && npm start`
 - Healthcheck: `GET /`
+
+Yani istemci derlemesi de dağıtımın parçası: Railway `static/dist`i build sırasında
+üretir, sunucu onu servis eder. `VITE_GOOGLE_CLIENT_ID` Railway'de tanımlı olmalı —
+build anında okunur, çalışma anında değil.
 
 > **Uyarı:** `chat upload` ve `task attachment` dosyaları PostgreSQL'de bytea olarak tutulur. Bu, Railway gibi efemer filesystem'lerde kayıp riskini önler. Yüksek hacimli kullanım için Cloudinary/S3/R2 entegrasyonu önerilir.
 
@@ -135,10 +178,10 @@ SMTP_FROM=no-reply@stoaboard.app
 
 Accent renk sistemi `oklch()` + `color-mix()` üzerine kuruludur. Yeni renk eklerken hex yerine oklch tercih edilir; soft/softer/ink türevleri otomatik üretilir.
 
-- CSS değişkenleri: [static/styles.css](static/styles.css) → `:root` (default navy) + `[data-accent="..."]` + `[data-accent="custom"]`
+- CSS değişkenleri: [client/src/styles.css](client/src/styles.css) → `:root` (default navy) + `[data-accent="..."]` + `[data-accent="custom"]`
 - Accent state: `localStorage.stoa.tweaks` JSON, anahtar `accent` ve opsiyonel `accentHex`
 - App.jsx içinde `document.documentElement.dataset.accent` set edilir; `custom` durumunda `--accent` inline yazılır
-- Auth ekranları (`static/src/views/auth.jsx`) bilinçli olarak hardcoded `#1a4a70` kullanır — login öncesi tweaks yüklü değildir
+- Auth ekranları (`client/src/views/auth.jsx`) bilinçli olarak hardcoded `#1a4a70` kullanır — login öncesi tweaks yüklü değildir
 
 ## Güvenlik Notları
 

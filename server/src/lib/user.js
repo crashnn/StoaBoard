@@ -17,7 +17,10 @@ export const AVATAR_COLORS = [
 
 /**
  * Python User.to_dict() ile birebir aynı çıktı.
- * Frontend bu yapıyı bekliyor (static/src/*.jsx içinde her yerde kullanılıyor).
+ * Frontend bu yapıyı bekliyor (client/src altındaki jsx dosyalarında her yerde).
+ *
+ * Dikkat: `id` alanı kullanıcının sayısal id'sini değil **slug**'ını taşır.
+ * Atama, üyelik ve sohbet uçlarında kullanıcı hep bu slug ile adreslenir.
  */
 export function userToDict(user) {
   if (!user) return null;

@@ -576,6 +576,11 @@ function NoteCard({ note, author, onOpen, onTogglePin, onArchive, onDelete, canE
 function NoteDetail({ note, members, tasks, workspaceTasks, currentUserId, isOwner, onBack, onPatch, onDelete, onLinkTask, onUnlinkTask, onOpenTask, canEdit }) {
   const [title, setTitle]   = useNS(note.title || '');
   const [body, setBody]     = useNS(note.body || '');
+  // Gövde listede gelmediği için sonradan (GET /api/notes/:id ile) düşüyor.
+  // Kullanıcı henüz yazmaya başlamadıysa editöre aktar.
+  useNE(() => {
+    if (typeof note.body === 'string' && body === '') setBody(note.body);
+  }, [note.id, note.body]);
   const [savedAt, setSavedAt] = useNS(fmtTimeAgo(note.updated_at));
   const [saving, setSaving] = useNS(false);
   const [error, setError]   = useNS('');
@@ -637,10 +642,14 @@ function NoteDetail({ note, members, tasks, workspaceTasks, currentUserId, isOwn
 
   const isDirty = title !== (note.title || '') || body !== (note.body || '');
 
+  // Gövde henüz sunucudan gelmediyse (liste ucu gövdesiz döndürüyor) kaydetme —
+  // aksi halde boş editör içeriği gerçek notun üstüne yazılır.
+  const bodyLoaded = typeof note.body === 'string';
+
   // Auto-save only on blur (when user leaves the field), not on every keystroke
   const handleBodyBlur = useNCB(() => {
-    if (canEdit && isDirty) doSave({ title, body });
-  }, [canEdit, isDirty, title, body, doSave]);
+    if (canEdit && isDirty && bodyLoaded) doSave({ title, body });
+  }, [canEdit, isDirty, bodyLoaded, title, body, doSave]);
 
   // Keyboard: ⌘+S = save now, ⌘+Enter = publish, Esc = back
   useNE(() => {
@@ -989,6 +998,24 @@ function NotesView({ socket, tasks, members, currentUserId, isOwner, canManagePr
       .then(rows => { setNotes(rows || []); setLoading(false); onCountChange?.((rows || []).length); })
       .catch(() => { setNotes([]); setLoading(false); });
   }, [showArchived]);
+
+  // Seçilen notun gövdesini çek.
+  // Liste ucu (GET /api/notes) notları gövdesiz döndürüyor; gövde yalnızca
+  // GET /api/notes/:id ile geliyor. Bu olmadan not boş açılıyor ve kullanıcı
+  // bir şey yazıp alandan çıkınca boş gövde kaydedilip içerik siliniyordu.
+  useNE(() => {
+    if (!selectedId) return;
+    const current = notes.find(n => n.id === selectedId);
+    if (!current || typeof current.body === 'string') return;   // zaten yüklü
+    let cancelled = false;
+    API.getNote(selectedId)
+      .then(full => {
+        if (cancelled || !full) return;
+        setNotes(prev => prev.map(n => (n.id === full.id ? { ...n, ...full } : n)));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedId, notes]);
 
   // Trash fetch
   useNE(() => {

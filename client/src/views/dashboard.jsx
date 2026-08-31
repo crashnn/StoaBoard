@@ -29,19 +29,19 @@ function DashboardView({ tasks, onOpenTask, onView }) {
   const throughput = DATA.THROUGHPUT || [];
 
   // Per-column weekly totals for monthly projection
-  const wkColTots = Object.fromEntries(chartCols.map(c => [c.slug, 0]));
+  const wkColTots = Object.fromEntries(chartCols.map(c => [c.id, 0]));
   for (const d of throughput) {
-    for (const c of chartCols) wkColTots[c.slug] = (wkColTots[c.slug] || 0) + ((d.cols || {})[c.slug] || 0);
+    for (const c of chartCols) wkColTots[c.id] = (wkColTots[c.id] || 0) + ((d.cols || {})[c.id] || 0);
   }
 
   const monthData = [
-    { day: 'H1', cols: Object.fromEntries(chartCols.map(c => [c.slug, Math.round((wkColTots[c.slug] || 0) * 0.9)])) },
-    { day: 'H2', cols: Object.fromEntries(chartCols.map(c => [c.slug, Math.round((wkColTots[c.slug] || 0) * 1.2)])) },
-    { day: 'H3', cols: Object.fromEntries(chartCols.map(c => [c.slug, Math.round((wkColTots[c.slug] || 0) * 0.8)])) },
-    { day: 'H4', cols: Object.fromEntries(chartCols.map(c => [c.slug, wkColTots[c.slug] || 0])) },
+    { day: 'H1', cols: Object.fromEntries(chartCols.map(c => [c.id, Math.round((wkColTots[c.id] || 0) * 0.9)])) },
+    { day: 'H2', cols: Object.fromEntries(chartCols.map(c => [c.id, Math.round((wkColTots[c.id] || 0) * 1.2)])) },
+    { day: 'H3', cols: Object.fromEntries(chartCols.map(c => [c.id, Math.round((wkColTots[c.id] || 0) * 0.8)])) },
+    { day: 'H4', cols: Object.fromEntries(chartCols.map(c => [c.id, wkColTots[c.id] || 0])) },
   ];
 
-  const colTotal = (d) => chartCols.reduce((s, c) => s + ((d.cols || {})[c.slug] || 0), 0);
+  const colTotal = (d) => chartCols.reduce((s, c) => s + ((d.cols || {})[c.id] || 0), 0);
   const rawChartData = chartPeriod === 'week' ? throughput : monthData;
   const chartData = chartPeriod === 'week'
     ? rawChartData.filter(d => colTotal(d) > 0)
@@ -197,12 +197,12 @@ function DashboardView({ tasks, onOpenTask, onView }) {
                   return (
                     <div className="bar" key={d.date || d.day}>
                       <div className="bar-tooltip">
-                        {dayLabel}: {chartCols.map(c => `${(d.cols || {})[c.slug] || 0} ${c.title_tr || c.slug}`).join(' · ')}
+                        {dayLabel}: {chartCols.map(c => `${(d.cols || {})[c.id] || 0} ${c.title_tr || c.id}`).join(' · ')}
                       </div>
                       <div className="bar-stack" style={{ height: h }}>
                         {[...chartCols].reverse().map(c => (
-                          <div key={c.slug} className="bar-seg" style={{
-                            height: `${totalD ? ((d.cols || {})[c.slug] || 0) / totalD * 100 : 0}%`,
+                          <div key={c.id} className="bar-seg" style={{
+                            height: `${totalD ? ((d.cols || {})[c.id] || 0) / totalD * 100 : 0}%`,
                             background: c.color || 'var(--ink-faint)',
                           }} />
                         ))}
@@ -216,9 +216,9 @@ function DashboardView({ tasks, onOpenTask, onView }) {
           </div>
           <div className="legend">
             {chartCols.map(c => (
-              <div key={c.slug} className="legend-item">
+              <div key={c.id} className="legend-item">
                 <div className="legend-dot" style={{ background: c.color || 'var(--ink-faint)' }} />
-                {c.title_tr || c.title || c.slug}
+                {c.title_tr || c.title || c.id}
               </div>
             ))}
           </div>
