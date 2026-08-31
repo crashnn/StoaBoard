@@ -5193,10 +5193,13 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   overflow-y: auto;
   padding: 32px 36px;
 }
-/* Satirlar okunabilir genislikte kalsin, ama gorunum diger view'lar gibi
-   alani doldursun. Onceden .trash-view max-width:760px idi ve ortalanmadigi
-   icin sayfa sola yapisip sagda buyuk bir bosluk kaliyordu. */
-.trash-view > * {
+/* Gorunum diger view'lar gibi alani doldurur (onceden .trash-view'in kendisi
+   760px ile sinirliydi ve ortalanmadigi icin sayfa sola yapisiyordu).
+   Sinir yalnizca okunabilir olmasi gereken iki blokta: baslik ve liste.
+   Bos durum disarida birakildi, yoksa gorunmez bir 760px sutunun icinde
+   ortalanip ekranda yamuk duruyordu. */
+.trash-header,
+.trash-list {
   max-width: 760px;
 }
 .trash-header {
