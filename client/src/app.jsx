@@ -737,6 +737,9 @@ function App() {
   };
 
   const openChat = (dmWithSlug, msgId, channelSlug) => {
+    // Bildirim acilirini kapat: ikisi de sag ustte ayni yerde aciliyor ve
+    // bildirim paneli daha ustte kaldigi icin sohbet arkasinda gorunmez oluyordu.
+    setNotifOpen(false);
     const slug = typeof dmWithSlug === 'string' ? dmWithSlug : null;
     if (slug && slug === window.CURRENT_USER?.id) {
       setChatDmWith(null);
@@ -882,11 +885,14 @@ function App() {
   // Tam ekran görev açıkken view değişirse kapat
   useEf(() => { setTaskPageTask(null); }, [view]);
 
-  // Load workspace-wide task trash once on mount (workspace-scoped)
+  // Load workspace-wide task trash (workspace-scoped).
+  // Oturum kurulmadan calistirmiyoruz: [] bagimliligiyla mount aninda atilan
+  // istekler giris ekraninda 401 donup konsolu kirletiyordu.
   useEf(() => {
+    if (!authed) return;
     API.getWorkspaceTrash().then(setTrashTasks).catch(() => {});
     API.getNoteTrash().then(setTrashNotes).catch(() => {});
-  }, []);
+  }, [authed]);
 
   const openModal = (colId, dates = null) => {
     if (!canManageTasks) return;
@@ -1016,7 +1022,7 @@ function App() {
         <Topbar
           view={view} onView={setView}
           openCmd={() => setCmdOpen(true)}
-          openNotifs={() => { setNotifOpen(!notifOpen); setNotifCount(0); }}
+          openNotifs={() => { setNotifOpen(o => !o); setNotifCount(0); setChatOpen(false); }}
           openModal={() => openModal('todo')}
           activeCrumb={crumb}
           onChatOpen={() => openChat()}

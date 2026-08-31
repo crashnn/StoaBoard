@@ -5673,6 +5673,9 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
 .chat-panel:not([data-full-page="true"]) {
   /* Override the original 100vh slide-out with a compact dropdown */
   position: fixed;
+  /* Bildirim aciliri da sag ustte ve z-index:70; sohbet onun arkasinda
+     kalmasin diye ustte tutuluyor. */
+  z-index: 75;
   top: 62px;
   right: 16px;
   bottom: auto;

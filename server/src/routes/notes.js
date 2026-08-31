@@ -154,6 +154,41 @@ notesRouter.post(
   }),
 );
 
+// ─── GET /api/notes/trash ─────────────────────────────────────────────────
+
+notesRouter.get(
+  '/trash',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = await loadUser(req);
+    const wsId = await resolveWorkspaceId(user);
+    if (!wsId) return res.json([]);
+
+    const collabRows = await prisma.noteCollaborator.findMany({
+      where: { userId: user.id },
+      select: { noteId: true },
+    });
+    const collabIds = collabRows.map((c) => c.noteId);
+
+    const notes = await prisma.note.findMany({
+      where: {
+        workspaceId: wsId,
+        deletedAt: { not: null },
+        AND: [{
+          OR: [
+            { visibility: 'workspace' },
+            { authorId: user.id },
+            ...(collabIds.length ? [{ id: { in: collabIds } }] : []),
+          ],
+        }],
+      },
+      include: NOTE_INCLUDE,
+      orderBy: { deletedAt: 'desc' },
+    });
+    res.json(notes.map((n) => noteToDict(n)));
+  }),
+);
+
 // ─── GET /api/notes/:id ────────────────────────────────────────────────────
 
 notesRouter.get(
@@ -254,40 +289,6 @@ notesRouter.patch(
   }),
 );
 
-// ─── GET /api/notes/trash ─────────────────────────────────────────────────
-
-notesRouter.get(
-  '/trash',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const user = await loadUser(req);
-    const wsId = await resolveWorkspaceId(user);
-    if (!wsId) return res.json([]);
-
-    const collabRows = await prisma.noteCollaborator.findMany({
-      where: { userId: user.id },
-      select: { noteId: true },
-    });
-    const collabIds = collabRows.map((c) => c.noteId);
-
-    const notes = await prisma.note.findMany({
-      where: {
-        workspaceId: wsId,
-        deletedAt: { not: null },
-        AND: [{
-          OR: [
-            { visibility: 'workspace' },
-            { authorId: user.id },
-            ...(collabIds.length ? [{ id: { in: collabIds } }] : []),
-          ],
-        }],
-      },
-      include: NOTE_INCLUDE,
-      orderBy: { deletedAt: 'desc' },
-    });
-    res.json(notes.map((n) => noteToDict(n)));
-  }),
-);
 
 // ─── POST /api/notes/:id/restore ──────────────────────────────────────────
 
