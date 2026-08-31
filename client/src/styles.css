@@ -1018,6 +1018,7 @@ input, textarea, select, [contenteditable="true"] {
   outline: none;
   font-size: 12.5px;
   color: var(--ink);
+  min-width: 0;   /* flex min-width:auto tasmasini engelle */
 }
 .board-search-input::placeholder { color: var(--ink-faint); }
 
@@ -3158,7 +3159,9 @@ input, textarea, select, [contenteditable="true"] {
   gap: 6px;
   align-items: center;
 }
-.modal-checklist-input-row input { flex: 1; }
+.modal-checklist-input-row input { flex: 1;
+  min-width: 0;   /* flex min-width:auto tasmasini engelle */
+}
 
 .field {
   display: flex;
@@ -3339,6 +3342,7 @@ input, textarea, select, [contenteditable="true"] {
   outline: none;
   font-size: 15px;
   padding: 0;
+  min-width: 0;   /* flex min-width:auto tasmasini engelle */
 }
 .palette-list { max-height: 360px; overflow-y: auto; padding: 6px; }
 .palette-group-title {
@@ -5077,6 +5081,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   transition: border-color 0.15s;
   font-family: var(--font-ui);
   overflow-y: auto;
+  min-width: 0;   /* flex min-width:auto tasmasini engelle */
 }
 .chat-input:focus { border-color: var(--accent); }
 
@@ -5419,6 +5424,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   font-size: 13px;
   color: var(--ink);
   outline: none;
+  min-width: 0;   /* flex min-width:auto tasmasini engelle */
 }
 .trash-search::placeholder { color: var(--ink-faint); }
 .trash-search-clear {
@@ -5760,20 +5766,18 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   background: var(--bg-raised);
   overflow-y: auto;
 }
-.notif-panel[data-full-page="true"] .notif-prefs-toggle { display: none; }
+/* Onceden burada toggle gizlenip yerine CSS ::before ile sabit "Tercihler"
+   metni basiliyordu; CSS metni cevrilemedigi icin arayuz Ingilizce olsa bile
+   Turkce kaliyordu. Artik gercek buton gosteriliyor: hem cevriliyor hem de
+   dar ekranda tercihleri katlayip bildirimlere yer aciyor. */
+.notif-panel[data-full-page="true"] .notif-prefs-toggle {
+  display: flex;
+  width: 100%;
+}
 .notif-panel[data-full-page="true"] .notif-prefs-body {
-  display: flex !important;
   padding: 16px 16px 20px;
 }
-.notif-panel[data-full-page="true"] .notif-prefs::before {
-  content: "Tercihler";
-  display: block;
-  padding: 16px 16px 4px;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
+
 .notif-panel[data-full-page="true"] > div:last-child {
   grid-area: foot;
   border-top: 1px solid var(--line);
@@ -5793,7 +5797,8 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .notif-panel[data-full-page="true"] > .notif-prefs {
     border-left: none;
     border-top: 1px solid var(--line);
-    max-height: 50vh;
+    max-height: 45vh;
+    flex-shrink: 0;
   }
 }
 
@@ -5851,6 +5856,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   font-size: 12.5px;
   color: var(--ink);
   font-family: inherit;
+  min-width: 0;   /* flex min-width:auto tasmasini engelle */
 }
 .chat-fp-search input::placeholder { color: var(--ink-faint); }
 
@@ -6450,6 +6456,9 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .chat-fp-grid:has(.chat-fp-right),
   .chat-fp-grid:not(:has(.chat-fp-right)) { grid-template-columns: 260px minmax(0, 1fr); }
   .chat-fp-right { display: none; }
+  /* Panel gizliyken ac/kapat butonu da gorunmesin: basiliyor ama hicbir sey
+     olmuyordu. */
+  .chat-fp-right-toggle { display: none; }
 }
 @media (max-width: 760px) {
   .chat-fp-grid,
@@ -7109,6 +7118,13 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
 [data-theme="dark"] .tl-zoom button[data-active="true"] { background: var(--accent); color: white; }
 
 /* ── Grid ── */
+/* Gorev sutunu 220px sabitti; 360px'lik ekranda genisligin %60'ini yiyip
+   zaman eksenini gorunmez hale getiriyordu. Dar ekranda daraltiyoruz. */
+@media (max-width: 768px) {
+  .timeline-grid { --tl-side: 124px; }
+  .tl-side { padding: 8px 8px; }
+  .tl-side-title { font-size: 12px; }
+}
 .timeline-grid {
   flex: 1;
   display: grid;
@@ -7944,6 +7960,9 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   font-size: 13px;
   color: var(--ink);
   flex: 1;
+  /* min-width:auto (flex varsayilani) input'un placeholder genisliginin altina
+     inmesini engelliyor, kutu dar ekranda tasiyordu. */
+  min-width: 0;
   font-family: inherit;
 }
 .notes-search-input::placeholder { color: var(--ink-faint); }
@@ -8512,6 +8531,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   border: 1px solid var(--line); background: var(--bg-raised);
   color: var(--ink); font-size: 13px; font-family: var(--font-ui);
   outline: none; transition: border-color 0.15s;
+  min-width: 0;   /* flex min-width:auto tasmasini engelle */
 }
 .drawer-check-add input:focus { border-color: var(--accent); }
 .drawer-check-edit-input {
@@ -8519,6 +8539,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   border: 1px solid var(--accent); background: var(--bg-raised);
   color: var(--ink); font-size: 13px; outline: none;
   font-family: var(--font-ui);
+  min-width: 0;   /* flex min-width:auto tasmasini engelle */
 }
 .drawer-check-text { cursor: default; flex: 1; }
 .drawer-check-del[title="Düzenle"] { color: var(--ink-faint); }

@@ -3060,8 +3060,10 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                   </div>
                 )}
               </div>
+              {/* Sag panel 1100px altinda CSS ile gizli; butonu da gizliyoruz,
+                  yoksa basilinca hicbir sey olmayan olu bir kontrol kaliyor. */}
               <button
-                className="icon-btn"
+                className="icon-btn chat-fp-right-toggle"
                 title={rightPanelOpen ? (window.t?.('chat_hide_details')||'Detayları gizle') : (window.t?.('chat_show_details')||'Detayları göster')}
                 onClick={() => setRightPanelOpen(o => !o)}
               >

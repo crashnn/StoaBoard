@@ -46,7 +46,11 @@ function _notifCategory(n) {
 
 function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId, tweaks, setTweak, fullPage }) {
   const [tab, setTab]           = React.useState('all');
-  const [prefsOpen, setPrefsOpen] = React.useState(fullPage);
+  // Tam ekranda tercihler acik baslar; ama dar ekranda alt alta dizildigi icin
+  // ekranin yarisini kaplayip bildirimleri gormeyi engelliyordu — orada kapali baslasin.
+  const [prefsOpen, setPrefsOpen] = React.useState(
+    () => fullPage && !(typeof window !== 'undefined' && window.matchMedia?.('(max-width: 980px)').matches),
+  );
   const [items, setItems]       = React.useState(() => DATA.NOTIFICATIONS || []);
   const [confirmDel, setConfirmDel] = React.useState(false);
   const panelRef = React.useRef(null);
