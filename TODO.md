@@ -5,6 +5,13 @@ Canlı: [stoaboard.com](https://www.stoaboard.com) · Railway + Neon PostgreSQL,
 
 ---
 
+> **Toplantı geri bildirimlerinin karşılığı** — hangi not için ne yapıldı, ne
+> yapılmadı ve neden: [TOPLANTI-KARSILIGI.md](TOPLANTI-KARSILIGI.md).
+> Güvenlik çalışma biçimi ve her özelliğin geçmesi gereken elek:
+> [GUVENLIK.md](GUVENLIK.md).
+
+---
+
 ## ✅ Güvenlik turu — 1 Eylül 2026
 
 Raporlama turunun hemen ardından, dal üzerinde yapılan güvenlik denetimi ve

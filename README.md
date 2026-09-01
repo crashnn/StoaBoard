@@ -194,6 +194,25 @@ Accent renk sistemi `oklch()` + `color-mix()` üzerine kuruludur. Yeni renk ekle
 - Şifre hash: Node'un yerleşik `crypto.scryptSync` (werkzeug scrypt formatıyla uyumlu)
 - Session store: PostgreSQL (`connect-pg-simple`), server restart'ında oturum kaybı yok
 
+## Belgeler
+
+| Dosya | İçerik |
+|---|---|
+| [TODO.md](TODO.md) | Kapatılanlar ve sıradakiler, gerekçeleriyle |
+| [GUVENLIK.md](GUVENLIK.md) | Tehdit modeli ve her yeni özelliğin geçmesi gereken elek |
+| [TOPLANTI-KARSILIGI.md](TOPLANTI-KARSILIGI.md) | Toplantı geri bildirimlerinin karşılığı |
+| [RAPORLAMA-TESTI.md](RAPORLAMA-TESTI.md) | `raporlama` dalını başka makinede ayağa kaldırma ve test |
+
+## Testler
+
+```bash
+cd server
+npm test          # Windows PowerShell'de: npm.cmd test
+```
+
+54 test, veritabanı gerektirmez. Kapatılan güvenlik kusurlarının regresyon
+korumaları ve bütün sunucu modüllerinin yüklendiğini doğrulayan smoke testi.
+
 ## Lisans
 
 Özel proje. Yayım hakları sahibine aittir.
