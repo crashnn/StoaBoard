@@ -73,6 +73,14 @@ Saldırganların aylarca fark edilmediği olaylarda asıl kayıp, girişin kendi
 değil **fark edilmeden geçen süre** oldu.
 → *Bizde:* denetim kaydı bu yüzden var. Engellemiyor, **görünür kılıyor.**
 
+**Kontrol atlanırsa kontrol yoktur — kapalı-başarısızlık.**
+Birçok ihlalde asıl kusur eksik kontrol değil, **belirli bir durumda hiç
+çalışmayan** kontroldü.
+→ *Bizde:* sohbette `if (kanalSatırı && !yetki)` kalıbı vardı. Kanal satırı
+bulunamayınca üyelik kontrolü tamamen atlanıyor, kanal listesinde görünmeyen
+"hayalet kanallar" açılabiliyordu. 1 Eylül 2026'da dört yerde kapatıldı.
+Ders: koşulun **yokluk hâli** her zaman reddetmeli.
+
 **Dosya biçiminin kendisi silah olabilir — CSV formül enjeksiyonu.**
 Bilinen bir sınıf: Excel, `=` `+` `-` `@` ile başlayan hücreyi formül sayıp
 çalıştırır. Saldırgan veriyi değil, **veriyi açan kişiyi** hedefler.
@@ -124,6 +132,8 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 - CSV formül enjeksiyonu kapatıldı *(1 Eylül)*
 - Kullanıcı varlığı oracle'ı kapatıldı *(1 Eylül)*
 - Dışa aktarma denetim kaydı *(1 Eylül)*
+- Sohbette kapalı-başarısızlık kusuru kapatıldı *(1 Eylül)* — kanal satırı
+  bulunamayınca üyelik kontrolü tamamen atlanıyordu
 - Oturumlar PostgreSQL'de; `HttpOnly`, `SameSite=lax`, üretimde `Secure`
 - `/api/auth` için hız sınırı
 
@@ -134,9 +144,7 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
    yapabiliyor? Denetlenmedi.
 3. **Oturum hijyeni.** Üye çıkarıldığında ve parola değiştiğinde açık oturumlar
    gerçekten düşüyor mu? Denetlenmedi.
-4. **`chat.js` kapalı-başarısızlık kusuru.** Kanal satırı yoksa üyelik kontrolü
-   atlanıyor görünüyor (`if (chRow && !yetki)`). Doğrulanmalı.
-5. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
+4. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
 6. **Denetim kaydının kapsamı.** Şu an yalnızca dışa aktarma. Üye ekleme/
    çıkarma, rol değişikliği, davet kodu görüntüleme de yazılmalı — eylem
    adları `lib/audit.js` içinde hazır bekliyor.
