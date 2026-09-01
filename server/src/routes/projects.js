@@ -347,6 +347,31 @@ columnsRouter.patch(
     if ('color' in data) updates.color = data.color;
     if ('is_done' in data) updates.isDone = Boolean(data.is_done);
 
+    // Geçiş kuralı: bu kolondan hangi kolonlara gidilebileceği.
+    // Boş dizi ya da null gönderilirse kural kaldırılır (kısıt yok).
+    if ('allowed_next' in data) {
+      const raw = data.allowed_next;
+      if (raw === null || (Array.isArray(raw) && raw.length === 0)) {
+        updates.allowedNext = null;
+      } else if (Array.isArray(raw)) {
+        // Yalnızca aynı projedeki gerçek kolonlar kabul edilir; kolonun kendisi
+        // listeye giremez (aynı kolona taşıma zaten geçiş sayılmıyor).
+        const siblings = await prisma.boardColumn.findMany({
+          where: { projectId: col.projectId },
+          select: { slug: true },
+        });
+        const valid = new Set(siblings.map((s) => s.slug));
+        const cleaned = [
+          ...new Set(
+            raw.filter((s) => typeof s === 'string' && valid.has(s) && s !== col.slug),
+          ),
+        ];
+        updates.allowedNext = cleaned.length ? cleaned : null;
+      } else {
+        return res.status(400).json({ error: 'allowed_next bir dizi olmalı' });
+      }
+    }
+
     const updated = Object.keys(updates).length
       ? await prisma.boardColumn.update({ where: { id: colId }, data: updates })
       : col;

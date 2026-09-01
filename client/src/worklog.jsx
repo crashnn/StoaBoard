@@ -56,11 +56,11 @@ function WorkLogSection({ taskId }) {
       await load();
     } catch (err) {
       setError(
-        err.message === 'err_bad_duration'
+        err.code === 'err_bad_duration'
           ? 'Süre anlaşılamadı. Örnek: 90, 1:30 veya "1s 30d".'
-          : err.message === 'err_future_date'
+          : err.code === 'err_future_date'
             ? 'İleri bir tarihe süre girilemez.'
-            : err.message === 'err_duration_too_long'
+            : err.code === 'err_duration_too_long'
               ? 'Tek kayıt en fazla 24 saat olabilir.'
               : (err.message || 'Süre kaydedilemedi'),
       );

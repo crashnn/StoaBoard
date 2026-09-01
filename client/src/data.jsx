@@ -134,7 +134,15 @@ async function apiFetch(path, options = {}) {
   const res = await fetch(path, opts);
   let data;
   try { data = await res.json(); } catch (_) { data = {}; }
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    // Uçların bir kısmı { error: 'kod', message: 'açıklama' } döndürüyor.
+    // Kullanıcıya açıklama gösterilir; kod ayrıca err.code'da tutulur ki
+    // çağıran taraf isterse türe göre davranabilsin.
+    const err = new Error(data.message || data.error || `HTTP ${res.status}`);
+    err.code = data.error || null;
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 

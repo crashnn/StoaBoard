@@ -639,7 +639,19 @@ function App() {
     setTasks(tasks.map(t => t.id === id ? { ...t, col: colId, progress: col?.is_done ? 100 : t.progress } : t));
     if (drawerTask?.id === id) setDrawerTask(dt => ({ ...dt, col: colId }));
     try { await API.updateTask(id, { col: colId }); }
-    catch (e) { setTasks(prev); console.error('moveTask failed:', e.message); }
+    catch (e) {
+      setTasks(prev);
+      // Çekmece açıksa o da geri sarılmalı; aksi halde kart eski kolona
+      // dönerken çekmece yeni kolonu göstermeye devam ediyordu.
+      if (drawerTask?.id === id) {
+        const old = prev.find(t => t.id === id);
+        if (old) setDrawerTask(dt => ({ ...dt, col: old.col, progress: old.progress }));
+      }
+      // Kolon geçiş kuralı gibi bilinçli engellemelerde sunucu açıklama
+      // gönderiyor; sessizce geri sarmak yerine sebebi göster.
+      window.showToast?.(e.message || 'Görev taşınamadı', 'error');
+      console.error('moveTask failed:', e.message);
+    }
   };
 
   const updateTitle = async (id, title) => {
