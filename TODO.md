@@ -77,8 +77,8 @@ dönük, süre içeren raporlama.**
 > gösterir. Jira'nın da ayrı tuttuğu ayrım bu.
 
 **Raporlar**
-- **Kişi raporu** — kim, hangi işte, ne kadar süre. Başkasının raporu için üye
-  yönetimi izni gerekiyor; kişi kendi raporunu her zaman görüyor.
+- **Kişi raporu** — kim, hangi işte, ne kadar süre. Başkasının raporu için
+  `view_reports` izni gerekiyor; kişi kendi raporunu her zaman görüyor.
 - **Dönem raporu** — ne açıldı, ne bitti, ne bekliyor; kolon hareketleri.
 - **Akış raporu** — ortalama/ortanca tamamlanma süresi, kolonlarda bekleme,
   en uzun süren işler.
@@ -97,8 +97,8 @@ dönük, süre içeren raporlama.**
 **Kolon geçiş kuralı**
 - Toplantıda gösterilen Jira ekranındaki "Open → yalnızca In Review" kısıtının
   karşılığı. Kolona izin verilen sonraki kolonlar tanımlanabiliyor; boş
-  bırakılırsa kısıt yok, mevcut panolar aynen çalışıyor. Sunucu tarafı hazır,
-  **arayüz henüz yok.**
+  bırakılırsa kısıt yok, mevcut panolar aynen çalışıyor. **Kolon menüsünden
+  yönetiliyor**; engellenen taşımada kullanıcı sebebi görüyor.
 
 **Yol üstünde bulunan hata**
 - **Yeni projelerde bitiş kolonu işaretlenmiyordu.** Varsayılan kolonlar
@@ -106,10 +106,13 @@ dönük, süre içeren raporlama.**
   projelerde tamamlanan sayacı, ilerlemenin %100'e çekilmesi ve tamamlanma
   zamanı hiç çalışmıyordu. Düzeltildi (yalnızca yeni projeleri etkiler).
 
-> ⚠️ **Veritabanı adımı bekliyor.** Şema dosyası güncel ama canlı veritabanına
-> gönderilmedi. `prisma db push` üretim verisine dokunuyor; yedek alındıktan
-> sonra çalıştırılmalı. Eklenenlerin hepsi katkı niteliğinde (iki yeni tablo,
-> üç yeni sütun), veri kaybı beklenmiyor.
+> ⚠️ **Veritabanı adımı bekliyor.** Şema dosyası güncel ama hiçbir veritabanına
+> gönderilmedi. `prisma db push` `DATABASE_URL`in gösterdiği yere yazıyor; test
+> için Neon'da `raporlama-test` dalı açıldı. Eklenenlerin hepsi katkı
+> niteliğinde (**üç yeni tablo**: `task_transitions`, `work_logs`, `audit_logs`;
+> **üç yeni sütun**: `tasks.completed_at`, `board_columns.allowed_next`,
+> `users.email_notifications`), veri kaybı beklenmiyor.
+> Adım adım talimat: [RAPORLAMA-TESTI.md](RAPORLAMA-TESTI.md).
 
 ---
 
