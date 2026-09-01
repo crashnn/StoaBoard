@@ -198,6 +198,7 @@ Accent renk sistemi `oklch()` + `color-mix()` üzerine kuruludur. Yeni renk ekle
 
 | Dosya | İçerik |
 |---|---|
+| [CLAUDE.md](CLAUDE.md) | Claude Code için yönlendirme — durum, tuzaklar, çalışma biçimi |
 | [TODO.md](TODO.md) | Kapatılanlar ve sıradakiler, gerekçeleriyle |
 | [GUVENLIK.md](GUVENLIK.md) | Tehdit modeli ve her yeni özelliğin geçmesi gereken elek |
 | [TOPLANTI-KARSILIGI.md](TOPLANTI-KARSILIGI.md) | Toplantı geri bildirimlerinin karşılığı |
