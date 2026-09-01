@@ -101,6 +101,18 @@ ama değildir — ve bu yanlış güven, ihlalin süresini uzatır.
 ediyordu. 1 Eylül 2026'da kapatıldı. Ders: kimlik bilgisi değişen her yerde
 **mevcut oturumların da sonlandırılması** gerekir.
 
+**Sessiz başarısızlık, gürültülü başarısızlıktan tehlikelidir.**
+Bir kontrol hata fırlatırsa dakikalar içinde bulunur; usulca `return` ederse
+aylarca yaşar. Zararı da güvenlik açığıyla sınırlı değil: kullanıcı, işlemin
+neden olmadığını hiç öğrenemez.
+→ *Bizde:* bekleme lobisi `if (!window.io) return;` diyordu. O global Vite
+geçişinde kayboldu, kontrol hep erken çıktı ve davet kodunu giren kullanıcıya
+onay hiç ulaşmadı — canlı bir müşteri toplantısında ortaya çıktı. Aynı taramayı
+yapınca iki kusur daha çıktı: `window.showToast` (bütün bildirimler sessizce
+yutuluyordu) ve `window._parseServerDate` (sohbette saat ve gün ayracı).
+Ders: **yokluk hâli ya gürültü çıkarmalı ya da testle korunmalı.** Bu sınıf
+artık `server/test/global.test.js` ile kapalı.
+
 **Dosya biçiminin kendisi silah olabilir — CSV formül enjeksiyonu.**
 Bilinen bir sınıf: Excel, `=` `+` `-` `@` ile başlayan hücreyi formül sayıp
 çalıştırır. Saldırgan veriyi değil, **veriyi açan kişiyi** hedefler.
@@ -165,7 +177,9 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
   profilden değiştirmede kendi cihazı hariç hepsi
 - Parola alt sınırı her yerde 8 karakter *(1 Eylül)* — profil ekranı 6 ile
   yetiniyor, kayıt/sıfırlamadaki kuralı dolaşmaya izin veriyordu
-- **İlk otomatik testler** *(1 Eylül)* — 54 test, veritabanı gerektirmiyor.
+- Bekleme lobisinin sonsuza kadar beklemesi düzeltildi *(1 Eylül)* — ve bu
+  sınıf (atanmamış `window.*` globali) testle kapatıldı
+- **İlk otomatik testler** *(1 Eylül)* — 55 test, veritabanı gerektirmiyor.
   Bugün kapatılan kusurların hepsi kilitlendi, ayrıca bütün sunucu modüllerinin
   hatasız yüklendiğini doğrulayan bir yükleme testi var. `cd server && npm test`
 - Oturumlar PostgreSQL'de; `HttpOnly`, `SameSite=lax`, üretimde `Secure`

@@ -343,6 +343,11 @@ const API = {
   deleteWorkspaceLogo: (wsId) => apiFetch(`/api/workspaces/${wsId}/logo`, { method: 'DELETE' }),
 };
 window.API = API;
+// chat.jsx bu yardımcıya `window._parseServerDate` üzerinden erişiyor. Vite
+// geçişinde modül export'una dönüştü ama çağrı yeri global okumaya devam etti;
+// `?.` sessizce undefined döndüğü için sohbet saatleri ve gün ayraçları
+// bozuluyordu. Global bağ, çağrı yerleriyle uyum için korunuyor.
+window._parseServerDate = _parseServerDate;
 
 // ── App-wide i18n ────────────────────────────────────────────────────────────
 

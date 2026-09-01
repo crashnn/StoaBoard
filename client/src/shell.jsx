@@ -522,3 +522,10 @@ function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onC
 }
 
 export { showToast, ToastContainer, Avatar, AvatarStack, Sidebar, Topbar, NavItem, StatusProfileWidget };
+
+// Uygulama genelinde bildirimler `window.showToast?.(...)` ile çağrılıyor ama
+// bu global hiçbir yerde atanmamıştı: Vite geçişinde fonksiyon modül export'una
+// döndü, çağrı yerleri güncellenmedi. `?.` sessizce yuttuğu için bütün hata ve
+// bilgi bildirimleri hiç görünmüyordu — kullanıcı işlemin neden başarısız
+// olduğunu asla öğrenemiyordu.
+window.showToast = showToast;
