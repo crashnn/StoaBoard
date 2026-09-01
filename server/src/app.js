@@ -9,13 +9,13 @@
 import express from 'express';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
-import pg from 'pg';
 import cors from 'cors';
 import path from 'node:path';
 import fs from 'node:fs';
 import rateLimit from 'express-rate-limit';
 
 import { config } from './config.js';
+import { sessionPool, SESSION_TABLE } from './lib/sessionStore.js';
 import { authRouter } from './routes/auth.js';
 import { apiRouter } from './routes/api.js';
 import { workspacesRouter } from './routes/workspaces.js';
@@ -45,30 +45,12 @@ import {
   reportsRouter,
 } from './routes/reports.js';
 
-// Session store — varsayılan memory store server restart'ta tüm
-// oturumları siliyordu (kullanıcı her server restart'ta tekrar login).
-// PostgreSQL store kullanarak NeonDB'de "session" tablosunda kalıcılaştır.
-//
-// pg v8+ DATABASE_URL'deki sslmode=require parametresini görünce uyarı atıyor
-// ('verify-full alias' deprecation). SSL'i URL'den ayıklayıp config'le veriyoruz:
-//   - URL'de sslmode parametresini kaldırıyoruz
-//   - ssl: { rejectUnauthorized: false } ile Neon'un kendi imzalı sertifikası kabul
-function buildSessionPoolUrl() {
-  const raw = process.env.DATABASE_URL || '';
-  try {
-    const u = new URL(raw);
-    u.searchParams.delete('sslmode');
-    return u.toString();
-  } catch {
-    return raw;
-  }
-}
-
+// Session store — varsayılan memory store server restart'ta tüm oturumları
+// siliyordu. PostgreSQL store kullanarak NeonDB'de "session" tablosunda
+// kalıcılaştırılıyor. Havuz ve oturum sonlandırma lib/sessionStore.js'te:
+// parola değişince oturumları düşürmek için auth/api uçlarının da erişmesi
+// gerekiyor ve buradan almak dairesel import yaratırdı.
 const PgSession = connectPgSimple(session);
-const sessionPool = new pg.Pool({
-  connectionString: buildSessionPoolUrl(),
-  ssl: { rejectUnauthorized: false },
-});
 
 // Tek bir session middleware instance — hem Express hem Socket.IO ile paylaşılır
 // (Socket.IO el sıkışmasında aynı cookie'den oturumu çözebilelim diye).
@@ -79,7 +61,7 @@ export const sessionMiddleware = session({
   saveUninitialized: false,
   store: new PgSession({
     pool: sessionPool,
-    tableName: 'session',
+    tableName: SESSION_TABLE,
     createTableIfMissing: true, // ilk başlangıçta otomatik oluştur
   }),
   cookie: {

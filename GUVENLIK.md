@@ -92,6 +92,15 @@ sunucuda uygulanıyor ama arayüzde listelenmediği için kimseye verilemiyordu.
 sunucunun uyguladığı izinler birebir aynı olmalı** ve bu, izin eklerken
 kontrol edilmeli.
 
+**Parola değiştirmek erişimi kesmiyorsa, parola değiştirmek işe yaramaz.**
+Hesabı ele geçirilen kullanıcının ilk refleksi parolasını değiştirmektir. Eğer
+saldırganın açık oturumu bundan etkilenmiyorsa kurban güvende olduğunu sanır
+ama değildir — ve bu yanlış güven, ihlalin süresini uzatır.
+→ *Bizde:* oturumlar veritabanında kalıcı, `reset-password` ise yalnızca parola
+özetini güncelleyip dönüyordu. Eski parolayla açılmış oturumlar yaşamaya devam
+ediyordu. 1 Eylül 2026'da kapatıldı. Ders: kimlik bilgisi değişen her yerde
+**mevcut oturumların da sonlandırılması** gerekir.
+
 **Dosya biçiminin kendisi silah olabilir — CSV formül enjeksiyonu.**
 Bilinen bir sınıf: Excel, `=` `+` `-` `@` ile başlayan hücreyi formül sayıp
 çalıştırır. Saldırgan veriyi değil, **veriyi açan kişiyi** hedefler.
@@ -150,6 +159,10 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 - Hayalet izin `invite_members` gerçek hâle getirildi *(1 Eylül)*
 - `manage_workspace` artık arayüzden verilebiliyor *(1 Eylül)*
 - Rapor erişimi kendi iznine ayrıldı: `view_reports` *(1 Eylül)*
+- Parola değişince açık oturumlar düşürülüyor *(1 Eylül)* — sıfırlamada hepsi,
+  profilden değiştirmede kendi cihazı hariç hepsi
+- Parola alt sınırı her yerde 8 karakter *(1 Eylül)* — profil ekranı 6 ile
+  yetiniyor, kayıt/sıfırlamadaki kuralı dolaşmaya izin veriyordu
 - Oturumlar PostgreSQL'de; `HttpOnly`, `SameSite=lax`, üretimde `Secure`
 - `/api/auth` için hız sınırı
 
@@ -162,7 +175,7 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 4. **Denetim kaydının kapsamı.** Şu an yalnızca dışa aktarma. Üye ekleme/
    çıkarma, rol değişikliği, davet kodu görüntüleme de yazılmalı — eylem
    adları `lib/audit.js` içinde hazır bekliyor.
-5. **Otomatik test yok.** Yukarıdaki maddelerin hiçbiri regresyona karşı
+4. **Otomatik test yok.** Yukarıdaki maddelerin hiçbiri regresyona karşı
    korunmuyor. İlk testler izin katmanına yazılmalı.
 
 ---

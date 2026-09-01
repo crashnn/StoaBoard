@@ -160,6 +160,16 @@ Vite `/api` ve soketi sunucuya yönlendiriyor.
       zaman, hangi rapor, hangi aralık, kaç satır, hangi IP.
 - [ ] Kaydın içinde **verinin kendisi olmamalı** — sadece bağlam.
 
+### Oturum hijyeni (güvenlik testi)
+İki tarayıcı gerekiyor — biri normal, biri gizli pencere.
+
+- [ ] Aynı hesapla **iki tarayıcıdan** giriş yap.
+- [ ] Birinci tarayıcıda Ayarlar → parolayı değiştir (en az 8 karakter).
+- [ ] **İkinci tarayıcıyı yenile → oturum düşmüş olmalı**, giriş ekranı gelmeli.
+- [ ] Birinci tarayıcı **açık kalmalı** — kendi oturumun korunuyor.
+- [ ] Parola sıfırlama akışını dene → o durumda **bütün** oturumlar düşmeli.
+- [ ] Profilden 7 karakterlik parola koymayı dene → reddedilmeli.
+
 ### CSV formül enjeksiyonu (regresyon testi)
 - [ ] Bir kartın başlığını `=1+1` yap, o karta süre gir, kişi raporunu CSV
       indir ve **Excel'de aç**.
