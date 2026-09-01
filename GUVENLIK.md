@@ -165,8 +165,9 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
   profilden değiştirmede kendi cihazı hariç hepsi
 - Parola alt sınırı her yerde 8 karakter *(1 Eylül)* — profil ekranı 6 ile
   yetiniyor, kayıt/sıfırlamadaki kuralı dolaşmaya izin veriyordu
-- **İlk otomatik testler** *(1 Eylül)* — 30 test, veritabanı gerektirmiyor.
-  Bugün kapatılan kusurların hepsi kilitlendi. `cd server && npm test`
+- **İlk otomatik testler** *(1 Eylül)* — 54 test, veritabanı gerektirmiyor.
+  Bugün kapatılan kusurların hepsi kilitlendi, ayrıca bütün sunucu modüllerinin
+  hatasız yüklendiğini doğrulayan bir yükleme testi var. `cd server && npm test`
 - Oturumlar PostgreSQL'de; `HttpOnly`, `SameSite=lax`, üretimde `Secure`
 - `/api/auth` için hız sınırı
 
