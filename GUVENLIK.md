@@ -81,6 +81,17 @@ bulunamayınca üyelik kontrolü tamamen atlanıyor, kanal listesinde görünmey
 "hayalet kanallar" açılabiliyordu. 1 Eylül 2026'da dört yerde kapatıldı.
 Ders: koşulun **yokluk hâli** her zaman reddetmeli.
 
+**Yönetici, verdiğini sandığı yetkiyi vermemiş olabilir.**
+Yanlış yapılandırma, açıktan daha sık ihlale yol açar. Tehlikeli olan yalnızca
+"fazla yetki" değil, yöneticinin kafasındaki tablonun gerçekle uyuşmamasıdır.
+→ *Bizde:* ayarlar ekranı "Üye davet et" (`invite_members`) iznini sunuyordu
+ama sunucu bu izni **hiçbir yerde kontrol etmiyordu** — yani verilen yetkinin
+hiçbir etkisi yoktu. Ters yönde de bir uyumsuzluk vardı: `manage_workspace`
+sunucuda uygulanıyor ama arayüzde listelenmediği için kimseye verilemiyordu.
+İkisi de 1 Eylül 2026'da düzeltildi. Ders: **arayüzdeki izin listesi ile
+sunucunun uyguladığı izinler birebir aynı olmalı** ve bu, izin eklerken
+kontrol edilmeli.
+
 **Dosya biçiminin kendisi silah olabilir — CSV formül enjeksiyonu.**
 Bilinen bir sınıf: Excel, `=` `+` `-` `@` ile başlayan hücreyi formül sayıp
 çalıştırır. Saldırgan veriyi değil, **veriyi açan kişiyi** hedefler.
@@ -134,21 +145,24 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 - Dışa aktarma denetim kaydı *(1 Eylül)*
 - Sohbette kapalı-başarısızlık kusuru kapatıldı *(1 Eylül)* — kanal satırı
   bulunamayınca üyelik kontrolü tamamen atlanıyordu
+- Hayalet kanal denetimi yapıldı *(1 Eylül)* — üretim ve test dallarında kayıt
+  bulunamadı, kusur istismar edilmemiş
+- Hayalet izin `invite_members` gerçek hâle getirildi *(1 Eylül)*
+- `manage_workspace` artık arayüzden verilebiliyor *(1 Eylül)*
+- Rapor erişimi kendi iznine ayrıldı: `view_reports` *(1 Eylül)*
 - Oturumlar PostgreSQL'de; `HttpOnly`, `SameSite=lax`, üretimde `Secure`
 - `/api/auth` için hız sınırı
 
 **Açık — öncelik sırasıyla**
 1. **Proje bazlı üyelik.** En büyük yarıçap küçültme. Bugün bir üye çalışma
    alanındaki her şeyi görüyor.
-2. **Varsayılan rolün izinleri.** Yeni üye hangi rolle düşüyor, o rol ne
-   yapabiliyor? Denetlenmedi.
-3. **Oturum hijyeni.** Üye çıkarıldığında ve parola değiştiğinde açık oturumlar
+2. **Oturum hijyeni.** Üye çıkarıldığında ve parola değiştiğinde açık oturumlar
    gerçekten düşüyor mu? Denetlenmedi.
 4. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
-5. **Denetim kaydının kapsamı.** Şu an yalnızca dışa aktarma. Üye ekleme/
+4. **Denetim kaydının kapsamı.** Şu an yalnızca dışa aktarma. Üye ekleme/
    çıkarma, rol değişikliği, davet kodu görüntüleme de yazılmalı — eylem
    adları `lib/audit.js` içinde hazır bekliyor.
-6. **Otomatik test yok.** Yukarıdaki maddelerin hiçbiri regresyona karşı
+5. **Otomatik test yok.** Yukarıdaki maddelerin hiçbiri regresyona karşı
    korunmuyor. İlk testler izin katmanına yazılmalı.
 
 ---

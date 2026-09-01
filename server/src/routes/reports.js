@@ -364,10 +364,15 @@ reportsRouter.get(
       wantedUser = membership.userId;
     }
 
-    // Başkasının raporunu görmek için üye yönetimi izni gerekir; kişi kendi
-    // raporunu her zaman görebilir.
+    // Başkasının raporunu görmek ayrı bir izin ister; kişi kendi raporunu her
+    // zaman görebilir.
+    //
+    // Önce 'manage_members' kullanılıyordu ve bu iki ayrı yetkiyi birbirine
+    // karıştırıyordu: üyeleri yönetebilmek ile kimin kaç saat çalıştığını
+    // görebilmek aynı şey değil. Üye yönetimi verilen bir kişi farkında
+    // olmadan herkesin çalışma saatlerine de erişiyordu.
     const seeingOthers = !wantedUser || wantedUser !== scope.user.id;
-    if (seeingOthers && !hasPermission(scope.member, 'manage_members')) {
+    if (seeingOthers && !hasPermission(scope.member, 'view_reports')) {
       if (!wantedUser) {
         // İzin yoksa sessizce kendi raporuna daralt — boş sayfa göstermektense.
         const own = await personReport(scope.projectIds, {

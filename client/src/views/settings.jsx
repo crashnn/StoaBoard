@@ -366,6 +366,8 @@ const PERM_LABELS_KEYS = {
   manage_members:  ['set_rol_perm_members',  'Üyeleri yönet'],
   manage_channels: ['set_rol_perm_channels', 'Kanalları yönet'],
   delete_messages: ['set_rol_perm_del_msgs', 'Başkalarının mesajlarını sil'],
+  view_reports:    ['set_rol_perm_reports',  'Herkesin raporlarını gör'],
+  manage_workspace:['set_rol_perm_workspace','Çalışma alanını yönet'],
 };
 const ALL_PERMS = Object.keys(PERM_LABELS_KEYS);
 

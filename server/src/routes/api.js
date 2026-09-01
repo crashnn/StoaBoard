@@ -19,6 +19,7 @@ import { userToDict, initialsFromName } from '../lib/user.js';
 import * as onlineState from '../lib/onlineState.js';
 import {
   currentMember,
+  hasPermission,
   memberForWorkspace,
   memberToDict,
   userPrivateDict,
@@ -168,7 +169,17 @@ apiRouter.get(
     const wsDict = workspaceToDict(ws);
     wsDict.is_owner = isOwner;
     wsDict.roles = (ws.roles || []).map(workspaceRoleToDict);
-    if (isOwner) wsDict.invite_code = ws.inviteCode;
+    // Davet kodu: sahip, çalışma alanı yöneticisi ya da 'Üye davet et' izni
+    // olan görebilir. Bu izin arayüzde sunuluyordu ama sunucuda hiçbir yerde
+    // kontrol edilmiyordu — yani yönetici birine verdiğini sandığı yetkiyi
+    // aslında vermiyordu. Kodu yenilemek hâlâ ayrı ve daha dar bir yetki.
+    if (
+      isOwner ||
+      hasPermission(member, 'manage_workspace') ||
+      hasPermission(member, 'invite_members')
+    ) {
+      wsDict.invite_code = ws.inviteCode;
+    }
     wsDict.can_create_channel = canCreateChannel;
 
     const members = wsMembers
