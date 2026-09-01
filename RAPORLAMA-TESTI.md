@@ -129,7 +129,22 @@ Vite `/api` ve soketi sunucuya yönlendiriyor.
 
 ---
 
-## 7 · Test senaryoları
+## 7 · Otomatik testler (veritabanı gerekmez)
+
+Elle teste geçmeden önce bunu çalıştır — saniyeler sürer ve bir şey bozulduysa
+hemen söyler:
+
+```bash
+cd server
+npm test          # Windows PowerShell'de: npm.cmd test
+```
+
+Beklenen: **30 test, hepsi geçer.** Bugün kapatılan güvenlik kusurlarının
+regresyon korumaları burada.
+
+---
+
+## 8 · Elle test senaryoları
 
 ### Geçiş kaydı (en kritik)
 - [ ] Kartı başka kolona sürükle, geri al, tekrar ilerlet.
@@ -202,7 +217,7 @@ where project_id = <PROJE_ID> and slug = 'todo';
 
 ---
 
-## 8 · Raporları doldurmak (isteğe bağlı)
+## 9 · Raporları doldurmak (isteğe bağlı)
 
 `stoa-devlog.mjs` betiği repo dışında, toplantı klasöründe duruyor — bu dalla
 gelmez, ayrıca kopyalanmalı. Bu turda yapılan işleri kart olarak yazıp
@@ -217,7 +232,7 @@ node stoa-devlog.mjs --go      # gerçekten yaz
 
 ---
 
-## 9 · Geri dönmek
+## 10 · Geri dönmek
 
 ```bash
 git checkout main

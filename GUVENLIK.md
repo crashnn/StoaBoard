@@ -136,7 +136,9 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 9. **Silme davranışı ne?** Kayıt silinince denetim ve rapor verisi de gidiyor
    mu? Gitmemeli — bu yüzden geçiş, süre ve denetim kayıtları ilişkisiz.
 10. **Nasıl test edilir?** En az bir olumsuz senaryo yazılı olmalı: *yetkisiz
-    kişi bunu denerse ne görür?*
+    kişi bunu denerse ne görür?* Kapatılan her kusur için
+    `server/test/guvenlik.test.js` içine bir regresyon testi eklenir —
+    test, koruduğu kusuru anlatan bir yorumla birlikte yazılır.
 
 ---
 
@@ -163,6 +165,8 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
   profilden değiştirmede kendi cihazı hariç hepsi
 - Parola alt sınırı her yerde 8 karakter *(1 Eylül)* — profil ekranı 6 ile
   yetiniyor, kayıt/sıfırlamadaki kuralı dolaşmaya izin veriyordu
+- **İlk otomatik testler** *(1 Eylül)* — 30 test, veritabanı gerektirmiyor.
+  Bugün kapatılan kusurların hepsi kilitlendi. `cd server && npm test`
 - Oturumlar PostgreSQL'de; `HttpOnly`, `SameSite=lax`, üretimde `Secure`
 - `/api/auth` için hız sınırı
 
@@ -175,8 +179,9 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 4. **Denetim kaydının kapsamı.** Şu an yalnızca dışa aktarma. Üye ekleme/
    çıkarma, rol değişikliği, davet kodu görüntüleme de yazılmalı — eylem
    adları `lib/audit.js` içinde hazır bekliyor.
-4. **Otomatik test yok.** Yukarıdaki maddelerin hiçbiri regresyona karşı
-   korunmuyor. İlk testler izin katmanına yazılmalı.
+4. **Test kapsamı dar.** Saf mantık (izinler, CSV, bildirim gövdesi) test
+   ediliyor; uçların kendisi (yetkilendirme akışları, IDOR senaryoları) hâlâ
+   elle test ediliyor. Sonraki adım: veritabanı gerektiren uç testleri.
 
 ---
 

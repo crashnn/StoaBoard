@@ -18,6 +18,7 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { memberForWorkspace, hasPermission } from '../lib/workspace.js';
 import { recordAudit, AUDIT, auditToDict } from '../lib/audit.js';
+import { toCsv } from '../lib/csv.js';
 import {
   personReport,
   periodReport,
@@ -274,32 +275,6 @@ async function resolveScope(req, res) {
 }
 
 // ─── CSV ────────────────────────────────────────────────────────────────────
-
-function csvCell(v) {
-  // Sayılar olduğu gibi geçer; aksi halde negatif değerler aşağıdaki formül
-  // korumasına takılıp metne dönüşürdü.
-  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
-
-  const s = v === null || v === undefined ? '' : String(v);
-
-  // Formül enjeksiyonu koruması. Excel, '=' '+' '-' '@' (ve sekme/CR) ile
-  // başlayan bir hücreyi formül sayıp çalıştırıyor — tırnak içine almak bunu
-  // engellemiyor. Bu dosyalardaki görev başlıkları ve kişi adları kullanıcı
-  // girdisi, ve raporu açan kişi genelde yönetici. Baştaki tek tırnak Excel'de
-  // görünmez, hücreyi metin olarak sabitler.
-  const guarded = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
-
-  return /[";\n\r]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
-}
-
-/**
- * CSV gövdesi üret. Başına BOM konur; olmadan Excel Türkçe karakterleri bozuyor.
- */
-function toCsv(headers, rows) {
-  const lines = [headers.map(csvCell).join(';')];
-  for (const r of rows) lines.push(r.map(csvCell).join(';'));
-  return '﻿' + lines.join('\r\n');
-}
 
 function sendCsv(res, filename, headers, rows) {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
