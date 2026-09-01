@@ -275,8 +275,20 @@ async function resolveScope(req, res) {
 // ─── CSV ────────────────────────────────────────────────────────────────────
 
 function csvCell(v) {
+  // Sayılar olduğu gibi geçer; aksi halde negatif değerler aşağıdaki formül
+  // korumasına takılıp metne dönüşürdü.
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+
   const s = v === null || v === undefined ? '' : String(v);
-  return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+
+  // Formül enjeksiyonu koruması. Excel, '=' '+' '-' '@' (ve sekme/CR) ile
+  // başlayan bir hücreyi formül sayıp çalıştırıyor — tırnak içine almak bunu
+  // engellemiyor. Bu dosyalardaki görev başlıkları ve kişi adları kullanıcı
+  // girdisi, ve raporu açan kişi genelde yönetici. Baştaki tek tırnak Excel'de
+  // görünmez, hücreyi metin olarak sabitler.
+  const guarded = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+
+  return /[";\n\r]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
 }
 
 /**
@@ -307,19 +319,25 @@ reportsRouter.get(
 
     // ?user hem sayısal id hem slug kabul eder; istemci tarafı üyeleri slug ile
     // tutuyor, rapor tabloları ise sayısal id ile yazılıyor.
+    //
+    // Arama bilinçli olarak çalışma alanının üyeleriyle sınırlı. Önceden tüm
+    // kullanıcılar arasında aranıyordu ve yanıt yetki kontrolünden önce
+    // dönüyordu: var olmayan bir slug 404, var olan 403 veriyordu. Bu fark
+    // platformdaki bütün hesaplar için bir "bu kullanıcı var mı" oracle'ıydı.
+    // Artık çağıran kişinin zaten görebildiği üye listesinden öteye bilgi
+    // sızmıyor.
     let wantedUser = null;
     if (req.query.user) {
       const raw = String(req.query.user).trim();
-      if (/^\d+$/.test(raw)) {
-        wantedUser = parseInt(raw, 10);
-      } else {
-        const u = await prisma.user.findUnique({
-          where: { slug: raw },
-          select: { id: true },
-        });
-        if (!u) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-        wantedUser = u.id;
+      const userWhere = /^\d+$/.test(raw) ? { id: parseInt(raw, 10) } : { slug: raw };
+      const membership = await prisma.workspaceMember.findFirst({
+        where: { workspaceId: scope.workspaceId, user: userWhere },
+        select: { userId: true },
+      });
+      if (!membership) {
+        return res.status(404).json({ error: 'Bu çalışma alanında böyle bir üye yok' });
       }
+      wantedUser = membership.userId;
     }
 
     // Başkasının raporunu görmek için üye yönetimi izni gerekir; kişi kendi
