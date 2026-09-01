@@ -34,6 +34,7 @@ import {
   recalcTaskProgress,
 } from '../lib/projects.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
+import { recordTransition } from '../lib/reporting.js';
 
 export const projectTasksRouter = Router({ mergeParams: true }); // /projects/:projectId/tasks
 export const tasksRouter = Router();         // /tasks/:taskId
@@ -212,6 +213,16 @@ projectTasksRouter.post(
         buildNotificationText('task_created', { title }),
       );
 
+      // Kartın ilk yerleşimi de bir geçiştir (fromCol = null). Akış raporundaki
+      // "iş nerede başladı" ve kolon bekleme süresi hesabı buna dayanıyor.
+      await recordTransition(tx, {
+        task: { id: task.id, title, projectId },
+        project,
+        user,
+        fromCol: null,
+        toCol: col,
+      });
+
       return { task, notifsToPush };
     });
 
@@ -288,19 +299,48 @@ tasksRouter.patch(
       }
     }
 
-    // Column move (+ aktivite log + is_done ise progress=100)
+    // Column move (+ aktivite log + geçiş kaydı + is_done ise progress=100)
     let movedActivity = null;
     let recalcAfterMove = false;
+    let moveFromCol = null;
+    let moveToCol = null;
     if ('col' in data) {
       const newCol = await prisma.boardColumn.findFirst({
         where: { projectId: task.projectId, slug: data.col },
       });
       if (newCol && newCol.id !== task.columnId) {
+        const fromCol = task.column || null;
+
+        // Kolon geçiş kuralı: kaynak kolonun allowedNext listesi doluysa yalnızca
+        // oradaki slug'lara geçilebilir. null/boş ise kısıt yok — varsayılan davranış
+        // korunur, yani kural tanımlamayan mevcut panolar aynen çalışmaya devam eder.
+        const allowedNext = Array.isArray(fromCol?.allowedNext) ? fromCol.allowedNext : null;
+        if (allowedNext && allowedNext.length && !allowedNext.includes(newCol.slug)) {
+          return res.status(409).json({
+            error: 'err_transition_not_allowed',
+            message:
+              `"${fromCol.titleTr || fromCol.title}" kolonundan ` +
+              `"${newCol.titleTr || newCol.title}" kolonuna geçilemez.`,
+            allowed_next: allowedNext,
+          });
+        }
+
         updates.columnId = newCol.id;
+        moveFromCol = fromCol;
+        moveToCol = newCol;
         // Tamamlandi kolonuna girince 100; cikinca alt gorevlerden yeniden hesapla
         // (alt gorev yoksa recalcAfterMove null doner ve ilerlemeye dokunulmaz).
-        if (newCol.isDone) updates.progress = 100;
-        else if (task.progress === 100) recalcAfterMove = true;
+        if (newCol.isDone) {
+          updates.progress = 100;
+          // İlk tamamlanma anı yazılır. İki farklı "tamamlandı" kolonu arasında
+          // gezinirken ilk tamamlanma zamanı korunur, aksi halde akış raporundaki
+          // tamamlanma süresi her taşımada sıfırlanırdı.
+          if (!task.completedAt) updates.completedAt = new Date();
+        } else {
+          if (task.progress === 100) recalcAfterMove = true;
+          // "Tamamlandı"dan çıktı: iş yeniden açıldı, tamamlanma zamanı silinir.
+          if (task.completedAt) updates.completedAt = null;
+        }
         movedActivity = buildNotificationText('task_moved', {
           task: data.title?.trim() || task.title,
           col: newCol.titleTr || newCol.title,
@@ -360,6 +400,22 @@ tasksRouter.patch(
 
       if (movedActivity) {
         await logActivity(tx, task.projectId, user.id, movedActivity);
+      }
+      // Geçiş kaydı: raporlamanın temel verisi. ActivityLog serbest metin ve
+      // göreve bağlı değil; bu kayıt görev/kişi/kolon kırılımıyla sorgulanabilir
+      // ve görev silinse bile yaşar.
+      if (moveToCol) {
+        await recordTransition(tx, {
+          task: {
+            id: taskId,
+            title: updates.title || task.title,
+            projectId: task.projectId,
+          },
+          project,
+          user,
+          fromCol: moveFromCol,
+          toCol: moveToCol,
+        });
       }
       if (recalcAfterMove) {
         await recalcTaskProgress(tx, taskId);

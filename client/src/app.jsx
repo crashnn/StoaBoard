@@ -20,6 +20,7 @@ import { DashboardView } from './views/dashboard.jsx';
 import { NotesView } from './views/notes.jsx';
 import { SettingsView } from './views/settings.jsx';
 import { TrashView } from './views/trash.jsx';
+import { ReportsView } from './views/reports.jsx';
 import { LegalPage } from './views/legal.jsx';
 
 function _playDing() {
@@ -1079,6 +1080,14 @@ function App() {
             )}
             {!taskPageTask && view === 'calendar'  && <CalendarView tasks={tasks} onOpenTask={openDrawer} onOpenModal={openModal} canCreateTasks={canManageTasks} />}
             {!taskPageTask && view === 'dashboard' && <DashboardView tasks={tasks} onOpenTask={openDrawer} onView={setView} />}
+            {!taskPageTask && view === 'reports' && (
+              <ReportsView
+                onOpenTask={(id) => {
+                  const t = tasks.find((x) => String(x.id) === String(id));
+                  if (t) { setView('board'); setDrawerTask(t); }
+                }}
+              />
+            )}
             {view === 'notes'     && <NotesView
               socket={socket}
               tasks={tasks}

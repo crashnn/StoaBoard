@@ -39,6 +39,11 @@ import {
 } from './routes/attachments.js';
 import { channelsRouter } from './routes/channels.js';
 import { chatRouter } from './routes/chat.js';
+import {
+  taskWorkLogsRouter,
+  workLogsRouter,
+  reportsRouter,
+} from './routes/reports.js';
 
 // Session store — varsayılan memory store server restart'ta tüm
 // oturumları siliyordu (kullanıcı her server restart'ta tekrar login).
@@ -144,7 +149,10 @@ export function createApp() {
   app.use('/api/projects', projectsRouter);
   app.use('/api/columns', columnsRouter);
   app.use('/api/tasks', taskAttachmentsRouter); // /tasks/:taskId/attachments
+  app.use('/api/tasks', taskWorkLogsRouter);    // /tasks/:taskId/worklogs
   app.use('/api/tasks', tasksRouter);
+  app.use('/api/worklogs', workLogsRouter);
+  app.use('/api/reports', reportsRouter);
   app.use('/api/subtasks', subtasksRouter);
   app.use('/api/comments', commentsRouter);
   app.use('/api/attachments', attachmentsRouter);

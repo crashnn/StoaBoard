@@ -9323,3 +9323,217 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .modal-foot .btn { flex-basis: 100%; }
 }
 
+
+/* ── Raporlar ─────────────────────────────────────────────────────────────── */
+
+.report-view { display: flex; flex-direction: column; gap: 18px; }
+
+.report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.report-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.report-actions .btn { text-decoration: none; }
+
+.report-controls { display: flex; flex-direction: column; gap: 10px; }
+.report-tabs, .report-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.report-range input[type="date"],
+.report-range select {
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  font-family: inherit;
+}
+.report-range-sep { color: var(--ink-muted); font-size: 12px; }
+
+.report-body { display: flex; flex-direction: column; gap: 16px; }
+
+.report-note {
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.report-total {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+.report-stat {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+}
+.report-stat-value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.report-stat-label { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+
+.report-bars { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
+.report-bar-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.report-bar-label { color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+.report-bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.report-bar-value { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-muted); }
+
+/* Tabloları dar ekranda yatay kaydır — sayfa gövdesi yana kaymasın */
+.report-body .panel-body { overflow-x: auto; }
+
+.print-only { display: none; }
+
+/* ── Yazdırma: rapor sayfası ──────────────────────────────────────────────
+   Ayrı bir PDF kütüphanesi yerine yazdırma çıktısı kullanılıyor; tarayıcı
+   "PDF olarak kaydet" ile aynı işi görüyor. Sadece rapor gövdesi basılır. */
+@media print {
+  .sidebar, .topbar, .subbar, .no-print,
+  .chat-popup, .notif-panel, .drawer, .modal-backdrop { display: none !important; }
+
+  body, .app, .main, .dash {
+    background: #fff !important;
+    color: #000 !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .report-view { gap: 12px; }
+  .print-only { display: block !important; }
+  .report-stamp {
+    font-size: 12px;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #999;
+  }
+  .panel, .report-stat {
+    border: 1px solid #bbb !important;
+    background: #fff !important;
+    break-inside: avoid;
+  }
+  .list-table tr { cursor: default !important; }
+  .list-table th { color: #000 !important; }
+  .report-bar-fill { background: #666 !important; }
+  a[href]::after { content: ""; }
+  @page { margin: 14mm; }
+}
+
+/* ── Harcanan süre (work log) ─────────────────────────────────────────────── */
+
+.worklog-section { margin-top: 32px; }
+.worklog-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: -0.005em;
+  margin-bottom: 8px;
+}
+.worklog-total { color: var(--ink-muted); font-size: 13px; font-family: var(--font-ui); }
+
+.worklog-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  background: var(--bg-subtle);
+  border: 1px solid transparent;
+  transition: all 0.12s var(--ease);
+}
+.worklog-add-btn:hover { color: var(--ink); border-color: var(--line); }
+
+.worklog-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.worklog-form-row { display: flex; gap: 8px; align-items: center; }
+.worklog-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  font-family: inherit;
+}
+.worklog-input:focus { outline: none; border-color: var(--accent); }
+.worklog-date { flex: 0 0 140px; }
+
+.worklog-error {
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  color: var(--status-red, #b4451f);
+}
+.worklog-empty { font-size: 13px; color: var(--ink-muted); padding: 6px 0; }
+
+.worklog-list { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.worklog-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.worklog-row:last-child { border-bottom: 0; }
+.worklog-row-time {
+  flex: 0 0 62px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.worklog-row-main { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: baseline; }
+.worklog-row-who { color: var(--ink-muted); white-space: nowrap; }
+.worklog-row-note {
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.worklog-row-date {
+  flex: 0 0 auto;
+  color: var(--ink-faint, var(--ink-muted));
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.worklog-row-del {
+  flex: 0 0 auto;
+  opacity: 0;
+  color: var(--ink-muted);
+  transition: opacity 0.12s var(--ease);
+}
+.worklog-row:hover .worklog-row-del { opacity: 1; }
+.worklog-row-del:hover { color: var(--ink); }

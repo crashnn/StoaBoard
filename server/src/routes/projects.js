@@ -150,7 +150,11 @@ projectsRouter.post(
       ];
       for (const [slug, title, titleTr, color, pos] of defaults) {
         await tx.boardColumn.create({
-          data: { projectId: p.id, slug, title, titleTr, color, position: pos },
+          // isDone işaretlenmezse "tamamlandı" sayan hiçbir şey çalışmıyordu:
+          // ana ekrandaki tamamlanan sayacı, ilerlemenin %100'e çekilmesi ve
+          // raporlardaki tamamlanma zamanı. Yeni projelerde son kolon artık
+          // baştan bitiş kolonu olarak işaretleniyor.
+          data: { projectId: p.id, slug, title, titleTr, color, position: pos, isDone: slug === 'done' },
         });
       }
       return p;

@@ -6,6 +6,7 @@ import { Icon } from './icons.jsx';
 import { Avatar, AvatarStack } from './shell.jsx';
 import { API, fmtTimeAgo } from './data.jsx';
 import { DatePicker } from './modals.jsx';
+import { WorkLogSection } from './worklog.jsx';
 
 function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, onCreateTask, canManageTasks = true, pageMode = false, onOpenPage }) {
   const [detail, setDetail]             = useDrawerState(null);
@@ -814,6 +815,9 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
           document.body
         )}
       </div>
+
+      {/* Harcanan süre — raporlamanın emek tarafı */}
+      {task?.id && <WorkLogSection taskId={task.id} />}
 
       {/* Comments */}
       <div className="comments-section">

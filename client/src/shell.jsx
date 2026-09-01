@@ -282,6 +282,10 @@ function Sidebar({
           onClick={() => onOpenNotifs?.()}
           active={view === 'notifications'}
         />
+        <NavItem icon="chart"         label={window.t?.('nav_reports') || 'Raporlar'}  sub="Reports"
+          onClick={() => onView('reports')}
+          active={view === 'reports'}
+        />
         <NavItem icon="trash"         label={window.t?.('nav_trash') || 'Çöp Kutusu'}         sub="Trash"
           badge={trashCount > 0 ? (trashCount > 99 ? '99+' : String(trashCount)) : null}
           onClick={() => onView('trash')}

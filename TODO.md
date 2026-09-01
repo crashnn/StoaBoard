@@ -5,6 +5,67 @@ Canlı: [stoaboard.com](https://www.stoaboard.com) · Railway + Neon PostgreSQL,
 
 ---
 
+## ✅ Raporlama turu — 1 Eylül 2026
+
+Netaş toplantısındaki geri bildirimler üzerine. Toplantının üç ayrı notu
+("6 ayda bir raporlama", "log girişi / work log developer", "Furkan hangi
+task'larda çalışmış") tek bir talebe işaret ediyordu: **kişi bazlı, geriye
+dönük, süre içeren raporlama.**
+
+**Veritabanı — kayıt bugünden birikmeye başlıyor**
+- **Görev geçiş kaydı** (`task_transitions`). Kart her taşındığında bir satır:
+  görev, önceki/yeni kolon, kim, ne zaman. Kartın ilk yerleşimi de geçiş sayılır.
+  **İlişki (FK) bilerek kurulmadı** — görev, proje veya kullanıcı silinse de
+  satır yaşamalı; çöp kutusu 30 günde kalıcı sildiği için aksi hâlde altı aylık
+  rapor delik çıkardı. Görev başlığı, kişi adı ve kolon başlıkları o anki
+  hâliyle kopyalanıyor.
+- **Süre kaydı** (`work_logs`). Kişinin göreve harcadığı emek, manuel giriş.
+  Aynı gerekçeyle ilişkisiz ve denormalize.
+- **`tasks.completed_at`.** Yoktu; "bu iş ne kadar sürede tamamlandı" sorusu bu
+  yüzden hiçbir şekilde cevaplanamıyordu. Bitiş kolonuna girişte yazılıyor,
+  çıkışta siliniyor; iki bitiş kolonu arasında gezinirken ilk zaman korunuyor.
+
+> Geçiş süresi ile harcanan emek **ayrı şeylerdir**: bir iş üç haftada bitmiş
+> ama altı saat emek almış olabilir. İlki tıkanıklığı, ikincisi maliyeti
+> gösterir. Jira'nın da ayrı tuttuğu ayrım bu.
+
+**Raporlar**
+- **Kişi raporu** — kim, hangi işte, ne kadar süre. Başkasının raporu için üye
+  yönetimi izni gerekiyor; kişi kendi raporunu her zaman görüyor.
+- **Dönem raporu** — ne açıldı, ne bitti, ne bekliyor; kolon hareketleri.
+- **Akış raporu** — ortalama/ortanca tamamlanma süresi, kolonlarda bekleme,
+  en uzun süren işler.
+- Aralık ön ayarları: bu ay / son 3 ay / **son 6 ay** / bu yıl.
+- **CSV** (noktalı virgül + BOM — Türkçe Excel doğru açsın diye) ve
+  **yazdırma sayfası**. PDF kütüphanesi bilinçli olarak eklenmedi: tarayıcının
+  "PDF olarak kaydet"i aynı işi görüyor, maliyeti onda biri.
+
+**E-posta bildirimi**
+- SMTP altyapısı kuruluydu ama yalnızca şifre sıfırlamada kullanılıyordu. Atama
+  ve bahsetme bildirimleri postaya bağlandı.
+- **Varsayılan kapalı.** `NOTIFY_EMAIL=1` verilmeden tek posta gitmez — SMTP
+  zaten tanımlı olduğu için aksi hâlde ilk dağıtımda herkese posta giderdi.
+  `NOTIFY_EMAIL_TYPES` ile tür seçilebiliyor, kullanıcı bazında kapatılabiliyor.
+
+**Kolon geçiş kuralı**
+- Toplantıda gösterilen Jira ekranındaki "Open → yalnızca In Review" kısıtının
+  karşılığı. Kolona izin verilen sonraki kolonlar tanımlanabiliyor; boş
+  bırakılırsa kısıt yok, mevcut panolar aynen çalışıyor. Sunucu tarafı hazır,
+  **arayüz henüz yok.**
+
+**Yol üstünde bulunan hata**
+- **Yeni projelerde bitiş kolonu işaretlenmiyordu.** Varsayılan kolonlar
+  oluşturulurken "Tamamlandı" kolonuna `is_done` konmuyordu; bu yüzden yeni
+  projelerde tamamlanan sayacı, ilerlemenin %100'e çekilmesi ve tamamlanma
+  zamanı hiç çalışmıyordu. Düzeltildi (yalnızca yeni projeleri etkiler).
+
+> ⚠️ **Veritabanı adımı bekliyor.** Şema dosyası güncel ama canlı veritabanına
+> gönderilmedi. `prisma db push` üretim verisine dokunuyor; yedek alındıktan
+> sonra çalıştırılmalı. Eklenenlerin hepsi katkı niteliğinde (iki yeni tablo,
+> üç yeni sütun), veri kaybı beklenmiyor.
+
+---
+
 ## ✅ Bu turda kapatılanlar
 
 Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
@@ -83,6 +144,13 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
       (43'er anahtar); eksikler Türkçe'ye düşüyor. TR/EN tam (~940 anahtar).
 
 ### Tasarım kararı bekleyenler
+- [ ] **Süreyi kim girer?** Geliştirici mi, yönetici mi; girilmezse ne olur?
+      Şu an herkes yalnızca kendi süresini giriyor, zorunluluk yok. Kurumsalda
+      gerçekten tartışmalı bir konu — **ikinci toplantıda masaya konacak soru
+      bu.** Karar verilmeden hatırlatma/zorunluluk mekanizması yazılmamalı.
+- [ ] **Kolon geçiş kuralı arayüzü.** Sunucu tarafı hazır. Kural kolonun
+      ayarlarından mı, yoksa proje düzeyinde bir akış ekranından mı
+      tanımlanacak? İkincisi Jira'nın karmaşıklığına doğru bir adım — dikkat.
 - [ ] **Sohbet kapsamı.** Şu an kanallar çalışma alanı geneli. Seçenekler:
       (A) böyle kalsın, (B) her projeye özel sohbet, (C) kanallar genel kalsın
       ama istenirse bir projeye bağlanabilsin. **Öneri: C** — B küçük takımlarda

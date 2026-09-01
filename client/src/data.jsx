@@ -172,6 +172,20 @@ const API = {
   getTaskDetail: (id) =>
     apiFetch(`/api/tasks/${id}`),
 
+  // Süre kaydı (work log)
+  getWorkLogs: (taskId) =>
+    apiFetch(`/api/tasks/${taskId}/worklogs`),
+  addWorkLog: (taskId, data) =>
+    apiFetch(`/api/tasks/${taskId}/worklogs`, { method: 'POST', body: data }),
+  deleteWorkLog: (logId) =>
+    apiFetch(`/api/worklogs/${logId}`, { method: 'DELETE' }),
+
+  // Raporlar — kind: 'person' | 'period' | 'flow'
+  getReport: (kind, params) =>
+    apiFetch(`/api/reports/${kind}?${new URLSearchParams(params).toString()}`),
+  reportCsvUrl: (kind, params) =>
+    `/api/reports/${kind}?${new URLSearchParams({ ...params, format: 'csv' }).toString()}`,
+
   // Subtasks
   addSubtask:    (taskId, title) =>
     apiFetch(`/api/tasks/${taskId}/subtasks`, { method: 'POST', body: { title } }),
@@ -327,7 +341,7 @@ window.API = API;
 window.APP_I18N = {
   tr: {
     nav_home:'Ana Sayfa', nav_tasks:'Görevlerim', nav_board:'Pano', nav_calendar:'Takvim',
-    nav_chat:'Sohbet', nav_notes:'Notlar', nav_notifications:'Bildirimler', nav_trash:'Çöp Kutusu', nav_settings:'Ayarlar',
+    nav_chat:'Sohbet', nav_notes:'Notlar', nav_notifications:'Bildirimler', nav_trash:'Çöp Kutusu', nav_reports:'Raporlar', nav_settings:'Ayarlar',
     nav_projects:'Projeler', nav_dms:'Direkt Mesajlar',
     nav_no_projects:'Henüz proje yok', nav_no_members:'Henüz başka üye yok',
     nav_new_project:'Yeni proje',
@@ -924,7 +938,7 @@ window.APP_I18N = {
   },
   en: {
     nav_home:'Home', nav_tasks:'My Tasks', nav_board:'Board', nav_calendar:'Calendar',
-    nav_chat:'Chat', nav_notes:'Notes', nav_notifications:'Notifications', nav_trash:'Trash', nav_settings:'Settings',
+    nav_chat:'Chat', nav_notes:'Notes', nav_notifications:'Notifications', nav_trash:'Trash', nav_reports:'Reports', nav_settings:'Settings',
     nav_projects:'Projects', nav_dms:'Direct Messages',
     nav_no_projects:'No projects yet', nav_no_members:'No other members yet',
     nav_new_project:'New project',
@@ -1521,7 +1535,7 @@ window.APP_I18N = {
   },
   de: {
     nav_home:'Startseite', nav_tasks:'Meine Aufgaben', nav_board:'Board', nav_calendar:'Kalender',
-    nav_chat:'Chat', nav_notes:'Notizen', nav_notifications:'Benachrichtigungen', nav_trash:'Papierkorb', nav_settings:'Einstellungen',
+    nav_chat:'Chat', nav_notes:'Notizen', nav_notifications:'Benachrichtigungen', nav_trash:'Papierkorb', nav_reports:'Berichte', nav_settings:'Einstellungen',
     nav_projects:'Projekte', nav_dms:'Direktnachrichten',
     nav_no_projects:'Noch keine Projekte', nav_no_members:'Noch keine anderen Mitglieder',
     nav_new_project:'Neues Projekt',
@@ -1538,7 +1552,7 @@ window.APP_I18N = {
   },
   es: {
     nav_home:'Inicio', nav_tasks:'Mis Tareas', nav_board:'Tablero', nav_calendar:'Calendario',
-    nav_chat:'Chat', nav_notes:'Notas', nav_notifications:'Notificaciones', nav_trash:'Papelera', nav_settings:'Configuración',
+    nav_chat:'Chat', nav_notes:'Notas', nav_notifications:'Notificaciones', nav_trash:'Papelera', nav_reports:'Informes', nav_settings:'Configuración',
     nav_projects:'Proyectos', nav_dms:'Mensajes Directos',
     nav_no_projects:'Aún no hay proyectos', nav_no_members:'Aún no hay otros miembros',
     nav_new_project:'Nuevo proyecto',
@@ -1555,7 +1569,7 @@ window.APP_I18N = {
   },
   ru: {
     nav_home:'Главная', nav_tasks:'Мои задачи', nav_board:'Доска', nav_calendar:'Календарь',
-    nav_chat:'Чат', nav_notes:'Заметки', nav_notifications:'Уведомления', nav_trash:'Корзина', nav_settings:'Настройки',
+    nav_chat:'Чат', nav_notes:'Заметки', nav_notifications:'Уведомления', nav_trash:'Корзина', nav_reports:'Отчёты', nav_settings:'Настройки',
     nav_projects:'Проекты', nav_dms:'Личные сообщения',
     nav_no_projects:'Пока нет проектов', nav_no_members:'Пока нет других участников',
     nav_new_project:'Новый проект',
