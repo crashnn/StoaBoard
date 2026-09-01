@@ -194,6 +194,12 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
       (43'er anahtar); eksikler Türkçe'ye düşüyor. TR/EN tam (~940 anahtar).
 
 ### Tasarım kararı bekleyenler
+- [ ] **Bildirimler baştan ele alınacak.** Toplantıda mesaj gönderildi, karşı
+      tarafta toast çıkmadı. İki sebebi vardı: biri kırık koddu (düzeltildi),
+      diğeri tasarım boşluğu ve **hâlâ açık** — görev atama, bahsetme ve yorum
+      bildirimleri hiçbir zaman toast üretmiyor, yalnızca zil rozeti ve ses.
+      Kurumsalda en kritik bildirim en sessiz olanı. Harita, boşluklar ve karar
+      bekleyen beş soru: [BILDIRIMLER.md](BILDIRIMLER.md).
 - [ ] **Süreyi kim girer?** Geliştirici mi, yönetici mi; girilmezse ne olur?
       Şu an herkes yalnızca kendi süresini giriyor, zorunluluk yok. Kurumsalda
       gerçekten tartışmalı bir konu — **ikinci toplantıda masaya konacak soru

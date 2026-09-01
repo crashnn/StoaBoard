@@ -201,6 +201,7 @@ Accent renk sistemi `oklch()` + `color-mix()` üzerine kuruludur. Yeni renk ekle
 | [TODO.md](TODO.md) | Kapatılanlar ve sıradakiler, gerekçeleriyle |
 | [GUVENLIK.md](GUVENLIK.md) | Tehdit modeli ve her yeni özelliğin geçmesi gereken elek |
 | [TOPLANTI-KARSILIGI.md](TOPLANTI-KARSILIGI.md) | Toplantı geri bildirimlerinin karşılığı |
+| [BILDIRIMLER.md](BILDIRIMLER.md) | Bildirim sisteminin durumu ve karar bekleyen tasarım soruları |
 | [RAPORLAMA-TESTI.md](RAPORLAMA-TESTI.md) | `raporlama` dalını başka makinede ayağa kaldırma ve test |
 
 ## Testler
