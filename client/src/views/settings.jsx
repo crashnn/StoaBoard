@@ -1473,6 +1473,19 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
             </div>
           </div>
 
+          {/* İş bildirimleri: görev atama, bahsetme, yorum. Bunlar önceden
+              yalnızca zil rozetinde görünüyor, ekranda hiç çıkmıyordu. */}
+          <div className="notif-pref-group">
+            <div className="notif-pref-title">{_t('set_notif_work','İş Bildirimleri')}</div>
+            <div className="tweak-toggle" onClick={() => setTweak('notifyTasks', !(tweaks.notifyTasks !== false))}>
+              <div className="tweak-toggle-info">
+                <span>{_t('set_notif_tasks','Görev bildirimleri')}</span>
+                <span className="tweak-toggle-desc">{_t('set_notif_tasks_desc','Sana görev atandığında, bahsedildiğinde veya görevine yorum yapıldığında ekranda göster')}</span>
+              </div>
+              <div className="toggle" data-on={tweaks.notifyTasks !== false} />
+            </div>
+          </div>
+
           <div className="notif-pref-group" style={{ opacity: tweaks.notifyMessages === false ? 0.4 : 1 }}>
             <div className="notif-pref-title">{_t('set_notif_filters','Mesaj Filtreleri')}</div>
             <div className="tweak-toggle"

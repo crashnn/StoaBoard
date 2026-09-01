@@ -4,7 +4,7 @@ import React, { useState as useS, useEffect as useEf, useRef as useRef } from 'r
 import { createRoot } from 'react-dom/client';
 import { io } from 'socket.io-client';
 import { Icon } from './icons.jsx';
-import { API } from './data.jsx';
+import { API, renderNotifText } from './data.jsx';
 import { Avatar, Sidebar, Topbar, ToastContainer } from './shell.jsx';
 import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
@@ -360,6 +360,34 @@ function App() {
         const twks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
         const myStatus = window.__MY_STATUS__ || 'online';
         if (myStatus !== 'dnd' && twks.soundEnabled !== false) _playDing();
+
+        // Ekranda göster. Önceden bu olay yalnızca zil sayacını artırıyordu:
+        // görev atama, bahsetme ve yorum bildirimleri hiçbir zaman görünmüyordu
+        // ve kullanıcı zili fark etmezse haberi olmuyordu. Kurumsalda en kritik
+        // bildirim en sessiz olanıydı.
+        //
+        // Hangi olayın ekranı kesmesi gerektiği açık bir tasarım sorusu
+        // (BILDIRIMLER.md, S1). Buradaki liste bir başlangıç varsayımı:
+        // yalnızca kişiye DOĞRUDAN yöneltilenler kesiyor, bilgi amaçlı olanlar
+        // (kolon eklendi gibi) yalnızca zilde kalıyor.
+        //
+        // DM ve katılma onayı/reddi bilerek dışarıda: onlar kendi soket
+        // olaylarından zaten toast üretiyor, buraya da eklenirse çift görünür.
+        const EKRANI_KESENLER = new Set([
+          'task_assigned', 'mention', 'comment_added', 'join_request', 'channel_added',
+        ]);
+        let tur = null;
+        try { tur = JSON.parse(notif.text || '{}')?.type || null; } catch { tur = 'mention'; }
+        // JSON olmayan gövde = eski biçimdeki bahsetme bildirimi.
+
+        if (
+          myStatus !== 'dnd' &&
+          twks.notifyTasks !== false &&
+          (tur === null || EKRANI_KESENLER.has(tur))
+        ) {
+          const metin = renderNotifText(notif.text);
+          if (metin) window.showToast?.(String(metin).replace(/<[^>]*>/g, ''), 'info');
+        }
       }
     });
 

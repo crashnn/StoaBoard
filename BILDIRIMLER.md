@@ -23,7 +23,7 @@ toast hiç çıkmıyordu. Zil rozeti ayrı bir sayaç olduğu için o çalışma
 ediyordu. 1 Eylül'de düzeltildi ve bu sınıf `server/test/global.test.js` ile
 kapatıldı.
 
-**Sebep B: tasarım boşluğu — bu hâlâ açık.** Sunucudan gelen `notification`
+**Sebep B: tasarım boşluğu — kısmen kapatıldı.** Sunucudan gelen `notification`
 olayının yaptığı iş şu kadar:
 
 ```js
@@ -33,8 +33,14 @@ _playDing();                 // ses
 ```
 
 Yani **görev atama, bahsetme ve yorum bildirimleri hiçbir zaman toast
-üretmiyor.** Toast üreten tek yol `chat_message` olayı. Sebep A düzeltildi ama
-B duruyor: sohbet dışındaki hiçbir şey ekranda görünmüyor.
+üretmiyordu.** Toast üreten tek yol `chat_message` olayıydı.
+
+1 Eylül'de bu olaya da toast bağlandı. Hangi olayın ekranı keseceği hâlâ açık
+bir soru (aşağıda S1); şimdilik **kişiye doğrudan yöneltilenler** kesiyor:
+görev atama, bahsetme, yorum, katılma isteği, kanala ekleme. Bilgi amaçlı
+olanlar (kolon eklendi) yalnızca zilde kalıyor. DM ve katılma onayı bilerek
+dışarıda — onlar kendi soket olaylarından zaten toast üretiyor, iki kez
+görünmesin diye.
 
 ---
 
@@ -42,13 +48,13 @@ B duruyor: sohbet dışındaki hiçbir şey ekranda görünmüyor.
 
 | Olay | Zil rozeti | Ses | Toast | E-posta |
 |---|:--:|:--:|:--:|:--:|
-| Görev atandı | ✅ | ✅ | ❌ | ◑ |
-| Bahsedildi (mention) | ✅ | ✅ | ❌ | ◑ |
-| Göreve yorum yapıldı | ✅ | ✅ | ❌ | ❌ |
+| Görev atandı | ✅ | ✅ | ✅ | ◑ |
+| Bahsedildi (mention) | ✅ | ✅ | ✅ | ◑ |
+| Göreve yorum yapıldı | ✅ | ✅ | ✅ | ❌ |
 | Direkt mesaj | ✅ | ✅ | ✅ | ❌ |
 | Kanal mesajı | ✅ | ✅ | ✅ | ❌ |
-| Kanala eklendin | ✅ | ✅ | ❌ | ❌ |
-| Katılma isteği geldi | ✅ | ✅ | ❌ | ❌ |
+| Kanala eklendin | ✅ | ✅ | ✅ | ❌ |
+| Katılma isteği geldi | ✅ | ✅ | ✅ | ❌ |
 | Katılma isteği onaylandı | ✅ | ✅ | ✅ | ❌ |
 | Katılma isteği reddedildi | ✅ | ✅ | ✅ | ❌ |
 | Kolon eklendi | ✅ | ✅ | ❌ | ❌ |
@@ -58,17 +64,18 @@ B duruyor: sohbet dışındaki hiçbir şey ekranda görünmüyor.
 `task_created` ve `task_moved` bildirim değil, **etkinlik kaydı** — kimseye
 gönderilmiyor, ana ekrandaki akışta görünüyor.
 
-**Kullanıcı tercihleri** (Ayarlar → Bildirimler) yalnızca sohbeti kapsıyor:
-`notifyMessages`, `notifyToasts`, `notifyDMs`, `soundEnabled`. Görev
-bildirimleri için tercih yok — çünkü zaten toast üretmiyorlar.
+**Kullanıcı tercihleri** (Ayarlar → Bildirimler): sohbet tarafında
+`notifyMessages`, `notifyToasts`, `notifyDMs`, `notifyGroupChat`; ses için
+`soundEnabled`. 1 Eylül'de **İş Bildirimleri** grubu ve `notifyTasks` anahtarı
+eklendi — görev/bahsetme/yorum bildirimleri buradan kapatılabiliyor.
+Rahatsız Etme (dnd) modu hepsini susturuyor.
 
 ---
 
 ## 3 · Boşluklar
 
-1. **En önemli bildirim en sessiz olan.** Kurumsalda "sana görev atandı"
-   mesajdan daha kritik. Şu an ekranda hiçbir şey görünmüyor; kullanıcı zili
-   fark etmezse haberi olmuyor.
+1. ~~**En önemli bildirim en sessiz olan.**~~ *1 Eylül'de kapatıldı — görev
+   bildirimleri artık ekranda görünüyor.* Hangi olayın keseceği hâlâ S1'e bağlı.
 2. **Tarayıcı bildirimi yok.** Sekme arka plandayken hiçbir şey görünmüyor.
    Kurumsalda insanlar gün boyu başka sekmede; uygulama açık ama görünmüyorsa
    bildirim kaçıyor.
@@ -115,13 +122,19 @@ olabilir. Kullanıcıya sorulmadan açılmamalı.
 
 ---
 
-## 5 · Önerilen sıra
+## 5 · Durum
 
-Kararlar alınmadan büyük iş yapılmamalı. Ama şu ikisi karar beklemez:
+**Yapıldı (1 Eylül, karar gerektirmeyenler)**
+- `notification` olayına toast bağlandı; görev atama, bahsetme ve yorum artık
+  ekranda görünüyor.
+- Ayarlara **İş Bildirimleri** grubu eklendi (`notifyTasks`).
 
-1. **`notification` olayına toast bağla** — S1'in cevabı beklenirken en azından
-   atama ve bahsetme ekranda görünsün. Mevcut tercih anahtarları genişletilir.
-2. **Bildirim tercihlerini görev tarafına da aç** — bugün yalnızca sohbeti
-   kapsıyor.
+**Bekliyor — S1–S5 cevaplanmadan yapılmamalı**
+- Tarayıcı bildirimi (S5)
+- Teslim tarihi uyarıları (S4)
+- E-posta kapsamı ve zamanlaması (S3)
+- Olay × kanal tercih matrisi ya da hazır profiller (S2)
+- Toplu işlerde gruplama — on kart birden atanırsa on toast çıkar
 
-Sonrası S1–S5'in cevabına bağlı.
+> Toast listesindeki seçim (`EKRANI_KESENLER`, `app.jsx`) bir **başlangıç
+> varsayımı**, karar değil. S1 cevaplandığında oradan güncellenmeli.
