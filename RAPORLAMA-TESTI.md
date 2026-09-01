@@ -21,10 +21,16 @@ Netaş toplantısındaki geri bildirimler üzerine yazılan raporlama altyapıs�
   olmadan cevaplanamıyordu.
 - **Üç rapor** — kişi, dönem, akış. CSV ve yazdırma çıktısı.
 - **E-posta bildirimi** — varsayılan KAPALI (`NOTIFY_EMAIL=1` ile açılır).
-- **Kolon geçiş kuralı** — `board_columns.allowed_next`. Sunucu tarafı hazır,
-  arayüzü henüz yok.
+- **Kolon geçiş kuralı** — `board_columns.allowed_next`. Kolon menüsünden
+  yönetiliyor; kural tanımlanmayan kolonlarda kısıt yok.
+- **Denetim kaydı** (`audit_logs`) — rapor dışa aktarımları kaydediliyor,
+  Raporlar ekranında ayrı sekme (yalnızca çalışma alanı yöneticisi).
+- **Güvenlik düzeltmeleri** — CSV formül enjeksiyonu, iç hata mesajı sızıntısı,
+  kullanıcı varlığı oracle'ı, sohbette hayalet kanallar, hayalet/eksik izinler,
+  parola değişince oturumların düşmemesi.
 
-Ayrıntılı gerekçeler `TODO.md` içindeki "Raporlama turu" bölümünde.
+Ayrıntılı gerekçeler `TODO.md` içindeki "Raporlama turu" ve "Güvenlik turu"
+bölümlerinde; çalışma biçimi ve tehdit modeli `GUVENLIK.md` içinde.
 
 ---
 
@@ -224,7 +230,6 @@ yeterli; `production` etkilenmedi.
 
 ## Bilinen eksikler
 
-- Kolon geçiş kuralının **arayüzü yok** — şimdilik SQL ile.
 - Süre girişinde hatırlatma/zorunluluk yok. Bilinçli: *"süreyi kim girer,
   girilmezse ne olur"* ikinci toplantıya götürülecek açık soru.
 - Otomatik test yok; bu liste elle test.
