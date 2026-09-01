@@ -199,11 +199,26 @@ export function createApp() {
   });
 
   // --- Error handler ---
+  //
+  // Beklenmeyen hataların mesajı istemciye verilmez. Prisma bağlantı hataları
+  // sorgu adını ve veritabanı sunucusunun adresini metnin içinde taşıyor; bu
+  // mesaj kayıt ve giriş uçlarından, yani kimlik doğrulaması olmadan, herkese
+  // görünüyordu. Ayrıntı yalnızca sunucu günlüğüne yazılır.
+  //
+  // Bilinçli fırlatılan hatalar (err.status ile işaretlenmiş 4xx) kullanıcıya
+  // anlamlı bilgi taşıdığı için olduğu gibi geçer.
   app.use((err, _req, res, _next) => {
     console.error('[error]', err);
-    res.status(err.status || 500).json({
-      error: err.message || 'Internal Server Error',
-    });
+    const status = err.status || 500;
+
+    if (status < 500) {
+      return res.status(status).json({ error: err.message || 'Bad Request' });
+    }
+
+    const body = { error: 'Şu an bağlanılamıyor. Lütfen birazdan tekrar deneyin.' };
+    // Geliştirmede gerçek sebep lazım; production'da asla dışarı çıkmaz.
+    if (!config.isProduction) body.detail = err.message;
+    res.status(status).json(body);
   });
 
   return app;
