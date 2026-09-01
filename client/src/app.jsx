@@ -132,6 +132,7 @@ function App() {
   const canManageChannels = isOwner || myPerms.includes('manage_channels');
   const canDeleteMessages = isOwner || myPerms.includes('delete_messages');
   const canManageMembers = isOwner || myPerms.includes('manage_members');
+  const canManageWorkspace = isOwner || myPerms.includes('manage_workspace');
 
   useEf(() => {
     if (view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') {
@@ -1094,6 +1095,7 @@ function App() {
             {!taskPageTask && view === 'dashboard' && <DashboardView tasks={tasks} onOpenTask={openDrawer} onView={setView} />}
             {!taskPageTask && view === 'reports' && (
               <ReportsView
+                canManageWorkspace={canManageWorkspace}
                 onOpenTask={(id) => {
                   const t = tasks.find((x) => String(x.id) === String(id));
                   if (t) { setView('board'); setDrawerTask(t); }

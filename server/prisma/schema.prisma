@@ -450,3 +450,33 @@ model WorkLog {
   @@index([userId, spentOn], map: "ix_wl_user_spent")
   @@map("work_logs")
 }
+
+/// Güvenlik denetim kaydı: kim, ne zaman, neyi yaptı.
+///
+/// ActivityLog'dan ayrı tutuluyor. O, takıma "ne oldu" anlatan ürün içi bir
+/// akış; bu ise güvenlik sorusuna cevap veriyor — özellikle "bu veriyi kim
+/// dışarı çıkardı". İçeriden sızıntıya karşı gerçek dünyada işe yarayan
+/// kontrol, engelleme değil, izlenebilirlik.
+///
+/// Geçiş ve süre kayıtlarıyla aynı gerekçeyle ilişkisiz ve denormalize:
+/// denetim kaydı, sildiğin kullanıcıyla birlikte kaybolursa denetim kaydı
+/// değildir.
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+  workspaceId Int?      @map("workspace_id")
+  userId      Int?      @map("user_id")
+  userName    String?   @map("user_name") @db.VarChar(200)
+  /// Nokta ile ayrılmış eylem adı: 'report.export', 'member.removed' gibi.
+  action      String    @db.VarChar(60)
+  /// Eyleme özel ayrıntı. Asla gizli veri yazılmaz — hangi rapor, hangi
+  /// aralık, kaç satır gibi bağlam bilgisi.
+  detail      Json?     @db.Json
+  ip          String?   @db.VarChar(60)
+  userAgent   String?   @map("user_agent") @db.VarChar(300)
+  at          DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([workspaceId, at], map: "ix_audit_ws_at")
+  @@index([action, at], map: "ix_audit_action_at")
+  @@index([userId, at], map: "ix_audit_user_at")
+  @@map("audit_logs")
+}

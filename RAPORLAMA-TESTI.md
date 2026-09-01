@@ -98,8 +98,9 @@ cd server
 npx prisma db push --skip-generate
 ```
 
-Beklenen: iki yeni tablo (`task_transitions`, `work_logs`), üç yeni sütun
-(`tasks.completed_at`, `board_columns.allowed_next`, `users.email_notifications`).
+Beklenen: üç yeni tablo (`task_transitions`, `work_logs`, `audit_logs`), üç yeni
+sütun (`tasks.completed_at`, `board_columns.allowed_next`,
+`users.email_notifications`).
 
 > **`--accept-data-loss` ekleme.** Değişikliklerin hepsi katkı niteliğinde;
 > komut veri kaybı isterse durması gerekir.
@@ -149,7 +150,28 @@ Vite `/api` ve soketi sunucuya yönlendiriyor.
 - [ ] **CSV indir** → Excel'de aç: Türkçe karakterler ve sütun ayrımı doğru mu?
 - [ ] **Yazdır** → önizlemede sol panel ve üst çubuk gizli, sadece rapor.
 
-### Kolon geçiş kuralı (arayüzü yok, SQL ile)
+### Denetim kaydı
+- [ ] **Denetim kaydı** sekmesi yalnızca çalışma alanı yöneticisine görünmeli.
+      Yetkisiz bir hesapla giriş yap → sekme **hiç çıkmamalı**.
+- [ ] Yetkisiz hesapla doğrudan dene:
+      `/api/reports/audit?workspace=<id>` → **403** dönmeli (arayüzde gizlemek
+      yetmez, asıl kontrol sunucuda).
+- [ ] Bir rapor CSV'si indir → Denetim sekmesinde satır belirmeli: kim, ne
+      zaman, hangi rapor, hangi aralık, kaç satır, hangi IP.
+- [ ] Kaydın içinde **verinin kendisi olmamalı** — sadece bağlam.
+
+### CSV formül enjeksiyonu (regresyon testi)
+- [ ] Bir kartın başlığını `=1+1` yap, o karta süre gir, kişi raporunu CSV
+      indir ve **Excel'de aç**.
+- [ ] Hücre formül olarak **çalışmamalı**, düz metin görünmeli.
+
+### Kolon geçiş kuralı (artık arayüzü var)
+- [ ] Kolon menüsü → **Geçiş kuralı** → hedef kolonları seç.
+- [ ] İzin verilmeyen bir kolona sürükle → engellenmeli **ve sebebi yazan bir
+      bildirim çıkmalı**, kart eski yerine dönmeli.
+- [ ] "Kuralı kaldır" → serbest kalmalı.
+
+### Aynısını SQL ile doğrulamak istersen
 ```sql
 update board_columns set allowed_next = '["doing"]'
 where project_id = <PROJE_ID> and slug = 'todo';

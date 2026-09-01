@@ -9595,3 +9595,12 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   color: var(--status-rose, #b4451f);
   font-size: 12px;
 }
+
+/* Denetim kaydı satırındaki bağlam bilgisi */
+.audit-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}

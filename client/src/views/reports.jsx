@@ -47,9 +47,23 @@ const KINDS = [
   { key: 'person', label: 'Kişi raporu', sub: 'Kim, hangi işte, ne kadar süre' },
   { key: 'period', label: 'Dönem raporu', sub: 'Ne açıldı, ne bitti, ne bekliyor' },
   { key: 'flow', label: 'Akış raporu', sub: 'İşler kaç günde bitiyor' },
+  // Denetim kaydı yalnızca çalışma alanını yönetenlere gösterilir; sunucu
+  // tarafında da aynı kontrol var, buradaki gizleme yalnızca arayüz kolaylığı.
+  { key: 'audit', label: 'Denetim kaydı', sub: 'Veriyi kim dışarı çıkardı', admin: true },
 ];
 
-function ReportsView({ onOpenTask }) {
+// Eylem adlarının okunabilir karşılığı.
+const ACTION_LABEL = {
+  'report.export': 'Rapor dışa aktarıldı',
+  'member.removed': 'Üye çıkarıldı',
+  'member.role_changed': 'Üye rolü değişti',
+  'invite.code_viewed': 'Davet kodu görüntülendi',
+  'workspace.trash_emptied': 'Çöp kutusu boşaltıldı',
+};
+
+const REPORT_LABEL = { person: 'Kişi', period: 'Dönem', flow: 'Akış' };
+
+function ReportsView({ onOpenTask, canManageWorkspace = false }) {
   const [kind, setKind] = useState('person');
   const [range, setRange] = useState(() => presetRange('month'));
   const [person, setPerson] = useState('');
@@ -77,7 +91,10 @@ function ReportsView({ onOpenTask }) {
     return () => { cancelled = true; };
   }, [kind, params, workspaceId]);
 
-  const csvHref = workspaceId ? API.reportCsvUrl(kind, params()) : '#';
+  const visibleKinds = KINDS.filter((k) => !k.admin || canManageWorkspace);
+  // Denetim kaydı CSV olarak dışa aktarılmıyor: dışa aktarmayı izleyen kaydın
+  // kendisinin tek tıkla dosyaya dönmesi anlamsız olurdu.
+  const csvHref = workspaceId && kind !== 'audit' ? API.reportCsvUrl(kind, params()) : null;
   const activeKind = KINDS.find((k) => k.key === kind);
 
   const rangeLabel = `${range.from} → ${range.to}`;
@@ -90,14 +107,16 @@ function ReportsView({ onOpenTask }) {
           <div className="dash-sub">{activeKind?.sub}</div>
         </div>
         <div className="report-actions no-print">
-          <a
-            className="btn btn-ghost"
-            href={csvHref}
-            download
-            title="Excel ile açılabilir CSV indir"
-          >
-            <Icon name="download" size={14} /> CSV
-          </a>
+          {csvHref && (
+            <a
+              className="btn btn-ghost"
+              href={csvHref}
+              download
+              title="Excel ile açılabilir CSV indir"
+            >
+              <Icon name="download" size={14} /> CSV
+            </a>
+          )}
           <button className="btn btn-ghost" onClick={() => window.print()} title="Yazdır veya PDF olarak kaydet">
             <Icon name="file" size={14} /> Yazdır
           </button>
@@ -111,7 +130,7 @@ function ReportsView({ onOpenTask }) {
 
       <div className="report-controls no-print">
         <div className="report-tabs">
-          {KINDS.map((k) => (
+          {visibleKinds.map((k) => (
             <button
               key={k.key}
               className="filter-chip"
@@ -174,6 +193,7 @@ function ReportsView({ onOpenTask }) {
           {kind === 'person' && <PersonReport data={data} onOpenTask={onOpenTask} />}
           {kind === 'period' && <PeriodReport data={data} onOpenTask={onOpenTask} />}
           {kind === 'flow' && <FlowReport data={data} onOpenTask={onOpenTask} />}
+          {kind === 'audit' && <AuditReport data={data} />}
         </>
       )}
     </div>
@@ -394,6 +414,71 @@ function FlowReport({ data, onOpenTask }) {
       </div>
     </div>
   );
+}
+
+// ─── Denetim kaydı ──────────────────────────────────────────────────────────
+
+function AuditReport({ data }) {
+  const entries = data.entries || [];
+  if (!entries.length) {
+    return <div className="dash-empty-state">Bu aralıkta kayıt yok.</div>;
+  }
+  const exports = entries.filter((e) => e.action === 'report.export').length;
+  return (
+    <div className="report-body">
+      <div className="report-stats">
+        <Stat label="Toplam olay" value={entries.length} />
+        <Stat label="Dışa aktarma" value={exports} />
+      </div>
+      <div className="panel">
+        <div className="panel-head">
+          <div>
+            <div className="panel-title">Olaylar</div>
+            <div className="panel-sub">En yeniden eskiye</div>
+          </div>
+        </div>
+        <div className="panel-body">
+          <table className="list-table">
+            <thead>
+              <tr>
+                <th style={{ width: 150 }}>Zaman</th>
+                <th style={{ width: 140 }}>Kişi</th>
+                <th>Olay</th>
+                <th style={{ width: 130 }}>IP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e) => (
+                <tr key={e.id} style={{ cursor: 'default' }}>
+                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {e.at ? new Date(e.at).toLocaleString('tr-TR') : '—'}
+                  </td>
+                  <td>{e.user_name}</td>
+                  <td className="title">
+                    {ACTION_LABEL[e.action] || e.action}
+                    {e.detail && <AuditDetail detail={e.detail} />}
+                  </td>
+                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{e.ip || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuditDetail({ detail }) {
+  if (detail.report) {
+    return (
+      <span className="audit-detail">
+        {REPORT_LABEL[detail.report] || detail.report} raporu ·{' '}
+        {detail.from} → {detail.to} · {detail.rows} satır
+      </span>
+    );
+  }
+  return null;
 }
 
 // ─── Küçük parçalar ─────────────────────────────────────────────────────────

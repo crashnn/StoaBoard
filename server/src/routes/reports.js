@@ -17,6 +17,7 @@ import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { memberForWorkspace, hasPermission } from '../lib/workspace.js';
+import { recordAudit, AUDIT, auditToDict } from '../lib/audit.js';
 import {
   personReport,
   periodReport,
@@ -306,6 +307,29 @@ function sendCsv(res, filename, headers, rows) {
   res.send(toCsv(headers, rows));
 }
 
+/**
+ * CSV gönder ve dışa aktarmayı denetim kaydına yaz.
+ *
+ * Kayda yalnızca bağlam yazılır — hangi rapor, hangi aralık, kaç satır.
+ * Satırların içeriği asla kaydedilmez, aksi halde denetim kaydının kendisi
+ * ikinci bir sızıntı yüzeyi olurdu.
+ */
+function sendCsvAudited(req, res, scope, kind, filename, headers, rows) {
+  recordAudit(req, {
+    workspaceId: scope.workspaceId,
+    user: scope.user,
+    action: AUDIT.REPORT_EXPORT,
+    detail: {
+      report: kind,
+      from: dayStr(scope.range.from),
+      to: dayStr(scope.range.to),
+      rows: rows.length,
+      project: req.query.project ? String(req.query.project).slice(0, 20) : null,
+    },
+  });
+  sendCsv(res, filename, headers, rows);
+}
+
 const dayStr = (d) => new Date(d).toISOString().slice(0, 10);
 
 // ─── GET /reports/person ────────────────────────────────────────────────────
@@ -374,8 +398,8 @@ reportsRouter.get(
           ]);
         }
       }
-      return sendCsv(
-        res,
+      return sendCsvAudited(
+        req, res, scope, 'person',
         `kisi-raporu_${dayStr(report.from)}_${dayStr(report.to)}.csv`,
         ['Kişi', 'Görev', 'Dakika', 'Süre', 'Hareket', 'Tamamlandı'],
         rows,
@@ -406,8 +430,8 @@ reportsRouter.get(
         t.minutes,
         t.minutes_label,
       ]);
-      return sendCsv(
-        res,
+      return sendCsvAudited(
+        req, res, scope, 'period',
         `donem-raporu_${dayStr(report.from)}_${dayStr(report.to)}.csv`,
         ['Görev', 'Öncelik', 'Açılış', 'Tamamlanma', 'Geçen gün', 'Dakika', 'Emek'],
         rows,
@@ -430,13 +454,51 @@ reportsRouter.get(
 
     if (req.query.format === 'csv') {
       const rows = report.slowest.map((t) => [t.title, t.days, t.completed_at]);
-      return sendCsv(
-        res,
+      return sendCsvAudited(
+        req, res, scope, 'flow',
         `akis-raporu_${dayStr(report.from)}_${dayStr(report.to)}.csv`,
         ['Görev', 'Tamamlanma süresi (gün)', 'Tamamlanma tarihi'],
         rows,
       );
     }
     res.json(report);
+  }),
+);
+
+// ─── GET /reports/audit — denetim kaydı ─────────────────────────────────────
+//
+// Kimin neyi dışarı çıkardığını gösterir. Yalnızca çalışma alanını yönetenler
+// erişebilir: denetim kaydının kendisi de hassas bir yüzey, herkese açık olsa
+// kimin ne zaman ne yaptığı bilgisi sıradan bir üyeye açılmış olurdu.
+
+reportsRouter.get(
+  '/audit',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+
+    if (!hasPermission(scope.member, 'manage_workspace') && scope.member?.role !== 'owner') {
+      return res.status(403).json({ error: 'Denetim kaydını görme yetkiniz yok' });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    const where = {
+      workspaceId: scope.workspaceId,
+      at: { gte: scope.range.from, lte: scope.range.to },
+    };
+    if (req.query.action) where.action = String(req.query.action).slice(0, 60);
+
+    const rows = await prisma.auditLog.findMany({
+      where,
+      orderBy: { at: 'desc' },
+      take: limit,
+    });
+
+    res.json({
+      from: scope.range.from,
+      to: scope.range.to,
+      entries: rows.map(auditToDict),
+    });
   }),
 );

@@ -5,6 +5,46 @@ Canlı: [stoaboard.com](https://www.stoaboard.com) · Railway + Neon PostgreSQL,
 
 ---
 
+## ✅ Güvenlik turu — 1 Eylül 2026
+
+Raporlama turunun hemen ardından, dal üzerinde yapılan güvenlik denetimi ve
+sonuçları. Çalışma biçimi ve tehdit modeli artık [GUVENLIK.md](GUVENLIK.md)
+içinde — **her yeni özellik oradaki on soruluk elekten geçmeli.**
+
+**Denetimden çıkan ve kapatılan bulgular**
+- **CSV formül enjeksiyonu (yüksek).** Rapor CSV'lerindeki görev başlıkları ve
+  kişi adları kullanıcı girdisi. Excel `=` `+` `-` `@` ile başlayan hücreyi
+  formül sayıp çalıştırıyor; tırnaklamak engellemiyor. Bir üye kart başlığını
+  `=HYPERLINK(...)` yapıp **raporu açan yöneticinin makinesinde** veri
+  sızdırabilirdi. Saldırı verinin kendisini değil, veriyi açan kişiyi hedefliyor.
+- **Kullanıcı varlığı oracle'ı (düşük).** `/api/reports/person?user=<slug>`
+  çözümlemesi tüm platformda ve yetki kontrolünden **önce** yapılıyordu:
+  olmayan slug 404, olan 403. Arama artık çalışma alanı üyeleriyle sınırlı.
+- **İç hata mesajı sızıntısı.** Hata yakalayıcı her `err.message`ı olduğu gibi
+  döndürüyordu; Prisma bağlantı hataları sorgu adını ve veritabanı sunucusunun
+  adresini taşıyor ve bu **kayıt/giriş ekranından, kimlik doğrulaması olmadan**
+  görülebiliyordu.
+
+**Denetim kaydı (`audit_logs`)**
+- Kim, ne zaman, hangi raporu, hangi aralıkla, kaç satır dışa aktardı — IP ve
+  tarayıcı bilgisiyle. İçeriden sızıntıya karşı pratikte işe yarayan kontrol
+  engelleme değil izlenebilirlik: veriyi görmesi meşru olan biri onu kopyalamayı
+  zaten başarır, ama kaydın tutulduğunu bilmek caydırır.
+- Rapor ekranında **Denetim kaydı** sekmesi. Yalnızca `manage_workspace` —
+  denetim kaydının kendisi de hassas bir yüzey.
+- Kayda asla veri içeriği yazılmıyor, yalnızca bağlam.
+- Geçiş ve süre kayıtlarıyla aynı gerekçeyle ilişkisiz: sildiğin kullanıcıyla
+  birlikte kaybolan denetim kaydı, denetim kaydı değildir.
+
+**Denetlenip temiz bulunanlar**
+- Çalışma alanları arası IDOR yok — `?project=` çalışma alanıyla AND'leniyor,
+  yabancı proje kimliği boş küme veriyor.
+- `userToDict` e-posta döndürmüyor; genel/özel serileştirici ayrımı sağlam.
+- Direkt mesajlar çalışma alanı ortaklığıyla, özel kanallar üyelikle korunuyor.
+- CSRF `SameSite=lax` ile kapalı; ham SQL yok.
+
+---
+
 ## ✅ Raporlama turu — 1 Eylül 2026
 
 Netaş toplantısındaki geri bildirimler üzerine. Toplantının üç ayrı notu
