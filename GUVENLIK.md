@@ -145,10 +145,10 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 3. **Oturum hijyeni.** Üye çıkarıldığında ve parola değiştiğinde açık oturumlar
    gerçekten düşüyor mu? Denetlenmedi.
 4. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
-6. **Denetim kaydının kapsamı.** Şu an yalnızca dışa aktarma. Üye ekleme/
+5. **Denetim kaydının kapsamı.** Şu an yalnızca dışa aktarma. Üye ekleme/
    çıkarma, rol değişikliği, davet kodu görüntüleme de yazılmalı — eylem
    adları `lib/audit.js` içinde hazır bekliyor.
-7. **Otomatik test yok.** Yukarıdaki maddelerin hiçbiri regresyona karşı
+6. **Otomatik test yok.** Yukarıdaki maddelerin hiçbiri regresyona karşı
    korunmuyor. İlk testler izin katmanına yazılmalı.
 
 ---
