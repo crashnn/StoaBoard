@@ -352,23 +352,29 @@ reportsRouter.get(
     // görebilmek aynı şey değil. Üye yönetimi verilen bir kişi farkında
     // olmadan herkesin çalışma saatlerine de erişiyordu.
     const seeingOthers = !wantedUser || wantedUser !== scope.user.id;
+    let report;
+    let scopedToSelf = false;
     if (seeingOthers && !hasPermission(scope.member, 'view_reports')) {
-      if (!wantedUser) {
-        // İzin yoksa sessizce kendi raporuna daralt — boş sayfa göstermektense.
-        const own = await personReport(scope.projectIds, {
-          ...scope.range,
-          userId: scope.user.id,
-        });
-        return res.json({ ...own, scoped_to_self: true });
+      if (wantedUser) {
+        return res.status(403).json({ error: 'Başka kullanıcının raporunu görme yetkiniz yok' });
       }
-      return res.status(403).json({ error: 'Başka kullanıcının raporunu görme yetkiniz yok' });
+      // İzin yoksa sessizce kendi raporuna daralt — boş sayfa göstermektense.
+      report = await personReport(scope.projectIds, {
+        ...scope.range,
+        userId: scope.user.id,
+      });
+      scopedToSelf = true;
+    } else {
+      report = await personReport(scope.projectIds, {
+        ...scope.range,
+        userId: wantedUser,
+      });
     }
 
-    const report = await personReport(scope.projectIds, {
-      ...scope.range,
-      userId: wantedUser,
-    });
-
+    // CSV, izinden bağımsız her iki yolda da çalışmalı. Önceden kendine daralan
+    // yol format kontrolünden ÖNCE res.json ile dönüyordu; kullanıcı CSV butonuna
+    // basınca JSON iniyor, tarayıcı da URL yolundan "person.json" adını
+    // üretiyordu. Artık rapor önce hesaplanıyor, biçim kararı tek yerde.
     if (req.query.format === 'csv') {
       const rows = [];
       for (const p of report.people) {
@@ -390,7 +396,7 @@ reportsRouter.get(
         rows,
       );
     }
-    res.json(report);
+    res.json(scopedToSelf ? { ...report, scoped_to_self: true } : report);
   }),
 );
 
