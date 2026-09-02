@@ -18,7 +18,7 @@ import { chatMessageToDict, notificationToDict } from '../lib/serializers.js';
 import { buildNotificationText } from '../lib/notifications.js';
 import { sessionMiddleware } from '../app.js';
 import { usersShareWorkspace } from '../lib/workspace.js';
-import { userChannelRole } from '../lib/channels.js';
+import { userChannelRole, mentionAllowed } from '../lib/channels.js';
 
 const MENTION_RE = /@([\w-]+)/g;
 
@@ -165,6 +165,9 @@ export function registerChatHandlers(io) {
       const workspaceId = await resolveActiveWorkspaceId(user);
       let receiver = null;
       let channel = 'general';
+      // Kanal satırı, bahsetme bildirimlerini kapsam dışına sızdırmamak için
+      // dışarıda tutuluyor (aşağıya bakınız).
+      let channelRow = null;
 
       if (toSlug) {
         // DM — alıcı aynı workspace'te mi?
@@ -176,18 +179,18 @@ export function registerChatHandlers(io) {
         // Kanal mesajı — üyelik kontrolü
         channel = ((data.channel || 'general') + '').trim().toLowerCase().slice(0, 80) || 'general';
         if (channel !== 'general' && workspaceId) {
-          const chRow = await prisma.channel.findFirst({
+          channelRow = await prisma.channel.findFirst({
             where: { workspaceId, slug: channel },
             include: { members: true },
           });
           // REST ucuyla aynı kural: kanal satırı yoksa mesaj kabul edilmez.
           // Burada ayrıca yayın tarafı da etkileniyordu — satır bulunamayınca
           // kanal "özel değil" sayılıp mesaj tüm çalışma alanına dağıtılıyordu.
-          if (!chRow) {
+          if (!channelRow) {
             console.warn('[socket] var olmayan kanala mesaj reddedildi:', channel);
             return;
           }
-          const role = await userChannelRole(chRow, user.id);
+          const role = await userChannelRole(channelRow, user.id);
           if (!role) return;
         }
       }
@@ -229,7 +232,29 @@ export function registerChatHandlers(io) {
           if (notified.has(slug)) continue;
           notified.add(slug);
           const mentioned = await prisma.user.findUnique({ where: { slug } });
-          if (mentioned && mentioned.id !== user.id) {
+          if (!mentioned || mentioned.id === user.id) continue;
+
+          // Bahsedilen kişi bu mesajı görme hakkına sahip değilse bildirim
+          // gönderilmez. Aksi halde bir üye, @slug yazarak çalışma alanı
+          // dışındaki ya da özel kanala üye olmayan rastgele birine mesaj
+          // önizlemesi (80 karakter) sızdırabilir ve istenmeyen bildirim
+          // gönderebilirdi. Bu, person-report'ta kapatılan "platform geneli
+          // arama, kapsam kontrolü yok" kusurunun aynı sınıfı. Karar saf
+          // mentionAllowed'da; DB aramaları (ortaklık, kanal rolü) burada.
+          const isPrivate = channelRow?.type === 'private';
+          const canSee = mentionAllowed({
+            isDm: Boolean(receiver),
+            mentionedIsReceiver: Boolean(receiver) && mentioned.id === receiver.id,
+            sharesWorkspace:
+              !receiver &&
+              Boolean(workspaceId) &&
+              (await usersShareWorkspace(user.id, mentioned.id, workspaceId)),
+            isPrivateChannel: isPrivate,
+            hasChannelRole: isPrivate ? Boolean(await userChannelRole(channelRow, mentioned.id)) : false,
+          });
+          if (!canSee) continue;
+
+          {
             const preview = text.slice(0, 80) + (text.length > 80 ? '…' : '');
             const mNotif = await prisma.notification.create({
               data: {

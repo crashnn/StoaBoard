@@ -191,6 +191,12 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 - **Denetim kaydı kapsamı genişledi** *(2 Eylül)* — dışa aktarmaya ek olarak
   üye çıkarma, rol değişikliği ve toplu çöp boşaltma da yazılıyor. Kayda yalnızca
   bağlam (hedef, rol adı, sayı), içerik değil
+- **Bahsetme bildirimi kapsamı** *(2 Eylül)* — sohbetteki @mention bildirimleri
+  bahsedilen kişiyi platform genelinde arıyor, çalışma alanı/kanal üyeliği
+  kontrol etmiyordu: bir üye @slug yazarak rastgele birine mesaj önizlemesi
+  (özel kanalda kanal içeriği, DM'de üçüncü kişiye DM içeriği) sızdırabiliyordu.
+  person-report oracle'ıyla aynı sınıf. Karar saf `mentionAllowed`'a çıkarıldı,
+  altı regresyon testiyle kilitlendi
 
 **Açık — öncelik sırasıyla**
 1. **Proje bazlı üyelik.** En büyük yarıçap küçültme. Bugün bir üye çalışma

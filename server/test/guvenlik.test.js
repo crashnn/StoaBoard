@@ -307,3 +307,53 @@ describe('denetim kaydı — yönetim eylemleri bağlı', () => {
     });
   }
 });
+
+// ─── Bahsetme bildirimi kapsamı ─────────────────────────────────────────────
+//
+// Kusur (2 Eylül 2026): chat_message'daki @mention bildirimleri bahsedilen
+// kişiyi platform genelinde arıyor, hiçbir çalışma alanı/kanal üyeliği kontrol
+// etmiyordu. Bir üye @slug yazarak rastgele birine mesaj önizlemesi (80 karakter)
+// sızdırabiliyordu — özel kanalda kanal içeriği, DM'de üçüncü kişiye DM içeriği.
+// person-report oracle'ıyla aynı sınıf. Karar mentionAllowed'a çıkarıldı.
+
+import { mentionAllowed } from '../src/lib/channels.js';
+
+describe('mentionAllowed — bahsetme bildirimi görünürlük kapısı', () => {
+  test('DM: yalnızca karşı tarafa gider', () => {
+    assert.equal(mentionAllowed({ isDm: true, mentionedIsReceiver: true }), true);
+    assert.equal(mentionAllowed({ isDm: true, mentionedIsReceiver: false }), false);
+  });
+
+  test('DM: üçüncü kişi çalışma alanını paylaşsa bile alamaz', () => {
+    // DM içeriği yalnızca iki taraf arasında; @üçüncü_kişi bildirim üretmemeli.
+    assert.equal(
+      mentionAllowed({ isDm: true, mentionedIsReceiver: false, sharesWorkspace: true }),
+      false,
+    );
+  });
+
+  test('genel/açık kanal: çalışma alanı üyeliği yeter', () => {
+    assert.equal(mentionAllowed({ sharesWorkspace: true, isPrivateChannel: false }), true);
+  });
+
+  test('çalışma alanını paylaşmayan hiçbir kanalda alamaz', () => {
+    assert.equal(mentionAllowed({ sharesWorkspace: false, isPrivateChannel: false }), false);
+    assert.equal(mentionAllowed({ sharesWorkspace: false, isPrivateChannel: true, hasChannelRole: true }), false);
+  });
+
+  test('özel kanal: çalışma alanı üyeliği yetmez, kanal üyeliği de şart', () => {
+    assert.equal(
+      mentionAllowed({ sharesWorkspace: true, isPrivateChannel: true, hasChannelRole: false }),
+      false,
+    );
+    assert.equal(
+      mentionAllowed({ sharesWorkspace: true, isPrivateChannel: true, hasChannelRole: true }),
+      true,
+    );
+  });
+
+  test('boş çağrı — kapalı başarısızlık (varsayılan red)', () => {
+    assert.equal(mentionAllowed(), false);
+    assert.equal(mentionAllowed({}), false);
+  });
+});

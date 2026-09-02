@@ -44,6 +44,36 @@ export function canManageChannel(role) {
 }
 
 /**
+ * Bahsedilen (@mention) kişiye bildirim gönderilmeli mi? Saf karar.
+ *
+ * Bildirim, mesajın önizlemesini taşıyor; dolayısıyla yalnızca mesajı görme
+ * hakkı olan kişiye gitmeli. Aksi halde bir üye @slug yazarak çalışma alanı
+ * dışındaki ya da özel kanala üye olmayan rastgele birine içerik sızdırabilir.
+ *
+ * DB erişimi (workspace ortaklığı, kanal rolü) çağıran tarafta çözülür; burası
+ * yalnızca kararı verir ve test edilebilir kalır.
+ *
+ *   isDm               mesaj bir DM mi
+ *   mentionedIsReceiver DM'de bahsedilen kişi karşı taraf mı
+ *   sharesWorkspace    bahsedilen kişi mesajın çalışma alanında mı
+ *   isPrivateChannel   kanal özel mi
+ *   hasChannelRole     bahsedilen kişinin özel kanalda rolü var mı
+ */
+export function mentionAllowed({
+  isDm = false,
+  mentionedIsReceiver = false,
+  sharesWorkspace = false,
+  isPrivateChannel = false,
+  hasChannelRole = false,
+} = {}) {
+  // DM: yalnızca karşı taraf. Üçüncü kişiye DM içeriği sızmamalı.
+  if (isDm) return mentionedIsReceiver;
+  // Kanal: önce çalışma alanı üyeliği; özel kanalda ayrıca kanal üyeliği şart.
+  if (!sharesWorkspace) return false;
+  return isPrivateChannel ? hasChannelRole : true;
+}
+
+/**
  * Kanal + bağlı mesajlarını sil. Transaction client al.
  * Python _delete_channel_tree karşılığı.
  */
