@@ -1611,6 +1611,8 @@ function getCommands() {
       { label: tl('cmd_calendar','Takvim'),            icon: 'calendar',    action: 'goto:calendar',  shortcut: 'G C' },
       { label: tl('cmd_chat','Sohbet'),                icon: 'msg',         action: 'goto:chat',      shortcut: 'G M' },
       { label: tl('cmd_notes','Notlar'),               icon: 'note',        action: 'goto:notes',     shortcut: 'G N' },
+      { label: tl('cmd_reports','Raporlar'),           icon: 'chart',       action: 'goto:reports',   shortcut: 'G R' },
+      { label: tl('cmd_trash','Çöp Kutusu'),           icon: 'trash',       action: 'goto:trash',     shortcut: 'G T' },
       { label: tl('cmd_settings','Ayarlar'),           icon: 'settings',    action: 'goto:settings',  shortcut: 'G S' },
     ]},
     { group: tl('cmd_actions','Aksiyonlar'), items: [

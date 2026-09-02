@@ -79,6 +79,10 @@ function App() {
   const [tasks, setTasks]                   = useS([]);
   const [currentProject, setCurrentProject] = useS(null);
   const [drawerTask, setDrawerTask]         = useS(null);
+  // Görev drawer'ı kapanınca dönülecek görünüm. Raporlardan bir göreve
+  // tıklanınca pano açılıp kart drawer'ı geliyor; drawer kapanınca kullanıcı
+  // panoda kalmak yerine geldiği rapora dönsün diye tutuluyor.
+  const [taskReturnView, setTaskReturnView] = useS(null);
   const [taskPageTask, setTaskPageTask]     = useS(null);
   const [modalOpen, setModalOpen]           = useS(false);
   const [modalCol, setModalCol]             = useS('todo');
@@ -229,7 +233,7 @@ function App() {
     };
     const clearG = () => { clearTimeout(pendingGTimer.current); pendingGTimer.current = null; };
     // G+key navigation. 'l' (list) and 'b' (board) both go to board view; list sets sub-view.
-    const G_MAP = { b: 'board', l: 'board', c: 'calendar', d: 'dashboard', s: 'settings', m: 'chat', n: 'notes' };
+    const G_MAP = { b: 'board', l: 'board', c: 'calendar', d: 'dashboard', s: 'settings', m: 'chat', n: 'notes', r: 'reports', t: 'trash' };
 
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); clearG(); setCmdOpen(true); return; }
@@ -937,6 +941,16 @@ function App() {
 
   const openDrawer = (task) => setDrawerTask(task);
   const closeDrawer = () => setDrawerTask(null);
+
+  // Drawer kapandığında (kapat düğmesi ya da Escape — ikisi de drawerTask'i
+  // null yapıyor) bir dönüş görünümü kayıtlıysa oraya dön. Raporlardan açılan
+  // kart kapanınca panoda bırakmak yerine rapora geri getiriyor.
+  useEf(() => {
+    if (!drawerTask && taskReturnView) {
+      setView(taskReturnView);
+      setTaskReturnView(null);
+    }
+  }, [drawerTask]);
   const openTaskPage = (task) => { setTaskPageTask(task); setDrawerTask(null); };
   const closeTaskPage = () => setTaskPageTask(null);
 
@@ -1143,7 +1157,7 @@ function App() {
                   canManageWorkspace={canManageWorkspace}
                   onOpenTask={(id) => {
                     const t = tasks.find((x) => String(x.id) === String(id));
-                    if (t) { setView('board'); setDrawerTask(t); }
+                    if (t) { setTaskReturnView('reports'); setView('board'); setDrawerTask(t); }
                   }}
                 />
               </Lazy>
