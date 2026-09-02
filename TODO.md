@@ -199,9 +199,10 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
       calendar, dashboard, trash). İlk boya 806→~642 KB (ham), derleme uyarısı
       kalktı. ChatPanel/NotifPanel bilerek eager (ikişer render noktası).
 - [ ] `chat.jsx` ve `data.jsx` beklenenden kalın; bölünmeleri gerekiyor.
-- [ ] `client/src/views/list.jsx` öksüz — liste görünümü board alt-görünümüne
-      taşınınca render edilmez oldu, artık hiçbir dosya import etmiyor. app.jsx'teki
-      ölü import kaldırıldı (2 Eylül); dosyanın kendisi silinmeyi bekliyor.
+- [x] ~~`client/src/views/list.jsx` öksüz.~~ **Silindi (3 Eylül).** Liste
+      görünümü board alt-görünümüne taşınınca render edilmez olmuştu; app.jsx'teki
+      ölü import 2 Eylül'de kaldırılmış, dosyanın kendisi kalmıştı. `ListView`
+      adının depoda başka geçtiği yer yoktu, derleme silmeden sonra da temiz.
 - [ ] Almanca, İspanyolca ve Rusça yalnızca gezinme ve ayarlar düzeyinde
       (43'er anahtar); eksikler Türkçe'ye düşüyor. TR/EN tam (~940 anahtar).
 
