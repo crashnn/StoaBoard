@@ -66,7 +66,12 @@ export function parseDuration(input) {
 
   // 2:30 → 150
   const clock = /^(\d{1,3}):([0-5]?\d)$/.exec(raw);
-  if (clock) return parseInt(clock[1], 10) * 60 + parseInt(clock[2], 10);
+  if (clock) {
+    // Diğer dallar gibi sıfır/negatif kabul edilmez: "0:00" geçerli bir süre
+    // değil. Sözleşme "kabul edilmezse null" — bu dal da ona uymalı.
+    const total = parseInt(clock[1], 10) * 60 + parseInt(clock[2], 10);
+    return total > 0 ? total : null;
+  }
 
   // "2s 30d" / "2h30m" / "2 saat 30 dakika"
   let total = 0;
