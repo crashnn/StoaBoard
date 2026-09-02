@@ -9633,3 +9633,82 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ── DefaultDropdown — tek standart seçim bileşeni ────────────────────────────
+   Tema token'larıyla; açık/koyu ikisinde de doğru. Native <select> yerine. */
+.dd-root { display: inline-block; font-family: var(--font-ui); }
+
+.dd-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 140px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-subtle);
+  color: var(--ink);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dd-trigger:hover:not(:disabled) { border-color: var(--ink-faint); }
+.dd-trigger[data-open] {
+  border-color: var(--accent);
+  background: var(--bg-raised);
+}
+.dd-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.dd-trigger[data-placeholder] { color: var(--ink-muted); }
+
+.dd-value { display: flex; align-items: center; gap: 7px; overflow: hidden; }
+.dd-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.dd-caret {
+  display: flex;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.dd-caret[data-open] { transform: rotate(180deg); }
+
+.dd-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 300;
+  min-width: 100%;
+  max-height: 264px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+}
+.dd-menu[data-align='left']  { left: 0; }
+.dd-menu[data-align='right'] { right: 0; }
+
+.dd-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dd-option[data-active] { background: var(--bg-subtle); }
+.dd-option[data-selected] { color: var(--accent); font-weight: 500; }
+.dd-option[data-selected][data-active] { background: var(--accent-soft); }
+.dd-option-text { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.dd-option-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-option-sub { font-size: 11px; color: var(--ink-muted); }
+.dd-check { color: var(--accent); flex-shrink: 0; }

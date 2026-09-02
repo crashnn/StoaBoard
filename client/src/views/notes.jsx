@@ -11,6 +11,7 @@ import React, {
 import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, fmtTimeAgo, fmtAbsoluteDateTime } from '../data.jsx';
+import { DefaultDropdown } from '../dropdown.jsx';
 
 // Tones reused from settings.jsx — kept local to avoid module reference issue.
 const NOTE_LABEL_TONES = () => {
@@ -1381,12 +1382,17 @@ function NotesView({ socket, tasks, members, currentUserId, isOwner, canManagePr
             />
           </div>
           <div className="notes-sort">
-            <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label={window.t?.('notes_sort') || 'Sırala'}>
-              <option value="updated">{window.t?.('notes_sort_updated') || 'Son güncelleme'}</option>
-              <option value="created">{window.t?.('notes_sort_created') || 'Oluşturulma'}</option>
-              <option value="title">{window.t?.('notes_sort_title') || 'Başlık (A-Z)'}</option>
-              <option value="author">{window.t?.('notes_sort_author') || 'Yazar'}</option>
-            </select>
+            <DefaultDropdown
+              value={sort}
+              onChange={setSort}
+              ariaLabel={window.t?.('notes_sort') || 'Sırala'}
+              options={[
+                { value: 'updated', label: window.t?.('notes_sort_updated') || 'Son güncelleme' },
+                { value: 'created', label: window.t?.('notes_sort_created') || 'Oluşturulma' },
+                { value: 'title', label: window.t?.('notes_sort_title') || 'Başlık (A-Z)' },
+                { value: 'author', label: window.t?.('notes_sort_author') || 'Yazar' },
+              ]}
+            />
           </div>
           <button type="button" className="icon-btn"
             data-active={filtersOpen ? 'true' : 'false'}
@@ -1407,18 +1413,28 @@ function NotesView({ socket, tasks, members, currentUserId, isOwner, canManagePr
         <div className="notes-filters">
           <label>
             <span>{window.t?.('notes_filter_label') || 'Etiket'}</span>
-            <select value={filterLabel} onChange={(e) => setFilterLabel(e.target.value)}>
-              <option value="">{window.t?.('notes_filter_all') || 'Tümü'}</option>
-              {allLabelNames.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
+            <DefaultDropdown
+              value={filterLabel}
+              onChange={setFilterLabel}
+              fullWidth
+              options={[
+                { value: '', label: window.t?.('notes_filter_all') || 'Tümü' },
+                ...allLabelNames.map(n => ({ value: n, label: n })),
+              ]}
+            />
           </label>
           <label>
             <span>{window.t?.('notes_filter_author') || 'Yazar'}</span>
-            <select value={filterAuthor} onChange={(e) => setFilterAuthor(e.target.value)}>
-              <option value="">{window.t?.('notes_filter_all') || 'Tümü'}</option>
-              <option value="__me__">{window.t?.('notes_filter_only_me') || 'Sadece ben'}</option>
-              {(members || []).map(m => <option key={m.id} value={m.slug || m.id}>{m.name}</option>)}
-            </select>
+            <DefaultDropdown
+              value={filterAuthor}
+              onChange={setFilterAuthor}
+              fullWidth
+              options={[
+                { value: '', label: window.t?.('notes_filter_all') || 'Tümü' },
+                { value: '__me__', label: window.t?.('notes_filter_only_me') || 'Sadece ben' },
+                ...(members || []).map(m => ({ value: String(m.slug || m.id), label: m.name })),
+              ]}
+            />
           </label>
           <label className="notes-filter-toggle">
             <input type="checkbox" checked={filterPinned} onChange={(e) => setFilterPinned(e.target.checked)} />

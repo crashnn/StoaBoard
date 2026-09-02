@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Icon } from '../icons.jsx';
+import { DefaultDropdown } from '../dropdown.jsx';
 
 const T = (k, fb) => (window.t?.(k) !== k && window.t?.(k)) || fb;
 
@@ -196,12 +197,15 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
 
         {kind === 'person' && (
           <div className="report-range">
-            <select value={person} onChange={(e) => setPerson(e.target.value)}>
-              <option value="">Herkes</option>
-              {(DATA.MEMBERS || []).map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
+            <DefaultDropdown
+              value={person}
+              onChange={setPerson}
+              ariaLabel="Kişi"
+              options={[
+                { value: '', label: 'Herkes' },
+                ...(DATA.MEMBERS || []).map((m) => ({ value: String(m.id), label: m.name })),
+              ]}
+            />
           </div>
         )}
       </div>

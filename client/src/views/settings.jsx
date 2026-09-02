@@ -4,6 +4,7 @@ import React from 'react';
 import { Icon } from '../icons.jsx';
 import { Avatar } from '../shell.jsx';
 import { API } from '../data.jsx';
+import { DefaultDropdown } from '../dropdown.jsx';
 
 const LABEL_TONES = () => {
   const _t = (k, fb) => window.t?.(k) || fb;
@@ -1753,16 +1754,15 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                     <strong>{_t('set_dng_transfer_desc','Sahipliği başka bir üyeye aktar.')}</strong>
                     <p>{_t('set_dng_transfer_warn','Bu işlemden sonra sahip yetkilerinizi kaybedersiniz. Geri alınamaz.')}</p>
                   </div>
-                  <select
+                  <DefaultDropdown
                     value={transferSlug}
-                    onChange={e => setTransferSlug(e.target.value)}
-                    style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid var(--line)', background:'var(--bg)', color:'var(--ink)', fontSize:13 }}
-                  >
-                    <option value="">{_t('set_dng_select_member','— Üye seçin —')}</option>
-                    {members.filter(m => m.id !== window.CURRENT_USER?.id).map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
+                    onChange={setTransferSlug}
+                    fullWidth
+                    placeholder={_t('set_dng_select_member','— Üye seçin —')}
+                    options={members
+                      .filter(m => m.id !== window.CURRENT_USER?.id)
+                      .map(m => ({ value: String(m.id), label: m.name }))}
+                  />
                   {transferError && <div className="inline-error">{transferError}</div>}
                   <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                     <button className="btn btn-ghost" onClick={() => { setTransferOpen(false); setTransferError(''); }} disabled={transferBusy}>
