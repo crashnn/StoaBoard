@@ -10,6 +10,7 @@ import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
 import { NotifPanel, NotifPrefRow } from './notifications.jsx';
 import { CommandPalette } from './palette.jsx';
+import { ErrorBoundary } from './error-boundary.jsx';
 import { TweaksPanel } from './tweaks.jsx';
 import { ChatPanel } from './chat.jsx';
 import { AuthPage, WorkspaceSetupPage } from './views/auth.jsx';
@@ -1103,6 +1104,11 @@ function App() {
           onMobileMenuToggle={() => setMobileSidebarOpen(v => !v)}
         />
 
+        {/* Görünüm alanı bir hata boundary ile sarılı: bir görünüm render'da
+            çökerse yalnızca bu bölüm bir "yeniden dene" kutusu gösterir; Topbar
+            ve sidebar ayakta kalır. key={view} sayesinde başka görünüme geçince
+            boundary yeniden kurulur ve hata kendiliğinden temizlenir. */}
+        <ErrorBoundary key={view}>
         {noProject && view !== 'settings' && view !== 'gizlilik-sartlari' && view !== 'hizmet-sartlari' ? (
           <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16, color:'var(--ink-muted)' }}>
             <Icon name="layoutBoard" size={48} strokeWidth={1} />
@@ -1195,6 +1201,7 @@ function App() {
           </>
         )}
         {view === 'settings' && <Lazy><SettingsView tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={handleWsLogoChange} onMembersChange={setMembers} /></Lazy>}
+        </ErrorBoundary>
       </div>
 
       <TaskDrawer
