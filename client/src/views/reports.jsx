@@ -70,6 +70,15 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Künyedeki "Oluşturulma" damgası. Yazdırma anında güncelleniyor ki sayfa
+  // uzun süre açık kalsa bile PDF'teki tarih gerçekten çıktının alındığı an
+  // olsun (bileşen render anı değil).
+  const [printedAt, setPrintedAt] = useState('');
+  useEffect(() => {
+    const stamp = () => setPrintedAt(new Date().toLocaleString('tr-TR'));
+    window.addEventListener('beforeprint', stamp);
+    return () => window.removeEventListener('beforeprint', stamp);
+  }, []);
 
   const workspaceId = DATA.WORKSPACE?.id;
 
@@ -123,9 +132,27 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
         </div>
       </div>
 
-      {/* Yazdırma çıktısında görünen künye */}
+      {/* Yazdırma çıktısında görünen künye. Kurumsalda rapor faturalama ve
+          performans değerlendirmesinde kullanılıyor; bu yüzden markadan öte
+          kaynağı belgeleyen alanlar taşıyor: ne zaman, kim tarafından, hangi
+          dönem, hangi sistem. GoodData/Resolver/MicroStrategy gibi araçların
+          PDF künyesinde standart olan alanlar. */}
       <div className="report-stamp print-only">
-        <strong>{DATA.WORKSPACE?.name || 'StoaBoard'}</strong> — {activeKind?.label} · {rangeLabel}
+        <div className="report-stamp-brand">
+          <img src="/static/StoaBoard_symbol.png" width={20} height={20} alt="" />
+          <span className="report-stamp-wordmark">Stoa<em>Board</em></span>
+        </div>
+        <div className="report-stamp-title">
+          <strong>{DATA.WORKSPACE?.name || 'StoaBoard'}</strong> — {activeKind?.label}
+        </div>
+        <div className="report-stamp-meta">
+          <span>Dönem: {rangeLabel}</span>
+          <span>Oluşturulma: {printedAt || new Date().toLocaleString('tr-TR')}</span>
+          <span>Oluşturan: {window.CURRENT_USER?.name || '—'}</span>
+        </div>
+        <div className="report-stamp-conf">
+          Gizli — yalnızca yetkili kişiler içindir · stoaboard.com
+        </div>
       </div>
 
       <div className="report-controls no-print">

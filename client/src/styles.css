@@ -9440,6 +9440,35 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
     margin-bottom: 4px;
     border-bottom: 1px solid #999;
   }
+  .report-stamp-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .report-stamp-brand img { display: block; }
+  .report-stamp-wordmark {
+    font-family: var(--font-display);
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    color: #000;
+  }
+  .report-stamp-wordmark em { font-style: normal; color: #555; }
+  .report-stamp-title { font-size: 13px; margin-bottom: 3px; }
+  .report-stamp-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    font-size: 10.5px;
+    color: #333;
+  }
+  .report-stamp-conf {
+    margin-top: 5px;
+    font-size: 9.5px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #777;
+  }
   .panel, .report-stat {
     border: 1px solid #bbb !important;
     background: #fff !important;
