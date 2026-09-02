@@ -37,6 +37,7 @@ import {
 import { workspaceRoleToDict, taskToDict } from '../lib/serializers.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { upload, storeFile } from '../lib/uploads.js';
+import { recordAudit, AUDIT } from '../lib/audit.js';
 
 export const workspacesRouter = Router();
 
@@ -719,6 +720,17 @@ workspacesRouter.delete(
     const member = await currentMember(user);
     if (!member) return res.status(403).json({ error: 'Üye bulunamadı' });
 
+    // Kalıcı silme yetki ister. Tekil görev için `DELETE /tasks/:id/permanent`
+    // zaten `manage_tasks` istiyor; bu uç ise onun toplu, geri dönüşsüz ve
+    // çalışma alanının TAMAMINI kapsayan hâli — daha az değil, en az o kadar
+    // korunmalı. Önceden yalnızca üyelik kontrol ediliyordu: sıradan bir üye
+    // (ya da ele geçirilmiş bir hesap) herkesin çöp kutusunu, ekleriyle ve
+    // yorumlarıyla birlikte kalıcı silebiliyordu. Tekil işlemle aynı izne
+    // sabitlendi.
+    if (!hasPermission(member, 'manage_tasks')) {
+      return res.status(403).json({ error: 'Çöp kutusunu boşaltma yetkiniz yok' });
+    }
+
     const projects = await prisma.project.findMany({
       where: { workspaceId: member.workspaceId },
       select: { id: true },
@@ -743,6 +755,15 @@ workspacesRouter.delete(
         prisma.task.deleteMany({ where: { id: { in: taskIds } } }),
       ]);
     }
+
+    // Toplu kalıcı silme geri alınamaz — kimin ne zaman kaç kayıt sildiği
+    // izlenebilir olmalı. Kayda yalnızca sayı yazılır, görev içeriği değil.
+    recordAudit(req, {
+      workspaceId: member.workspaceId,
+      user,
+      action: AUDIT.WORKSPACE_TRASH_EMPTIED,
+      detail: { deleted: taskIds.length },
+    });
 
     res.json({ ok: true, deleted: taskIds.length });
   }),
@@ -933,6 +954,21 @@ workspacesRouter.patch(
     });
     const result = memberToDict(updated);
 
+    // Rol değişikliği en hassas yüzeylerden biri: yetki dağıtımı burada oluyor.
+    // Kim, kime, hangi rolü verdi — izlenebilir olmalı. Yalnızca kimlik ve rol
+    // adı yazılır, başka bir şey değil.
+    if ('role_id' in data) {
+      recordAudit(req, {
+        workspaceId: actor.workspaceId,
+        user,
+        action: AUDIT.MEMBER_ROLE_CHANGED,
+        detail: {
+          target: targetUser.slug,
+          role: updated.workspaceRole?.name || null,
+        },
+      });
+    }
+
     const io = req.app.get('io');
     try {
       io?.to(`ws_${actor.workspaceId}`).emit('member_role_changed', result);
@@ -988,6 +1024,15 @@ workspacesRouter.delete(
       where: {
         workspaceId_userId: { workspaceId: actor.workspaceId, userId: targetUser.id },
       },
+    });
+
+    // Üye çıkarma, ele geçirilmiş bir yönetici hesabının yayılma araçlarından
+    // biri (Okta/Lapsus$ dersi). Kim kimi çıkardı, iz kalmalı.
+    recordAudit(req, {
+      workspaceId: actor.workspaceId,
+      user,
+      action: AUDIT.MEMBER_REMOVED,
+      detail: { target: targetUser.slug },
     });
 
     const io = req.app.get('io');

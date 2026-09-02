@@ -232,3 +232,78 @@ describe('renderNotification', () => {
     assert.doesNotThrow(() => renderNotification('{bozuk json'));
   });
 });
+
+// ─── Toplu kalıcı silme yetki kapısı ────────────────────────────────────────
+//
+// Kusur (2 Eylül 2026): `DELETE /workspaces/me/trash` yalnızca üyelik kontrol
+// ediyordu, hiçbir izin istemiyordu. Oysa tekil `DELETE /tasks/:id/permanent`
+// `manage_tasks` istiyor. Yani işlemin geri dönüşsüz, çalışma alanını tümüyle
+// kapsayan toplu hâli, tekil hâlinden daha az korunuyordu: sıradan (ya da ele
+// geçirilmiş) bir üye herkesin çöp kutusunu kalıcı silebiliyordu.
+//
+// Veritabanı gerektirmeden, uç işleyicisinin kaynağında yetki kapısının
+// bulunduğunu doğruluyoruz — kapı kaldırılırsa bu test düşer.
+
+describe('çöp kutusu boşaltma — toplu kalıcı silme yetki ister', () => {
+  // Satır sonundan bağımsız olsun diye CRLF → LF normalize edilir.
+  const wsSrc = fs
+    .readFileSync(path.resolve(__dirname, '..', 'src', 'routes', 'workspaces.js'), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  // DELETE /me/trash işleyicisini izole et: tanımından bir sonraki uca kadar.
+  function trashDeleteHandler(src) {
+    const marker = "workspacesRouter.delete(\n  '/me/trash'";
+    const start = src.indexOf(marker);
+    assert.ok(start !== -1, "DELETE /me/trash işleyicisi bulunamadı");
+    const rest = src.slice(start + marker.length);
+    const end = rest.indexOf('workspacesRouter.');
+    return end === -1 ? rest : rest.slice(0, end);
+  }
+
+  test('silmeden önce manage_tasks izni kontrol ediliyor', () => {
+    const handler = trashDeleteHandler(wsSrc);
+    assert.ok(
+      /hasPermission\(\s*member\s*,\s*'manage_tasks'\s*\)/.test(handler),
+      'toplu kalıcı silme manage_tasks kapısı olmadan çalışıyor — regresyon',
+    );
+    // Kapı, silme çağrısından ÖNCE gelmeli (erken 403).
+    const izinIdx = handler.search(/hasPermission\(\s*member\s*,\s*'manage_tasks'/);
+    const silmeIdx = handler.indexOf('deleteMany');
+    assert.ok(
+      izinIdx !== -1 && (silmeIdx === -1 || izinIdx < silmeIdx),
+      'yetki kontrolü silme işleminden sonra geliyor — kapalı başarısızlık ihlali',
+    );
+  });
+
+  test('toplu kalıcı silme denetim kaydına yazılıyor', () => {
+    const handler = trashDeleteHandler(wsSrc);
+    assert.ok(
+      /AUDIT\.WORKSPACE_TRASH_EMPTIED/.test(handler),
+      'geri dönüşsüz toplu silme denetim kaydı bırakmıyor',
+    );
+  });
+});
+
+// ─── Denetim kaydı kapsamı — hassas yönetim eylemleri ───────────────────────
+//
+// GUVENLIK.md §5 açık madde: denetim kaydı yalnızca dışa aktarmayı yazıyordu.
+// Üye çıkarma ve rol değişikliği — ele geçirilmiş bir yönetici hesabının
+// yayılma araçları — de yazılmalı (Okta/Lapsus$ dersi). Eylem adları
+// lib/audit.js içinde zaten tanımlıydı; bu test bunların uca bağlandığını
+// kilitliyor.
+
+describe('denetim kaydı — yönetim eylemleri bağlı', () => {
+  // Satır sonundan bağımsız olsun diye CRLF → LF normalize edilir.
+  const wsSrc = fs
+    .readFileSync(path.resolve(__dirname, '..', 'src', 'routes', 'workspaces.js'), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  for (const action of ['MEMBER_REMOVED', 'MEMBER_ROLE_CHANGED', 'WORKSPACE_TRASH_EMPTIED']) {
+    test(`${action} denetim kaydına yazılıyor`, () => {
+      assert.ok(
+        wsSrc.includes(`AUDIT.${action}`),
+        `${action} hiçbir uca bağlanmamış — denetim kaydı kapsamı eksik`,
+      );
+    });
+  }
+});
