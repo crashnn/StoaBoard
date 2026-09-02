@@ -83,7 +83,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
 
   const workspaceId = DATA.WORKSPACE?.id;
   // Rapor sürelerinin ve dışa aktarmanın dili UI dilini izler.
-  const lang = (localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr';
+  const lang = currentLang();
 
   // Yazdırma anında iki şey ayarlanıyor, sonra geri alınıyor:
   //   1. Künyedeki "Oluşturulma" damgası — sayfa uzun süre açık kalsa bile
@@ -273,7 +273,7 @@ function PersonReport({ data, onOpenTask }) {
                 {p.tasks.length} görev · {p.moves} hareket · {p.completed} tamamlama
               </div>
             </div>
-            <div className="report-total">{formatDuration(p.minutes, lang)}</div>
+            <div className="report-total">{formatDuration(p.minutes)}</div>
           </div>
           <div className="panel-body">
             <table className="list-table">
@@ -293,7 +293,7 @@ function PersonReport({ data, onOpenTask }) {
                   >
                     <td className="title">{t.title}</td>
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {t.minutes ? formatDuration(t.minutes, lang) : '—'}
+                      {t.minutes ? formatDuration(t.minutes) : '—'}
                     </td>
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>{t.moves}</td>
                     <td>{t.completed ? 'Tamamlandı' : 'Devam ediyor'}</td>
@@ -318,7 +318,7 @@ function PeriodReport({ data, onOpenTask }) {
         <Stat label="Tamamlanan" value={data.completed} />
         <Stat label="Hareket" value={data.moves} />
         <Stat label="Açık kalan" value={data.open} />
-        <Stat label="Toplam emek" value={formatDuration(data.total_minutes, lang)} />
+        <Stat label="Toplam emek" value={formatDuration(data.total_minutes)} />
       </div>
 
       {data.by_column?.length > 0 && (
@@ -377,7 +377,7 @@ function PeriodReport({ data, onOpenTask }) {
                       {t.cycle_days === null ? '—' : t.cycle_days}
                     </td>
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {t.minutes ? formatDuration(t.minutes, lang) : '—'}
+                      {t.minutes ? formatDuration(t.minutes) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -552,11 +552,18 @@ function Stat({ label, value }) {
 // "1 hour 30 minutes". Eski "1s 30d" biçimi kısaydı ama "s" saat mi saniye mi
 // belirsizdi ve İngilizce karşılığı yoktu. Rapor UI dilini izliyor: raporu
 // çıkaran kişi kendi dilinde görsün.
-function formatDuration(m, lang = 'tr') {
+// UI dilini tek yerden oku. formatDuration alt bileşenlerden (PersonReport,
+// PeriodReport…) de çağrılıyor; dili argümanla geçirmek yerine burada okuyor,
+// böylece her çağrı noktasında ayrıca 'lang' değişkeni gerekmiyor.
+function currentLang() {
+  return (localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr';
+}
+
+function formatDuration(m) {
   const min = Math.max(0, Math.round(m || 0));
   const h = Math.floor(min / 60);
   const r = min % 60;
-  const en = lang === 'en';
+  const en = currentLang() === 'en';
   const hr = (n) => (en ? `${n} hour${n === 1 ? '' : 's'}` : `${n} saat`);
   const mn = (n) => (en ? `${n} minute${n === 1 ? '' : 's'}` : `${n} dakika`);
   if (!min) return en ? '0 minutes' : '0 dakika';
