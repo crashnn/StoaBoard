@@ -84,17 +84,16 @@ Sunucu ve istemci ayrı paketler; ikisinin de bağımlılıkları kurulmalı.
 git clone https://github.com/crashnn/StoaBoard.git
 cd StoaBoard/server
 
-# .env önce oluşturulmalı: postinstall, Prisma Client üretip
-# DATABASE_URL'e şema gönderiyor.
+# .env önce oluşturulmalı.
 cp .env.example .env
 # DATABASE_URL, SECRET_KEY, GOOGLE_CLIENT_ID değerlerini doldur
 
-npm install          # postinstall: prisma generate + prisma db push
+npm install          # postinstall: yalnızca prisma generate
 npm run dev          # nodemon, :5000
 ```
 
-> **Uyarı:** `postinstall` ve `npm start`, `prisma db push --accept-data-loss`
-> çalıştırıyor. `DATABASE_URL`'in geliştirme veritabanını gösterdiğinden emin ol.
+> **Not:** `postinstall` ve `npm start` artık şema göndermiyor (2 Eylül 2026).
+> Şemayı kurmak için `npm run prisma:push` — bilerek, elle.
 
 **2. İstemci**
 
@@ -164,7 +163,7 @@ Google girişi çalışmaz.
 3. Deploy otomatik tetiklenir
 
 [railway.toml](railway.toml) build ve start komutlarını yönetir:
-- Build: `cd client && npm ci && npm run build && cd ../server && npm ci && npx prisma db push`
+- Build: `cd client && npm ci && npm run build && cd ../server && npm ci`
 - Start: `cd server && npm start`
 - Healthcheck: `GET /`
 

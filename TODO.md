@@ -177,8 +177,11 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
 - [ ] **Dosya depolama ölçeklenmiyor.** Yüklenen dosyalar veritabanında `bytea`
       olarak duruyor. S3/R2'ye taşınmalı; kod tarafında yerelleştirilmiş bir
       değişiklik (`lib/uploads.js` + `routes/attachments.js`).
-- [ ] **Veritabanı göçleri sürümsüz.** `prisma db push --accept-data-loss`
-      kullanılıyor — hızlı ama geçmiş tutmuyor ve veri kaybı riski taşıyor.
+- [ ] **Veritabanı göçleri sürümsüz.** `prisma db push` kullanılıyor — hızlı
+      ama migration geçmişi tutmuyor. 2 Eylül 2026'da `--accept-data-loss`
+      deploy zincirinden çıkarıldı (`postinstall`, `npm start`, `railway.toml`),
+      yani şema artık kendiliğinden gitmiyor ve sessiz `DROP` riski yok.
+      Kalan eksik geçmiş: hangi şemanın ne zaman gittiği kayıtlı değil.
       Gerçek kullanıcı verisi büyümeden düzenli migration dosyalarına geçilmeli.
 
 ### Bilinen kusurlar

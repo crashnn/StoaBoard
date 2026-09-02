@@ -4,8 +4,11 @@ Bu dosya, dalı **başka bir bilgisayarda** ayağa kaldırıp test etmek için y
 Sıfırdan bir makinede sırayla uygulanabilir.
 
 > **Claude Code'a not:** Bu dal `main`e birleştirilmedi ve dağıtılmadı. Amaç
-> yerel test. Aşağıdaki adımları uygularken **`npm start` çalıştırma** — o betik
-> kendi başına `prisma db push` tetikliyor. `npm run dev` kullan.
+> yerel test. Geliştirmede `npm run dev` kullan.
+>
+> 2 Eylül 2026'dan önce `npm start` ve `postinstall` kendi başına
+> `prisma db push --accept-data-loss` tetikliyordu; o çağrılar kaldırıldı.
+> Eski bir kopyayla çalışıyorsan bu uyarı hâlâ geçerlidir.
 
 ---
 
@@ -81,16 +84,14 @@ SESSION_COOKIE_SECURE=false
 
 ```bash
 cd server
-npm install --ignore-scripts
-npx prisma generate
+npm install
 
 cd ../client
 npm install
 ```
 
-`--ignore-scripts` önemli: düz `npm install`, postinstall üzerinden
-`prisma db push --accept-data-loss` çalıştırıp şemayı doğrudan
-`DATABASE_URL`e gönderiyor. Şemayı bir sonraki adımda kontrollü göndereceğiz.
+`--ignore-scripts` artık gerekmiyor: `postinstall` yalnızca `prisma generate`
+çalıştırıyor, şema göndermiyor. Şemayı bir sonraki adımda bilerek göndereceğiz.
 
 > **Windows / PowerShell:** `npm` komutu `npm.ps1`e çözümlenip
 > *"running scripts is disabled on this system"* hatası verebilir.
@@ -114,6 +115,16 @@ sütun (`tasks.completed_at`, `board_columns.allowed_next`,
 Bağlanamazsa (`P1001`, `ECONNRESET`, zaman aşımı): bulunduğun ağ 5432'yi
 engelliyor olabilir. Kurumsal ağlarda yaygın; ev ağında veya mobil bağlantıda
 sorun çıkmaz.
+
+**5432 kapalıysa şemayı yine de gönderebilirsin.** DDL'i çevrimdışı üret, Neon'un
+tarayıcı içi SQL Editor'üne yapıştır — o HTTPS üzerinden çalışır:
+
+```bash
+cd server
+npx prisma migrate diff   --from-schema-datamodel <main'in schema.prisma kopyası>   --to-schema-datamodel prisma/schema.prisma --script
+```
+
+`migrate diff` veritabanına bağlanmaz, iki şema dosyasını karşılaştırır.
 
 ## 6 · Çalıştır
 

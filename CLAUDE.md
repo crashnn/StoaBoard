@@ -36,13 +36,25 @@ güvenlik düzeltmesi ve 55 otomatik test.
 
 ## Bilinmesi gereken tuzaklar
 
-**`npm start` çalıştırma.** O betik kendi başına `prisma db push
---accept-data-loss` tetikliyor ve `DATABASE_URL`in gösterdiği yere şema
-gönderiyor. Geliştirmede **`npm run dev`** kullan.
+**Şema deploy'da kendiliğinden gitmiyor — artık.** 2 Eylül 2026'ya kadar
+`postinstall`, `npm start` ve Railway build komutu `prisma db push
+--accept-data-loss` çalıştırıyordu. Her deploy şemayı `DATABASE_URL`in
+gösterdiği yere itiyor, üstelik şemada olmayan tabloyu sormadan düşürebiliyordu:
+koda geri dönmek, veritabanında istenmeyen bir `DROP` anlamına geliyordu.
+Üç çağrı da kaldırıldı. `npm install` ve `npm start` artık güvenli,
+`--ignore-scripts` gerekmiyor.
 
-**`npm install` de aynı tuzağı taşıyor** — `postinstall` yine `db push`
-çalıştırıyor. Sunucu tarafında **`npm install --ignore-scripts`**, ardından
-`npx prisma generate`.
+**Şema değişikliğini bilerek uygularsın.** İki yol:
+
+```bash
+npm run prisma:push          # --accept-data-loss yok; yıkıcı değişikliği reddeder
+
+# ya da DDL'i çevrimdışı üret, Neon SQL Editor'den çalıştır:
+npx prisma migrate diff --from-schema-datamodel <eski>.prisma   --to-schema-datamodel prisma/schema.prisma --script
+```
+
+İkincisi kurumsal ağda tek seçenek: 5432 kapalıyken bile tarayıcı içi SQL
+Editor HTTPS üzerinden çalışır. `migrate diff` veritabanına bağlanmaz.
 
 **Windows PowerShell'de `npm` değil `npm.cmd`.** `npm` → `npm.ps1`e çözümlenip
 execution policy'ye takılıyor. Git Bash'te düz `npm` çalışır.
