@@ -1629,12 +1629,12 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                   <span className="keymap-label">{sc.label}</span>
                   <div className="keymap-keys-wrap">
                     {isRecording ? (
-                      <span className="keymap-recording-hint">Tuşa bas… <button className="keymap-cancel" onClick={() => setRecordingId(null)}>✕</button></span>
+                      <span className="keymap-recording-hint">{window.t?.('set_key_press') || 'Tuşa bas…'} <button className="keymap-cancel" onClick={() => setRecordingId(null)}>✕</button></span>
                     ) : (
                       <>
                         <span
                           className="keymap-keys"
-                          title="Değiştirmek için tıkla"
+                          title={window.t?.('set_key_change') || 'Değiştirmek için tıkla'}
                           onClick={() => setRecordingId(sc.id)}
                         >
                           {currentKeys.map((k, i) => <kbd key={i}>{k}</kbd>)}
@@ -1642,7 +1642,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                         {isCustom && (
                           <button
                             className="keymap-reset-one"
-                            title="Bu kısayolu sıfırla"
+                            title={window.t?.('set_key_reset') || 'Bu kısayolu sıfırla'}
                             onClick={() => {
                               const next = { ...customShortcuts };
                               delete next[sc.id];

@@ -10,6 +10,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Icon } from './icons.jsx';
 
+// Çeviri: anahtar yoksa window.t anahtarın kendisini döndürür, o yüzden
+// karşılaştırıp Türkçe yedeğe düşüyoruz. reports.jsx ile aynı yardımcı.
+const T = (k, fb) => (window.t?.(k) !== k && window.t?.(k)) || fb;
+
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function WorkLogSection({ taskId }) {
@@ -31,7 +35,7 @@ function WorkLogSection({ taskId }) {
       setLogs(d.logs || []);
       setTotalLabel(d.total_minutes_label || '');
     } catch (e) {
-      setError(e.message || 'Süre kayıtları alınamadı');
+      setError(e.message || T('wl_err_load', 'Süre kayıtları alınamadı'));
     } finally {
       setLoading(false);
     }
@@ -57,12 +61,12 @@ function WorkLogSection({ taskId }) {
     } catch (err) {
       setError(
         err.code === 'err_bad_duration'
-          ? 'Süre anlaşılamadı. Örnek: 90, 1:30 veya "1s 30d".'
+          ? T('wl_err_bad_duration', 'Süre anlaşılamadı. Örnek: 90, 1:30 veya "1s 30d".')
           : err.code === 'err_future_date'
-            ? 'İleri bir tarihe süre girilemez.'
+            ? T('wl_err_future', 'İleri bir tarihe süre girilemez.')
             : err.code === 'err_duration_too_long'
-              ? 'Tek kayıt en fazla 24 saat olabilir.'
-              : (err.message || 'Süre kaydedilemedi'),
+              ? T('wl_err_too_long', 'Tek kayıt en fazla 24 saat olabilir.')
+              : (err.message || T('wl_err_save', 'Süre kaydedilemedi')),
       );
     } finally {
       setSaving(false);
@@ -74,20 +78,20 @@ function WorkLogSection({ taskId }) {
       await API.deleteWorkLog(id);
       await load();
     } catch (err) {
-      setError(err.message || 'Kayıt silinemedi');
+      setError(err.message || T('wl_err_delete', 'Kayıt silinemedi'));
     }
   };
 
   return (
     <div className="worklog-section">
       <h3 className="worklog-title">
-        Harcanan süre
+        {T('wl_title', 'Harcanan süre')}
         {totalLabel && <span className="worklog-total">· {totalLabel}</span>}
       </h3>
 
       {!open ? (
         <button className="worklog-add-btn" onClick={() => setOpen(true)}>
-          <Icon name="clock" size={13} /> Süre ekle
+          <Icon name="clock" size={13} /> {T('wl_add', 'Süre ekle')}
         </button>
       ) : (
         <form className="worklog-form" onSubmit={submit}>
@@ -96,8 +100,8 @@ function WorkLogSection({ taskId }) {
               className="worklog-input"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              placeholder="1s 30d"
-              title='Kabul edilen biçimler: 90 (dakika), 1:30, "1s 30d"'
+              placeholder={T('wl_placeholder', '1s 30d')}
+              title={T('wl_format_hint', 'Kabul edilen biçimler: 90 (dakika), 1:30, "1s 30d"')}
               autoFocus
             />
             <input
@@ -112,18 +116,18 @@ function WorkLogSection({ taskId }) {
             className="worklog-input"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Not (isteğe bağlı)"
+            placeholder={T('wl_note_placeholder', 'Not (isteğe bağlı)')}
           />
           <div className="worklog-form-row">
             <button className="btn btn-primary" type="submit" disabled={saving || !duration.trim()}>
-              {saving ? 'Kaydediliyor…' : 'Kaydet'}
+              {saving ? T('wl_saving', 'Kaydediliyor…') : T('wl_save', 'Kaydet')}
             </button>
             <button
               className="btn btn-ghost"
               type="button"
               onClick={() => { setOpen(false); setError(null); setDuration(''); setNote(''); }}
             >
-              Vazgeç
+              {T('wl_cancel', 'Vazgeç')}
             </button>
           </div>
         </form>
@@ -131,10 +135,10 @@ function WorkLogSection({ taskId }) {
 
       {error && <div className="worklog-error">{error}</div>}
 
-      {loading && !logs.length && <div className="worklog-empty">Yükleniyor…</div>}
+      {loading && !logs.length && <div className="worklog-empty">{T('wl_loading', 'Yükleniyor…')}</div>}
 
       {!loading && !logs.length && !open && (
-        <div className="worklog-empty">Bu göreve henüz süre girilmedi.</div>
+        <div className="worklog-empty">{T('wl_empty', 'Bu göreve henüz süre girilmedi.')}</div>
       )}
 
       {logs.length > 0 && (
@@ -143,14 +147,14 @@ function WorkLogSection({ taskId }) {
             <div className="worklog-row" key={l.id}>
               <span className="worklog-row-time">{l.minutes_label}</span>
               <span className="worklog-row-main">
-                <span className="worklog-row-who">{l.user_name || 'Bilinmeyen'}</span>
+                <span className="worklog-row-who">{l.user_name || T('wl_unknown', 'Bilinmeyen')}</span>
                 {l.note && <span className="worklog-row-note">{l.note}</span>}
               </span>
               <span className="worklog-row-date">{l.spent_on}</span>
               {l.is_mine && (
                 <button
                   className="worklog-row-del"
-                  title="Kaydı sil"
+                  title={T('wl_delete', 'Kaydı sil')}
                   onClick={() => remove(l.id)}
                 >
                   <Icon name="x" size={12} />

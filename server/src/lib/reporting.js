@@ -64,13 +64,19 @@ function dayKey(d) {
 }
 
 /** Dakikayı "3s 20d" biçimine çevir. */
-export function formatMinutes(min) {
+// Kısa biçim, listelerde yer kapladığı için tercih ediliyor. Dile duyarlı:
+// Türkçe "s/d" (saat/dakika) İngilizcede hiçbir şey ifade etmiyordu — süre
+// kaydı listesi İngilizce arayüzde "1s 30d" gösteriyordu.
+export function formatMinutes(min, lang = 'tr') {
   const m = Math.max(0, Math.round(min || 0));
   const h = Math.floor(m / 60);
   const r = m % 60;
-  if (!h) return `${r}d`;
-  if (!r) return `${h}s`;
-  return `${h}s ${r}d`;
+  const en = lang === 'en';
+  const H = en ? 'h' : 's';
+  const M = en ? 'm' : 'd';
+  if (!h) return `${r}${M}`;
+  if (!r) return `${h}${H}`;
+  return `${h}${H} ${r}${M}`;
 }
 
 /**

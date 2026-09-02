@@ -187,7 +187,7 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
           </div>
         )}
         {task.subtasks && (
-          <div className="meta-item" title="Alt görevler">
+          <div className="meta-item" title={window.t?.('list_subtasks') || 'Alt görevler'}>
             <Icon name="circleCheck" size={12} /> {task.subtasks}
           </div>
         )}

@@ -101,6 +101,21 @@ Cevaplar commit mesajına yazılır.
 **Kapatılan her kusur için regresyon testi.** `server/test/guvenlik.test.js`
 içine, koruduğu kusuru anlatan bir yorumla birlikte.
 
+**Dil kapsamı zorunlu — Türkçe *ve* İngilizce.** Kullanıcının gördüğü hiçbir
+metin doğrudan yazılmaz. Anahtar `client/src/data.jsx` içindeki `APP_I18N`'e
+**iki sözlüğe birden** (`tr` ve `en`) eklenir; çağrı yeri
+`T('anahtar', 'Türkçe yedek')` ya da `window.t?.('anahtar') || 'Türkçe yedek'`
+biçiminde olur. Bu kural `title`, `placeholder` ve `aria-label` için de geçerli.
+
+Yalnızca `tr`ye eklemek işe yaramış gibi görünür ve gözden kaçar: `window.t`
+İngilizce karşılığı bulamayınca sessizce Türkçe'ye düşer, yani ekran çalışır
+ama yanlış dilde durur. Raporlar ve süre kaydı ekranları bu yüzden İngilizce
+arayüzde tamamen Türkçe kalmıştı *(3 Eylül)*.
+
+Kural `server/test/dil.test.js` ile kilitli: iki sözlüğün anahtar kümesi
+birebir eşleşmeli ve görünüm dosyalarında çıplak Türkçe metin kalmamalı.
+`de`/`es`/`ru` bilinçli olarak kapsam dışı — onlar zaten Türkçe'ye düşüyor.
+
 **Sessiz başarısızlıktan kaçın.** Bu depoda üç kusurun kök sebebi buydu:
 `if (!window.io) return`, `window.showToast?.()`, `if (satır && !yetki)`.
 Koşulun **yokluk hâli** ya reddetmeli ya gürültü çıkarmalı — sessizce atlamamalı.

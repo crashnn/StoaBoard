@@ -47,7 +47,7 @@ const CSV_I18N = {
     no: 'No',
   },
 };
-const csvLang = (req) => (String(req.query.lang) === 'en' ? 'en' : 'tr');
+const reqLang = (req) => (String(req.query.lang) === 'en' ? 'en' : 'tr');
 
 export const taskWorkLogsRouter = Router(); // /api/tasks/:taskId/worklogs
 export const workLogsRouter = Router();     // /api/worklogs/:logId
@@ -59,7 +59,7 @@ async function loadUser(req) {
   return prisma.user.findUnique({ where: { id: uid } });
 }
 
-function workLogToDict(l, meId = null) {
+function workLogToDict(l, meId = null, lang = 'tr') {
   return {
     id: String(l.id),
     is_mine: meId != null && l.userId === meId,
@@ -68,7 +68,7 @@ function workLogToDict(l, meId = null) {
     user_id: l.userId,
     user_name: l.userName,
     minutes: l.minutes,
-    minutes_label: formatMinutes(l.minutes),
+    minutes_label: formatMinutes(l.minutes, lang),
     spent_on: l.spentOn ? new Date(l.spentOn).toISOString().slice(0, 10) : null,
     note: l.note || '',
     created_at: l.createdAt ? l.createdAt.toISOString() : null,
@@ -165,9 +165,9 @@ taskWorkLogsRouter.get(
     });
     const total = logs.reduce((a, l) => a + (l.minutes || 0), 0);
     res.json({
-      logs: logs.map((l) => workLogToDict(l, access.user.id)),
+      logs: logs.map((l) => workLogToDict(l, access.user.id, reqLang(req))),
       total_minutes: total,
-      total_minutes_label: formatMinutes(total),
+      total_minutes_label: formatMinutes(total, reqLang(req)),
     });
   }),
 );
@@ -227,7 +227,7 @@ taskWorkLogsRouter.post(
       },
     });
 
-    res.status(201).json(workLogToDict(log, user.id));
+    res.status(201).json(workLogToDict(log, user.id, reqLang(req)));
   }),
 );
 
@@ -398,7 +398,7 @@ reportsRouter.get(
     // basınca JSON iniyor, tarayıcı da URL yolundan "person.json" adını
     // üretiyordu. Artık rapor önce hesaplanıyor, biçim kararı tek yerde.
     if (req.query.format === 'csv') {
-      const L = CSV_I18N[csvLang(req)];
+      const L = CSV_I18N[reqLang(req)];
       const rows = [];
       for (const p of report.people) {
         for (const t of p.tasks) {
@@ -406,7 +406,7 @@ reportsRouter.get(
             p.name,
             t.title,
             t.minutes,
-            formatDurationLong(t.minutes, csvLang(req)),
+            formatDurationLong(t.minutes, reqLang(req)),
             t.moves,
             t.completed ? L.yes : L.no,
           ]);
@@ -435,7 +435,7 @@ reportsRouter.get(
     const report = await periodReport(scope.projectIds, scope.range);
 
     if (req.query.format === 'csv') {
-      const lang = csvLang(req);
+      const lang = reqLang(req);
       const rows = report.completed_tasks.map((t) => [
         t.title,
         t.priority,
@@ -472,7 +472,7 @@ reportsRouter.get(
       return sendCsvAudited(
         req, res, scope, 'flow',
         `akis-raporu_${dayStr(report.from)}_${dayStr(report.to)}.csv`,
-        CSV_I18N[csvLang(req)].flow,
+        CSV_I18N[reqLang(req)].flow,
         rows,
       );
     }

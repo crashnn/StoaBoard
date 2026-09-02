@@ -461,7 +461,7 @@ function LinkTaskPopover({ workspaceTasks, linkedIds, onPick, onClose }) {
   }, [q, rows, linkedIds]);
 
   return (
-    <div ref={popRef} className="note-popover" style={{ width: 340 }} role="dialog" aria-label="Görev bağla">
+    <div ref={popRef} className="note-popover" style={{ width: 340 }} role="dialog" aria-label={window.t?.('notes_link_task') || 'Görev bağla'}>
       <div className="note-popover-title">{window.t?.('notes_link_task') || 'Görev bağla'}</div>
       <div className="note-popover-row">
         <input autoFocus placeholder={window.t?.('board_search_placeholder') || 'Görev ara…'} value={q} onChange={(e) => setQ(e.target.value)} />

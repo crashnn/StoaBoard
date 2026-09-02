@@ -24,6 +24,13 @@ function _parseServerDate(iso) {
 }
 // _parseServerDate exported below
 
+// Sunucuya ?lang ile geçilen arayüz dili. Sunucu tarafında üretilen metinler
+// (CSV başlıkları, süre etiketleri) bunu izliyor; 'tr' ve 'en' dışındaki
+// diller sözlükte Türkçe'ye düştüğü için burada da 'tr'ye indirgeniyor.
+function uiLang() {
+  return (localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr';
+}
+
 function fmtDate(isoDate) {
   const d = _parseServerDate(isoDate);
   if (!d) return '';
@@ -181,10 +188,12 @@ const API = {
     apiFetch(`/api/tasks/${id}`),
 
   // Süre kaydı (work log)
+  // ?lang: süre etiketi ("1s 30d" / "1h 30m") sunucuda üretiliyor ve arayüz
+  // dilini izlemeli. CSV ucundaki kalıbın aynısı.
   getWorkLogs: (taskId) =>
-    apiFetch(`/api/tasks/${taskId}/worklogs`),
+    apiFetch(`/api/tasks/${taskId}/worklogs?lang=${uiLang()}`),
   addWorkLog: (taskId, data) =>
-    apiFetch(`/api/tasks/${taskId}/worklogs`, { method: 'POST', body: data }),
+    apiFetch(`/api/tasks/${taskId}/worklogs?lang=${uiLang()}`, { method: 'POST', body: data }),
   deleteWorkLog: (logId) =>
     apiFetch(`/api/worklogs/${logId}`, { method: 'DELETE' }),
 
@@ -196,7 +205,7 @@ const API = {
       ...params,
       format: 'csv',
       // CSV içeriği (süre biçimi, başlıklar) dışa aktaran kişinin UI dilini izler.
-      lang: (localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr',
+      lang: uiLang(),
     }).toString()}`,
 
   // Subtasks
@@ -372,6 +381,7 @@ window.APP_I18N = {
     set_profile:'Profil', set_appearance:'Görünüm', set_workspace:'Çalışma Alanı',
     set_invite:'Davet Kodu', set_roles:'Roller', set_members:'Üyeler', set_labels:'Etiketler',
     set_notifications:'Bildirimler', set_shortcuts:'Kısayollar', set_privacy:'Gizlilik',
+    set_key_press:'Tuşa bas…', set_key_change:'Değiştirmek için tıkla', set_key_reset:'Bu kısayolu sıfırla',
     set_language:'Dil & Bölge', set_export:'Veri & Dışa Aktarma', set_danger:'Tehlikeli Bölge',
     // Calendar
     cal_title:'TAKVİM', cal_today:'Bugün', cal_only_mine:'Bana atananlar', cal_new_task:'Yeni görev',
@@ -822,7 +832,6 @@ window.APP_I18N = {
     chat_channel_removed:'kanalı silindi',
     chat_channel_added:'kanalına eklendin',
     chat_channel_kicked:'kanalından çıkarıldın',
-    chat_member_kicked_tr:'kanaldan çıkarıldı',
     chat_new_msg:'Yeni mesaj', chat_send_failed:'Mesaj gönderilemedi:',
     chat_upload_failed:'Yükleme başarısız',
     chat_upload_error:'Yükleme sırasında hata: ',
@@ -953,6 +962,54 @@ window.APP_I18N = {
     trash_empty_all_cancel:'İptal',
     trash_emptying:'Boşaltılıyor...',
     trash_task_project:'Proje',
+    // Raporlar. Ekran 3 Eylül'e kadar tamamen hardcode Türkçeydi; dil İngilizce
+    // seçilince gövde Türkçe kalıyordu.
+    rep_kind_person:'Kişi raporu', rep_sub_person:'Kim, hangi işte, ne kadar süre',
+    rep_kind_period:'Dönem raporu', rep_sub_period:'Ne açıldı, ne bitti, ne bekliyor',
+    rep_kind_flow:'Akış raporu', rep_sub_flow:'İşler kaç günde bitiyor',
+    rep_kind_audit:'Denetim kaydı', rep_sub_audit:'Veriyi kim dışarı çıkardı',
+    rep_range_month:'Bu ay', rep_range_q:'Son 3 ay', rep_range_half:'Son 6 ay', rep_range_year:'Bu yıl',
+    rep_csv_title:'Excel ile açılabilir CSV indir',
+    rep_print:'Yazdır', rep_print_title:'Yazdır veya PDF olarak kaydet',
+    rep_stamp_period:'Dönem', rep_stamp_created:'Oluşturulma', rep_stamp_by:'Oluşturan',
+    rep_stamp_conf:'Gizli — yalnızca yetkili kişiler içindir',
+    rep_person:'Kişi', rep_everyone:'Herkes',
+    rep_loading:'Rapor hazırlanıyor…', rep_error:'Rapor alınamadı',
+    rep_scoped_self:'Yalnızca kendi kayıtlarınız gösteriliyor. Diğer kişilerin raporu için üye yönetimi izni gerekiyor.',
+    rep_empty:'Bu aralıkta kayıt yok.', rep_empty_completed:'Bu aralıkta tamamlanan iş yok.',
+    rep_meta_tasks:'görev', rep_meta_moves:'hareket', rep_meta_completions:'tamamlama',
+    rep_col_task:'Görev', rep_col_duration:'Süre', rep_moves:'Hareket', rep_col_status:'Durum',
+    rep_status_done:'Tamamlandı', rep_status_ongoing:'Devam ediyor',
+    rep_stat_created:'Açılan', rep_stat_completed:'Tamamlanan', rep_stat_open:'Açık kalan',
+    rep_stat_effort:'Toplam emek',
+    rep_column_moves:'Kolon hareketleri', rep_completed_tasks:'Tamamlanan işler', rep_records:'kayıt',
+    rep_col_opened:'Açılış', rep_col_completed_at:'Tamamlanma', rep_col_cycle:'Geçen gün', rep_col_effort:'Emek',
+    rep_stat_done_count:'Tamamlanan iş', rep_stat_avg:'Ortalama süre', rep_stat_median:'Ortanca süre',
+    rep_days:'gün', rep_hours_short:'sa',
+    rep_dwell:'Kolonlarda bekleme', rep_dwell_sub:'İşler en çok nerede bekliyor',
+    rep_col_column:'Kolon', rep_col_avg:'Ortalama', rep_col_median:'Ortanca', rep_col_samples:'Ölçüm',
+    rep_slowest:'En uzun süren işler', rep_slowest_sub:'Açılıştan tamamlanmaya', rep_col_days:'Gün',
+    rep_stat_events:'Toplam olay', rep_stat_exports:'Dışa aktarma',
+    rep_events:'Olaylar', rep_events_sub:'En yeniden eskiye',
+    rep_col_time:'Zaman', rep_col_event:'Olay',
+    rep_act_export:'Rapor dışa aktarıldı', rep_act_member_removed:'Üye çıkarıldı',
+    rep_act_role_changed:'Üye rolü değişti', rep_act_invite_viewed:'Davet kodu görüntülendi',
+    rep_act_trash_emptied:'Çöp kutusu boşaltıldı',
+    rep_label_person:'Kişi', rep_label_period:'Dönem', rep_label_flow:'Akış',
+    rep_detail_report:'raporu', rep_detail_rows:'satır',
+    // Süre kaydı (görev çekmecesi). Raporlarla aynı turda yazıldı, aynı şekilde
+    // hardcode Türkçeydi.
+    wl_title:'Harcanan süre', wl_add:'Süre ekle',
+    wl_placeholder:'1s 30d', wl_format_hint:'Kabul edilen biçimler: 90 (dakika), 1:30, "1s 30d"',
+    wl_note_placeholder:'Not (isteğe bağlı)',
+    wl_saving:'Kaydediliyor…', wl_save:'Kaydet', wl_cancel:'Vazgeç',
+    wl_loading:'Yükleniyor…', wl_empty:'Bu göreve henüz süre girilmedi.',
+    wl_unknown:'Bilinmeyen', wl_delete:'Kaydı sil',
+    wl_err_load:'Süre kayıtları alınamadı',
+    wl_err_bad_duration:'Süre anlaşılamadı. Örnek: 90, 1:30 veya "1s 30d".',
+    wl_err_future:'İleri bir tarihe süre girilemez.',
+    wl_err_too_long:'Tek kayıt en fazla 24 saat olabilir.',
+    wl_err_save:'Süre kaydedilemedi', wl_err_delete:'Kayıt silinemedi',
   },
   en: {
     nav_home:'Home', nav_tasks:'My Tasks', nav_board:'Board', nav_calendar:'Calendar',
@@ -969,6 +1026,7 @@ window.APP_I18N = {
     set_profile:'Profile', set_appearance:'Appearance', set_workspace:'Workspace',
     set_invite:'Invite Code', set_roles:'Roles', set_members:'Members', set_labels:'Labels',
     set_notifications:'Notifications', set_shortcuts:'Shortcuts', set_privacy:'Privacy',
+    set_key_press:'Press a key…', set_key_change:'Click to change', set_key_reset:'Reset this shortcut',
     set_language:'Language & Region', set_export:'Data & Export', set_danger:'Danger Zone',
     // Calendar
     cal_title:'CALENDAR', cal_today:'Today', cal_only_mine:'Assigned to me', cal_new_task:'New task',
@@ -1550,6 +1608,50 @@ window.APP_I18N = {
     trash_empty_all_cancel:'Cancel',
     trash_emptying:'Emptying...',
     trash_task_project:'Project',
+    rep_kind_person:'Person report', rep_sub_person:'Who worked on what, and for how long',
+    rep_kind_period:'Period report', rep_sub_period:'What was opened, finished, still waiting',
+    rep_kind_flow:'Flow report', rep_sub_flow:'How long work takes to finish',
+    rep_kind_audit:'Audit log', rep_sub_audit:'Who exported data',
+    rep_range_month:'This month', rep_range_q:'Last 3 months', rep_range_half:'Last 6 months', rep_range_year:'This year',
+    rep_csv_title:'Download CSV (opens in Excel)',
+    rep_print:'Print', rep_print_title:'Print or save as PDF',
+    rep_stamp_period:'Period', rep_stamp_created:'Generated', rep_stamp_by:'Generated by',
+    rep_stamp_conf:'Confidential — for authorised recipients only',
+    rep_person:'Person', rep_everyone:'Everyone',
+    rep_loading:'Preparing report…', rep_error:'Could not load report',
+    rep_scoped_self:'Only your own records are shown. Viewing other people\'s reports requires the member management permission.',
+    rep_empty:'No records in this range.', rep_empty_completed:'No work completed in this range.',
+    rep_meta_tasks:'tasks', rep_meta_moves:'moves', rep_meta_completions:'completions',
+    rep_col_task:'Task', rep_col_duration:'Duration', rep_moves:'Moves', rep_col_status:'Status',
+    rep_status_done:'Completed', rep_status_ongoing:'In progress',
+    rep_stat_created:'Opened', rep_stat_completed:'Completed', rep_stat_open:'Still open',
+    rep_stat_effort:'Total effort',
+    rep_column_moves:'Column moves', rep_completed_tasks:'Completed work', rep_records:'records',
+    rep_col_opened:'Opened', rep_col_completed_at:'Completed', rep_col_cycle:'Days elapsed', rep_col_effort:'Effort',
+    rep_stat_done_count:'Completed work', rep_stat_avg:'Average time', rep_stat_median:'Median time',
+    rep_days:'days', rep_hours_short:'h',
+    rep_dwell:'Time spent in columns', rep_dwell_sub:'Where work waits longest',
+    rep_col_column:'Column', rep_col_avg:'Average', rep_col_median:'Median', rep_col_samples:'Samples',
+    rep_slowest:'Longest running work', rep_slowest_sub:'From opening to completion', rep_col_days:'Days',
+    rep_stat_events:'Total events', rep_stat_exports:'Exports',
+    rep_events:'Events', rep_events_sub:'Newest first',
+    rep_col_time:'Time', rep_col_event:'Event',
+    rep_act_export:'Report exported', rep_act_member_removed:'Member removed',
+    rep_act_role_changed:'Member role changed', rep_act_invite_viewed:'Invite code viewed',
+    rep_act_trash_emptied:'Trash emptied',
+    rep_label_person:'Person', rep_label_period:'Period', rep_label_flow:'Flow',
+    rep_detail_report:'report', rep_detail_rows:'rows',
+    wl_title:'Time spent', wl_add:'Log time',
+    wl_placeholder:'1h 30m', wl_format_hint:'Accepted formats: 90 (minutes), 1:30, "1h 30m"',
+    wl_note_placeholder:'Note (optional)',
+    wl_saving:'Saving…', wl_save:'Save', wl_cancel:'Cancel',
+    wl_loading:'Loading…', wl_empty:'No time logged on this task yet.',
+    wl_unknown:'Unknown', wl_delete:'Delete entry',
+    wl_err_load:'Could not load time entries',
+    wl_err_bad_duration:'Could not read the duration. Examples: 90, 1:30 or "1h 30m".',
+    wl_err_future:'Time cannot be logged for a future date.',
+    wl_err_too_long:'A single entry cannot exceed 24 hours.',
+    wl_err_save:'Could not save time entry', wl_err_delete:'Could not delete entry',
   },
   de: {
     nav_home:'Startseite', nav_tasks:'Meine Aufgaben', nav_board:'Board', nav_calendar:'Kalender',

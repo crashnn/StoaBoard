@@ -37,32 +37,39 @@ function presetRange(key) {
   }
 }
 
+// Etiketler modül yüklenirken değil, render sırasında çözülüyor: bu tablolar
+// bir kez değerlendirilseydi dil değiştiğinde eski dilde kalırlardı. Bu yüzden
+// her kayıt çeviri anahtarını ve Türkçe yedeğini taşıyor.
 const PRESETS = [
-  { key: 'month', label: 'Bu ay' },
-  { key: 'q', label: 'Son 3 ay' },
-  { key: 'half', label: 'Son 6 ay' },
-  { key: 'year', label: 'Bu yıl' },
+  { key: 'month', k: 'rep_range_month', fb: 'Bu ay' },
+  { key: 'q', k: 'rep_range_q', fb: 'Son 3 ay' },
+  { key: 'half', k: 'rep_range_half', fb: 'Son 6 ay' },
+  { key: 'year', k: 'rep_range_year', fb: 'Bu yıl' },
 ];
 
 const KINDS = [
-  { key: 'person', label: 'Kişi raporu', sub: 'Kim, hangi işte, ne kadar süre' },
-  { key: 'period', label: 'Dönem raporu', sub: 'Ne açıldı, ne bitti, ne bekliyor' },
-  { key: 'flow', label: 'Akış raporu', sub: 'İşler kaç günde bitiyor' },
+  { key: 'person', k: 'rep_kind_person', fb: 'Kişi raporu', subK: 'rep_sub_person', subFb: 'Kim, hangi işte, ne kadar süre' },
+  { key: 'period', k: 'rep_kind_period', fb: 'Dönem raporu', subK: 'rep_sub_period', subFb: 'Ne açıldı, ne bitti, ne bekliyor' },
+  { key: 'flow', k: 'rep_kind_flow', fb: 'Akış raporu', subK: 'rep_sub_flow', subFb: 'İşler kaç günde bitiyor' },
   // Denetim kaydı yalnızca çalışma alanını yönetenlere gösterilir; sunucu
   // tarafında da aynı kontrol var, buradaki gizleme yalnızca arayüz kolaylığı.
-  { key: 'audit', label: 'Denetim kaydı', sub: 'Veriyi kim dışarı çıkardı', admin: true },
+  { key: 'audit', k: 'rep_kind_audit', fb: 'Denetim kaydı', subK: 'rep_sub_audit', subFb: 'Veriyi kim dışarı çıkardı', admin: true },
 ];
 
-// Eylem adlarının okunabilir karşılığı.
+// Eylem adlarının okunabilir karşılığı: [anahtar, Türkçe yedek].
 const ACTION_LABEL = {
-  'report.export': 'Rapor dışa aktarıldı',
-  'member.removed': 'Üye çıkarıldı',
-  'member.role_changed': 'Üye rolü değişti',
-  'invite.code_viewed': 'Davet kodu görüntülendi',
-  'workspace.trash_emptied': 'Çöp kutusu boşaltıldı',
+  'report.export': ['rep_act_export', 'Rapor dışa aktarıldı'],
+  'member.removed': ['rep_act_member_removed', 'Üye çıkarıldı'],
+  'member.role_changed': ['rep_act_role_changed', 'Üye rolü değişti'],
+  'invite.code_viewed': ['rep_act_invite_viewed', 'Davet kodu görüntülendi'],
+  'workspace.trash_emptied': ['rep_act_trash_emptied', 'Çöp kutusu boşaltıldı'],
 };
 
-const REPORT_LABEL = { person: 'Kişi', period: 'Dönem', flow: 'Akış' };
+const REPORT_LABEL = {
+  person: ['rep_label_person', 'Kişi'],
+  period: ['rep_label_period', 'Dönem'],
+  flow: ['rep_label_flow', 'Akış'],
+};
 
 // Yazdırma/PDF dosya adı kökü — CSV adlandırmasıyla aynı düzen.
 const REPORT_FILE = {
@@ -121,7 +128,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
     setError(null);
     API.getReport(kind, params())
       .then((d) => { if (!cancelled) setData(d); })
-      .catch((e) => { if (!cancelled) setError(e.message || 'Rapor alınamadı'); })
+      .catch((e) => { if (!cancelled) setError(e.message || T('rep_error', 'Rapor alınamadı')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [kind, params, workspaceId]);
@@ -139,7 +146,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
       <div className="report-head">
         <div>
           <div className="dash-h1">{T('nav_reports', 'Raporlar')}</div>
-          <div className="dash-sub">{activeKind?.sub}</div>
+          <div className="dash-sub">{activeKind && T(activeKind.subK, activeKind.subFb)}</div>
         </div>
         <div className="report-actions no-print">
           {csvHref && (
@@ -147,13 +154,13 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
               className="btn btn-ghost"
               href={csvHref}
               download
-              title="Excel ile açılabilir CSV indir"
+              title={T('rep_csv_title', 'Excel ile açılabilir CSV indir')}
             >
               <Icon name="download" size={14} /> CSV
             </a>
           )}
-          <button className="btn btn-ghost" onClick={() => window.print()} title="Yazdır veya PDF olarak kaydet">
-            <Icon name="file" size={14} /> Yazdır
+          <button className="btn btn-ghost" onClick={() => window.print()} title={T('rep_print_title', 'Yazdır veya PDF olarak kaydet')}>
+            <Icon name="file" size={14} /> {T('rep_print', 'Yazdır')}
           </button>
         </div>
       </div>
@@ -169,15 +176,15 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
           <span className="report-stamp-wordmark">Stoa<em>Board</em></span>
         </div>
         <div className="report-stamp-title">
-          <strong>{DATA.WORKSPACE?.name || 'StoaBoard'}</strong> — {activeKind?.label}
+          <strong>{DATA.WORKSPACE?.name || 'StoaBoard'}</strong> — {activeKind && T(activeKind.k, activeKind.fb)}
         </div>
         <div className="report-stamp-meta">
-          <span>Dönem: {rangeLabel}</span>
-          <span>Oluşturulma: {printedAt || new Date().toLocaleString('tr-TR')}</span>
-          <span>Oluşturan: {window.CURRENT_USER?.name || '—'}</span>
+          <span>{T('rep_stamp_period', 'Dönem')}: {rangeLabel}</span>
+          <span>{T('rep_stamp_created', 'Oluşturulma')}: {printedAt || new Date().toLocaleString(lang === 'en' ? 'en-GB' : 'tr-TR')}</span>
+          <span>{T('rep_stamp_by', 'Oluşturan')}: {window.CURRENT_USER?.name || '—'}</span>
         </div>
         <div className="report-stamp-conf">
-          Gizli — yalnızca yetkili kişiler içindir · stoaboard.com
+          {T('rep_stamp_conf', 'Gizli — yalnızca yetkili kişiler içindir')} · stoaboard.com
         </div>
       </div>
 
@@ -190,7 +197,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
               data-active={kind === k.key}
               onClick={() => setKind(k.key)}
             >
-              {k.label}
+              {T(k.k, k.fb)}
             </button>
           ))}
         </div>
@@ -202,7 +209,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
               className="filter-chip"
               onClick={() => setRange(presetRange(p.key))}
             >
-              {p.label}
+              {T(p.k, p.fb)}
             </button>
           ))}
           <input
@@ -225,9 +232,9 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
             <DefaultDropdown
               value={person}
               onChange={setPerson}
-              ariaLabel="Kişi"
+              ariaLabel={T('rep_person', 'Kişi')}
               options={[
-                { value: '', label: 'Herkes' },
+                { value: '', label: T('rep_everyone', 'Herkes') },
                 ...(DATA.MEMBERS || []).map((m) => ({ value: String(m.id), label: m.name })),
               ]}
             />
@@ -235,15 +242,14 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
         )}
       </div>
 
-      {loading && <div className="dash-empty-state">Rapor hazırlanıyor…</div>}
+      {loading && <div className="dash-empty-state">{T('rep_loading', 'Rapor hazırlanıyor…')}</div>}
       {error && <div className="dash-empty-state">{error}</div>}
 
       {!loading && !error && data && (
         <>
           {data.scoped_to_self && (
             <div className="report-note">
-              Yalnızca kendi kayıtlarınız gösteriliyor. Diğer kişilerin raporu için
-              üye yönetimi izni gerekiyor.
+              {T('rep_scoped_self', 'Yalnızca kendi kayıtlarınız gösteriliyor. Diğer kişilerin raporu için üye yönetimi izni gerekiyor.')}
             </div>
           )}
           {kind === 'person' && <PersonReport data={data} onOpenTask={onOpenTask} />}
@@ -260,7 +266,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
 
 function PersonReport({ data, onOpenTask }) {
   if (!data.people?.length) {
-    return <div className="dash-empty-state">Bu aralıkta kayıt yok.</div>;
+    return <div className="dash-empty-state">{T('rep_empty', 'Bu aralıkta kayıt yok.')}</div>;
   }
   return (
     <div className="report-body">
@@ -270,7 +276,7 @@ function PersonReport({ data, onOpenTask }) {
             <div>
               <div className="panel-title">{p.name}</div>
               <div className="panel-sub">
-                {p.tasks.length} görev · {p.moves} hareket · {p.completed} tamamlama
+                {p.tasks.length} {T('rep_meta_tasks', 'görev')} · {p.moves} {T('rep_meta_moves', 'hareket')} · {p.completed} {T('rep_meta_completions', 'tamamlama')}
               </div>
             </div>
             <div className="report-total">{formatDuration(p.minutes)}</div>
@@ -279,10 +285,10 @@ function PersonReport({ data, onOpenTask }) {
             <table className="list-table">
               <thead>
                 <tr>
-                  <th>Görev</th>
-                  <th style={{ width: 90 }}>Süre</th>
-                  <th style={{ width: 90 }}>Hareket</th>
-                  <th style={{ width: 110 }}>Durum</th>
+                  <th>{T('rep_col_task', 'Görev')}</th>
+                  <th style={{ width: 90 }}>{T('rep_col_duration', 'Süre')}</th>
+                  <th style={{ width: 90 }}>{T('rep_moves', 'Hareket')}</th>
+                  <th style={{ width: 110 }}>{T('rep_col_status', 'Durum')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,7 +302,7 @@ function PersonReport({ data, onOpenTask }) {
                       {t.minutes ? formatDuration(t.minutes) : '—'}
                     </td>
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>{t.moves}</td>
-                    <td>{t.completed ? 'Tamamlandı' : 'Devam ediyor'}</td>
+                    <td>{t.completed ? T('rep_status_done', 'Tamamlandı') : T('rep_status_ongoing', 'Devam ediyor')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -314,17 +320,17 @@ function PeriodReport({ data, onOpenTask }) {
   return (
     <div className="report-body">
       <div className="report-stats">
-        <Stat label="Açılan" value={data.created} />
-        <Stat label="Tamamlanan" value={data.completed} />
-        <Stat label="Hareket" value={data.moves} />
-        <Stat label="Açık kalan" value={data.open} />
-        <Stat label="Toplam emek" value={formatDuration(data.total_minutes)} />
+        <Stat label={T('rep_stat_created', 'Açılan')} value={data.created} />
+        <Stat label={T('rep_stat_completed', 'Tamamlanan')} value={data.completed} />
+        <Stat label={T('rep_moves', 'Hareket')} value={data.moves} />
+        <Stat label={T('rep_stat_open', 'Açık kalan')} value={data.open} />
+        <Stat label={T('rep_stat_effort', 'Toplam emek')} value={formatDuration(data.total_minutes)} />
       </div>
 
       {data.by_column?.length > 0 && (
         <div className="panel">
           <div className="panel-head">
-            <div className="panel-title">Kolon hareketleri</div>
+            <div className="panel-title">{T('rep_column_moves', 'Kolon hareketleri')}</div>
           </div>
           <div className="panel-body">
             <div className="report-bars">
@@ -351,8 +357,8 @@ function PeriodReport({ data, onOpenTask }) {
       <div className="panel">
         <div className="panel-head">
           <div>
-            <div className="panel-title">Tamamlanan işler</div>
-            <div className="panel-sub">{data.completed_tasks?.length || 0} kayıt</div>
+            <div className="panel-title">{T('rep_completed_tasks', 'Tamamlanan işler')}</div>
+            <div className="panel-sub">{data.completed_tasks?.length || 0} {T('rep_records', 'kayıt')}</div>
           </div>
         </div>
         <div className="panel-body">
@@ -360,11 +366,11 @@ function PeriodReport({ data, onOpenTask }) {
             <table className="list-table">
               <thead>
                 <tr>
-                  <th>Görev</th>
-                  <th style={{ width: 100 }}>Açılış</th>
-                  <th style={{ width: 110 }}>Tamamlanma</th>
-                  <th style={{ width: 90 }}>Geçen gün</th>
-                  <th style={{ width: 90 }}>Emek</th>
+                  <th>{T('rep_col_task', 'Görev')}</th>
+                  <th style={{ width: 100 }}>{T('rep_col_opened', 'Açılış')}</th>
+                  <th style={{ width: 110 }}>{T('rep_col_completed_at', 'Tamamlanma')}</th>
+                  <th style={{ width: 90 }}>{T('rep_col_cycle', 'Geçen gün')}</th>
+                  <th style={{ width: 90 }}>{T('rep_col_effort', 'Emek')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -384,7 +390,7 @@ function PeriodReport({ data, onOpenTask }) {
               </tbody>
             </table>
           ) : (
-            <div className="dash-empty-state">Bu aralıkta tamamlanan iş yok.</div>
+            <div className="dash-empty-state">{T('rep_empty_completed', 'Bu aralıkta tamamlanan iş yok.')}</div>
           )}
         </div>
       </div>
@@ -398,27 +404,27 @@ function FlowReport({ data, onOpenTask }) {
   return (
     <div className="report-body">
       <div className="report-stats">
-        <Stat label="Tamamlanan iş" value={data.count} />
-        <Stat label="Ortalama süre" value={`${data.avg_days} gün`} />
-        <Stat label="Ortanca süre" value={`${data.median_days} gün`} />
+        <Stat label={T('rep_stat_done_count', 'Tamamlanan iş')} value={data.count} />
+        <Stat label={T('rep_stat_avg', 'Ortalama süre')} value={`${data.avg_days} ${T('rep_days', 'gün')}`} />
+        <Stat label={T('rep_stat_median', 'Ortanca süre')} value={`${data.median_days} ${T('rep_days', 'gün')}`} />
       </div>
 
       {data.dwell?.length > 0 && (
         <div className="panel">
           <div className="panel-head">
             <div>
-              <div className="panel-title">Kolonlarda bekleme</div>
-              <div className="panel-sub">İşler en çok nerede bekliyor</div>
+              <div className="panel-title">{T('rep_dwell', 'Kolonlarda bekleme')}</div>
+              <div className="panel-sub">{T('rep_dwell_sub', 'İşler en çok nerede bekliyor')}</div>
             </div>
           </div>
           <div className="panel-body">
             <table className="list-table">
               <thead>
                 <tr>
-                  <th>Kolon</th>
-                  <th style={{ width: 120 }}>Ortalama</th>
-                  <th style={{ width: 120 }}>Ortanca</th>
-                  <th style={{ width: 90 }}>Ölçüm</th>
+                  <th>{T('rep_col_column', 'Kolon')}</th>
+                  <th style={{ width: 120 }}>{T('rep_col_avg', 'Ortalama')}</th>
+                  <th style={{ width: 120 }}>{T('rep_col_median', 'Ortanca')}</th>
+                  <th style={{ width: 90 }}>{T('rep_col_samples', 'Ölçüm')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -439,8 +445,8 @@ function FlowReport({ data, onOpenTask }) {
       <div className="panel">
         <div className="panel-head">
           <div>
-            <div className="panel-title">En uzun süren işler</div>
-            <div className="panel-sub">Açılıştan tamamlanmaya</div>
+            <div className="panel-title">{T('rep_slowest', 'En uzun süren işler')}</div>
+            <div className="panel-sub">{T('rep_slowest_sub', 'Açılıştan tamamlanmaya')}</div>
           </div>
         </div>
         <div className="panel-body">
@@ -448,9 +454,9 @@ function FlowReport({ data, onOpenTask }) {
             <table className="list-table">
               <thead>
                 <tr>
-                  <th>Görev</th>
-                  <th style={{ width: 100 }}>Gün</th>
-                  <th style={{ width: 120 }}>Tamamlanma</th>
+                  <th>{T('rep_col_task', 'Görev')}</th>
+                  <th style={{ width: 100 }}>{T('rep_col_days', 'Gün')}</th>
+                  <th style={{ width: 120 }}>{T('rep_col_completed_at', 'Tamamlanma')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -464,7 +470,7 @@ function FlowReport({ data, onOpenTask }) {
               </tbody>
             </table>
           ) : (
-            <div className="dash-empty-state">Bu aralıkta tamamlanan iş yok.</div>
+            <div className="dash-empty-state">{T('rep_empty_completed', 'Bu aralıkta tamamlanan iş yok.')}</div>
           )}
         </div>
       </div>
@@ -477,29 +483,29 @@ function FlowReport({ data, onOpenTask }) {
 function AuditReport({ data }) {
   const entries = data.entries || [];
   if (!entries.length) {
-    return <div className="dash-empty-state">Bu aralıkta kayıt yok.</div>;
+    return <div className="dash-empty-state">{T('rep_empty', 'Bu aralıkta kayıt yok.')}</div>;
   }
   const exports = entries.filter((e) => e.action === 'report.export').length;
   return (
     <div className="report-body">
       <div className="report-stats">
-        <Stat label="Toplam olay" value={entries.length} />
-        <Stat label="Dışa aktarma" value={exports} />
+        <Stat label={T('rep_stat_events', 'Toplam olay')} value={entries.length} />
+        <Stat label={T('rep_stat_exports', 'Dışa aktarma')} value={exports} />
       </div>
       <div className="panel">
         <div className="panel-head">
           <div>
-            <div className="panel-title">Olaylar</div>
-            <div className="panel-sub">En yeniden eskiye</div>
+            <div className="panel-title">{T('rep_events', 'Olaylar')}</div>
+            <div className="panel-sub">{T('rep_events_sub', 'En yeniden eskiye')}</div>
           </div>
         </div>
         <div className="panel-body">
           <table className="list-table">
             <thead>
               <tr>
-                <th style={{ width: 150 }}>Zaman</th>
-                <th style={{ width: 140 }}>Kişi</th>
-                <th>Olay</th>
+                <th style={{ width: 150 }}>{T('rep_col_time', 'Zaman')}</th>
+                <th style={{ width: 140 }}>{T('rep_person', 'Kişi')}</th>
+                <th>{T('rep_col_event', 'Olay')}</th>
                 <th style={{ width: 130 }}>IP</th>
               </tr>
             </thead>
@@ -507,11 +513,11 @@ function AuditReport({ data }) {
               {entries.map((e) => (
                 <tr key={e.id} style={{ cursor: 'default' }}>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {e.at ? new Date(e.at).toLocaleString('tr-TR') : '—'}
+                    {e.at ? new Date(e.at).toLocaleString(currentLang() === 'en' ? 'en-GB' : 'tr-TR') : '—'}
                   </td>
                   <td>{e.user_name}</td>
                   <td className="title">
-                    {ACTION_LABEL[e.action] || e.action}
+                    {ACTION_LABEL[e.action] ? T(...ACTION_LABEL[e.action]) : e.action}
                     {e.detail && <AuditDetail detail={e.detail} />}
                   </td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{e.ip || '—'}</td>
@@ -529,8 +535,9 @@ function AuditDetail({ detail }) {
   if (detail.report) {
     return (
       <span className="audit-detail">
-        {REPORT_LABEL[detail.report] || detail.report} raporu ·{' '}
-        {detail.from} → {detail.to} · {detail.rows} satır
+        {REPORT_LABEL[detail.report] ? T(...REPORT_LABEL[detail.report]) : detail.report}{' '}
+        {T('rep_detail_report', 'raporu')} ·{' '}
+        {detail.from} → {detail.to} · {detail.rows} {T('rep_detail_rows', 'satır')}
       </span>
     );
   }
@@ -574,8 +581,8 @@ function formatDuration(m) {
 
 function fmtHours(h) {
   if (h == null) return '—';
-  if (h < 24) return `${h} sa`;
-  return `${Math.round((h / 24) * 10) / 10} gün`;
+  if (h < 24) return `${h} ${T('rep_hours_short', 'sa')}`;
+  return `${Math.round((h / 24) * 10) / 10} ${T('rep_days', 'gün')}`;
 }
 
 export { ReportsView };
