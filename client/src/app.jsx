@@ -14,14 +14,30 @@ import { TweaksPanel } from './tweaks.jsx';
 import { ChatPanel } from './chat.jsx';
 import { AuthPage, WorkspaceSetupPage } from './views/auth.jsx';
 import { BoardView } from './views/board.jsx';
-import { ListView } from './views/list.jsx';
-import { CalendarView } from './views/calendar.jsx';
-import { DashboardView } from './views/dashboard.jsx';
-import { NotesView } from './views/notes.jsx';
-import { SettingsView } from './views/settings.jsx';
-import { TrashView } from './views/trash.jsx';
-import { ReportsView } from './views/reports.jsx';
 import { LegalPage } from './views/legal.jsx';
+
+// Açılış-dışı ağır görünümler tembel yükleniyor. Açılış görünümü daima 'board';
+// aşağıdakilerin hiçbiri ilk boyada gerekmiyor, yalnızca ilgili sekmeye
+// girildiğinde iniyorlar. Ana paketten ayrılınca ilk açılış küçülüyor.
+// Hepsi named export olduğu için React.lazy'nin beklediği default'a sarılıyor.
+const lazyView = (loader, name) =>
+  React.lazy(() => loader().then((m) => ({ default: m[name] })));
+
+const ReportsView   = lazyView(() => import('./views/reports.jsx'),   'ReportsView');
+const NotesView     = lazyView(() => import('./views/notes.jsx'),     'NotesView');
+const SettingsView  = lazyView(() => import('./views/settings.jsx'),  'SettingsView');
+const CalendarView  = lazyView(() => import('./views/calendar.jsx'),  'CalendarView');
+const DashboardView = lazyView(() => import('./views/dashboard.jsx'), 'DashboardView');
+const TrashView     = lazyView(() => import('./views/trash.jsx'),     'TrashView');
+
+// Tembel görünümleri saran ortak Suspense — parça inerken kısa yükleme çubuğu.
+function Lazy({ children }) {
+  return (
+    <React.Suspense fallback={<div className="loading-bar-wrap"><div className="loading-bar" /></div>}>
+      {children}
+    </React.Suspense>
+  );
+}
 
 function _playDing() {
   try {
@@ -1119,18 +1135,20 @@ function App() {
                 setTweak={setTweak}
               />
             )}
-            {!taskPageTask && view === 'calendar'  && <CalendarView tasks={tasks} onOpenTask={openDrawer} onOpenModal={openModal} canCreateTasks={canManageTasks} />}
-            {!taskPageTask && view === 'dashboard' && <DashboardView tasks={tasks} onOpenTask={openDrawer} onView={setView} />}
+            {!taskPageTask && view === 'calendar'  && <Lazy><CalendarView tasks={tasks} onOpenTask={openDrawer} onOpenModal={openModal} canCreateTasks={canManageTasks} /></Lazy>}
+            {!taskPageTask && view === 'dashboard' && <Lazy><DashboardView tasks={tasks} onOpenTask={openDrawer} onView={setView} /></Lazy>}
             {!taskPageTask && view === 'reports' && (
-              <ReportsView
-                canManageWorkspace={canManageWorkspace}
-                onOpenTask={(id) => {
-                  const t = tasks.find((x) => String(x.id) === String(id));
-                  if (t) { setView('board'); setDrawerTask(t); }
-                }}
-              />
+              <Lazy>
+                <ReportsView
+                  canManageWorkspace={canManageWorkspace}
+                  onOpenTask={(id) => {
+                    const t = tasks.find((x) => String(x.id) === String(id));
+                    if (t) { setView('board'); setDrawerTask(t); }
+                  }}
+                />
+              </Lazy>
             )}
-            {view === 'notes'     && <NotesView
+            {view === 'notes'     && <Lazy><NotesView
               socket={socket}
               tasks={tasks}
               members={members}
@@ -1139,8 +1157,8 @@ function App() {
               canManageProjects={canManageProjects}
               onOpenTask={(t) => { setView('board'); setDrawerTask(t); }}
               onCountChange={setNotesCount}
-            />}
-            {!taskPageTask && view === 'trash' && <TrashView tasks={trashTasks} onRestore={restoreTask} onPermanentDelete={permanentDeleteTask} canManageTasks={canManageTasks} notes={trashNotes} onRestoreNote={restoreNote} onPermanentDeleteNote={permanentDeleteNote} onEmptyTrash={emptyTrash} />}
+            /></Lazy>}
+            {!taskPageTask && view === 'trash' && <Lazy><TrashView tasks={trashTasks} onRestore={restoreTask} onPermanentDelete={permanentDeleteTask} canManageTasks={canManageTasks} notes={trashNotes} onRestoreNote={restoreNote} onPermanentDeleteNote={permanentDeleteNote} onEmptyTrash={emptyTrash} /></Lazy>}
             {view === 'chat' && (
               <ChatPanel
                 open
@@ -1162,7 +1180,7 @@ function App() {
             )}
           </>
         )}
-        {view === 'settings' && <SettingsView tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={handleWsLogoChange} onMembersChange={setMembers} />}
+        {view === 'settings' && <Lazy><SettingsView tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={handleWsLogoChange} onMembersChange={setMembers} /></Lazy>}
       </div>
 
       <TaskDrawer
