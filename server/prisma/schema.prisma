@@ -480,3 +480,29 @@ model AuditLog {
   @@index([userId, at], map: "ix_audit_user_at")
   @@map("audit_logs")
 }
+
+/// Oturum tablosu — `connect-pg-simple` oluşturuyor ve yönetiyor
+/// (`app.js`, `createTableIfMissing: true`). Uygulama kodu bu modeli hiç
+/// kullanmıyor.
+///
+/// Burada olmasının tek sebebi Prisma'nın onu **silmemesi**. Şemada tanımlı
+/// olmayan tablo Prisma için yabancıdır: `db push` onu düşürmek ister ve bu
+/// şema olmadan üretilen tek işlem `DROP TABLE "session"` oluyor.
+///
+/// Deploy tarafı `77af8d7` ile kapandı — artık dağıtımda kendiliğinden push
+/// edilmiyor. Ama şemayı elle gönderen yol duruyor: `npm run prisma:push`
+/// bu model olmadan her seferinde veri kaybı uyarısıyla duruyor ve oradaki
+/// refleks `--accept-data-loss` eklemek oluyor. O bayrak uyarıyı susturup
+/// tabloyu gerçekten siler; giriş yapmış herkes düşer. İçerik verisi
+/// kaybolmaz, tablo da yeniden oluşur, ama bu tanım tuzağı tümden kaldırıyor.
+///
+/// Alanlar `connect-pg-simple`ın kendi tablosuyla birebir aynı olmalı; tabloyu
+/// Prisma yönetmiyor, bu tanım yalnızca "bu tablo bilinir, dokunma" demek için.
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+}
