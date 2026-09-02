@@ -133,17 +133,17 @@ async function loadTaskAccess(req, res, taskId) {
   }
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) {
-    res.status(404).json({ error: 'Görev bulunamadı' });
+    res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
     return null;
   }
   const project = await prisma.project.findUnique({ where: { id: task.projectId } });
   if (!project) {
-    res.status(404).json({ error: 'Proje bulunamadı' });
+    res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     return null;
   }
   const member = await memberForWorkspace(user.id, project.workspaceId);
   if (!member) {
-    res.status(403).json({ error: 'Bu projeye erişiminiz yok' });
+    res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
     return null;
   }
   return { user, task, project, member };
@@ -242,7 +242,7 @@ workLogsRouter.delete(
 
     const logId = parseInt(req.params.logId, 10);
     const log = await prisma.workLog.findUnique({ where: { id: logId } });
-    if (!log) return res.status(404).json({ error: 'Süre kaydı bulunamadı' });
+    if (!log) return res.status(404).json({ error: 'err_worklog_not_found', message: 'Süre kaydı bulunamadı' });
 
     // Kendi kaydı değilse manage_tasks izni gerekir.
     if (log.userId !== user.id) {
@@ -253,7 +253,7 @@ workLogsRouter.delete(
         ? await memberForWorkspace(user.id, project.workspaceId)
         : null;
       if (!member || !hasPermission(member, 'manage_tasks')) {
-        return res.status(403).json({ error: 'Bu kaydı silme yetkiniz yok' });
+        return res.status(403).json({ error: 'err_worklog_delete_forbidden', message: 'Bu kaydı silme yetkiniz yok' });
       }
     }
 
@@ -281,7 +281,7 @@ async function resolveScope(req, res) {
   }
   const member = await memberForWorkspace(user.id, workspaceId);
   if (!member) {
-    res.status(403).json({ error: 'Bu çalışma alanına erişiminiz yok' });
+    res.status(403).json({ error: 'err_workspace_forbidden', message: 'Bu çalışma alanına erişiminiz yok' });
     return null;
   }
 
@@ -361,7 +361,7 @@ reportsRouter.get(
         select: { userId: true },
       });
       if (!membership) {
-        return res.status(404).json({ error: 'Bu çalışma alanında böyle bir üye yok' });
+        return res.status(404).json({ error: 'err_member_not_found', message: 'Bu çalışma alanında böyle bir üye yok' });
       }
       wantedUser = membership.userId;
     }
@@ -378,7 +378,7 @@ reportsRouter.get(
     let scopedToSelf = false;
     if (seeingOthers && !hasPermission(scope.member, 'view_reports')) {
       if (wantedUser) {
-        return res.status(403).json({ error: 'Başka kullanıcının raporunu görme yetkiniz yok' });
+        return res.status(403).json({ error: 'err_person_report_forbidden', message: 'Başka kullanıcının raporunu görme yetkiniz yok' });
       }
       // İzin yoksa sessizce kendi raporuna daralt — boş sayfa göstermektense.
       report = await personReport(scope.projectIds, {
@@ -494,7 +494,7 @@ reportsRouter.get(
     if (!scope) return;
 
     if (!hasPermission(scope.member, 'manage_workspace') && scope.member?.role !== 'owner') {
-      return res.status(403).json({ error: 'Denetim kaydını görme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_audit_forbidden', message: 'Denetim kaydını görme yetkiniz yok' });
     }
 
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);

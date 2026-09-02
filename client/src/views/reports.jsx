@@ -14,6 +14,13 @@ import { DefaultDropdown } from '../dropdown.jsx';
 
 const T = (k, fb) => (window.t?.(k) !== k && window.t?.(k)) || fb;
 
+// Sunucu hataları { error: 'kod', message: 'Türkçe' } biçiminde geliyor ve
+// apiFetch kodu err.code'a koyuyor. Sözlük anahtarları kodlarla aynı adı
+// taşıdığı için kod doğrudan çevrilebiliyor; sözlükte yoksa sunucunun
+// gönderdiği metin gösteriliyor.
+const apiError = (e) => (e?.code && T(e.code, e.message)) || e?.message
+  || T('rep_error', 'Rapor alınamadı');
+
 const iso = (d) => d.toISOString().slice(0, 10);
 
 function presetRange(key) {
@@ -128,7 +135,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
     setError(null);
     API.getReport(kind, params())
       .then((d) => { if (!cancelled) setData(d); })
-      .catch((e) => { if (!cancelled) setError(e.message || T('rep_error', 'Rapor alınamadı')); })
+      .catch((e) => { if (!cancelled) setError(apiError(e)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [kind, params, workspaceId]);

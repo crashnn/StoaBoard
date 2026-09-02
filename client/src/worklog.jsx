@@ -14,6 +14,9 @@ import { Icon } from './icons.jsx';
 // karşılaştırıp Türkçe yedeğe düşüyoruz. reports.jsx ile aynı yardımcı.
 const T = (k, fb) => (window.t?.(k) !== k && window.t?.(k)) || fb;
 
+// Sunucu hata kodunu çevirir; sözlükte yoksa sunucunun gönderdiği metne düşer.
+const apiError = (e, fbKey, fb) => (e?.code && T(e.code, e.message)) || e?.message || T(fbKey, fb);
+
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function WorkLogSection({ taskId }) {
@@ -35,7 +38,7 @@ function WorkLogSection({ taskId }) {
       setLogs(d.logs || []);
       setTotalLabel(d.total_minutes_label || '');
     } catch (e) {
-      setError(e.message || T('wl_err_load', 'Süre kayıtları alınamadı'));
+      setError(apiError(e, 'wl_err_load', 'Süre kayıtları alınamadı'));
     } finally {
       setLoading(false);
     }
@@ -59,15 +62,9 @@ function WorkLogSection({ taskId }) {
       setNote('');
       await load();
     } catch (err) {
-      setError(
-        err.code === 'err_bad_duration'
-          ? T('wl_err_bad_duration', 'Süre anlaşılamadı. Örnek: 90, 1:30 veya "1s 30d".')
-          : err.code === 'err_future_date'
-            ? T('wl_err_future', 'İleri bir tarihe süre girilemez.')
-            : err.code === 'err_duration_too_long'
-              ? T('wl_err_too_long', 'Tek kayıt en fazla 24 saat olabilir.')
-              : (err.message || T('wl_err_save', 'Süre kaydedilemedi')),
-      );
+      // Biçim, ileri tarih ve 24 saat sınırı hatalarının hepsi sunucudan kodla
+      // geliyor ve sözlükte karşılıkları var; apiError üçünü de çeviriyor.
+      setError(apiError(err, 'wl_err_save', 'Süre kaydedilemedi'));
     } finally {
       setSaving(false);
     }
@@ -78,7 +75,7 @@ function WorkLogSection({ taskId }) {
       await API.deleteWorkLog(id);
       await load();
     } catch (err) {
-      setError(err.message || T('wl_err_delete', 'Kayıt silinemedi'));
+      setError(apiError(err, 'wl_err_delete', 'Kayıt silinemedi'));
     }
   };
 

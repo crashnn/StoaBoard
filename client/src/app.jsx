@@ -146,6 +146,12 @@ function App() {
   const _appLang = tweaks.locale || localStorage.getItem('stoa.lang') || 'tr';
   window.t = (key) => (window.APP_I18N?.[_appLang] || window.APP_I18N?.tr || {})[key] || (window.APP_I18N?.tr || {})[key] || key;
 
+  // Belge dili de arayüz dilini izlemeli. index.html'de sabit lang="tr" yazıyor
+  // ve hiçbir yer güncellemiyordu: İngilizce arayüzde sayfa Türkçe ilan
+  // ediliyordu. Ekran okuyucu telaffuzu, tarayıcının çeviri önerisi ve metin
+  // alanlarındaki yazım denetimi bu özniteliğe bakıyor.
+  if (typeof document !== 'undefined') document.documentElement.lang = _appLang;
+
   const myMember = members.find(m => m.id === window.CURRENT_USER?.id) || {};
   const myPerms = myMember.role_permissions || [];
   const canManageTasks = isOwner || myPerms.includes('manage_tasks');

@@ -36,8 +36,25 @@ function sozlukAnahtarlari(lang) {
   // Blok, girintisi iki boşluk olan ilk '},' satırında biter.
   let son = bas + 1;
   while (son < satirlar.length && !/^ {2}\},/.test(satirlar[son])) son += 1;
-  const blok = satirlar.slice(bas, son).join('\n');
-  return new Set([...blok.matchAll(/^\s{4}([a-z][a-z0-9_]*)\s*:/gm)].map((m) => m[1]));
+  // Satır satır işliyoruz, çünkü iki tuzak var:
+  //   1. Yorum satırlarında Türkçe kesme işareti geçiyor ("3 Eylül'e"). Tek
+  //      tırnak, string sökücüyü yanıltıp araya giren gerçek anahtarları yutar.
+  //      Bu yüzden yorum satırları önce tamamen atılıyor.
+  //   2. Bir satırda birden fazla anahtar olabiliyor (`a:'x', b:'y',`) ve
+  //      değerlerin içinde iki nokta geçebiliyor; değerler silinmezse ya ikinci
+  //      anahtar kaçar ya da metnin içinden hayalet anahtar üretilir.
+  const anahtarlar = new Set();
+  // bas+1: blok başlığının kendisi ("tr: {") anahtar sayılmasın.
+  for (const satir of satirlar.slice(bas + 1, son)) {
+    if (satir.trim().startsWith('//')) continue;
+    // Hem tek hem çift tırnak: içinde kesme işareti geçen Türkçe değerler
+    // ("DM'ler her zaman gelir") çift tırnakla yazılmış. Yalnızca tek tırnağı
+    // sökmek, değerin içindeki kesme işaretinin sahte string başlatıp sonraki
+    // anahtarı yutmasına yol açıyordu.
+    const temiz = satir.replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g, "''");
+    for (const m of temiz.matchAll(/\b([a-z][a-z0-9_]*)\s*:/g)) anahtarlar.add(m[1]);
+  }
+  return anahtarlar;
 }
 
 describe('dil sözlüğü — tr ve en aynı anahtarları taşımalı', () => {
@@ -137,6 +154,57 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
       bulgular, [],
       'Öznitelik metni çevrilmemiş. Değeri {window.t?.(\'anahtar\') || \'Türkçe\'} '
       + 'biçimine çevir ve anahtarı iki sözlüğe de ekle.',
+    );
+  });
+});
+
+// ─── Sunucu hata mesajları ─────────────────────────────────────────────────
+//
+// Sunucudan dönen hata metni de kullanıcıya gösteriliyor; Raporlar ekranındaki
+// "Başka kullanıcının raporunu görme yetkiniz yok" İngilizce arayüzde Türkçe
+// çıkıyordu (3 Eylül). Sözleşme: { error: 'kod', message: 'Türkçe' }. İstemci
+// kodu çevirir, sözlükte yoksa message'a düşer.
+//
+// KAPSAM: şimdilik yalnızca reports.js. Diğer route dosyalarında (~158 mesaj)
+// aynı sınıf duruyor ve henüz koda çevrilmedi; oraları da düzeltince bu testin
+// DOSYALAR listesi genişletilmeli.
+const HATA_DOSYALARI = ['reports.js'];
+
+describe('sunucu hata mesajları — koda bağlı ve çevrili olmalı', () => {
+  test('error alanı düz Türkçe metin değil, kod taşıyor', () => {
+    const bulgular = [];
+    for (const ad of HATA_DOSYALARI) {
+      const src = fs.readFileSync(
+        path.resolve(__dirname, '..', 'src', 'routes', ad), 'utf8',
+      );
+      for (const m of src.matchAll(/\berror:\s*'([^']+)'/g)) {
+        if (TURKCE.test(m[1]) || /\s/.test(m[1])) bulgular.push(`${ad}  error: '${m[1]}'`);
+      }
+    }
+    assert.deepEqual(
+      bulgular, [],
+      'Hata metni doğrudan error alanına yazılmış. { error: \'err_kod\', '
+      + 'message: \'Türkçe\' } biçimine çevir.',
+    );
+  });
+
+  test('her hata kodunun iki sözlükte de karşılığı var', () => {
+    const tr = sozlukAnahtarlari('tr');
+    const en = sozlukAnahtarlari('en');
+    const eksik = [];
+    for (const ad of HATA_DOSYALARI) {
+      const src = fs.readFileSync(
+        path.resolve(__dirname, '..', 'src', 'routes', ad), 'utf8',
+      );
+      for (const m of src.matchAll(/\berror:\s*'(err_[a-z0-9_]+)'/g)) {
+        if (!tr.has(m[1])) eksik.push(`${m[1]} (tr)`);
+        if (!en.has(m[1])) eksik.push(`${m[1]} (en)`);
+      }
+    }
+    assert.deepEqual(
+      eksik, [],
+      'Sunucu bu kodu döndürüyor ama sözlükte karşılığı yok; kullanıcı ham kodu '
+      + 'ya da sunucunun Türkçe metnini görür.',
     );
   });
 });
