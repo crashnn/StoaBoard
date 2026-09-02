@@ -20,17 +20,18 @@ Hangi işe girersen gir, ilgili belgeyi açmadan başlama:
 
 ---
 
-## Şu anki durum (1 Eylül 2026)
+## Şu anki durum (2 Eylül 2026)
 
-Aktif dal **`raporlama`** — `main`e birleştirilmedi, dağıtılmadı.
+`raporlama` dalı **`main`e birleştirildi** (58b1a6d). Şema production'a
+uygulandı (Neon SQL Editor, üç tablo + üç sütun, doğrulandı) ve `db push`
+deploy zincirinden çıkarıldı — artık şema bilinçli, elle gönderiliyor.
 
-İçinde: raporlama altyapısı (görev geçiş kaydı, süre kaydı, üç rapor,
-CSV/yazdırma), kolon geçiş kuralı, e-posta bildirimi, denetim kaydı, sekiz
-güvenlik düzeltmesi ve 55 otomatik test.
-
-**Bekleyen ilk adım: şema hiçbir veritabanına gönderilmedi.** Üç yeni tablo
-(`task_transitions`, `work_logs`, `audit_logs`) ve üç yeni sütun var. Adım adım:
-[RAPORLAMA-TESTI.md](RAPORLAMA-TESTI.md).
+**2 Eylül öğleden sonra ek tur (main'de, HENÜZ PUSH EDİLMEMİŞ olabilir):**
+çöp kutusu boşaltma yetki kapısı, denetim kaydı kapsamı (üye çıkarma, rol
+değişikliği, toplu silme), bahsetme bildirimi kapsam sızıntısı düzeltmesi,
+ön yüz kod bölme (satıcı + tembel görünümler), raporlama saf mantık testleri.
+Test sayısı **117**. `git status` ile main'in origin'den ne kadar önde
+olduğunu kontrol et; push kullanıcı onayına bırakıldı.
 
 ---
 
@@ -72,7 +73,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 55 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 117 test,
 veritabanı gerektirmez, birkaç saniye sürer.
 
 ```bash
@@ -125,8 +126,8 @@ Ortak gerekçe: bunlar Jira'yı ağır yapan katman. StoaBoard'un iddiası sadel
 2. **Dönem dondurma.** Kapanmış dönemin raporu mühürlensin, yeniden
    hesaplanmasın.
 3. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
-4. **Denetim kaydının kapsamı.** Üye ekleme/çıkarma ve rol değişikliği de
-   yazılsın — eylem adları `server/src/lib/audit.js` içinde hazır.
+4. **Denetim kaydının kapsamı.** Üye çıkarma, rol değişikliği ve toplu çöp
+   boşaltma yazılıyor *(2 Eylül)*. Kalan: davet kodu görüntüleme (ayrı uç gerek).
 5. **Uç testleri.** Saf mantık test ediliyor, yetkilendirme akışları hâlâ elle.
 
 Karar bekleyen tasarım soruları (kod değil, ürün kararı): süreyi kim girer ·
