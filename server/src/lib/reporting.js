@@ -73,6 +73,24 @@ export function formatMinutes(min) {
   return `${h}s ${r}d`;
 }
 
+/**
+ * Dakikayı belirgin ve dile duyarlı biçimde yaz: "1 saat 30 dakika" /
+ * "1 hour 30 minutes". CSV çıktısı için; istemcideki formatDuration'ın
+ * sunucu karşılığı. Kısa "1s 30d" biçimi belirsizdi ve İngilizcesi yoktu.
+ */
+export function formatDurationLong(min, lang = 'tr') {
+  const m = Math.max(0, Math.round(min || 0));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  const en = lang === 'en';
+  const hr = (n) => (en ? `${n} hour${n === 1 ? '' : 's'}` : `${n} saat`);
+  const mn = (n) => (en ? `${n} minute${n === 1 ? '' : 's'}` : `${n} dakika`);
+  if (!m) return en ? '0 minutes' : '0 dakika';
+  if (!h) return mn(r);
+  if (!r) return hr(h);
+  return `${hr(h)} ${mn(r)}`;
+}
+
 function median(nums) {
   if (!nums.length) return 0;
   const s = [...nums].sort((a, b) => a - b);

@@ -192,7 +192,12 @@ const API = {
   getReport: (kind, params) =>
     apiFetch(`/api/reports/${kind}?${new URLSearchParams(params).toString()}`),
   reportCsvUrl: (kind, params) =>
-    `/api/reports/${kind}?${new URLSearchParams({ ...params, format: 'csv' }).toString()}`,
+    `/api/reports/${kind}?${new URLSearchParams({
+      ...params,
+      format: 'csv',
+      // CSV içeriği (süre biçimi, başlıklar) dışa aktaran kişinin UI dilini izler.
+      lang: (localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr',
+    }).toString()}`,
 
   // Subtasks
   addSubtask:    (taskId, title) =>

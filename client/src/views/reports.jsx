@@ -64,6 +64,14 @@ const ACTION_LABEL = {
 
 const REPORT_LABEL = { person: 'Kişi', period: 'Dönem', flow: 'Akış' };
 
+// Yazdırma/PDF dosya adı kökü — CSV adlandırmasıyla aynı düzen.
+const REPORT_FILE = {
+  person: 'kisi-raporu',
+  period: 'donem-raporu',
+  flow: 'akis-raporu',
+  audit: 'denetim-kaydi',
+};
+
 function ReportsView({ onOpenTask, canManageWorkspace = false }) {
   const [kind, setKind] = useState('person');
   const [range, setRange] = useState(() => presetRange('month'));
@@ -71,17 +79,34 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  // Künyedeki "Oluşturulma" damgası. Yazdırma anında güncelleniyor ki sayfa
-  // uzun süre açık kalsa bile PDF'teki tarih gerçekten çıktının alındığı an
-  // olsun (bileşen render anı değil).
   const [printedAt, setPrintedAt] = useState('');
-  useEffect(() => {
-    const stamp = () => setPrintedAt(new Date().toLocaleString('tr-TR'));
-    window.addEventListener('beforeprint', stamp);
-    return () => window.removeEventListener('beforeprint', stamp);
-  }, []);
 
   const workspaceId = DATA.WORKSPACE?.id;
+  // Rapor sürelerinin ve dışa aktarmanın dili UI dilini izler.
+  const lang = (localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr';
+
+  // Yazdırma anında iki şey ayarlanıyor, sonra geri alınıyor:
+  //   1. Künyedeki "Oluşturulma" damgası — sayfa uzun süre açık kalsa bile
+  //      PDF'teki tarih gerçekten çıktının alındığı an olsun.
+  //   2. document.title — tarayıcı "PDF olarak kaydet"te bunu dosya adı öneriyor.
+  //      Genel "StoaBoard…" yerine rapor türüne göre ad (kisi/donem/akis-raporu
+  //      + tarih aralığı), CSV adlandırmasıyla tutarlı.
+  useEffect(() => {
+    let original = '';
+    const onBefore = () => {
+      setPrintedAt(new Date().toLocaleString(lang === 'en' ? 'en-GB' : 'tr-TR'));
+      original = document.title;
+      const base = REPORT_FILE[kind] || 'rapor';
+      document.title = `${base}_${range.from}_${range.to}`;
+    };
+    const onAfter = () => { if (original) document.title = original; };
+    window.addEventListener('beforeprint', onBefore);
+    window.addEventListener('afterprint', onAfter);
+    return () => {
+      window.removeEventListener('beforeprint', onBefore);
+      window.removeEventListener('afterprint', onAfter);
+    };
+  }, [kind, range.from, range.to, lang]);
 
   const params = useCallback(() => {
     const p = { workspace: workspaceId, from: range.from, to: range.to };
@@ -248,7 +273,7 @@ function PersonReport({ data, onOpenTask }) {
                 {p.tasks.length} görev · {p.moves} hareket · {p.completed} tamamlama
               </div>
             </div>
-            <div className="report-total">{p.minutes_label}</div>
+            <div className="report-total">{formatDuration(p.minutes, lang)}</div>
           </div>
           <div className="panel-body">
             <table className="list-table">
@@ -268,7 +293,7 @@ function PersonReport({ data, onOpenTask }) {
                   >
                     <td className="title">{t.title}</td>
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {t.minutes ? formatMin(t.minutes) : '—'}
+                      {t.minutes ? formatDuration(t.minutes, lang) : '—'}
                     </td>
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>{t.moves}</td>
                     <td>{t.completed ? 'Tamamlandı' : 'Devam ediyor'}</td>
@@ -293,7 +318,7 @@ function PeriodReport({ data, onOpenTask }) {
         <Stat label="Tamamlanan" value={data.completed} />
         <Stat label="Hareket" value={data.moves} />
         <Stat label="Açık kalan" value={data.open} />
-        <Stat label="Toplam emek" value={data.total_minutes_label} />
+        <Stat label="Toplam emek" value={formatDuration(data.total_minutes, lang)} />
       </div>
 
       {data.by_column?.length > 0 && (
@@ -352,7 +377,7 @@ function PeriodReport({ data, onOpenTask }) {
                       {t.cycle_days === null ? '—' : t.cycle_days}
                     </td>
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {t.minutes ? t.minutes_label : '—'}
+                      {t.minutes ? formatDuration(t.minutes, lang) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -523,13 +548,21 @@ function Stat({ label, value }) {
   );
 }
 
-function formatMin(m) {
+// Süreyi belirgin ve dile duyarlı biçimde yaz: "1 saat 30 dakika" /
+// "1 hour 30 minutes". Eski "1s 30d" biçimi kısaydı ama "s" saat mi saniye mi
+// belirsizdi ve İngilizce karşılığı yoktu. Rapor UI dilini izliyor: raporu
+// çıkaran kişi kendi dilinde görsün.
+function formatDuration(m, lang = 'tr') {
   const min = Math.max(0, Math.round(m || 0));
   const h = Math.floor(min / 60);
   const r = min % 60;
-  if (!h) return `${r}d`;
-  if (!r) return `${h}s`;
-  return `${h}s ${r}d`;
+  const en = lang === 'en';
+  const hr = (n) => (en ? `${n} hour${n === 1 ? '' : 's'}` : `${n} saat`);
+  const mn = (n) => (en ? `${n} minute${n === 1 ? '' : 's'}` : `${n} dakika`);
+  if (!min) return en ? '0 minutes' : '0 dakika';
+  if (!h) return mn(r);
+  if (!r) return hr(h);
+  return `${hr(h)} ${mn(r)}`;
 }
 
 function fmtHours(h) {

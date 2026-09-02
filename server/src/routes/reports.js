@@ -25,7 +25,29 @@ import {
   flowReport,
   resolveRange,
   formatMinutes,
+  formatDurationLong,
 } from '../lib/reporting.js';
+
+// CSV başlıkları ve sabit değerleri dile göre. Rapor, dışa aktaran kişinin UI
+// dilini izliyor; istemci ?lang ile geçiyor. Süre değerleri formatDurationLong
+// ile, sayısal "Dakika" sütunu ham int olarak kalıyor (analiz için).
+const CSV_I18N = {
+  tr: {
+    person: ['Kişi', 'Görev', 'Dakika', 'Süre', 'Hareket', 'Tamamlandı'],
+    period: ['Görev', 'Öncelik', 'Açılış', 'Tamamlanma', 'Geçen gün', 'Dakika', 'Emek'],
+    flow: ['Görev', 'Tamamlanma süresi (gün)', 'Tamamlanma tarihi'],
+    yes: 'Evet',
+    no: 'Hayır',
+  },
+  en: {
+    person: ['Person', 'Task', 'Minutes', 'Duration', 'Moves', 'Completed'],
+    period: ['Task', 'Priority', 'Created', 'Completed', 'Cycle days', 'Minutes', 'Effort'],
+    flow: ['Task', 'Cycle time (days)', 'Completed on'],
+    yes: 'Yes',
+    no: 'No',
+  },
+};
+const csvLang = (req) => (String(req.query.lang) === 'en' ? 'en' : 'tr');
 
 export const taskWorkLogsRouter = Router(); // /api/tasks/:taskId/worklogs
 export const workLogsRouter = Router();     // /api/worklogs/:logId
@@ -376,6 +398,7 @@ reportsRouter.get(
     // basınca JSON iniyor, tarayıcı da URL yolundan "person.json" adını
     // üretiyordu. Artık rapor önce hesaplanıyor, biçim kararı tek yerde.
     if (req.query.format === 'csv') {
+      const L = CSV_I18N[csvLang(req)];
       const rows = [];
       for (const p of report.people) {
         for (const t of p.tasks) {
@@ -383,16 +406,16 @@ reportsRouter.get(
             p.name,
             t.title,
             t.minutes,
-            formatMinutes(t.minutes),
+            formatDurationLong(t.minutes, csvLang(req)),
             t.moves,
-            t.completed ? 'Evet' : 'Hayır',
+            t.completed ? L.yes : L.no,
           ]);
         }
       }
       return sendCsvAudited(
         req, res, scope, 'person',
         `kisi-raporu_${dayStr(report.from)}_${dayStr(report.to)}.csv`,
-        ['Kişi', 'Görev', 'Dakika', 'Süre', 'Hareket', 'Tamamlandı'],
+        L.person,
         rows,
       );
     }
@@ -412,6 +435,7 @@ reportsRouter.get(
     const report = await periodReport(scope.projectIds, scope.range);
 
     if (req.query.format === 'csv') {
+      const lang = csvLang(req);
       const rows = report.completed_tasks.map((t) => [
         t.title,
         t.priority,
@@ -419,12 +443,12 @@ reportsRouter.get(
         t.completed_at,
         t.cycle_days,
         t.minutes,
-        t.minutes_label,
+        formatDurationLong(t.minutes, lang),
       ]);
       return sendCsvAudited(
         req, res, scope, 'period',
         `donem-raporu_${dayStr(report.from)}_${dayStr(report.to)}.csv`,
-        ['Görev', 'Öncelik', 'Açılış', 'Tamamlanma', 'Geçen gün', 'Dakika', 'Emek'],
+        CSV_I18N[lang].period,
         rows,
       );
     }
@@ -448,7 +472,7 @@ reportsRouter.get(
       return sendCsvAudited(
         req, res, scope, 'flow',
         `akis-raporu_${dayStr(report.from)}_${dayStr(report.to)}.csv`,
-        ['Görev', 'Tamamlanma süresi (gün)', 'Tamamlanma tarihi'],
+        CSV_I18N[csvLang(req)].flow,
         rows,
       );
     }

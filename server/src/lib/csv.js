@@ -41,9 +41,16 @@ export function csvCell(v) {
 /**
  * Başlık satırı ve satırlardan CSV gövdesi üret.
  * Başa BOM konur, satırlar CRLF ile ayrılır (Excel beklentisi).
+ *
+ * İlk satır 'sep=;' yönergesi: Excel bu satırı yerel ayarından bağımsız okur ve
+ * ayracı ona göre seçer. Onsuz, yerel ayarı virgül olan Excel (örn. İngilizce
+ * kurulum) noktalı virgülü tanımıyor ve tüm satırı tek sütuna yığıyordu —
+ * Türkçe Excel ise noktalı virgül beklediği için ters durum yaşanıyordu. Bu
+ * yönerge ikisini de doğru açar. Bedeli: Excel dışı araçlar (bazı sürümlerde
+ * Google Sheets) bu satırı düz bir hücre olarak gösterebilir; hedef Excel.
  */
 export function toCsv(headers, rows) {
   const lines = [headers.map(csvCell).join(CSV_SEPARATOR)];
   for (const r of rows) lines.push(r.map(csvCell).join(CSV_SEPARATOR));
-  return CSV_BOM + lines.join('\r\n');
+  return CSV_BOM + `sep=${CSV_SEPARATOR}\r\n` + lines.join('\r\n');
 }

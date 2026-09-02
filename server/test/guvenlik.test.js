@@ -95,9 +95,9 @@ describe('toCsv', () => {
     assert.ok(out.startsWith(CSV_BOM), 'BOM eksik');
   });
 
-  test('satırlar CRLF ile ayrılır ve ayraç noktalı virgül', () => {
+  test('sep=; yönergesiyle başlar — Excel yerelden bağımsız ayracı tanısın', () => {
     const out = toCsv(['a', 'b'], [['1', '2']]);
-    assert.equal(out, `${CSV_BOM}a;b\r\n1;2`);
+    assert.equal(out, `${CSV_BOM}sep=;\r\na;b\r\n1;2`);
   });
 
   test('başlık satırı da korumadan geçer', () => {

@@ -15,6 +15,7 @@ import {
   parseRangeDate,
   resolveRange,
   formatMinutes,
+  formatDurationLong,
 } from '../src/lib/reporting.js';
 
 // ─── parseDuration ──────────────────────────────────────────────────────────
@@ -144,5 +145,46 @@ describe('resolveRange — istekten aralık çıkarma', () => {
     // Ters verilse bile ayrıştırma sadık kalır; çağıran uç sıralamayı garanti
     // etmiyor — bu test mevcut davranışı belgeliyor, ters aralık boş sonuç verir.
     assert.ok(from instanceof Date && to instanceof Date);
+  });
+});
+
+// ─── formatDurationLong — belirgin, dile duyarlı süre ───────────────────────
+//
+// CSV çıktısı için; "1s 30d" kısa/belirsiz biçiminin yerine "1 saat 30 dakika"
+// / "1 hour 30 minutes". Rapor dışa aktaran kişinin diline göre.
+
+describe('formatDurationLong — belirgin süre (TR/EN)', () => {
+  const tr = [
+    [0, '0 dakika'],
+    [45, '45 dakika'],
+    [60, '1 saat'],
+    [90, '1 saat 30 dakika'],
+    [125, '2 saat 5 dakika'],
+  ];
+  for (const [min, label] of tr) {
+    test(`TR ${min} → "${label}"`, () => {
+      assert.equal(formatDurationLong(min, 'tr'), label);
+    });
+  }
+
+  const en = [
+    [0, '0 minutes'],
+    [1, '1 minute'],
+    [45, '45 minutes'],
+    [60, '1 hour'],
+    [90, '1 hour 30 minutes'],
+    [120, '2 hours'],
+    [121, '2 hours 1 minute'],
+  ];
+  for (const [min, label] of en) {
+    test(`EN ${min} → "${label}"`, () => {
+      assert.equal(formatDurationLong(min, 'en'), label);
+    });
+  }
+
+  test('varsayılan dil TR; negatif/bozuk 0 olur', () => {
+    assert.equal(formatDurationLong(90), '1 saat 30 dakika');
+    assert.equal(formatDurationLong(-5, 'en'), '0 minutes');
+    assert.equal(formatDurationLong(NaN, 'tr'), '0 dakika');
   });
 });
