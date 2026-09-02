@@ -30,7 +30,11 @@ deploy zincirinden çıkarıldı — artık şema bilinçli, elle gönderiliyor.
 çöp kutusu boşaltma yetki kapısı, denetim kaydı kapsamı (üye çıkarma, rol
 değişikliği, toplu silme), bahsetme bildirimi kapsam sızıntısı düzeltmesi,
 ön yüz kod bölme (satıcı + tembel görünümler), raporlama saf mantık testleri.
-Test sayısı **117**. `git status` ile main'in origin'den ne kadar önde
+
+**3 Eylül:** `session` tablosu şemaya tanıtıldı (6242a7c) — `prisma db push`
+artık onu düşürmeye çalışmıyor. Gerekçe aşağıda, tuzaklar bölümünde.
+
+Test sayısı **130**. `git status` ile main'in origin'den ne kadar önde
 olduğunu kontrol et; push kullanıcı onayına bırakıldı.
 
 ---
@@ -57,6 +61,15 @@ npx prisma migrate diff --from-schema-datamodel <eski>.prisma   --to-schema-data
 İkincisi kurumsal ağda tek seçenek: 5432 kapalıyken bile tarayıcı içi SQL
 Editor HTTPS üzerinden çalışır. `migrate diff` veritabanına bağlanmaz.
 
+**`session` modelini şemadan çıkarma.** Tabloyu Prisma değil
+`connect-pg-simple` oluşturuyor (`app.js`, `createTableIfMissing: true`) ve
+uygulama kodu bu modeli hiç kullanmıyor — tanım yalnızca Prisma'ya "bu tablo
+bilinir, dokunma" demek için var. Olmadığında `db push` tek işlem olarak
+`DROP TABLE "session"` üretiyor: `npm run prisma:push` her seferinde veri
+kaybı uyarısıyla duruyor, oradaki refleks de `--accept-data-loss` eklemek
+oluyordu. O bayrak tabloyu gerçekten siler ve giriş yapmış herkes düşer.
+Modeli kaldırırsan tuzak aynen geri gelir (6242a7c).
+
 **Windows PowerShell'de `npm` değil `npm.cmd`.** `npm` → `npm.ps1`e çözümlenip
 execution policy'ye takılıyor. Git Bash'te düz `npm` çalışır.
 
@@ -73,7 +86,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 117 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 130 test,
 veritabanı gerektirmez, birkaç saniye sürer.
 
 ```bash

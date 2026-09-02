@@ -3,8 +3,11 @@
 Bu dosya, dalı **başka bir bilgisayarda** ayağa kaldırıp test etmek için yazıldı.
 Sıfırdan bir makinede sırayla uygulanabilir.
 
-> **Claude Code'a not:** Bu dal `main`e birleştirilmedi ve dağıtılmadı. Amaç
-> yerel test. Geliştirmede `npm run dev` kullan.
+> **Claude Code'a not:** Bu dal **`main`e birleştirildi** (58b1a6d, 2 Eylül
+> 2026) ve şema production'a uygulandı. Yani bu dosya artık bir dalı ayağa
+> kaldırma talimatı değil, **raporlama özelliklerinin kurulum ve test
+> talimatı** — adımlar `main` üzerinde aynen geçerli. Geliştirmede
+> `npm run dev` kullan.
 >
 > 2 Eylül 2026'dan önce `npm start` ve `postinstall` kendi başına
 > `prisma db push --accept-data-loss` tetikliyordu; o çağrılar kaldırıldı.
@@ -37,23 +40,32 @@ bölümlerinde; çalışma biçimi ve tehdit modeli `GUVENLIK.md` içinde.
 
 ---
 
-## 1 · Dalı al
+## 1 · Kodu al
+
+Dal `main`e birleştirildi; ayrı bir dala geçmeye gerek yok.
 
 ```bash
 git clone https://github.com/crashnn/StoaBoard.git
 cd StoaBoard
-git checkout raporlama
 ```
 
 Repo zaten varsa:
 
 ```bash
-git fetch origin
-git checkout raporlama
-git pull
+git fetch upstream
+git checkout main
+git merge --ff-only upstream/main
 ```
 
-Doğrula: `git log --oneline -1` → **`1 Eylül - Eray Atalay 3.3 feat - raporlama...`**
+> **Mevcut bir kopyada `git pull` kullanma.** Bu depoda `origin`in **fetch**
+> adresi `MrAtalay/StoaBoard-eray` (fork) ve o fork 27 Mayıs 2026'da donmuş;
+> asıl iş `crashnn/StoaBoard`, yani `upstream`de. `git pull` hatasız çalışır
+> ama bayat depoya bakar ve hiçbir şey getirmez — 3 Eylül'de "main'i çektim,
+> bir şey gelmedi" tıkanmasının sebebi buydu. Karşılaştırmayı da `origin/main`e
+> değil `upstream/main`e karşı yap.
+
+Doğrula: `git log --oneline` çıktısında **`58b1a6d`** (raporlama birleştirmesi)
+görünmeli.
 
 ## 2 · Veritabanı: Neon'da test dalı
 
@@ -150,8 +162,8 @@ cd server
 npm test          # Windows PowerShell'de: npm.cmd test
 ```
 
-Beklenen: **30 test, hepsi geçer.** Bugün kapatılan güvenlik kusurlarının
-regresyon korumaları burada.
+Beklenen: **130 test, hepsi geçer.** Kapatılan güvenlik kusurlarının regresyon
+korumaları burada.
 
 ---
 

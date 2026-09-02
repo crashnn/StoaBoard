@@ -181,6 +181,9 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
       ama migration geçmişi tutmuyor. 2 Eylül 2026'da `--accept-data-loss`
       deploy zincirinden çıkarıldı (`postinstall`, `npm start`, `railway.toml`),
       yani şema artık kendiliğinden gitmiyor ve sessiz `DROP` riski yok.
+      3 Eylül'de `session` tablosu şemaya tanıtıldı (6242a7c): elle çalıştırılan
+      `prisma db push` de artık onu düşürmeye çalışmıyor, yani
+      `--accept-data-loss` yazma ihtiyacı hiç doğmuyor.
       Kalan eksik geçmiş: hangi şemanın ne zaman gittiği kayıtlı değil.
       Gerçek kullanıcı verisi büyümeden düzenli migration dosyalarına geçilmeli.
 

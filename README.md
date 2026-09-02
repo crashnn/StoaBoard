@@ -211,7 +211,7 @@ cd server
 npm test          # Windows PowerShell'de: npm.cmd test
 ```
 
-54 test, veritabanı gerektirmez. Kapatılan güvenlik kusurlarının regresyon
+130 test, veritabanı gerektirmez. Kapatılan güvenlik kusurlarının regresyon
 korumaları ve bütün sunucu modüllerinin yüklendiğini doğrulayan smoke testi.
 
 ## Lisans

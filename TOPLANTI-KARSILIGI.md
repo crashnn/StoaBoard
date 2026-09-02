@@ -1,7 +1,8 @@
 # Toplantı geri bildirimlerinin karşılığı
 
 **Kaynak:** BDH Netaş StoaBoard tanıtım toplantısı, 1 Eylül 2026.
-**Tur:** `raporlama` dalı — 13 commit, 34 dosya, +3.428 satır.
+**Tur:** `raporlama` dalı — 21 commit, 41 dosya, +4.161 satır. Dal 2 Eylül
+2026'da `main`e birleştirildi (58b1a6d).
 
 Bu dosya ikinci toplantı için yazıldı: her geri bildirimin karşısında **ne
 yapıldı**, **ne yapılmadı** ve **neden**. Yapılmayanlar da burada — "yetişmedi"
@@ -131,7 +132,7 @@ arayınca daha fazlası çıkar diye düşünüldü — çıktı.
 - **Denetim kaydı** (`audit_logs`) — kim, ne zaman, hangi raporu, hangi
   aralıkla, kaç satır dışa aktardı. İçeriden sızıntıya karşı pratikte işe
   yarayan kontrol engelleme değil izlenebilirliktir.
-- **54 otomatik test** — bugün kapatılan her kusur kilitlendi. Veritabanı
+- **130 otomatik test** — kapatılan her kusur kilitlendi. Veritabanı
   gerektirmiyor, saniyeler içinde koşuyor. Aralarında, arayüzdeki izin listesi
   ile sunucunun uyguladığı listeyi birebir karşılaştıran bir test de var:
   "hayalet izin" sınıfı hata bir daha sessizce giremez.

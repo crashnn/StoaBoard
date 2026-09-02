@@ -197,18 +197,26 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
   (özel kanalda kanal içeriği, DM'de üçüncü kişiye DM içeriği) sızdırabiliyordu.
   person-report oracle'ıyla aynı sınıf. Karar saf `mentionAllowed`'a çıkarıldı,
   altı regresyon testiyle kilitlendi
+- **`session` tablosu şemaya tanıtıldı** *(3 Eylül)* — tabloyu
+  `connect-pg-simple` oluşturduğu ve `schema.prisma`'da tanımlı olmadığı için
+  Prisma onu yabancı sayıyordu: veritabanına karşı alınan diff tek işlem olarak
+  `DROP TABLE "session"` üretiyordu. Deploy zinciri 2 Eylül'de temizlenmişti, ama
+  elle çalıştırılan `npm run prisma:push` her seferinde veri kaybı uyarısıyla
+  duruyor ve oradaki refleks `--accept-data-loss` eklemek oluyordu — o bayrak
+  tabloyu gerçekten siler, giriş yapmış herkes düşer. Model tabloyu yönetmiyor,
+  yalnızca "bu tablo bilinir, dokunma" diyor
 
 **Açık — öncelik sırasıyla**
 1. **Proje bazlı üyelik.** En büyük yarıçap küçültme. Bugün bir üye çalışma
    alanındaki her şeyi görüyor.
 2. **Oturum hijyeni.** Üye çıkarıldığında ve parola değiştiğinde açık oturumlar
    gerçekten düşüyor mu? Denetlenmedi.
-4. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
+3. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
 4. **Denetim kaydının kapsamı.** Üye çıkarma, rol değişikliği ve toplu çöp
    boşaltma *(2 Eylül)* eklendi. Kalan tek eylem **davet kodu görüntüleme**:
    kod bootstrap yanıtında dönüyor, orada kaydetmek her sayfa yüklemesini
    denetime yazardı — ayrı bir "kodu göster" ucu gerekiyor (ürün kararı).
-4. **Test kapsamı dar.** Saf mantık (izinler, CSV, bildirim gövdesi) test
+5. **Test kapsamı dar.** Saf mantık (izinler, CSV, bildirim gövdesi) test
    ediliyor; uçların kendisi (yetkilendirme akışları, IDOR senaryoları) hâlâ
    elle test ediliyor. Sonraki adım: veritabanı gerektiren uç testleri.
 
