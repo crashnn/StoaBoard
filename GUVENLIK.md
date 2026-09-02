@@ -184,6 +184,13 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
   hatasız yüklendiğini doğrulayan bir yükleme testi var. `cd server && npm test`
 - Oturumlar PostgreSQL'de; `HttpOnly`, `SameSite=lax`, üretimde `Secure`
 - `/api/auth` için hız sınırı
+- **Çöp kutusu boşaltma yetki kapısı** *(2 Eylül)* — `DELETE /workspaces/me/trash`
+  yalnızca üyelik istiyordu; tekil kalıcı silme `manage_tasks` isterken toplu,
+  çalışma alanını kapsayan hâli korumasızdı. Aynı izne sabitlendi, regresyon
+  testi eklendi
+- **Denetim kaydı kapsamı genişledi** *(2 Eylül)* — dışa aktarmaya ek olarak
+  üye çıkarma, rol değişikliği ve toplu çöp boşaltma da yazılıyor. Kayda yalnızca
+  bağlam (hedef, rol adı, sayı), içerik değil
 
 **Açık — öncelik sırasıyla**
 1. **Proje bazlı üyelik.** En büyük yarıçap küçültme. Bugün bir üye çalışma
@@ -191,9 +198,10 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 2. **Oturum hijyeni.** Üye çıkarıldığında ve parola değiştiğinde açık oturumlar
    gerçekten düşüyor mu? Denetlenmedi.
 4. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
-4. **Denetim kaydının kapsamı.** Şu an yalnızca dışa aktarma. Üye ekleme/
-   çıkarma, rol değişikliği, davet kodu görüntüleme de yazılmalı — eylem
-   adları `lib/audit.js` içinde hazır bekliyor.
+4. **Denetim kaydının kapsamı.** Üye çıkarma, rol değişikliği ve toplu çöp
+   boşaltma *(2 Eylül)* eklendi. Kalan tek eylem **davet kodu görüntüleme**:
+   kod bootstrap yanıtında dönüyor, orada kaydetmek her sayfa yüklemesini
+   denetime yazardı — ayrı bir "kodu göster" ucu gerekiyor (ürün kararı).
 4. **Test kapsamı dar.** Saf mantık (izinler, CSV, bildirim gövdesi) test
    ediliyor; uçların kendisi (yetkilendirme akışları, IDOR senaryoları) hâlâ
    elle test ediliyor. Sonraki adım: veritabanı gerektiren uç testleri.

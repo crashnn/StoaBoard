@@ -190,9 +190,15 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
 - [ ] Alt görevi olmayan bir kart "tamamlandı" kolonundan çıkarılınca ilerleme
       %100 kalıyor. Alt görev yoksa hesaplanacak bir kaynak da yok; bilinçli
       olarak dokunulmadı.
-- [ ] Paket boyutu 787 KB (gzip 220 KB), kod bölme yapılmadı. İlk açılışı
-      yavaşlatıyor.
+- [x] ~~Paket boyutu 787 KB, kod bölme yapılmadı.~~ **Yapıldı (2 Eylül).**
+      Satıcı bölme (react-vendor 143 KB, realtime 42 KB ayrı, önbelleklenir) +
+      altı açılış-dışı görünüm tembel yükleniyor (reports, notes, settings,
+      calendar, dashboard, trash). İlk boya 806→~642 KB (ham), derleme uyarısı
+      kalktı. ChatPanel/NotifPanel bilerek eager (ikişer render noktası).
 - [ ] `chat.jsx` ve `data.jsx` beklenenden kalın; bölünmeleri gerekiyor.
+- [ ] `client/src/views/list.jsx` öksüz — liste görünümü board alt-görünümüne
+      taşınınca render edilmez oldu, artık hiçbir dosya import etmiyor. app.jsx'teki
+      ölü import kaldırıldı (2 Eylül); dosyanın kendisi silinmeyi bekliyor.
 - [ ] Almanca, İspanyolca ve Rusça yalnızca gezinme ve ayarlar düzeyinde
       (43'er anahtar); eksikler Türkçe'ye düşüyor. TR/EN tam (~940 anahtar).
 
