@@ -117,7 +117,7 @@ notesRouter.post(
   asyncHandler(async (req, res) => {
     const user = await loadUser(req);
     const wsId = await resolveWorkspaceId(user);
-    if (!wsId) return res.status(400).json({ error: 'Aktif çalışma alanı yok' });
+    if (!wsId) return res.status(400).json({ error: 'err_no_active_workspace', message: 'Aktif çalışma alanı yok' });
 
     const data = req.body || {};
     const title = ((data.title || 'Başlıksız Not').trim() || 'Başlıksız Not').slice(0, 255);
@@ -201,10 +201,10 @@ notesRouter.get(
       where: { id: noteId },
       include: NOTE_INCLUDE,
     });
-    if (!note) return res.status(404).json({ error: 'Not bulunamadı' });
+    if (!note) return res.status(404).json({ error: 'err_note_not_found', message: 'Not bulunamadı' });
     const activeWs = await resolveWorkspaceId(user);
     if (!canViewNote(user, note, activeWs)) {
-      return res.status(403).json({ error: 'Bu nota erişiminiz yok' });
+      return res.status(403).json({ error: 'err_note_forbidden', message: 'Bu nota erişiminiz yok' });
     }
     res.json(noteToDict(note));
   }),
@@ -238,10 +238,10 @@ notesRouter.patch(
       where: { id: noteId },
       include: NOTE_INCLUDE,
     });
-    if (!note) return res.status(404).json({ error: 'Not bulunamadı' });
+    if (!note) return res.status(404).json({ error: 'err_note_not_found', message: 'Not bulunamadı' });
     const member = await memberForWorkspace(user.id, note.workspaceId);
     if (!canEditNote(user, note, member)) {
-      return res.status(403).json({ error: 'Bu notu düzenleme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_note_edit_forbidden', message: 'Bu notu düzenleme yetkiniz yok' });
     }
 
     const data = req.body || {};
@@ -299,10 +299,10 @@ notesRouter.post(
     const user = await loadUser(req);
     const noteId = parseInt(req.params.noteId, 10);
     const note = await prisma.note.findUnique({ where: { id: noteId }, include: NOTE_INCLUDE });
-    if (!note) return res.status(404).json({ error: 'Not bulunamadı' });
+    if (!note) return res.status(404).json({ error: 'err_note_not_found', message: 'Not bulunamadı' });
     const member = await memberForWorkspace(user.id, note.workspaceId);
     if (!canEditNote(user, note, member)) {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+      return res.status(403).json({ error: 'err_action_forbidden', message: 'Bu işlem için yetkiniz yok' });
     }
     const restored = await prisma.note.update({
       where: { id: noteId },
@@ -322,10 +322,10 @@ notesRouter.delete(
     const user = await loadUser(req);
     const noteId = parseInt(req.params.noteId, 10);
     const note = await prisma.note.findUnique({ where: { id: noteId }, include: NOTE_INCLUDE });
-    if (!note) return res.status(404).json({ error: 'Not bulunamadı' });
+    if (!note) return res.status(404).json({ error: 'err_note_not_found', message: 'Not bulunamadı' });
     const member = await memberForWorkspace(user.id, note.workspaceId);
     if (!canEditNote(user, note, member)) {
-      return res.status(403).json({ error: 'Bu notu silme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_note_delete_forbidden', message: 'Bu notu silme yetkiniz yok' });
     }
 
     const recipients = new Set((note.collaborators || []).map((c) => c.userId));
@@ -365,10 +365,10 @@ notesRouter.delete(
       where: { id: noteId },
       include: NOTE_INCLUDE,
     });
-    if (!note) return res.status(404).json({ error: 'Not bulunamadı' });
+    if (!note) return res.status(404).json({ error: 'err_note_not_found', message: 'Not bulunamadı' });
     const member = await memberForWorkspace(user.id, note.workspaceId);
     if (!canEditNote(user, note, member)) {
-      return res.status(403).json({ error: 'Bu notu silme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_note_delete_forbidden', message: 'Bu notu silme yetkiniz yok' });
     }
 
     await prisma.note.update({ where: { id: noteId }, data: { deletedAt: new Date() } });
@@ -403,23 +403,23 @@ notesRouter.post(
       where: { id: noteId },
       include: NOTE_INCLUDE,
     });
-    if (!note) return res.status(404).json({ error: 'Not bulunamadı' });
+    if (!note) return res.status(404).json({ error: 'err_note_not_found', message: 'Not bulunamadı' });
     const member = await memberForWorkspace(user.id, note.workspaceId);
     if (!canEditNote(user, note, member)) {
-      return res.status(403).json({ error: 'Bu notu düzenleme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_note_edit_forbidden', message: 'Bu notu düzenleme yetkiniz yok' });
     }
 
     const taskId = parseInt(req.body?.task_id, 10);
     if (!Number.isFinite(taskId)) {
-      return res.status(400).json({ error: 'task_id gerekli' });
+      return res.status(400).json({ error: 'err_task_id_required', message: 'task_id gerekli' });
     }
     const task = await prisma.task.findUnique({ where: { id: taskId } });
-    if (!task) return res.status(404).json({ error: 'Görev bulunamadı' });
+    if (!task) return res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
     const project = await prisma.project.findUnique({
       where: { id: task.projectId },
     });
     if (!project || project.workspaceId !== note.workspaceId) {
-      return res.status(400).json({ error: 'Bu görev bu çalışma alanına ait değil' });
+      return res.status(400).json({ error: 'err_task_wrong_workspace', message: 'Bu görev bu çalışma alanına ait değil' });
     }
 
     const existing = await prisma.noteLinkedTask.findUnique({
@@ -452,10 +452,10 @@ notesRouter.delete(
       where: { id: noteId },
       include: NOTE_INCLUDE,
     });
-    if (!note) return res.status(404).json({ error: 'Not bulunamadı' });
+    if (!note) return res.status(404).json({ error: 'err_note_not_found', message: 'Not bulunamadı' });
     const member = await memberForWorkspace(user.id, note.workspaceId);
     if (!canEditNote(user, note, member)) {
-      return res.status(403).json({ error: 'Bu notu düzenleme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_note_edit_forbidden', message: 'Bu notu düzenleme yetkiniz yok' });
     }
     await prisma.noteLinkedTask.deleteMany({ where: { noteId, taskId } });
     const updated = await prisma.note.findUnique({
@@ -512,13 +512,13 @@ taskLinkedNotesRouter.get(
     const user = await loadUser(req);
     const taskId = parseInt(req.params.taskId, 10);
     const task = await prisma.task.findUnique({ where: { id: taskId } });
-    if (!task) return res.status(404).json({ error: 'Görev bulunamadı' });
+    if (!task) return res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
     const project = await prisma.project.findUnique({
       where: { id: task.projectId },
     });
-    if (!project) return res.status(404).json({ error: 'Proje bulunamadı' });
+    if (!project) return res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     const member = await memberForWorkspace(user.id, project.workspaceId);
-    if (!member) return res.status(403).json({ error: 'Bu projeye erişiminiz yok' });
+    if (!member) return res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
 
     const linkRows = await prisma.noteLinkedTask.findMany({
       where: { taskId },

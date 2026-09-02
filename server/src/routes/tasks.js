@@ -35,6 +35,7 @@ import {
 } from '../lib/projects.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { recordTransition } from '../lib/reporting.js';
+import { reqLang } from '../lib/lang.js';
 
 export const projectTasksRouter = Router({ mergeParams: true }); // /projects/:projectId/tasks
 export const tasksRouter = Router();         // /tasks/:taskId
@@ -82,23 +83,23 @@ async function loadTaskWithAccess(req, res, taskId, { permission = null, include
     include: include || TASK_LIST_INCLUDE,
   });
   if (!task) {
-    res.status(404).json({ error: 'Görev bulunamadı' });
+    res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
     return { denied: true };
   }
   const project = await prisma.project.findUnique({
     where: { id: task.projectId },
   });
   if (!project) {
-    res.status(404).json({ error: 'Proje bulunamadı' });
+    res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     return { denied: true };
   }
   const member = await memberForWorkspace(user.id, project.workspaceId);
   if (!member) {
-    res.status(403).json({ error: 'Bu projeye erişiminiz yok' });
+    res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
     return { denied: true };
   }
   if (permission && !hasPermission(member, permission)) {
-    res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+    res.status(403).json({ error: 'err_action_forbidden', message: 'Bu işlem için yetkiniz yok' });
     return { denied: true };
   }
   return { denied: false, user, task, project, member };
@@ -113,9 +114,9 @@ projectTasksRouter.get(
     const user = await loadUser(req);
     const projectId = parseInt(req.params.projectId, 10);
     const project = await prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) return res.status(404).json({ error: 'Proje bulunamadı' });
+    if (!project) return res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     const member = await memberForWorkspace(user.id, project.workspaceId);
-    if (!member) return res.status(403).json({ error: 'Bu projeye erişiminiz yok' });
+    if (!member) return res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
 
     const tasks = await prisma.task.findMany({
       where: { projectId, deletedAt: null },
@@ -138,16 +139,16 @@ projectTasksRouter.post(
       where: { id: projectId },
       include: { columns: { orderBy: { position: 'asc' } } },
     });
-    if (!project) return res.status(404).json({ error: 'Proje bulunamadı' });
+    if (!project) return res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
 
     const member = await memberForWorkspace(user.id, project.workspaceId);
     if (!hasPermission(member, 'manage_tasks')) {
-      return res.status(403).json({ error: 'Görev oluşturma yetkiniz yok' });
+      return res.status(403).json({ error: 'err_create_task_forbidden', message: 'Görev oluşturma yetkiniz yok' });
     }
 
     const data = req.body || {};
     const title = (data.title || '').trim();
-    if (!title) return res.status(400).json({ error: 'Başlık zorunludur' });
+    if (!title) return res.status(400).json({ error: 'err_title_required', message: 'Başlık zorunludur' });
 
     const colSlug = data.col || 'todo';
     let col = project.columns.find((c) => c.slug === colSlug);
@@ -316,11 +317,16 @@ tasksRouter.patch(
         // korunur, yani kural tanımlamayan mevcut panolar aynen çalışmaya devam eder.
         const allowedNext = Array.isArray(fromCol?.allowedNext) ? fromCol.allowedNext : null;
         if (allowedNext && allowedNext.length && !allowedNext.includes(newCol.slug)) {
+          // Mesaj kolon adlarını içerdiği için istemcide çevrilemiyor; cümle
+          // burada, isteğin dilinde kuruluyor. Kolon başlıkları da iki dilde
+          // saklanıyor (title / titleTr), o yüzden ad da dile göre seçiliyor.
+          const lang = reqLang(req);
+          const ad = (c) => (lang === 'en' ? (c.title || c.titleTr) : (c.titleTr || c.title));
           return res.status(409).json({
             error: 'err_transition_not_allowed',
-            message:
-              `"${fromCol.titleTr || fromCol.title}" kolonundan ` +
-              `"${newCol.titleTr || newCol.title}" kolonuna geçilemez.`,
+            message: lang === 'en'
+              ? `Cannot move from "${ad(fromCol)}" to "${ad(newCol)}".`
+              : `"${ad(fromCol)}" kolonundan "${ad(newCol)}" kolonuna geçilemez.`,
             allowed_next: allowedNext,
           });
         }
@@ -525,7 +531,7 @@ tasksRouter.post(
 
     const data = req.body || {};
     const title = (data.title || data.text || '').trim();
-    if (!title) return res.status(400).json({ error: 'Başlık zorunludur' });
+    if (!title) return res.status(400).json({ error: 'err_title_required', message: 'Başlık zorunludur' });
 
     const count = await prisma.subtask.count({ where: { taskId } });
     const s = await prisma.subtask.create({
@@ -550,15 +556,15 @@ subtasksRouter.patch(
       where: { id: subtaskId },
       include: { task: true },
     });
-    if (!s) return res.status(404).json({ error: 'Alt görev bulunamadı' });
-    if (!s.task) return res.status(404).json({ error: 'Task bulunamadı' });
+    if (!s) return res.status(404).json({ error: 'err_subtask_not_found', message: 'Alt görev bulunamadı' });
+    if (!s.task) return res.status(404).json({ error: 'err_task_not_found', message: 'Task bulunamadı' });
 
     const project = await prisma.project.findUnique({
       where: { id: s.task.projectId },
     });
     const member = await memberForWorkspace(user.id, project.workspaceId);
     if (!hasPermission(member, 'manage_tasks')) {
-      return res.status(403).json({ error: 'Alt görev düzenleme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_edit_subtask_forbidden', message: 'Alt görev düzenleme yetkiniz yok' });
     }
 
     const data = req.body || {};
@@ -599,13 +605,13 @@ subtasksRouter.delete(
       where: { id: subtaskId },
       include: { task: true },
     });
-    if (!s) return res.status(404).json({ error: 'Alt görev bulunamadı' });
+    if (!s) return res.status(404).json({ error: 'err_subtask_not_found', message: 'Alt görev bulunamadı' });
     const project = await prisma.project.findUnique({
       where: { id: s.task.projectId },
     });
     const member = await memberForWorkspace(user.id, project.workspaceId);
     if (!hasPermission(member, 'manage_tasks')) {
-      return res.status(403).json({ error: 'Alt görev silme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_delete_subtask_forbidden', message: 'Alt görev silme yetkiniz yok' });
     }
     await prisma.subtask.delete({ where: { id: subtaskId } });
     await recalcTaskProgress(prisma, s.taskId);
@@ -649,7 +655,7 @@ tasksRouter.post(
 
     const data = req.body || {};
     const text = (data.text || '').trim();
-    if (!text) return res.status(400).json({ error: 'Yorum metni zorunludur' });
+    if (!text) return res.status(400).json({ error: 'err_comment_text_required', message: 'Yorum metni zorunludur' });
 
     const io = req.app.get('io');
     const notifsToPush = [];
@@ -710,9 +716,9 @@ commentsRouter.delete(
     const user = await loadUser(req);
     const commentId = parseInt(req.params.commentId, 10);
     const comment = await prisma.comment.findUnique({ where: { id: commentId } });
-    if (!comment) return res.status(404).json({ error: 'Yorum bulunamadı' });
+    if (!comment) return res.status(404).json({ error: 'err_comment_not_found', message: 'Yorum bulunamadı' });
     if (comment.userId !== user.id) {
-      return res.status(403).json({ error: 'Yetkisiz işlem' });
+      return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz işlem' });
     }
     await prisma.comment.delete({ where: { id: commentId } });
     res.json({ ok: true });

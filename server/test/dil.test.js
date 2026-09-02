@@ -165,10 +165,15 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
 // çıkıyordu (3 Eylül). Sözleşme: { error: 'kod', message: 'Türkçe' }. İstemci
 // kodu çevirir, sözlükte yoksa message'a düşer.
 //
-// KAPSAM: şimdilik yalnızca reports.js. Diğer route dosyalarında (~158 mesaj)
-// aynı sınıf duruyor ve henüz koda çevrilmedi; oraları da düzeltince bu testin
-// DOSYALAR listesi genişletilmeli.
-const HATA_DOSYALARI = ['reports.js'];
+// Çeviri tek noktada, apiFetch içinde yapılıyor: gelen kod sözlükten geçiriliyor,
+// karşılığı yoksa sunucunun message'ına düşüyor. Bu yüzden yüzden fazla çağrı
+// noktasının hiçbirine dokunmak gerekmedi.
+//
+// Yeni bir route dosyası eklenirse listeye yazılmalı.
+const HATA_DOSYALARI = [
+  'api.js', 'attachments.js', 'channels.js', 'chat.js', 'notes.js',
+  'notifications.js', 'projects.js', 'reports.js', 'tasks.js', 'workspaces.js',
+];
 
 describe('sunucu hata mesajları — koda bağlı ve çevrili olmalı', () => {
   test('error alanı düz Türkçe metin değil, kod taşıyor', () => {
@@ -188,6 +193,12 @@ describe('sunucu hata mesajları — koda bağlı ve çevrili olmalı', () => {
     );
   });
 
+  // Mesajı dinamik olan kodlar sözlükten muaf: metnin içine sunucuda oluşan
+  // değerler gömülüyor (kolon adları gibi), o yüzden sabit bir karşılığı
+  // olamaz. Bunlarda cümle sunucuda, isteğin dilinde kuruluyor ve apiFetch
+  // sözlükte karşılık bulamayınca o message'a düşüyor.
+  const DINAMIK_MESAJLI = new Set(['err_transition_not_allowed']);
+
   test('her hata kodunun iki sözlükte de karşılığı var', () => {
     const tr = sozlukAnahtarlari('tr');
     const en = sozlukAnahtarlari('en');
@@ -197,6 +208,7 @@ describe('sunucu hata mesajları — koda bağlı ve çevrili olmalı', () => {
         path.resolve(__dirname, '..', 'src', 'routes', ad), 'utf8',
       );
       for (const m of src.matchAll(/\berror:\s*'(err_[a-z0-9_]+)'/g)) {
+        if (DINAMIK_MESAJLI.has(m[1])) continue;
         if (!tr.has(m[1])) eksik.push(`${m[1]} (tr)`);
         if (!en.has(m[1])) eksik.push(`${m[1]} (en)`);
       }

@@ -112,8 +112,18 @@ Yalnızca `tr`ye eklemek işe yaramış gibi görünür ve gözden kaçar: `wind
 ama yanlış dilde durur. Raporlar ve süre kaydı ekranları bu yüzden İngilizce
 arayüzde tamamen Türkçe kalmıştı *(3 Eylül)*.
 
+**Sunucu hata mesajları da aynı kurala tabi.** Sözleşme:
+`{ error: 'err_kod', message: 'Türkçe' }`. Metin doğrudan `error` alanına
+yazılmaz — `apiFetch` kodu sözlükten geçiriyor, karşılığı yoksa `message`a
+düşüyor. Çeviri tek noktada yapıldığı için çağrı yerlerine dokunmak gerekmiyor.
+İçine değer gömülen dinamik mesajlar (kolon geçiş hatası gibi) istemcide
+çevrilemez; onlarda cümle sunucuda kurulur ve dil `reqLang(req)` ile okunur
+(`?lang` ya da `X-Stoa-Lang` başlığı, ikincisini `apiFetch` her isteğe ekliyor).
+
 Kural `server/test/dil.test.js` ile kilitli: iki sözlüğün anahtar kümesi
-birebir eşleşmeli ve görünüm dosyalarında çıplak Türkçe metin kalmamalı.
+birebir eşleşmeli, görünüm dosyalarında çıplak Türkçe metin kalmamalı, ve
+`routes/*` içindeki her `error` alanı sözlükte karşılığı olan bir kod olmalı.
+Yeni bir route dosyası eklenirse testteki `HATA_DOSYALARI` listesine yazılmalı.
 `de`/`es`/`ru` bilinçli olarak kapsam dışı — onlar zaten Türkçe'ye düşüyor.
 
 **Sessiz başarısızlıktan kaçın.** Bu depoda üç kusurun kök sebebi buydu:

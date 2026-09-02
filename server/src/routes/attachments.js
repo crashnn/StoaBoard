@@ -49,19 +49,19 @@ async function requireTaskAccess(req, res, taskId) {
   }
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) {
-    res.status(404).json({ error: 'Görev bulunamadı' });
+    res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
     return null;
   }
   const project = await prisma.project.findUnique({
     where: { id: task.projectId },
   });
   if (!project) {
-    res.status(404).json({ error: 'Proje bulunamadı' });
+    res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     return null;
   }
   const member = await memberForWorkspace(user.id, project.workspaceId);
   if (!member) {
-    res.status(403).json({ error: 'Bu projeye erişiminiz yok' });
+    res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
     return null;
   }
   return { user, task, project };
@@ -96,12 +96,12 @@ taskAttachmentsRouter.post(
     const ctx = await requireTaskAccess(req, res, taskId);
     if (!ctx) return;
 
-    if (!req.file) return res.status(400).json({ error: 'Dosya bulunamadı' });
+    if (!req.file) return res.status(400).json({ error: 'err_file_not_found', message: 'Dosya bulunamadı' });
     if (!req.file.originalname) {
-      return res.status(400).json({ error: 'Dosya adı boş' });
+      return res.status(400).json({ error: 'err_file_name_empty', message: 'Dosya adı boş' });
     }
     if (req.file.size > 20 * 1024 * 1024) {
-      return res.status(413).json({ error: 'Dosya 20 MB sınırını aşıyor' });
+      return res.status(413).json({ error: 'err_file_too_large', message: 'Dosya 20 MB sınırını aşıyor' });
     }
     const mime = req.file.mimetype || 'application/octet-stream';
     if (!ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p))) {
@@ -134,11 +134,11 @@ attachmentsRouter.get(
       where: { id: attId },
       include: { uploadedFile: true },
     });
-    if (!att) return res.status(404).json({ error: 'Ek bulunamadı' });
+    if (!att) return res.status(404).json({ error: 'err_attachment_not_found', message: 'Ek bulunamadı' });
     const ctx = await requireTaskAccess(req, res, att.taskId);
     if (!ctx) return;
     const uf = att.uploadedFile;
-    if (!uf) return res.status(404).json({ error: 'Dosya bulunamadı' });
+    if (!uf) return res.status(404).json({ error: 'err_file_not_found', message: 'Dosya bulunamadı' });
 
     res.setHeader('Content-Type', uf.contentType || 'application/octet-stream');
     const safeName = (att.fileName || 'file').replace(/"/g, '');
@@ -156,7 +156,7 @@ attachmentsRouter.patch(
   asyncHandler(async (req, res) => {
     const attId = parseInt(req.params.attId, 10);
     const att = await prisma.taskAttachment.findUnique({ where: { id: attId } });
-    if (!att) return res.status(404).json({ error: 'Ek bulunamadı' });
+    if (!att) return res.status(404).json({ error: 'err_attachment_not_found', message: 'Ek bulunamadı' });
     const ctx = await requireTaskAccess(req, res, att.taskId);
     if (!ctx) return;
 
@@ -183,7 +183,7 @@ attachmentsRouter.delete(
   asyncHandler(async (req, res) => {
     const attId = parseInt(req.params.attId, 10);
     const att = await prisma.taskAttachment.findUnique({ where: { id: attId } });
-    if (!att) return res.status(404).json({ error: 'Ek bulunamadı' });
+    if (!att) return res.status(404).json({ error: 'err_attachment_not_found', message: 'Ek bulunamadı' });
     const ctx = await requireTaskAccess(req, res, att.taskId);
     if (!ctx) return;
     await prisma.$transaction([
@@ -205,9 +205,9 @@ chatUploadRouter.post(
   requireAuth,
   upload.single('file'),
   asyncHandler(async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'Dosya seçilmedi' });
+    if (!req.file) return res.status(400).json({ error: 'err_no_file_selected', message: 'Dosya seçilmedi' });
     const origName = req.file.originalname || '';
-    if (!origName) return res.status(400).json({ error: 'Geçersiz dosya' });
+    if (!origName) return res.status(400).json({ error: 'err_invalid_file', message: 'Geçersiz dosya' });
     if (req.file.size > 50 * 1024 * 1024) {
       return res.status(400).json({ error: "Dosya 50 MB'dan büyük olamaz" });
     }

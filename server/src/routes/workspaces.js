@@ -143,7 +143,7 @@ workspacesRouter.post(
     const user = await loadUser(req);
     const data = req.body || {};
     const name = (data.name || '').trim();
-    if (!name) return res.status(400).json({ error: 'Çalışma alanı adı zorunludur' });
+    if (!name) return res.status(400).json({ error: 'err_workspace_name_required', message: 'Çalışma alanı adı zorunludur' });
 
     const slug = await uniqueWorkspaceSlug(name);
     const code = await uniqueInviteCode();
@@ -243,10 +243,10 @@ workspacesRouter.patch(
     const wsId = parseInt(req.params.wsId, 10);
     const member = await memberForWorkspace(user.id, wsId);
     if (!member || member.role !== 'owner') {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+      return res.status(403).json({ error: 'err_action_forbidden', message: 'Bu işlem için yetkiniz yok' });
     }
     const ws = await prisma.workspace.findUnique({ where: { id: wsId } });
-    if (!ws) return res.status(404).json({ error: 'Workspace bulunamadı' });
+    if (!ws) return res.status(404).json({ error: 'err_workspace_not_found', message: 'Workspace bulunamadı' });
 
     const data = req.body || {};
     const updates = {};
@@ -367,7 +367,7 @@ workspacesRouter.get(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!hasPermission(member, 'manage_members')) {
-      return res.status(403).json({ error: 'Yetki gerekli' });
+      return res.status(403).json({ error: 'err_permission_required', message: 'Yetki gerekli' });
     }
     const reqs = await prisma.workspaceJoinRequest.findMany({
       where: { workspaceId: member.workspaceId, status: 'pending' },
@@ -405,7 +405,7 @@ workspacesRouter.post(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!hasPermission(member, 'manage_members')) {
-      return res.status(403).json({ error: 'Yetki gerekli' });
+      return res.status(403).json({ error: 'err_permission_required', message: 'Yetki gerekli' });
     }
 
     const reqId = parseInt(req.params.reqId, 10);
@@ -413,16 +413,16 @@ workspacesRouter.post(
       where: { id: reqId, workspaceId: member.workspaceId },
       include: { workspace: true, user: true },
     });
-    if (!joinReq) return res.status(404).json({ error: 'İstek bulunamadı' });
+    if (!joinReq) return res.status(404).json({ error: 'err_request_not_found', message: 'İstek bulunamadı' });
     if (joinReq.status !== 'pending') {
-      return res.status(400).json({ error: 'Bu istek zaten işlendi' });
+      return res.status(400).json({ error: 'err_request_already_handled', message: 'Bu istek zaten işlendi' });
     }
 
     const defaultRole = await prisma.workspaceRole.findFirst({
       where: { workspaceId: joinReq.workspaceId, isDefault: true },
     });
     if (!defaultRole) {
-      return res.status(500).json({ error: 'Varsayılan rol bulunamadı. Lütfen bir varsayılan rol tanımlayın.' });
+      return res.status(500).json({ error: 'err_no_default_role', message: 'Varsayılan rol bulunamadı. Lütfen bir varsayılan rol tanımlayın.' });
     }
 
     const newMember = await prisma.$transaction(async (tx) => {
@@ -493,7 +493,7 @@ workspacesRouter.post(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!hasPermission(member, 'manage_members')) {
-      return res.status(403).json({ error: 'Yetki gerekli' });
+      return res.status(403).json({ error: 'err_permission_required', message: 'Yetki gerekli' });
     }
 
     const reqId = parseInt(req.params.reqId, 10);
@@ -501,9 +501,9 @@ workspacesRouter.post(
       where: { id: reqId, workspaceId: member.workspaceId },
       include: { workspace: true },
     });
-    if (!joinReq) return res.status(404).json({ error: 'İstek bulunamadı' });
+    if (!joinReq) return res.status(404).json({ error: 'err_request_not_found', message: 'İstek bulunamadı' });
     if (joinReq.status !== 'pending') {
-      return res.status(400).json({ error: 'Bu istek zaten işlendi' });
+      return res.status(400).json({ error: 'err_request_already_handled', message: 'Bu istek zaten işlendi' });
     }
 
     await prisma.workspaceJoinRequest.update({
@@ -564,7 +564,7 @@ workspacesRouter.post(
     const wsId = parseInt(req.params.wsId, 10);
     const member = await memberForWorkspace(user.id, wsId);
     if (!member) {
-      return res.status(403).json({ error: 'Bu çalışma alanına üye değilsiniz' });
+      return res.status(403).json({ error: 'err_not_workspace_member', message: 'Bu çalışma alanına üye değilsiniz' });
     }
     await prisma.user.update({
       where: { id: user.id },
@@ -583,16 +583,16 @@ workspacesRouter.post(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!member || member.role !== 'owner') {
-      return res.status(403).json({ error: 'Bu işlem için sahip yetkisi gereklidir' });
+      return res.status(403).json({ error: 'err_owner_required', message: 'Bu işlem için sahip yetkisi gereklidir' });
     }
 
     const targetSlug = ((req.body || {}).to_slug || '').trim();
-    if (!targetSlug) return res.status(400).json({ error: 'Hedef üye belirtilmedi' });
+    if (!targetSlug) return res.status(400).json({ error: 'err_target_member_missing', message: 'Hedef üye belirtilmedi' });
 
     const targetUser = await prisma.user.findUnique({ where: { slug: targetSlug } });
-    if (!targetUser) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (!targetUser) return res.status(404).json({ error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' });
     if (targetUser.id === user.id) {
-      return res.status(400).json({ error: 'Kendinize sahiplik aktaramazsınız' });
+      return res.status(400).json({ error: 'err_cannot_transfer_self', message: 'Kendinize sahiplik aktaramazsınız' });
     }
     const targetMember = await prisma.workspaceMember.findUnique({
       where: {
@@ -600,7 +600,7 @@ workspacesRouter.post(
       },
     });
     if (!targetMember) {
-      return res.status(400).json({ error: 'Bu kullanıcı çalışma alanının üyesi değil' });
+      return res.status(400).json({ error: 'err_user_not_workspace_member', message: 'Bu kullanıcı çalışma alanının üyesi değil' });
     }
 
     const [newOwnerMember, oldOwnerMember] = await prisma.$transaction([
@@ -643,7 +643,7 @@ workspacesRouter.post(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!hasPermission(member, 'manage_workspace') && member?.role !== 'owner') {
-      return res.status(403).json({ error: 'Yetkisiz işlem' });
+      return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz işlem' });
     }
     const newCode = await uniqueInviteCode();
     const ws = await prisma.workspace.update({
@@ -663,7 +663,7 @@ workspacesRouter.delete(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!hasPermission(member, 'manage_workspace') && member?.role !== 'owner') {
-      return res.status(403).json({ error: 'Yetkisiz işlem' });
+      return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz işlem' });
     }
     await prisma.workspace.update({
       where: { id: member.workspaceId },
@@ -718,7 +718,7 @@ workspacesRouter.delete(
   asyncHandler(async (req, res) => {
     const user = await loadUser(req);
     const member = await currentMember(user);
-    if (!member) return res.status(403).json({ error: 'Üye bulunamadı' });
+    if (!member) return res.status(403).json({ error: 'err_member_not_found', message: 'Üye bulunamadı' });
 
     // Kalıcı silme yetki ister. Tekil görev için `DELETE /tasks/:id/permanent`
     // zaten `manage_tasks` istiyor; bu uç ise onun toplu, geri dönüşsüz ve
@@ -728,7 +728,7 @@ workspacesRouter.delete(
     // yorumlarıyla birlikte kalıcı silebiliyordu. Tekil işlemle aynı izne
     // sabitlendi.
     if (!hasPermission(member, 'manage_tasks')) {
-      return res.status(403).json({ error: 'Çöp kutusunu boşaltma yetkiniz yok' });
+      return res.status(403).json({ error: 'err_empty_trash_forbidden', message: 'Çöp kutusunu boşaltma yetkiniz yok' });
     }
 
     const projects = await prisma.project.findMany({
@@ -794,11 +794,11 @@ workspacesRouter.post(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!member || member.role !== 'owner') {
-      return res.status(403).json({ error: 'Yetkisiz işlem' });
+      return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz işlem' });
     }
     const data = req.body || {};
     const name = (data.name || '').trim();
-    if (!name) return res.status(400).json({ error: 'Rol adı zorunludur' });
+    if (!name) return res.status(400).json({ error: 'err_role_name_required', message: 'Rol adı zorunludur' });
 
     if (data.is_default) {
       await prisma.workspaceRole.updateMany({
@@ -828,13 +828,13 @@ workspacesRouter.patch(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!member || member.role !== 'owner') {
-      return res.status(403).json({ error: 'Yetkisiz işlem' });
+      return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz işlem' });
     }
     const roleId = parseInt(req.params.roleId, 10);
     const role = await prisma.workspaceRole.findFirst({
       where: { id: roleId, workspaceId: member.workspaceId },
     });
-    if (!role) return res.status(404).json({ error: 'Rol bulunamadı' });
+    if (!role) return res.status(404).json({ error: 'err_role_not_found', message: 'Rol bulunamadı' });
 
     const data = req.body || {};
     const updates = {};
@@ -868,13 +868,13 @@ workspacesRouter.delete(
     const user = await loadUser(req);
     const member = await currentMember(user);
     if (!member || member.role !== 'owner') {
-      return res.status(403).json({ error: 'Yetkisiz işlem' });
+      return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz işlem' });
     }
     const roleId = parseInt(req.params.roleId, 10);
     const role = await prisma.workspaceRole.findFirst({
       where: { id: roleId, workspaceId: member.workspaceId },
     });
-    if (!role) return res.status(404).json({ error: 'Rol bulunamadı' });
+    if (!role) return res.status(404).json({ error: 'err_role_not_found', message: 'Rol bulunamadı' });
 
     if (role.isDefault) {
       const otherRole = await prisma.workspaceRole.findFirst({
@@ -882,7 +882,7 @@ workspacesRouter.delete(
         orderBy: { id: 'asc' },
       });
       if (!otherRole) {
-        return res.status(400).json({ error: 'Son varsayılan rol silinemez. Önce başka bir rol oluşturun.' });
+        return res.status(400).json({ error: 'err_last_default_role', message: 'Son varsayılan rol silinemez. Önce başka bir rol oluşturun.' });
       }
       await prisma.$transaction([
         prisma.workspaceRole.update({ where: { id: otherRole.id }, data: { isDefault: true } }),
@@ -908,12 +908,12 @@ workspacesRouter.patch(
     const user = await loadUser(req);
     const actor = await currentMember(user);
     if (!hasPermission(actor, 'manage_members')) {
-      return res.status(403).json({ error: 'Üye yönetme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_manage_members_forbidden', message: 'Üye yönetme yetkiniz yok' });
     }
 
     const slug = req.params.slug;
     const targetUser = await prisma.user.findUnique({ where: { slug } });
-    if (!targetUser) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (!targetUser) return res.status(404).json({ error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' });
 
     const target = await prisma.workspaceMember.findUnique({
       where: {
@@ -921,13 +921,13 @@ workspacesRouter.patch(
       },
       include: { user: true, workspaceRole: true },
     });
-    if (!target) return res.status(404).json({ error: 'Üye bulunamadı' });
+    if (!target) return res.status(404).json({ error: 'err_member_not_found', message: 'Üye bulunamadı' });
 
     if (target.role === 'owner') {
-      return res.status(403).json({ error: 'Sahip rolü değiştirilemez' });
+      return res.status(403).json({ error: 'err_owner_role_change', message: 'Sahip rolü değiştirilemez' });
     }
     if (actor.role !== 'owner' && target.userId === actor.userId) {
-      return res.status(403).json({ error: 'Kendi rolünüzü değiştiremezsiniz' });
+      return res.status(403).json({ error: 'err_cannot_change_own_role', message: 'Kendi rolünüzü değiştiremezsiniz' });
     }
 
     const data = req.body || {};
@@ -938,7 +938,7 @@ workspacesRouter.patch(
         const role = await prisma.workspaceRole.findFirst({
           where: { id: roleId, workspaceId: actor.workspaceId },
         });
-        if (!role) return res.status(404).json({ error: 'Rol bulunamadı' });
+        if (!role) return res.status(404).json({ error: 'err_role_not_found', message: 'Rol bulunamadı' });
         updates.roleId = role.id;
       } else {
         updates.roleId = null;
@@ -987,15 +987,15 @@ workspacesRouter.delete(
     const user = await loadUser(req);
     const actor = await currentMember(user);
     if (!hasPermission(actor, 'manage_members')) {
-      return res.status(403).json({ error: 'Üye yönetme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_manage_members_forbidden', message: 'Üye yönetme yetkiniz yok' });
     }
 
     const targetUser = await prisma.user.findUnique({
       where: { slug: req.params.slug },
     });
-    if (!targetUser) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (!targetUser) return res.status(404).json({ error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' });
     if (targetUser.id === user.id) {
-      return res.status(400).json({ error: 'Kendinizi çıkaramazsınız' });
+      return res.status(400).json({ error: 'err_cannot_remove_self', message: 'Kendinizi çıkaramazsınız' });
     }
 
     const target = await prisma.workspaceMember.findUnique({
@@ -1003,9 +1003,9 @@ workspacesRouter.delete(
         workspaceId_userId: { workspaceId: actor.workspaceId, userId: targetUser.id },
       },
     });
-    if (!target) return res.status(404).json({ error: 'Üye bulunamadı' });
+    if (!target) return res.status(404).json({ error: 'err_member_not_found', message: 'Üye bulunamadı' });
     if (target.role === 'owner') {
-      return res.status(403).json({ error: 'Sahip takımdan çıkarılamaz' });
+      return res.status(403).json({ error: 'err_owner_remove', message: 'Sahip takımdan çıkarılamaz' });
     }
 
     // Workspace kanallarından da çıkar
@@ -1054,7 +1054,7 @@ workspacesRouter.get(
     const wsId = parseInt(req.params.wsId, 10);
     const member = await memberForWorkspace(user.id, wsId);
     if (!member) {
-      return res.status(403).json({ error: 'Bu çalışma alanına erişiminiz yok' });
+      return res.status(403).json({ error: 'err_workspace_forbidden', message: 'Bu çalışma alanına erişiminiz yok' });
     }
     const members = await prisma.workspaceMember.findMany({
       where: { workspaceId: wsId },
@@ -1075,18 +1075,18 @@ workspacesRouter.post(
     const wsId = parseInt(req.params.wsId, 10);
 
     const ws = await prisma.workspace.findUnique({ where: { id: wsId } });
-    if (!ws) return res.status(404).json({ error: 'Workspace bulunamadı' });
+    if (!ws) return res.status(404).json({ error: 'err_workspace_not_found', message: 'Workspace bulunamadı' });
     const m = await memberForWorkspace(user.id, wsId);
     if (!hasPermission(m, 'manage_workspace') && ws.ownerId !== user.id) {
-      return res.status(403).json({ error: 'Yetkisiz' });
+      return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz' });
     }
 
-    if (!req.file) return res.status(400).json({ error: 'Dosya seçilmedi' });
+    if (!req.file) return res.status(400).json({ error: 'err_no_file_selected', message: 'Dosya seçilmedi' });
 
     const name = req.file.originalname || '';
     const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
     if (!['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-      return res.status(400).json({ error: 'Sadece resim dosyaları yüklenebilir' });
+      return res.status(400).json({ error: 'err_images_only', message: 'Sadece resim dosyaları yüklenebilir' });
     }
     if (req.file.size > 5 * 1024 * 1024) {
       return res.status(400).json({ error: "Logo 5 MB'dan büyük olamaz" });
@@ -1108,10 +1108,10 @@ workspacesRouter.delete(
     const user = await loadUser(req);
     const wsId = parseInt(req.params.wsId, 10);
     const ws = await prisma.workspace.findUnique({ where: { id: wsId } });
-    if (!ws) return res.status(404).json({ error: 'Workspace bulunamadı' });
+    if (!ws) return res.status(404).json({ error: 'err_workspace_not_found', message: 'Workspace bulunamadı' });
     const m = await memberForWorkspace(user.id, wsId);
     if (!hasPermission(m, 'manage_workspace') && ws.ownerId !== user.id) {
-      return res.status(403).json({ error: 'Yetkisiz' });
+      return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz' });
     }
     await prisma.workspace.update({ where: { id: wsId }, data: { logoUrl: null } });
     res.json({ logo_url: null });

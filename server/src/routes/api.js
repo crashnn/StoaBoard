@@ -356,7 +356,7 @@ apiRouter.put(
       if (newEmail && newEmail !== user.email) {
         const existing = await prisma.user.findUnique({ where: { email: newEmail } });
         if (existing) {
-          return res.status(409).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
+          return res.status(409).json({ error: 'err_email_taken', message: 'Bu e-posta adresi zaten kayıtlı' });
         }
         updates.email = newEmail;
       }
@@ -366,7 +366,7 @@ apiRouter.put(
     let passwordChanged = false;
     if (typeof data.password === 'string' && data.password) {
       if (data.password.length < 8) {
-        return res.status(400).json({ error: 'Parola en az 8 karakter olmalıdır' });
+        return res.status(400).json({ error: 'err_password_too_short', message: 'Parola en az 8 karakter olmalıdır' });
       }
       updates.passwordHash = hashPassword(data.password);
       passwordChanged = true;
@@ -435,7 +435,7 @@ apiRouter.delete(
     const confirmEmail = (data.email || data.confirm_email || '').trim().toLowerCase();
     if (confirmEmail !== (user.email || '').toLowerCase()) {
       return res.status(400).json({
-        error: 'Hesabı silmek için e-posta adresinizi doğru yazın',
+        error: 'err_confirm_email_mismatch', message: 'Hesabı silmek için e-posta adresinizi doğru yazın',
       });
     }
 
@@ -611,7 +611,7 @@ apiRouter.post(
   requireAuth,
   avatarUpload.single('file'),
   asyncHandler(async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'Dosya bulunamadı' });
+    if (!req.file) return res.status(400).json({ error: 'err_file_not_found', message: 'Dosya bulunamadı' });
 
     const user = await loadCurrentUser(req);
     if (!user) return res.status(401).json({ error: 'err_auth_required' });

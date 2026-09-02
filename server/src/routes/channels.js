@@ -70,22 +70,22 @@ channelsRouter.post(
     const user = await loadUser(req);
     const data = req.body || {};
     const name = (data.name || '').trim();
-    if (!name) return res.status(400).json({ error: 'Kanal adı boş olamaz' });
+    if (!name) return res.status(400).json({ error: 'err_channel_name_empty', message: 'Kanal adı boş olamaz' });
     const slug = slugifyChannel(name);
-    if (!slug) return res.status(400).json({ error: 'Geçerli bir kanal adı girin' });
+    if (!slug) return res.status(400).json({ error: 'err_channel_name_invalid', message: 'Geçerli bir kanal adı girin' });
 
     const wsId = await resolveWorkspaceId(user);
-    if (!wsId) return res.status(400).json({ error: 'Aktif çalışma alanı bulunamadı' });
+    if (!wsId) return res.status(400).json({ error: 'err_no_active_workspace', message: 'Aktif çalışma alanı bulunamadı' });
     if (!(await userCanCreateChannel(user, wsId))) {
       return res.status(403).json({
-        error: 'Kanal oluşturma yetkin yok. Workspace sahibiyle iletişime geç.',
+        error: 'err_create_channel_forbidden', message: 'Kanal oluşturma yetkin yok. Workspace sahibiyle iletişime geç.',
       });
     }
 
     const exists = await prisma.channel.findFirst({
       where: { workspaceId: wsId, slug },
     });
-    if (exists) return res.status(409).json({ error: 'Bu isimde bir kanal zaten var' });
+    if (exists) return res.status(409).json({ error: 'err_channel_name_taken', message: 'Bu isimde bir kanal zaten var' });
 
     let chType = data.type || 'public';
     if (!['public', 'private'].includes(chType)) chType = 'public';
@@ -193,9 +193,9 @@ channelsRouter.get(
       where: { id: channelId },
       include: CHANNEL_INCLUDE,
     });
-    if (!channel) return res.status(404).json({ error: 'Kanal bulunamadı' });
+    if (!channel) return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
     const role = await userChannelRole(channel, user.id);
-    if (!role) return res.status(403).json({ error: 'Bu kanala erişim yetkiniz yok' });
+    if (!role) return res.status(403).json({ error: 'err_channel_forbidden', message: 'Bu kanala erişim yetkiniz yok' });
 
     // Workspace'ten ayrılmış ama kanalda kalan stale üyeleri temizle
     const wsMemberIds = new Set(
@@ -228,20 +228,20 @@ channelsRouter.patch(
       where: { id: channelId },
       include: CHANNEL_INCLUDE,
     });
-    if (!channel) return res.status(404).json({ error: 'Kanal bulunamadı' });
+    if (!channel) return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
     const role = await userChannelRole(channel, user.id);
     if (!canManageChannel(role)) {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+      return res.status(403).json({ error: 'err_action_forbidden', message: 'Bu işlem için yetkiniz yok' });
     }
     const data = req.body || {};
     if (channel.isDefault && 'type' in data) {
-      return res.status(400).json({ error: 'Varsayılan kanalın tipi değiştirilemez' });
+      return res.status(400).json({ error: 'err_default_channel_type', message: 'Varsayılan kanalın tipi değiştirilemez' });
     }
 
     const updates = {};
     if ('name' in data) {
       const n = (data.name || '').trim();
-      if (!n) return res.status(400).json({ error: 'Kanal adı boş olamaz' });
+      if (!n) return res.status(400).json({ error: 'err_channel_name_empty', message: 'Kanal adı boş olamaz' });
       updates.name = n.slice(0, 120);
     }
     if ('description' in data) {
@@ -253,10 +253,10 @@ channelsRouter.patch(
     if ('type' in data && !channel.isDefault) {
       const newType = data.type;
       if (!['public', 'private'].includes(newType)) {
-        return res.status(400).json({ error: 'Geçersiz kanal tipi' });
+        return res.status(400).json({ error: 'err_invalid_channel_type', message: 'Geçersiz kanal tipi' });
       }
       if (role !== 'owner') {
-        return res.status(403).json({ error: 'Kanal tipini sadece sahip değiştirebilir' });
+        return res.status(403).json({ error: 'err_channel_type_owner_only', message: 'Kanal tipini sadece sahip değiştirebilir' });
       }
       updates.type = newType;
       upgradedFromPrivate = channel.type === 'private' && newType === 'public';
@@ -304,9 +304,9 @@ channelsRouter.delete(
       where: { id: channelId },
       include: CHANNEL_INCLUDE,
     });
-    if (!channel) return res.status(404).json({ error: 'Kanal bulunamadı' });
+    if (!channel) return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
     if (channel.isDefault) {
-      return res.status(400).json({ error: 'Varsayılan kanal silinemez' });
+      return res.status(400).json({ error: 'err_default_channel_delete', message: 'Varsayılan kanal silinemez' });
     }
     const role = await userChannelRole(channel, user.id);
     const wm = await memberForWorkspace(user.id, channel.workspaceId);
@@ -318,7 +318,7 @@ channelsRouter.delete(
     if (role !== 'owner' && !wsCanManage) {
       return res
         .status(403)
-        .json({ error: 'Kanalı sadece kanal sahibi veya yönetici silebilir' });
+        .json({ error: 'err_channel_delete_forbidden', message: 'Kanalı sadece kanal sahibi veya yönetici silebilir' });
     }
 
     const memberIds = channel.members.map((m) => m.userId);
@@ -351,17 +351,17 @@ channelsRouter.post(
       where: { id: channelId },
       include: CHANNEL_INCLUDE,
     });
-    if (!channel) return res.status(404).json({ error: 'Kanal bulunamadı' });
+    if (!channel) return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
     const role = await userChannelRole(channel, user.id);
     const wm = await memberForWorkspace(user.id, channel.workspaceId);
     if (!canManageChannel(role) && !hasPermission(wm, 'manage_channels')) {
-      return res.status(403).json({ error: 'Üye ekleme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_add_member_forbidden', message: 'Üye ekleme yetkiniz yok' });
     }
 
     const data = req.body || {};
     const slugs = data.member_slugs || data.user_slugs || [];
     if (!Array.isArray(slugs) || slugs.length === 0) {
-      return res.status(400).json({ error: 'En az bir üye seçmelisiniz' });
+      return res.status(400).json({ error: 'err_select_member', message: 'En az bir üye seçmelisiniz' });
     }
 
     const candidates = await prisma.user.findMany({
@@ -437,19 +437,19 @@ channelsRouter.delete(
       where: { id: channelId },
       include: CHANNEL_INCLUDE,
     });
-    if (!channel) return res.status(404).json({ error: 'Kanal bulunamadı' });
+    if (!channel) return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
 
     const target = await prisma.user.findUnique({
       where: { slug: req.params.userSlug },
     });
-    if (!target) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (!target) return res.status(404).json({ error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' });
 
     const role = await userChannelRole(channel, user.id);
     const isSelf = target.id === user.id;
 
     if (isSelf) {
       if (channel.isDefault) {
-        return res.status(400).json({ error: 'Varsayılan kanaldan ayrılamazsınız' });
+        return res.status(400).json({ error: 'err_default_channel_leave', message: 'Varsayılan kanaldan ayrılamazsınız' });
       }
       if (role === 'owner') {
         const otherOwners = channel.members.filter(
@@ -495,21 +495,21 @@ channelsRouter.delete(
     } else {
       const wm = await memberForWorkspace(user.id, channel.workspaceId);
       if (!canManageChannel(role) && !hasPermission(wm, 'manage_channels')) {
-        return res.status(403).json({ error: 'Üye çıkarma yetkiniz yok' });
+        return res.status(403).json({ error: 'err_remove_member_forbidden', message: 'Üye çıkarma yetkiniz yok' });
       }
       const targetMember = channel.members.find((m) => m.userId === target.id);
       if (targetMember?.role === 'owner') {
-        return res.status(400).json({ error: 'Kanal sahibini çıkaramazsınız' });
+        return res.status(400).json({ error: 'err_cannot_remove_channel_owner', message: 'Kanal sahibini çıkaramazsınız' });
       }
       if (channel.isDefault) {
-        return res.status(400).json({ error: 'Varsayılan kanaldan üye çıkarılamaz' });
+        return res.status(400).json({ error: 'err_default_channel_remove', message: 'Varsayılan kanaldan üye çıkarılamaz' });
       }
     }
 
     const cm = await prisma.channelMember.findUnique({
       where: { channelId_userId: { channelId, userId: target.id } },
     });
-    if (!cm) return res.status(404).json({ error: 'Bu kullanıcı kanal üyesi değil' });
+    if (!cm) return res.status(404).json({ error: 'err_not_channel_member', message: 'Bu kullanıcı kanal üyesi değil' });
     await prisma.channelMember.delete({
       where: { channelId_userId: { channelId, userId: target.id } },
     });
@@ -545,23 +545,23 @@ channelsRouter.patch(
       where: { id: channelId },
       include: CHANNEL_INCLUDE,
     });
-    if (!channel) return res.status(404).json({ error: 'Kanal bulunamadı' });
+    if (!channel) return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
     const role = await userChannelRole(channel, user.id);
     if (role !== 'owner') {
       return res
         .status(403)
-        .json({ error: 'Rol atamayı sadece kanal sahibi yapabilir' });
+        .json({ error: 'err_role_assign_owner_only', message: 'Rol atamayı sadece kanal sahibi yapabilir' });
     }
     const target = await prisma.user.findUnique({
       where: { slug: req.params.userSlug },
     });
-    if (!target) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (!target) return res.status(404).json({ error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' });
     const newRole = (req.body || {}).role;
     if (!['owner', 'admin', 'member'].includes(newRole)) {
-      return res.status(400).json({ error: 'Geçersiz rol' });
+      return res.status(400).json({ error: 'err_invalid_role', message: 'Geçersiz rol' });
     }
     const cm = channel.members.find((m) => m.userId === target.id);
-    if (!cm) return res.status(404).json({ error: 'Bu kullanıcı kanal üyesi değil' });
+    if (!cm) return res.status(404).json({ error: 'err_not_channel_member', message: 'Bu kullanıcı kanal üyesi değil' });
 
     await prisma.$transaction(async (tx) => {
       if (newRole === 'owner') {

@@ -50,7 +50,7 @@ chatRouter.post(
     let channel = ((data.channel || 'general') + '').trim().toLowerCase().slice(0, 80) || 'general';
 
     if (!text && !fileUrl) {
-      return res.status(400).json({ error: 'Mesaj boş olamaz' });
+      return res.status(400).json({ error: 'err_message_empty', message: 'Mesaj boş olamaz' });
     }
 
     let receiver = null;
@@ -58,13 +58,13 @@ chatRouter.post(
 
     if (toSlug) {
       receiver = await prisma.user.findUnique({ where: { slug: toSlug } });
-      if (!receiver) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+      if (!receiver) return res.status(404).json({ error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' });
       if (receiver.id === user.id) {
-        return res.status(400).json({ error: 'Kendinize mesaj gönderemezsiniz' });
+        return res.status(400).json({ error: 'err_cannot_message_self', message: 'Kendinize mesaj gönderemezsiniz' });
       }
       workspaceId = await resolveWorkspaceId(user);
       if (!(await usersShareWorkspace(user.id, receiver.id, workspaceId))) {
-        return res.status(403).json({ error: 'Bu kullanıcı aktif takımınızda değil' });
+        return res.status(403).json({ error: 'err_user_not_in_team', message: 'Bu kullanıcı aktif takımınızda değil' });
       }
       channel = 'dm';
     } else {
@@ -78,13 +78,13 @@ chatRouter.post(
         // görünmeyen, üyeliği ve moderasyonu olmayan gizli bir yazışma alanı
         // açılabiliyordu.
         if (!chRow) {
-          return res.status(404).json({ error: 'Kanal bulunamadı' });
+          return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
         }
         const role = await userChannelRole(chRow, user.id);
         if (!role) {
           return res
             .status(403)
-            .json({ error: 'Bu kanala mesaj gönderme yetkiniz yok' });
+            .json({ error: 'err_channel_send_forbidden', message: 'Bu kanala mesaj gönderme yetkiniz yok' });
         }
       }
     }
@@ -215,10 +215,10 @@ chatRouter.get(
         // atlanıyordu: satırı olmayan bir slug'a mesaj yazılabiliyor ve
         // sonra herkes tarafından okunabiliyordu (hayalet kanal).
         if (!chRow) {
-          return res.status(404).json({ error: 'Kanal bulunamadı' });
+          return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
         }
         if (!(await userChannelRole(chRow, user.id))) {
-          return res.status(403).json({ error: 'Bu kanala erişim yetkiniz yok' });
+          return res.status(403).json({ error: 'err_channel_forbidden', message: 'Bu kanala erişim yetkiniz yok' });
         }
       }
       const channelFilter =
@@ -254,7 +254,7 @@ chatRouter.delete(
     const scope = (req.body?.scope || 'self').toString();
 
     const msg = await prisma.chatMessage.findUnique({ where: { id: msgId } });
-    if (!msg) return res.status(404).json({ error: 'Mesaj bulunamadı' });
+    if (!msg) return res.status(404).json({ error: 'err_message_not_found', message: 'Mesaj bulunamadı' });
 
     const isSender = msg.senderId === user.id;
     const isReceiver = msg.receiverId === user.id;
@@ -281,17 +281,17 @@ chatRouter.delete(
     }
     const canDelete = isSender || isReceiver || wsCanDelete || channelCanDelete;
     if (!isSender && !isReceiver && msg.receiverId !== null && !wsCanDelete) {
-      return res.status(403).json({ error: 'Yetkiniz yok' });
+      return res.status(403).json({ error: 'err_forbidden', message: 'Yetkiniz yok' });
     }
     if (!canDelete && msg.receiverId === null) {
-      return res.status(403).json({ error: 'Yetkiniz yok' });
+      return res.status(403).json({ error: 'err_forbidden', message: 'Yetkiniz yok' });
     }
 
     const io = req.app.get('io');
     if (scope === 'all') {
       if (!isSender && !wsCanDelete) {
         return res.status(403).json({
-          error: 'Sadece gönderen veya yetkili yönetici herkesten silebilir',
+          error: 'err_delete_for_all_forbidden', message: 'Sadece gönderen veya yetkili yönetici herkesten silebilir',
         });
       }
       await prisma.chatMessage.update({
@@ -332,12 +332,12 @@ chatRouter.post(
       where: { id: msgId },
       include: MSG_INCLUDE,
     });
-    if (!msg) return res.status(404).json({ error: 'Mesaj bulunamadı' });
+    if (!msg) return res.status(404).json({ error: 'err_message_not_found', message: 'Mesaj bulunamadı' });
 
     // Yetki: DM'de katılımcı, kanalda üye olmak gerekiyor
     if (msg.receiverId !== null) {
       if (![msg.senderId, msg.receiverId].includes(user.id)) {
-        return res.status(403).json({ error: 'Yetkiniz yok' });
+        return res.status(403).json({ error: 'err_forbidden', message: 'Yetkiniz yok' });
       }
     } else if (msg.channel && msg.channel !== 'general') {
       const chRow = await prisma.channel.findFirst({
@@ -347,14 +347,14 @@ chatRouter.post(
       // Kanal satırı yoksa reddedilir. Eskiden kontrol atlanıyor ve satırı
       // olmayan bir kanaldaki mesaj herkesçe sabitlenebiliyordu.
       if (!chRow) {
-        return res.status(404).json({ error: 'Kanal bulunamadı' });
+        return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
       }
       if (!(await userChannelRole(chRow, user.id))) {
-        return res.status(403).json({ error: 'Yetkiniz yok' });
+        return res.status(403).json({ error: 'err_forbidden', message: 'Yetkiniz yok' });
       }
     } else {
       const wm = await memberForWorkspace(user.id, msg.workspaceId);
-      if (!wm) return res.status(403).json({ error: 'Yetkiniz yok' });
+      if (!wm) return res.status(403).json({ error: 'err_forbidden', message: 'Yetkiniz yok' });
     }
 
     const updated = await prisma.chatMessage.update({
@@ -475,10 +475,10 @@ chatRouter.get(
         // atlanıyordu: satırı olmayan bir slug'a mesaj yazılabiliyor ve
         // sonra herkes tarafından okunabiliyordu (hayalet kanal).
         if (!chRow) {
-          return res.status(404).json({ error: 'Kanal bulunamadı' });
+          return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
         }
         if (!(await userChannelRole(chRow, user.id))) {
-          return res.status(403).json({ error: 'Bu kanala erişim yetkiniz yok' });
+          return res.status(403).json({ error: 'err_channel_forbidden', message: 'Bu kanala erişim yetkiniz yok' });
         }
       }
       const channelFilter = channelSlug

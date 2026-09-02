@@ -27,6 +27,7 @@ import {
   formatMinutes,
   formatDurationLong,
 } from '../lib/reporting.js';
+import { reqLang } from '../lib/lang.js';
 
 // CSV başlıkları ve sabit değerleri dile göre. Rapor, dışa aktaran kişinin UI
 // dilini izliyor; istemci ?lang ile geçiyor. Süre değerleri formatDurationLong
@@ -47,7 +48,8 @@ const CSV_I18N = {
     no: 'No',
   },
 };
-const reqLang = (req) => (String(req.query.lang) === 'en' ? 'en' : 'tr');
+// reqLang ../lib/lang.js'ten geliyor: indirme bağlantılarında ?lang, diğer
+// isteklerde X-Stoa-Lang başlığı.
 
 export const taskWorkLogsRouter = Router(); // /api/tasks/:taskId/worklogs
 export const workLogsRouter = Router();     // /api/worklogs/:logId
@@ -361,7 +363,7 @@ reportsRouter.get(
         select: { userId: true },
       });
       if (!membership) {
-        return res.status(404).json({ error: 'err_member_not_found', message: 'Bu çalışma alanında böyle bir üye yok' });
+        return res.status(404).json({ error: 'err_member_not_in_workspace', message: 'Bu çalışma alanında böyle bir üye yok' });
       }
       wantedUser = membership.userId;
     }

@@ -58,7 +58,7 @@ notificationsRouter.post(
     const n = await prisma.notification.findFirst({
       where: { id: notifId, userId: user.id },
     });
-    if (!n) return res.status(404).json({ error: 'Bildirim bulunamadı' });
+    if (!n) return res.status(404).json({ error: 'err_notification_not_found', message: 'Bildirim bulunamadı' });
     await prisma.notification.update({
       where: { id: notifId },
       data: { read: true },
@@ -76,7 +76,7 @@ notificationsRouter.delete(
     const n = await prisma.notification.findFirst({
       where: { id: notifId, userId: user.id },
     });
-    if (!n) return res.status(404).json({ error: 'Bildirim bulunamadı' });
+    if (!n) return res.status(404).json({ error: 'err_notification_not_found', message: 'Bildirim bulunamadı' });
     await prisma.notification.delete({ where: { id: notifId } });
     res.json({ ok: true });
   }),
@@ -89,12 +89,12 @@ notificationsRouter.post(
     const user = await loadUser(req);
     const data = req.body || {};
     const text = (data.text || '').trim();
-    if (!text) return res.status(400).json({ error: 'Bildirim metni gerekli' });
+    if (!text) return res.status(400).json({ error: 'err_notification_text_required', message: 'Bildirim metni gerekli' });
 
     const targetId = data.user_id || user.id;
     if (targetId !== user.id) {
       const target = await prisma.user.findUnique({ where: { id: targetId } });
-      if (!target) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+      if (!target) return res.status(404).json({ error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' });
     }
 
     const io = req.app.get('io');

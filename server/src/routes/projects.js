@@ -58,20 +58,20 @@ async function loadProjectWithAccess(req, res, projectId, { permission = null, a
   }
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) {
-    res.status(404).json({ error: 'Proje bulunamadı' });
+    res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     return { denied: true };
   }
   const member = await memberForWorkspace(user.id, project.workspaceId);
   if (!member) {
-    res.status(403).json({ error: 'Bu projeye erişiminiz yok' });
+    res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
     return { denied: true };
   }
   if (permission && !hasPermission(member, permission)) {
-    res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+    res.status(403).json({ error: 'err_action_forbidden', message: 'Bu işlem için yetkiniz yok' });
     return { denied: true };
   }
   if (anyPermission && !anyPermission.some((p) => hasPermission(member, p))) {
-    res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+    res.status(403).json({ error: 'err_action_forbidden', message: 'Bu işlem için yetkiniz yok' });
     return { denied: true };
   }
   return { denied: false, user, project, member };
@@ -123,12 +123,12 @@ projectsRouter.post(
     const user = await loadUser(req);
     const data = req.body || {};
     const name = (data.name || '').trim();
-    if (!name) return res.status(400).json({ error: 'Proje adı zorunludur' });
+    if (!name) return res.status(400).json({ error: 'err_project_name_required', message: 'Proje adı zorunludur' });
 
     const member = await currentMember(user);
-    if (!member) return res.status(404).json({ error: 'Çalışma alanı bulunamadı' });
+    if (!member) return res.status(404).json({ error: 'err_workspace_not_found', message: 'Çalışma alanı bulunamadı' });
     if (!hasPermission(member, 'manage_projects')) {
-      return res.status(403).json({ error: 'Proje oluşturma yetkiniz yok' });
+      return res.status(403).json({ error: 'err_create_project_forbidden', message: 'Proje oluşturma yetkiniz yok' });
     }
 
     const project = await prisma.$transaction(async (tx) => {
@@ -259,7 +259,7 @@ projectsRouter.post(
 
     const data = req.body || {};
     const title = (data.title || '').trim();
-    if (!title) return res.status(400).json({ error: 'Başlık zorunludur' });
+    if (!title) return res.status(400).json({ error: 'err_title_required', message: 'Başlık zorunludur' });
 
     const last = await prisma.boardColumn.findFirst({
       where: { projectId },
@@ -305,7 +305,7 @@ projectsRouter.post(
 
     const ordered = (req.body || {}).column_ids || [];
     if (!Array.isArray(ordered)) {
-      return res.status(400).json({ error: 'column_ids array gerekli' });
+      return res.status(400).json({ error: 'err_column_ids_required', message: 'column_ids array gerekli' });
     }
 
     // Tek transaction, parametre güvenli
@@ -330,14 +330,14 @@ columnsRouter.patch(
     const user = await loadUser(req);
     const colId = parseInt(req.params.colId, 10);
     const col = await prisma.boardColumn.findUnique({ where: { id: colId } });
-    if (!col) return res.status(404).json({ error: 'Kolon bulunamadı' });
+    if (!col) return res.status(404).json({ error: 'err_column_not_found', message: 'Kolon bulunamadı' });
 
     const project = await prisma.project.findUnique({ where: { id: col.projectId } });
-    if (!project) return res.status(404).json({ error: 'Proje bulunamadı' });
+    if (!project) return res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
 
     const member = await memberForWorkspace(user.id, project.workspaceId);
     if (!hasPermission(member, 'manage_projects')) {
-      return res.status(403).json({ error: 'Kolon düzenleme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_edit_column_forbidden', message: 'Kolon düzenleme yetkiniz yok' });
     }
 
     const data = req.body || {};
@@ -368,7 +368,7 @@ columnsRouter.patch(
         ];
         updates.allowedNext = cleaned.length ? cleaned : null;
       } else {
-        return res.status(400).json({ error: 'allowed_next bir dizi olmalı' });
+        return res.status(400).json({ error: 'err_allowed_next_not_array', message: 'allowed_next bir dizi olmalı' });
       }
     }
 
@@ -386,14 +386,14 @@ columnsRouter.delete(
     const user = await loadUser(req);
     const colId = parseInt(req.params.colId, 10);
     const col = await prisma.boardColumn.findUnique({ where: { id: colId } });
-    if (!col) return res.status(404).json({ error: 'Kolon bulunamadı' });
+    if (!col) return res.status(404).json({ error: 'err_column_not_found', message: 'Kolon bulunamadı' });
 
     const project = await prisma.project.findUnique({ where: { id: col.projectId } });
-    if (!project) return res.status(404).json({ error: 'Proje bulunamadı' });
+    if (!project) return res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
 
     const member = await memberForWorkspace(user.id, project.workspaceId);
     if (!hasPermission(member, 'manage_projects')) {
-      return res.status(403).json({ error: 'Kolon silme yetkiniz yok' });
+      return res.status(403).json({ error: 'err_delete_column_forbidden', message: 'Kolon silme yetkiniz yok' });
     }
 
     // Aynı projedeki diğer kolonlardan ilkine task'leri taşı (orphan olmasın);
@@ -447,7 +447,7 @@ projectsRouter.post(
     const slug = (data.slug || '').trim();
     const nameEn = (data.name_en || data.name || '').trim();
     if (!slug || !nameEn) {
-      return res.status(400).json({ error: 'slug ve name_en zorunludur' });
+      return res.status(400).json({ error: 'err_slug_name_required', message: 'slug ve name_en zorunludur' });
     }
 
     const label = await prisma.label.create({
@@ -476,7 +476,7 @@ projectsRouter.patch(
     const label = await prisma.label.findFirst({
       where: { projectId, slug: req.params.slug },
     });
-    if (!label) return res.status(404).json({ error: 'Etiket bulunamadı' });
+    if (!label) return res.status(404).json({ error: 'err_label_not_found', message: 'Etiket bulunamadı' });
 
     const data = req.body || {};
     const updates = {};
@@ -507,7 +507,7 @@ projectsRouter.delete(
     const label = await prisma.label.findFirst({
       where: { projectId, slug: req.params.slug },
     });
-    if (!label) return res.status(404).json({ error: 'Etiket bulunamadı' });
+    if (!label) return res.status(404).json({ error: 'err_label_not_found', message: 'Etiket bulunamadı' });
 
     await prisma.$transaction([
       prisma.taskLabel.deleteMany({ where: { labelId: label.id } }),
