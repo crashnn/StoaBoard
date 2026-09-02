@@ -4,7 +4,7 @@ import React, { useState as useS, useEffect as useEf, useRef as useRef } from 'r
 import { createRoot } from 'react-dom/client';
 import { io } from 'socket.io-client';
 import { Icon } from './icons.jsx';
-import { API } from './data.jsx';
+import { API, renderNotifText } from './data.jsx';
 import { Avatar, Sidebar, Topbar, ToastContainer } from './shell.jsx';
 import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
@@ -20,6 +20,7 @@ import { DashboardView } from './views/dashboard.jsx';
 import { NotesView } from './views/notes.jsx';
 import { SettingsView } from './views/settings.jsx';
 import { TrashView } from './views/trash.jsx';
+import { ReportsView } from './views/reports.jsx';
 import { LegalPage } from './views/legal.jsx';
 
 function _playDing() {
@@ -131,6 +132,7 @@ function App() {
   const canManageChannels = isOwner || myPerms.includes('manage_channels');
   const canDeleteMessages = isOwner || myPerms.includes('delete_messages');
   const canManageMembers = isOwner || myPerms.includes('manage_members');
+  const canManageWorkspace = isOwner || myPerms.includes('manage_workspace');
 
   useEf(() => {
     if (view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') {
@@ -358,6 +360,34 @@ function App() {
         const twks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
         const myStatus = window.__MY_STATUS__ || 'online';
         if (myStatus !== 'dnd' && twks.soundEnabled !== false) _playDing();
+
+        // Ekranda göster. Önceden bu olay yalnızca zil sayacını artırıyordu:
+        // görev atama, bahsetme ve yorum bildirimleri hiçbir zaman görünmüyordu
+        // ve kullanıcı zili fark etmezse haberi olmuyordu. Kurumsalda en kritik
+        // bildirim en sessiz olanıydı.
+        //
+        // Hangi olayın ekranı kesmesi gerektiği açık bir tasarım sorusu
+        // (BILDIRIMLER.md, S1). Buradaki liste bir başlangıç varsayımı:
+        // yalnızca kişiye DOĞRUDAN yöneltilenler kesiyor, bilgi amaçlı olanlar
+        // (kolon eklendi gibi) yalnızca zilde kalıyor.
+        //
+        // DM ve katılma onayı/reddi bilerek dışarıda: onlar kendi soket
+        // olaylarından zaten toast üretiyor, buraya da eklenirse çift görünür.
+        const EKRANI_KESENLER = new Set([
+          'task_assigned', 'mention', 'comment_added', 'join_request', 'channel_added',
+        ]);
+        let tur = null;
+        try { tur = JSON.parse(notif.text || '{}')?.type || null; } catch { tur = 'mention'; }
+        // JSON olmayan gövde = eski biçimdeki bahsetme bildirimi.
+
+        if (
+          myStatus !== 'dnd' &&
+          twks.notifyTasks !== false &&
+          (tur === null || EKRANI_KESENLER.has(tur))
+        ) {
+          const metin = renderNotifText(notif.text);
+          if (metin) window.showToast?.(String(metin).replace(/<[^>]*>/g, ''), 'info');
+        }
       }
     });
 
@@ -638,7 +668,19 @@ function App() {
     setTasks(tasks.map(t => t.id === id ? { ...t, col: colId, progress: col?.is_done ? 100 : t.progress } : t));
     if (drawerTask?.id === id) setDrawerTask(dt => ({ ...dt, col: colId }));
     try { await API.updateTask(id, { col: colId }); }
-    catch (e) { setTasks(prev); console.error('moveTask failed:', e.message); }
+    catch (e) {
+      setTasks(prev);
+      // Çekmece açıksa o da geri sarılmalı; aksi halde kart eski kolona
+      // dönerken çekmece yeni kolonu göstermeye devam ediyordu.
+      if (drawerTask?.id === id) {
+        const old = prev.find(t => t.id === id);
+        if (old) setDrawerTask(dt => ({ ...dt, col: old.col, progress: old.progress }));
+      }
+      // Kolon geçiş kuralı gibi bilinçli engellemelerde sunucu açıklama
+      // gönderiyor; sessizce geri sarmak yerine sebebi göster.
+      window.showToast?.(e.message || 'Görev taşınamadı', 'error');
+      console.error('moveTask failed:', e.message);
+    }
   };
 
   const updateTitle = async (id, title) => {
@@ -1079,6 +1121,15 @@ function App() {
             )}
             {!taskPageTask && view === 'calendar'  && <CalendarView tasks={tasks} onOpenTask={openDrawer} onOpenModal={openModal} canCreateTasks={canManageTasks} />}
             {!taskPageTask && view === 'dashboard' && <DashboardView tasks={tasks} onOpenTask={openDrawer} onView={setView} />}
+            {!taskPageTask && view === 'reports' && (
+              <ReportsView
+                canManageWorkspace={canManageWorkspace}
+                onOpenTask={(id) => {
+                  const t = tasks.find((x) => String(x.id) === String(id));
+                  if (t) { setView('board'); setDrawerTask(t); }
+                }}
+              />
+            )}
             {view === 'notes'     && <NotesView
               socket={socket}
               tasks={tasks}

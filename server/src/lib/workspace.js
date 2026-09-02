@@ -6,6 +6,15 @@
 
 import { prisma } from '../db.js';
 import { userToDict } from './user.js';
+// İzin mantığı saf ve bağımlılıksız bir modülde yaşıyor (test edilebilmesi
+// için). Mevcut çağıranlar bozulmasın diye buradan yeniden dışa aktarılıyor.
+export {
+  ALL_PERMISSIONS,
+  memberPermissions,
+  hasPermission,
+  hasAnyPermission,
+} from './permissions.js';
+import { hasPermission } from './permissions.js';
 
 /**
  * Kullanıcının aktif workspace membership'i — current_workspace_id'ye bakar,
@@ -51,22 +60,6 @@ export async function resolveWorkspaceId(user) {
 /**
  * Üyenin sahip olduğu izinler. 'owner' her zaman tam yetkili.
  */
-export function memberPermissions(member) {
-  if (!member) return [];
-  if (member.role === 'owner') {
-    return ['manage_tasks', 'manage_projects', 'manage_members'];
-  }
-  if (member.workspaceRole) {
-    return member.workspaceRole.permissions || [];
-  }
-  return [];
-}
-
-export function hasPermission(member, permission) {
-  if (!member) return false;
-  if (member.role === 'owner') return true;
-  return memberPermissions(member).includes(permission);
-}
 
 /**
  * Belirli workspace'teki üyelik kaydı.

@@ -282,6 +282,10 @@ function Sidebar({
           onClick={() => onOpenNotifs?.()}
           active={view === 'notifications'}
         />
+        <NavItem icon="chart"         label={window.t?.('nav_reports') || 'Raporlar'}  sub="Reports"
+          onClick={() => onView('reports')}
+          active={view === 'reports'}
+        />
         <NavItem icon="trash"         label={window.t?.('nav_trash') || 'Çöp Kutusu'}         sub="Trash"
           badge={trashCount > 0 ? (trashCount > 99 ? '99+' : String(trashCount)) : null}
           onClick={() => onView('trash')}
@@ -518,3 +522,10 @@ function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onC
 }
 
 export { showToast, ToastContainer, Avatar, AvatarStack, Sidebar, Topbar, NavItem, StatusProfileWidget };
+
+// Uygulama genelinde bildirimler `window.showToast?.(...)` ile çağrılıyor ama
+// bu global hiçbir yerde atanmamıştı: Vite geçişinde fonksiyon modül export'una
+// döndü, çağrı yerleri güncellenmedi. `?.` sessizce yuttuğu için bütün hata ve
+// bilgi bildirimleri hiç görünmüyordu — kullanıcı işlemin neden başarısız
+// olduğunu asla öğrenemiyordu.
+window.showToast = showToast;

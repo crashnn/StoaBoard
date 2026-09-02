@@ -22,6 +22,7 @@ model User {
   currentWorkspaceId   Int?                   @map("current_workspace_id")
   status               String?                @db.VarChar(20)
   awayTimeout          Int?                   @map("away_timeout")
+  emailNotifications   Boolean?               @default(true) @map("email_notifications")
   googleId             String?                @unique @map("google_id") @db.VarChar(100)
   activityLogs         ActivityLog[]
   channelMemberships   ChannelMember[]
@@ -127,6 +128,9 @@ model BoardColumn {
   color     String?  @db.VarChar(100)
   position  Int?
   isDone    Boolean? @map("is_done")
+  // İzin verilen sonraki kolonların slug listesi (JSON dizi).
+  // null veya boş dizi = kısıt yok, kart her kolona taşınabilir (varsayılan davranış).
+  allowedNext Json?  @map("allowed_next") @db.Json
   project   Project? @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tasks     Task[]
 
@@ -160,6 +164,7 @@ model Task {
   doc           Json?            @db.Json
   createdBy     Int?             @map("created_by")
   createdAt     DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  completedAt   DateTime?        @map("completed_at") @db.Timestamp(6)
   deletedAt     DateTime?        @map("deleted_at") @db.Timestamp(6)
   position      Float?
   comments      Comment[]
@@ -176,6 +181,7 @@ model Task {
   @@index([projectId], map: "ix_task_project_id")
   @@index([columnId], map: "ix_task_column_id")
   @@index([createdAt], map: "ix_task_created_at")
+  @@index([completedAt], map: "ix_task_completed_at")
   @@map("tasks")
 }
 
@@ -391,4 +397,86 @@ model NoteLinkedTask {
   @@index([taskId], map: "ix_note_linked_task_task_id")
   @@index([noteId], map: "ix_note_linked_task_note_id")
   @@map("note_linked_tasks")
+}
+
+/// Kartın bir kolondan diğerine her geçişi. Raporlamanın temeli.
+///
+/// Bilerek hiçbir ilişki (relation) tanımlanmadı: görev, proje ya da kullanıcı
+/// silinse bile bu satırlar yaşamalı. Çöp kutusu 30 günde kalıcı siliyor; kayıt
+/// göreve bağlı olsaydı altı aylık rapor delik çıkardı. Bu yüzden görev başlığı,
+/// kullanıcı adı ve kolon başlıkları o anki hâliyle kopyalanarak saklanıyor.
+model TaskTransition {
+  id           Int       @id @default(autoincrement())
+  projectId    Int?      @map("project_id")
+  taskId       Int?      @map("task_id")
+  taskTitle    String    @map("task_title") @db.VarChar(500)
+  userId       Int?      @map("user_id")
+  userName     String?   @map("user_name") @db.VarChar(200)
+  fromColumnId Int?      @map("from_column_id")
+  fromTitle    String?   @map("from_title") @db.VarChar(100)
+  toColumnId   Int?      @map("to_column_id")
+  toTitle      String?   @map("to_title") @db.VarChar(100)
+  toIsDone     Boolean?  @map("to_is_done")
+  at           DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([projectId, at], map: "ix_tt_project_at")
+  @@index([taskId], map: "ix_tt_task")
+  @@index([userId, at], map: "ix_tt_user_at")
+  @@map("task_transitions")
+}
+
+/// Bir kişinin bir göreve harcadığı süre (manuel giriş).
+///
+/// Geçiş kaydıyla aynı gerekçeyle ilişkisiz ve denormalize: süre kaydı, kaydın
+/// ait olduğu görev silinse bile raporda görünmeye devam eder.
+///
+/// Not: geçiş süresi ile harcanan emek ayrı şeylerdir. Bir iş üç haftada
+/// tamamlanmış ama altı saat emek almış olabilir; ilki TaskTransition'dan,
+/// ikincisi buradan hesaplanır.
+model WorkLog {
+  id        Int       @id @default(autoincrement())
+  projectId Int?      @map("project_id")
+  taskId    Int?      @map("task_id")
+  taskTitle String    @map("task_title") @db.VarChar(500)
+  userId    Int?      @map("user_id")
+  userName  String?   @map("user_name") @db.VarChar(200)
+  minutes   Int
+  spentOn   DateTime  @map("spent_on") @db.Date
+  note      String?   @db.VarChar(500)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([projectId, spentOn], map: "ix_wl_project_spent")
+  @@index([taskId], map: "ix_wl_task")
+  @@index([userId, spentOn], map: "ix_wl_user_spent")
+  @@map("work_logs")
+}
+
+/// Güvenlik denetim kaydı: kim, ne zaman, neyi yaptı.
+///
+/// ActivityLog'dan ayrı tutuluyor. O, takıma "ne oldu" anlatan ürün içi bir
+/// akış; bu ise güvenlik sorusuna cevap veriyor — özellikle "bu veriyi kim
+/// dışarı çıkardı". İçeriden sızıntıya karşı gerçek dünyada işe yarayan
+/// kontrol, engelleme değil, izlenebilirlik.
+///
+/// Geçiş ve süre kayıtlarıyla aynı gerekçeyle ilişkisiz ve denormalize:
+/// denetim kaydı, sildiğin kullanıcıyla birlikte kaybolursa denetim kaydı
+/// değildir.
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+  workspaceId Int?      @map("workspace_id")
+  userId      Int?      @map("user_id")
+  userName    String?   @map("user_name") @db.VarChar(200)
+  /// Nokta ile ayrılmış eylem adı: 'report.export', 'member.removed' gibi.
+  action      String    @db.VarChar(60)
+  /// Eyleme özel ayrıntı. Asla gizli veri yazılmaz — hangi rapor, hangi
+  /// aralık, kaç satır gibi bağlam bilgisi.
+  detail      Json?     @db.Json
+  ip          String?   @db.VarChar(60)
+  userAgent   String?   @map("user_agent") @db.VarChar(300)
+  at          DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([workspaceId, at], map: "ix_audit_ws_at")
+  @@index([action, at], map: "ix_audit_action_at")
+  @@index([userId, at], map: "ix_audit_user_at")
+  @@map("audit_logs")
 }

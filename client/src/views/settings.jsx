@@ -366,6 +366,8 @@ const PERM_LABELS_KEYS = {
   manage_members:  ['set_rol_perm_members',  'Üyeleri yönet'],
   manage_channels: ['set_rol_perm_channels', 'Kanalları yönet'],
   delete_messages: ['set_rol_perm_del_msgs', 'Başkalarının mesajlarını sil'],
+  view_reports:    ['set_rol_perm_reports',  'Herkesin raporlarını gör'],
+  manage_workspace:['set_rol_perm_workspace','Çalışma alanını yönet'],
 };
 const ALL_PERMS = Object.keys(PERM_LABELS_KEYS);
 
@@ -1468,6 +1470,19 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                 <span className="tweak-toggle-desc">{_t('set_notif_toast_desc','Ekranın köşesinde bildirim baloncuğu göster')}</span>
               </div>
               <div className="toggle" data-on={tweaks.notifyMessages !== false && tweaks.notifyToasts !== false} />
+            </div>
+          </div>
+
+          {/* İş bildirimleri: görev atama, bahsetme, yorum. Bunlar önceden
+              yalnızca zil rozetinde görünüyor, ekranda hiç çıkmıyordu. */}
+          <div className="notif-pref-group">
+            <div className="notif-pref-title">{_t('set_notif_work','İş Bildirimleri')}</div>
+            <div className="tweak-toggle" onClick={() => setTweak('notifyTasks', !(tweaks.notifyTasks !== false))}>
+              <div className="tweak-toggle-info">
+                <span>{_t('set_notif_tasks','Görev bildirimleri')}</span>
+                <span className="tweak-toggle-desc">{_t('set_notif_tasks_desc','Sana görev atandığında, bahsedildiğinde veya görevine yorum yapıldığında ekranda göster')}</span>
+              </div>
+              <div className="toggle" data-on={tweaks.notifyTasks !== false} />
             </div>
           </div>
 

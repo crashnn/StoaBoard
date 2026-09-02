@@ -3,6 +3,7 @@ import React, { useState as useAuthState, useEffect as useAuthEffect, useRef as 
 import { Icon } from '../icons.jsx';
 import { Avatar } from '../shell.jsx';
 import { API } from '../data.jsx';
+import { io } from 'socket.io-client';
 
 // ── Dil tanımları ─────────────────────────────────────────────────────────────
 const AUTH_LANGS = [
@@ -1020,7 +1021,7 @@ const SecurityNote = () => {
 };
 
 // ── BEKLEME LOBİSİ ───────────────────────────────────────────────────────────────
-function PendingLobby({ joinedAt, onApproved, onRejected }) {
+function PendingLobby({ joinedAt, code, onApproved, onRejected }) {
   const [elapsed, setElapsed] = useAuthState(0);
   const [rejected, setRejected] = useAuthState(false);
   const t = (k) => authT(k);
@@ -1032,13 +1033,36 @@ function PendingLobby({ joinedAt, onApproved, onRejected }) {
     return () => clearInterval(timer);
   }, [joinedAt]);
 
+  // Onay anlık olarak sokete düşer. Eskiden burada `window.io` okunuyordu ama
+  // o global yalnızca Vite öncesi CDN kurulumunda vardı; modül importuna
+  // geçildikten sonra hep undefined kaldı ve `if (!window.io) return` sessizce
+  // çıktığı için lobi sonsuza kadar bekliyordu. Kullanıcı ancak sayfayı elle
+  // yenileyerek içeri girebiliyordu.
   useAuthEffect(() => {
-    if (!window.io) return;
-    const sock = window.io({ transports: ['websocket', 'polling'] });
+    const sock = io({ transports: ['websocket', 'polling'] });
     sock.on('join_request_approved', () => { sock.disconnect(); onApproved(); });
     sock.on('join_request_rejected', () => { sock.disconnect(); setRejected(true); });
     return () => sock.disconnect();
   }, []);
+
+  // Yoklama yedeği. Soket her ortamda kurulamayabiliyor (kurumsal ağlar
+  // websocket'i kesebiliyor) ve bu ekranda takılıp kalmanın bedeli yüksek:
+  // kullanıcı ilk izlenimini burada ediniyor. Beş saniyede bir davet kodunu
+  // tekrar sorar; üyelik onaylanmışsa sunucu 'pending' olmadan döner.
+  useAuthEffect(() => {
+    if (!code) return;
+    let durduruldu = false;
+    const kontrol = async () => {
+      try {
+        const res = await API.joinWorkspace(code);
+        if (!durduruldu && res && !res.pending) onApproved();
+      } catch {
+        // Ağ hatası yoklamayı durdurmasın; bir sonraki turda tekrar denenir.
+      }
+    };
+    const timer = setInterval(kontrol, 5000);
+    return () => { durduruldu = true; clearInterval(timer); };
+  }, [code]);
 
   const fmtElapsed = (s) => {
     const m = Math.floor(s / 60);
@@ -1104,6 +1128,7 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
   const [busy, setBusy] = React.useState(false);
   const [pendingLobby, setPendingLobby] = React.useState(false);
   const [pendingJoinedAt, setPendingJoinedAt] = React.useState(null);
+  const [pendingCode, setPendingCode] = React.useState('');
   const me = window.CURRENT_USER || {};
 
   const [isOnline, setIsOnline] = React.useState(navigator.onLine);
@@ -1137,6 +1162,7 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
       const res = await window.API.joinWorkspace(joinCode);
       if (res && res.pending) {
         setPendingJoinedAt(Date.now());
+        setPendingCode(joinCode);
         setPendingLobby(true);
       } else {
         onReady();
@@ -1178,6 +1204,7 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
           <div className="auth-form">
             <PendingLobby
               joinedAt={pendingJoinedAt}
+              code={pendingCode}
               onApproved={onReady}
               onRejected={() => { setPendingLobby(false); setPendingJoinedAt(null); setError(''); }}
             />

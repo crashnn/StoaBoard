@@ -5,6 +5,117 @@ Canlı: [stoaboard.com](https://www.stoaboard.com) · Railway + Neon PostgreSQL,
 
 ---
 
+> **Toplantı geri bildirimlerinin karşılığı** — hangi not için ne yapıldı, ne
+> yapılmadı ve neden: [TOPLANTI-KARSILIGI.md](TOPLANTI-KARSILIGI.md).
+> Güvenlik çalışma biçimi ve her özelliğin geçmesi gereken elek:
+> [GUVENLIK.md](GUVENLIK.md).
+
+---
+
+## ✅ Güvenlik turu — 1 Eylül 2026
+
+Raporlama turunun hemen ardından, dal üzerinde yapılan güvenlik denetimi ve
+sonuçları. Çalışma biçimi ve tehdit modeli artık [GUVENLIK.md](GUVENLIK.md)
+içinde — **her yeni özellik oradaki on soruluk elekten geçmeli.**
+
+**Denetimden çıkan ve kapatılan bulgular**
+- **CSV formül enjeksiyonu (yüksek).** Rapor CSV'lerindeki görev başlıkları ve
+  kişi adları kullanıcı girdisi. Excel `=` `+` `-` `@` ile başlayan hücreyi
+  formül sayıp çalıştırıyor; tırnaklamak engellemiyor. Bir üye kart başlığını
+  `=HYPERLINK(...)` yapıp **raporu açan yöneticinin makinesinde** veri
+  sızdırabilirdi. Saldırı verinin kendisini değil, veriyi açan kişiyi hedefliyor.
+- **Kullanıcı varlığı oracle'ı (düşük).** `/api/reports/person?user=<slug>`
+  çözümlemesi tüm platformda ve yetki kontrolünden **önce** yapılıyordu:
+  olmayan slug 404, olan 403. Arama artık çalışma alanı üyeleriyle sınırlı.
+- **İç hata mesajı sızıntısı.** Hata yakalayıcı her `err.message`ı olduğu gibi
+  döndürüyordu; Prisma bağlantı hataları sorgu adını ve veritabanı sunucusunun
+  adresini taşıyor ve bu **kayıt/giriş ekranından, kimlik doğrulaması olmadan**
+  görülebiliyordu.
+
+**Denetim kaydı (`audit_logs`)**
+- Kim, ne zaman, hangi raporu, hangi aralıkla, kaç satır dışa aktardı — IP ve
+  tarayıcı bilgisiyle. İçeriden sızıntıya karşı pratikte işe yarayan kontrol
+  engelleme değil izlenebilirlik: veriyi görmesi meşru olan biri onu kopyalamayı
+  zaten başarır, ama kaydın tutulduğunu bilmek caydırır.
+- Rapor ekranında **Denetim kaydı** sekmesi. Yalnızca `manage_workspace` —
+  denetim kaydının kendisi de hassas bir yüzey.
+- Kayda asla veri içeriği yazılmıyor, yalnızca bağlam.
+- Geçiş ve süre kayıtlarıyla aynı gerekçeyle ilişkisiz: sildiğin kullanıcıyla
+  birlikte kaybolan denetim kaydı, denetim kaydı değildir.
+
+**Denetlenip temiz bulunanlar**
+- Çalışma alanları arası IDOR yok — `?project=` çalışma alanıyla AND'leniyor,
+  yabancı proje kimliği boş küme veriyor.
+- `userToDict` e-posta döndürmüyor; genel/özel serileştirici ayrımı sağlam.
+- Direkt mesajlar çalışma alanı ortaklığıyla, özel kanallar üyelikle korunuyor.
+- CSRF `SameSite=lax` ile kapalı; ham SQL yok.
+
+---
+
+## ✅ Raporlama turu — 1 Eylül 2026
+
+Netaş toplantısındaki geri bildirimler üzerine. Toplantının üç ayrı notu
+("6 ayda bir raporlama", "log girişi / work log developer", "Furkan hangi
+task'larda çalışmış") tek bir talebe işaret ediyordu: **kişi bazlı, geriye
+dönük, süre içeren raporlama.**
+
+**Veritabanı — kayıt bugünden birikmeye başlıyor**
+- **Görev geçiş kaydı** (`task_transitions`). Kart her taşındığında bir satır:
+  görev, önceki/yeni kolon, kim, ne zaman. Kartın ilk yerleşimi de geçiş sayılır.
+  **İlişki (FK) bilerek kurulmadı** — görev, proje veya kullanıcı silinse de
+  satır yaşamalı; çöp kutusu 30 günde kalıcı sildiği için aksi hâlde altı aylık
+  rapor delik çıkardı. Görev başlığı, kişi adı ve kolon başlıkları o anki
+  hâliyle kopyalanıyor.
+- **Süre kaydı** (`work_logs`). Kişinin göreve harcadığı emek, manuel giriş.
+  Aynı gerekçeyle ilişkisiz ve denormalize.
+- **`tasks.completed_at`.** Yoktu; "bu iş ne kadar sürede tamamlandı" sorusu bu
+  yüzden hiçbir şekilde cevaplanamıyordu. Bitiş kolonuna girişte yazılıyor,
+  çıkışta siliniyor; iki bitiş kolonu arasında gezinirken ilk zaman korunuyor.
+
+> Geçiş süresi ile harcanan emek **ayrı şeylerdir**: bir iş üç haftada bitmiş
+> ama altı saat emek almış olabilir. İlki tıkanıklığı, ikincisi maliyeti
+> gösterir. Jira'nın da ayrı tuttuğu ayrım bu.
+
+**Raporlar**
+- **Kişi raporu** — kim, hangi işte, ne kadar süre. Başkasının raporu için
+  `view_reports` izni gerekiyor; kişi kendi raporunu her zaman görüyor.
+- **Dönem raporu** — ne açıldı, ne bitti, ne bekliyor; kolon hareketleri.
+- **Akış raporu** — ortalama/ortanca tamamlanma süresi, kolonlarda bekleme,
+  en uzun süren işler.
+- Aralık ön ayarları: bu ay / son 3 ay / **son 6 ay** / bu yıl.
+- **CSV** (noktalı virgül + BOM — Türkçe Excel doğru açsın diye) ve
+  **yazdırma sayfası**. PDF kütüphanesi bilinçli olarak eklenmedi: tarayıcının
+  "PDF olarak kaydet"i aynı işi görüyor, maliyeti onda biri.
+
+**E-posta bildirimi**
+- SMTP altyapısı kuruluydu ama yalnızca şifre sıfırlamada kullanılıyordu. Atama
+  ve bahsetme bildirimleri postaya bağlandı.
+- **Varsayılan kapalı.** `NOTIFY_EMAIL=1` verilmeden tek posta gitmez — SMTP
+  zaten tanımlı olduğu için aksi hâlde ilk dağıtımda herkese posta giderdi.
+  `NOTIFY_EMAIL_TYPES` ile tür seçilebiliyor, kullanıcı bazında kapatılabiliyor.
+
+**Kolon geçiş kuralı**
+- Toplantıda gösterilen Jira ekranındaki "Open → yalnızca In Review" kısıtının
+  karşılığı. Kolona izin verilen sonraki kolonlar tanımlanabiliyor; boş
+  bırakılırsa kısıt yok, mevcut panolar aynen çalışıyor. **Kolon menüsünden
+  yönetiliyor**; engellenen taşımada kullanıcı sebebi görüyor.
+
+**Yol üstünde bulunan hata**
+- **Yeni projelerde bitiş kolonu işaretlenmiyordu.** Varsayılan kolonlar
+  oluşturulurken "Tamamlandı" kolonuna `is_done` konmuyordu; bu yüzden yeni
+  projelerde tamamlanan sayacı, ilerlemenin %100'e çekilmesi ve tamamlanma
+  zamanı hiç çalışmıyordu. Düzeltildi (yalnızca yeni projeleri etkiler).
+
+> ⚠️ **Veritabanı adımı bekliyor.** Şema dosyası güncel ama hiçbir veritabanına
+> gönderilmedi. `prisma db push` `DATABASE_URL`in gösterdiği yere yazıyor; test
+> için Neon'da `raporlama-test` dalı açıldı. Eklenenlerin hepsi katkı
+> niteliğinde (**üç yeni tablo**: `task_transitions`, `work_logs`, `audit_logs`;
+> **üç yeni sütun**: `tasks.completed_at`, `board_columns.allowed_next`,
+> `users.email_notifications`), veri kaybı beklenmiyor.
+> Adım adım talimat: [RAPORLAMA-TESTI.md](RAPORLAMA-TESTI.md).
+
+---
+
 ## ✅ Bu turda kapatılanlar
 
 Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
@@ -66,8 +177,11 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
 - [ ] **Dosya depolama ölçeklenmiyor.** Yüklenen dosyalar veritabanında `bytea`
       olarak duruyor. S3/R2'ye taşınmalı; kod tarafında yerelleştirilmiş bir
       değişiklik (`lib/uploads.js` + `routes/attachments.js`).
-- [ ] **Veritabanı göçleri sürümsüz.** `prisma db push --accept-data-loss`
-      kullanılıyor — hızlı ama geçmiş tutmuyor ve veri kaybı riski taşıyor.
+- [ ] **Veritabanı göçleri sürümsüz.** `prisma db push` kullanılıyor — hızlı
+      ama migration geçmişi tutmuyor. 2 Eylül 2026'da `--accept-data-loss`
+      deploy zincirinden çıkarıldı (`postinstall`, `npm start`, `railway.toml`),
+      yani şema artık kendiliğinden gitmiyor ve sessiz `DROP` riski yok.
+      Kalan eksik geçmiş: hangi şemanın ne zaman gittiği kayıtlı değil.
       Gerçek kullanıcı verisi büyümeden düzenli migration dosyalarına geçilmeli.
 
 ### Bilinen kusurlar
@@ -83,6 +197,19 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
       (43'er anahtar); eksikler Türkçe'ye düşüyor. TR/EN tam (~940 anahtar).
 
 ### Tasarım kararı bekleyenler
+- [ ] **Bildirimler baştan ele alınacak.** Toplantıda mesaj gönderildi, karşı
+      tarafta toast çıkmadı. İki sebebi vardı: biri kırık koddu (düzeltildi),
+      diğeri tasarım boşluğu ve **hâlâ açık** — görev atama, bahsetme ve yorum
+      bildirimleri hiçbir zaman toast üretmiyor, yalnızca zil rozeti ve ses.
+      Kurumsalda en kritik bildirim en sessiz olanı. Harita, boşluklar ve karar
+      bekleyen beş soru: [BILDIRIMLER.md](BILDIRIMLER.md).
+- [ ] **Süreyi kim girer?** Geliştirici mi, yönetici mi; girilmezse ne olur?
+      Şu an herkes yalnızca kendi süresini giriyor, zorunluluk yok. Kurumsalda
+      gerçekten tartışmalı bir konu — **ikinci toplantıda masaya konacak soru
+      bu.** Karar verilmeden hatırlatma/zorunluluk mekanizması yazılmamalı.
+- [ ] **Kolon geçiş kuralı arayüzü.** Sunucu tarafı hazır. Kural kolonun
+      ayarlarından mı, yoksa proje düzeyinde bir akış ekranından mı
+      tanımlanacak? İkincisi Jira'nın karmaşıklığına doğru bir adım — dikkat.
 - [ ] **Sohbet kapsamı.** Şu an kanallar çalışma alanı geneli. Seçenekler:
       (A) böyle kalsın, (B) her projeye özel sohbet, (C) kanallar genel kalsın
       ama istenirse bir projeye bağlanabilsin. **Öneri: C** — B küçük takımlarda

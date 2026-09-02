@@ -6,6 +6,12 @@
 
 import { prisma } from '../db.js';
 import { notificationToDict } from './serializers.js';
+import {
+  emailNotificationsEnabled,
+  emailableTypes,
+  renderNotification,
+  sendNotificationEmail,
+} from './mailer.js';
 
 /**
  * Structured notification text üret: '{"type":"join_request","who":"Ali"}'
@@ -27,5 +33,31 @@ export async function createAndPush(io, data) {
       console.warn('[notif] push failed:', err.message);
     }
   }
+  // Posta gönderimi isteği bekletmemeli: bildirim zaten veritabanında ve sokete
+  // düştü, posta gecikirse ya da hata verirse kullanıcı akışı etkilenmemeli.
+  void dispatchEmail(notif);
   return notif;
+}
+
+/**
+ * Bildirimi e-postayla da gönder — açıksa, tür listedeyse ve kullanıcı
+ * kapatmamışsa. Hiçbir koşulda hata fırlatmaz.
+ */
+async function dispatchEmail(notif) {
+  try {
+    if (!emailNotificationsEnabled()) return;
+    const rendered = renderNotification(notif.text);
+    if (!emailableTypes().has(rendered.type)) return;
+
+    const user = await prisma.user.findUnique({
+      where: { id: notif.userId },
+      select: { email: true, emailNotifications: true },
+    });
+    if (!user?.email) return;
+    if (user.emailNotifications === false) return;
+
+    await sendNotificationEmail(user.email, rendered);
+  } catch (err) {
+    console.warn('[notif] e-posta gönderimi atlandı:', err.message);
+  }
 }

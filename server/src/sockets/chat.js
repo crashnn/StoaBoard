@@ -180,10 +180,15 @@ export function registerChatHandlers(io) {
             where: { workspaceId, slug: channel },
             include: { members: true },
           });
-          if (chRow) {
-            const role = await userChannelRole(chRow, user.id);
-            if (!role) return;
+          // REST ucuyla aynı kural: kanal satırı yoksa mesaj kabul edilmez.
+          // Burada ayrıca yayın tarafı da etkileniyordu — satır bulunamayınca
+          // kanal "özel değil" sayılıp mesaj tüm çalışma alanına dağıtılıyordu.
+          if (!chRow) {
+            console.warn('[socket] var olmayan kanala mesaj reddedildi:', channel);
+            return;
           }
+          const role = await userChannelRole(chRow, user.id);
+          if (!role) return;
         }
       }
 

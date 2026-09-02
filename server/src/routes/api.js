@@ -17,8 +17,10 @@ import { requireAuth } from '../lib/session.js';
 import { hashPassword } from '../lib/password.js';
 import { userToDict, initialsFromName } from '../lib/user.js';
 import * as onlineState from '../lib/onlineState.js';
+import { destroyUserSessions } from '../lib/sessionStore.js';
 import {
   currentMember,
+  hasPermission,
   memberForWorkspace,
   memberToDict,
   userPrivateDict,
@@ -168,7 +170,17 @@ apiRouter.get(
     const wsDict = workspaceToDict(ws);
     wsDict.is_owner = isOwner;
     wsDict.roles = (ws.roles || []).map(workspaceRoleToDict);
-    if (isOwner) wsDict.invite_code = ws.inviteCode;
+    // Davet kodu: sahip, çalışma alanı yöneticisi ya da 'Üye davet et' izni
+    // olan görebilir. Bu izin arayüzde sunuluyordu ama sunucuda hiçbir yerde
+    // kontrol edilmiyordu — yani yönetici birine verdiğini sandığı yetkiyi
+    // aslında vermiyordu. Kodu yenilemek hâlâ ayrı ve daha dar bir yetki.
+    if (
+      isOwner ||
+      hasPermission(member, 'manage_workspace') ||
+      hasPermission(member, 'invite_members')
+    ) {
+      wsDict.invite_code = ws.inviteCode;
+    }
     wsDict.can_create_channel = canCreateChannel;
 
     const members = wsMembers
@@ -349,11 +361,15 @@ apiRouter.put(
         updates.email = newEmail;
       }
     }
+    // Parola en az 8 karakter — sıfırlama akışıyla aynı eşik. Burada 6, orada 8
+    // isteniyordu; kullanıcı zayıf parolayı buradan koyup kuralı dolaşabiliyordu.
+    let passwordChanged = false;
     if (typeof data.password === 'string' && data.password) {
-      if (data.password.length < 6) {
-        return res.status(400).json({ error: 'Parola en az 6 karakter olmalıdır' });
+      if (data.password.length < 8) {
+        return res.status(400).json({ error: 'Parola en az 8 karakter olmalıdır' });
       }
       updates.passwordHash = hashPassword(data.password);
+      passwordChanged = true;
     }
 
     // role_title workspace-specific: membership varsa orada saklanır
@@ -379,6 +395,18 @@ apiRouter.put(
     const updated = Object.keys(updates).length
       ? await prisma.user.update({ where: { id: user.id }, data: updates })
       : user;
+
+    // Parola değiştiyse diğer cihazlardaki oturumlar düşürülür. Kullanıcının
+    // şu an kullandığı oturum korunur — kendi parolasını değiştirdiği için
+    // dışarı atılması anlamsız olurdu. Oturumlar veritabanında kalıcı olduğu
+    // için bu kendiliğinden olmuyordu: ele geçirilmiş bir oturum, parola
+    // değiştikten sonra da çalışmaya devam ediyordu.
+    if (passwordChanged) {
+      const killed = await destroyUserSessions(user.id, req.sessionID);
+      if (killed) {
+        console.log(`[auth] parola değişti, ${killed} diğer oturum sonlandırıldı (user ${user.id})`);
+      }
+    }
 
     const wmCurrent =
       wmUpdate || (await currentMember(updated));

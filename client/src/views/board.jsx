@@ -212,7 +212,7 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
   );
 }
 
-function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, onDeleteColumn, onUpdateColumn, onTouchLongPress, onToggleDone, onColumnDragStart, onColumnDragOver, onColumnDrop, isColDragOver }) {
+function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, onDeleteColumn, onUpdateColumn, onTouchLongPress, onToggleDone, onColumnDragStart, onColumnDragOver, onColumnDrop, isColDragOver }) {
   const [dragOver, setDragOver] = useBoardState(false);
   const [menuOpen, setMenuOpen] = useBoardState(false);
   const [menuPos, setMenuPos] = useBoardState(null);
@@ -221,10 +221,21 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
   const [renameVal, setRenameVal] = useBoardState(col.title_tr || col.title || '');
   const [columnDragging, setColumnDragging] = useBoardState(false);
   const [colorPickerOpen, setColorPickerOpen] = useBoardState(false);
+  const [rulesOpen, setRulesOpen] = useBoardState(false);
   const menuRef = useBoardRef(null);
   const moreRef = useBoardRef(null);
   const headerRef = useBoardRef(null);
   const touchState = useBoardRef({ timer: null, startX: 0, startY: 0, moved: false });
+
+  // Geçiş kuralı: bu kolondan gidilebilecek kolonların slug listesi.
+  // Boş liste = kısıt yok; sunucu tarafı da aynı şekilde yorumluyor.
+  const allowedNext = Array.isArray(col.allowed_next) ? col.allowed_next : [];
+  const toggleAllowedNext = (slug) => {
+    const next = allowedNext.includes(slug)
+      ? allowedNext.filter(s => s !== slug)
+      : [...allowedNext, slug];
+    onUpdateColumn?.(col.db_id, { allowed_next: next });
+  };
 
   useBoardEf(() => {
     if (!menuOpen) { setConfirmDelete(false); return; }
@@ -353,6 +364,37 @@ function Column({ col, tasks, onOpenTask, onDropCard, onDragStart, onDragEnd, dr
                             style={{ background: c }}
                             onClick={() => { onUpdateColumn?.(col.db_id, { color: c }); setColorPickerOpen(false); setMenuOpen(false); }} />
                         ))}
+                      </div>
+                    )}
+                    <button className="col-menu-item" onClick={() => setRulesOpen(o => !o)}>
+                      <Icon name="arrowRight" size={13} /> Geçiş kuralı
+                      <span className="col-menu-hint">
+                        {allowedNext.length ? `${allowedNext.length} kolon` : 'kısıt yok'}
+                      </span>
+                    </button>
+                    {rulesOpen && (
+                      <div className="col-menu-rules">
+                        <div className="col-menu-rules-help">
+                          Bu kolondan hangi kolonlara geçilebilir? Hiçbiri seçili
+                          değilse kart her kolona taşınabilir.
+                        </div>
+                        {allColumns.filter(c => c.id !== col.id).map(c => {
+                          const on = allowedNext.includes(c.id);
+                          return (
+                            <button key={c.id} type="button" className="col-menu-rule" data-on={on}
+                              onClick={() => toggleAllowedNext(c.id)}>
+                              <span className="col-menu-rule-dot" style={{ background: c.color }} />
+                              <span className="col-menu-rule-name">{c.title_tr || c.title}</span>
+                              <Icon name={on ? 'check' : 'circle'} size={12} />
+                            </button>
+                          );
+                        })}
+                        {allowedNext.length > 0 && (
+                          <button type="button" className="col-menu-rule col-menu-rule-clear"
+                            onClick={() => onUpdateColumn?.(col.db_id, { allowed_next: [] })}>
+                            Kuralı kaldır
+                          </button>
+                        )}
                       </div>
                     )}
                     {confirmDelete ? (
@@ -1274,6 +1316,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
           key={col.id}
           col={col}
           tasks={visibleTasks.filter(t => t.col === col.id)}
+          allColumns={columns}
           onOpenTask={onOpenTask}
           onDropCard={handleDrop}
           onDragStart={handleDragStart}

@@ -128,7 +128,7 @@ const TEMPLATES = {
 };
 
 const DEFAULT_ROLES = [
-  ['Yönetici', 'oklch(52% 0.15 270)', ['manage_tasks', 'manage_projects', 'manage_members', 'manage_channels', 'delete_messages'], false],
+  ['Yönetici', 'oklch(52% 0.15 270)', ['manage_tasks', 'manage_projects', 'manage_members', 'manage_channels', 'delete_messages', 'invite_members', 'view_reports'], false],
   ['Düzenleyici', 'oklch(55% 0.09 150)', ['manage_tasks'], true],
   ['Görüntüleyici', 'oklch(55% 0.02 250)', [], false],
 ];

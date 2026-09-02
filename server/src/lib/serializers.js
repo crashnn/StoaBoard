@@ -60,6 +60,8 @@ export function columnToDict(c) {
     title_tr: c.titleTr || c.title,
     color: c.color || 'oklch(55% 0.02 250)',
     is_done: Boolean(c.isDone),
+    // Boş dizi = kısıt yok, kart her kolona taşınabilir.
+    allowed_next: Array.isArray(c.allowedNext) ? c.allowedNext : [],
   };
 }
 
@@ -107,6 +109,7 @@ export function taskToDict(task) {
     attachments: 0,
     project_id: task.projectId,
     created_by: task.creator?.slug || null,
+    completed_at: task.completedAt ? task.completedAt.toISOString() : null,
     deleted_at: task.deletedAt ? task.deletedAt.toISOString() : null,
   };
   if (subtaskList.length > 0) {

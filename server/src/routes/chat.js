@@ -74,13 +74,17 @@ chatRouter.post(
           where: { workspaceId, slug: channel },
           include: { members: true },
         });
-        if (chRow) {
-          const role = await userChannelRole(chRow, user.id);
-          if (!role) {
-            return res
-              .status(403)
-              .json({ error: 'Bu kanala mesaj gönderme yetkiniz yok' });
-          }
+        // Var olmayan bir kanala yazılamaz; aksi halde kanal listesinde
+        // görünmeyen, üyeliği ve moderasyonu olmayan gizli bir yazışma alanı
+        // açılabiliyordu.
+        if (!chRow) {
+          return res.status(404).json({ error: 'Kanal bulunamadı' });
+        }
+        const role = await userChannelRole(chRow, user.id);
+        if (!role) {
+          return res
+            .status(403)
+            .json({ error: 'Bu kanala mesaj gönderme yetkiniz yok' });
         }
       }
     }
@@ -207,7 +211,13 @@ chatRouter.get(
           where: { workspaceId: wsId, slug: channel },
           include: { members: true },
         });
-        if (chRow && !(await userChannelRole(chRow, user.id))) {
+        // Kanal satırı yoksa istek reddedilir. Önceden kontrol tamamen
+        // atlanıyordu: satırı olmayan bir slug'a mesaj yazılabiliyor ve
+        // sonra herkes tarafından okunabiliyordu (hayalet kanal).
+        if (!chRow) {
+          return res.status(404).json({ error: 'Kanal bulunamadı' });
+        }
+        if (!(await userChannelRole(chRow, user.id))) {
           return res.status(403).json({ error: 'Bu kanala erişim yetkiniz yok' });
         }
       }
@@ -334,7 +344,12 @@ chatRouter.post(
         where: { workspaceId: msg.workspaceId, slug: msg.channel },
         include: { members: true },
       });
-      if (chRow && !(await userChannelRole(chRow, user.id))) {
+      // Kanal satırı yoksa reddedilir. Eskiden kontrol atlanıyor ve satırı
+      // olmayan bir kanaldaki mesaj herkesçe sabitlenebiliyordu.
+      if (!chRow) {
+        return res.status(404).json({ error: 'Kanal bulunamadı' });
+      }
+      if (!(await userChannelRole(chRow, user.id))) {
         return res.status(403).json({ error: 'Yetkiniz yok' });
       }
     } else {
@@ -456,7 +471,13 @@ chatRouter.get(
           where: { workspaceId: wsId, slug: channelSlug },
           include: { members: true },
         });
-        if (chRow && !(await userChannelRole(chRow, user.id))) {
+        // Kanal satırı yoksa istek reddedilir. Önceden kontrol tamamen
+        // atlanıyordu: satırı olmayan bir slug'a mesaj yazılabiliyor ve
+        // sonra herkes tarafından okunabiliyordu (hayalet kanal).
+        if (!chRow) {
+          return res.status(404).json({ error: 'Kanal bulunamadı' });
+        }
+        if (!(await userChannelRole(chRow, user.id))) {
           return res.status(403).json({ error: 'Bu kanala erişim yetkiniz yok' });
         }
       }

@@ -19,6 +19,7 @@ import {
   nextAvatarColor,
 } from '../lib/user.js';
 import { sendResetEmail } from '../lib/mailer.js';
+import { destroyUserSessions } from '../lib/sessionStore.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 
 export const authRouter = Router();
@@ -196,6 +197,16 @@ authRouter.post('/reset-password', asyncHandler(async (req, res) => {
     where: { id: user.id },
     data: { passwordHash: hashPassword(newPass) },
   });
+
+  // Parola sıfırlamanın asıl amacı erişimi olan herkesi dışarı atmaktır.
+  // Oturumlar veritabanında kalıcı olduğu için bu kendiliğinden olmuyordu:
+  // ele geçirilmiş bir oturum, kurban parolasını değiştirdikten sonra da
+  // çalışmaya devam ediyordu. Sıfırlama akışında kişi giriş yapmış olmadığı
+  // için korunacak bir oturum yok, hepsi düşürülür.
+  const killed = await destroyUserSessions(user.id);
+  if (killed) {
+    console.log(`[auth] parola sıfırlandı, ${killed} oturum sonlandırıldı (user ${user.id})`);
+  }
 
   return res.json({ ok: true });
 }));
