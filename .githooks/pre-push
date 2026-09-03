@@ -1,0 +1,46 @@
+#!/bin/sh
+# Push'tan önce testleri ve derlemeyi çalıştırır. Kırmızıysa push iptal olur.
+#
+# NİÇİN VAR: 143 test ve temiz bir derleme vardı ama çalıştırmak geliştiricinin
+# hafızasına bağlıydı. CI bu boşluğu kapatacaktı, ancak depo sahibinin GitHub
+# hesabı faturalandırma nedeniyle kilitli olduğu için Actions hiç başlamıyor
+# ("The job was not started because your account is locked due to a billing
+# issue"). Bu kanca, o kilit açılana kadar aynı işi yerelde yapıyor.
+#
+# ÖNEMLİ: 143 testin hiçbiri veritabanı istemiyor. Bu yüzden kanca, 5432'nin
+# kapalı olduğu ofis ağında da tam olarak çalışır. Çalışmayan tek şey
+# uygulamanın kendisi; testler ve derleme etkilenmiyor.
+#
+# KURULUM (her makinede bir kez):
+#     git config core.hooksPath .githooks
+# Bu klasör depoda takipli olduğu için ekip arkadaşları da yukarıdaki tek
+# komutla aynı korumayı alır. .git/hooks içine konsaydı kimseye gitmezdi.
+#
+# BİLİNÇLİ ATLAMAK İÇİN:
+#     git push --no-verify
+# Kanca atlanabilir, CI atlanamaz. Aradaki fark, zorlama merdiveninde bir
+# basamak: kanca 4.5, CI kapısı 5. Fatura çözülünce ikisi birlikte çalışır.
+
+set -e
+
+kok=$(git rev-parse --show-toplevel)
+cd "$kok"
+
+# npm bulunamazsa sessizce geçme. Sessiz başarısızlık bu depoda üç kusurun
+# kök sebebiydi; koruma çalışmıyorsa bunu söylemeli, korumuş gibi yapmamalı.
+if ! command -v npm >/dev/null 2>&1; then
+  echo "pre-push: npm bulunamadi, kontroller calistirilamadi."
+  echo "pre-push: PATH'i kontrol et. Bilerek atlamak icin: git push --no-verify"
+  exit 1
+fi
+
+echo "pre-push: sunucu testleri"
+# DATABASE_URL bilinçli olarak sahte. Testler veritabanı istemiyor; gerçek
+# bağlantı verilirse test koşusu ağa bağımlı hale gelir ve ofiste asılı kalır.
+DATABASE_URL="postgresql://hook:hook@localhost:5432/hook" \
+  npm --prefix server test
+
+echo "pre-push: on yuz derlemesi"
+npm --prefix client run build
+
+echo "pre-push: tamam"

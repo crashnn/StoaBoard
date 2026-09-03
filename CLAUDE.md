@@ -106,9 +106,27 @@ cd server && npm test        # PowerShell'de: npm.cmd test
 cd client && npm run build   # ön yüz derlemesi
 ```
 
-İkisi CI'da da çalışıyor (`.github/workflows/ci.yml`, her itme ve PR).
-Yerelde çalıştırmayı yine de atlama: CI'ın geri bildirimi dakikalar sonra
-gelir, yereldeki saniyeler içinde. **CI güvenlik ağıdır, ilk savunma değil.**
+**Makine kurulumu, bir kez:**
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Bunu yapmadan `pre-push` kancası çalışmaz. Kanca push'tan önce testleri ve
+derlemeyi çalıştırıp kırmızıysa push'u iptal ediyor. Kancalar `.git/hooks`
+içinde takip edilmediği için depoda `.githooks/` klasöründe duruyorlar; komut
+git'e oraya bakmasını söylüyor. Bilerek atlamak için `git push --no-verify`.
+
+**Kanca ofis ağında da çalışır.** 143 testin hiçbiri veritabanı istemiyor;
+çalışmayan tek şey uygulamanın kendisi. Kanca sahte bir `DATABASE_URL` ile
+koşuyor ki test koşusu ağa bağımlı hale gelip asılı kalmasın.
+
+`.github/workflows/ci.yml` aynı işi GitHub tarafında yapıyor ama **şu anda
+çalışmıyor**: depo sahibi hesabın (`crashnn`) faturalandırması kilitli, işler
+hiç başlamıyor ("The job was not started because your account is locked due to
+a billing issue"). Dosya yerinde duruyor, kilit açılınca değişiklik gerekmeden
+çalışacak. **Repoda CI dosyası görüp korunduğunu varsayma** — bugün koruyan
+şey kanca.
 
 **Kuralı belgeye değil, doğrulayana yaz.** Bu depoda kanıtlanmış bir ders:
 dil kuralı CLAUDE.md'de net biçimde yazılıydı ve yine de 31 yerde ihlal

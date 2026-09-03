@@ -219,11 +219,25 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       şey CI'ın dağıtımdan önce çalışması.
 
 ### Hemen yapılabilir — depo dışı, 5 dakikalık işler
-- [ ] **CI'ı gerçek kapıya çevir.** `.github/workflows/ci.yml` eklendi ama
-      şu an yalnızca alarm: kırmızı CI push'u engellemiyor. GitHub'da
-      `Settings → Branches → Add rule → main` → **Require status checks to
-      pass before merging** açılıp `sunucu testleri` ve `ön yüz derlemesi`
-      seçilmeli. Bu yapılmadan zorlama merdiveninde 4.5 basamakta kalıyoruz.
+- [ ] **GitHub faturalandırma kilidi (crashnn hesabı).** CI kuruldu ama hiç
+      çalışamıyor: "The job was not started because your account is locked due
+      to a billing issue". İşler başlamıyor, yani kırmızı da değil, sessiz.
+      Actions faturası **depo sahibine** kesiliyor, iten kişiye değil; bu
+      yüzden kilidi `crashnn` açmalı (`github.com/settings/billing`).
+      Mesaj "spending limit exceeded" değil, yani dakika bitmesi değil ödeme
+      sorunu: ayın başını beklemek çözmez.
+      **Not:** bu iş yükü ücretsiz sınırın çok altında. İki iş x ~1.5 dakika =
+      push başına ~3 dakika; private depoda ücretsiz hesaba ayda 2.000 dakika
+      dahil. Yani kilit büyük ihtimalle Actions'tan değil, başka ödenmemiş bir
+      kalemden geliyor ve çözülünce CI maliyetsiz çalışacak.
+      Kilit hesap düzeyinde olduğu için `4. Proje Panosu` deposunu da etkiliyor.
+- [ ] **CI'ı gerçek kapıya çevir.** Yukarıdaki kilit açıldıktan SONRA.
+      GitHub'da `Settings → Branches → Add rule → main` → **Require status
+      checks to pass before merging** açılıp `sunucu testleri` ve
+      `ön yüz derlemesi` seçilmeli. Uyarı: bu ayar doğrudan `main`e push'u da
+      engeller, yani PR akışına geçmek gerekir. Kararı verilmedi.
+      Şu an koruma `pre-push` kancasında (`.githooks/pre-push`), merdivende
+      4.5 basamak: otomatik ama `--no-verify` ile atlanabilir.
 - [ ] **`dil-ve-ci` dalını main'e al.** 5 commit. PR açmak CI'ın main'e
       girmeden önce doğrulamasını sağlar — dalın kurulma sebebi bu.
 - [ ] **`raporlama` dalını sil** (yerelde ve uzakta). `main`'in tamamen
