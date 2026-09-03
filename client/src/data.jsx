@@ -1193,6 +1193,15 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     // 3 Eylül dil turu, üçüncü grup — `}metin<` kalıbıyla bulunanlar.
     set_shortcuts_custom_count:'özelleştirilmiş kısayol',
     trash_no_results:'için sonuç bulunamadı',
+    // 3 Eylül, dördüncü grup. Testin komşuluk kuralı sıkılaştırılınca
+    // görünen kaçaklar: bir sözlük anahtarı yalnızca kendisine bitişik
+    // metni aklar, yanındaki ikinci metni değil.
+    crumb_privacy:'Gizlilik Sözleşmesi',
+    crumb_terms:'Hizmet Şartları',
+    chat_photo:'Fotoğraf',
+    chat_video:'Video',
+    chat_message:'Mesaj',
+    set_mem_member:'Üye',
   },
   en: {
     nav_home:'Home', nav_tasks:'My Tasks', nav_board:'Board', nav_calendar:'Calendar',
@@ -2000,6 +2009,15 @@ err_channel_name_taken:'A channel with this name already exists',
     // 3 Eylül dil turu, üçüncü grup — `}metin<` kalıbıyla bulunanlar.
     set_shortcuts_custom_count:'customised shortcuts',
     trash_no_results:'— no results found',
+    // 3 Eylül, dördüncü grup. Testin komşuluk kuralı sıkılaştırılınca
+    // görünen kaçaklar: bir sözlük anahtarı yalnızca kendisine bitişik
+    // metni aklar, yanındaki ikinci metni değil.
+    crumb_privacy:'Privacy Policy',
+    crumb_terms:'Terms of Service',
+    chat_photo:'Photo',
+    chat_video:'Video',
+    chat_message:'Message',
+    set_mem_member:'Member',
   },
   de: {
     nav_home:'Startseite', nav_tasks:'Meine Aufgaben', nav_board:'Board', nav_calendar:'Kalender',

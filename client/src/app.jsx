@@ -1033,8 +1033,8 @@ function App() {
     notifications:window.t('crumb_notifications'),
     notes:window.t('crumb_notes'),
     trash: window.t?.('nav_trash') || 'Çöp Kutusu',
-    'gizlilik-sartlari': 'Gizlilik Sözleşmesi',
-    'hizmet-sartlari': 'Hizmet Şartları'
+    'gizlilik-sartlari': window.t?.('crumb_privacy') || 'Gizlilik Sözleşmesi',
+    'hizmet-sartlari': window.t?.('crumb_terms') || 'Hizmet Şartları'
   }[view] || window.t('crumb_board');
 
   // My-tasks open count (assigned to me, not in a done column)

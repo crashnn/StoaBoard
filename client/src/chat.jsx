@@ -336,7 +336,11 @@ function buildReplyRef(msg, allMembers) {
   if (!msg || msg.deleted) return null;
   const sender = allMembers.find(m => m.id === msg.from);
   const rawText = (msg.text || msg.file_name || (msg.file_url ? (window.t?.('chat_file') || 'Dosya') : '')).trim();
-  const text = rawText || (msg.file_type === 'image' ? 'Fotoğraf' : msg.file_type === 'video' ? 'Video' : 'Mesaj');
+  const text = rawText || (msg.file_type === 'image'
+    ? (window.t?.('chat_photo') || 'Fotoğraf')
+    : msg.file_type === 'video'
+      ? (window.t?.('chat_video') || 'Video')
+      : (window.t?.('chat_message') || 'Mesaj'));
   return {
     id: msg.id,
     sender: sender?.name || msg.from || '',

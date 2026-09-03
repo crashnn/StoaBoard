@@ -248,29 +248,58 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
       }
 
       // 2. Sözlük anahtarıyla eşleşmeyen Türkçe dizeler.
-      for (const m of src.matchAll(/(['"])((?:[^\\\n]|\\.)*?)\1/g)) {
+      //
+      // Dosyadaki tüm dizeler ÖNCE bir kez ayrıştırılıyor, sonra komşuluğa
+      // bakılıyor. İlk hâli her metin için 160 karakterlik bir dilim alıp
+      // içindeki tırnakları yeniden eşleştiriyordu; dilim bir dizenin
+      // ortasından başlayınca eşleşme kayıyor ve doğru yazılmış kodu
+      // ("shell_status_offline" anahtarı tam solundayken) kaçak sanıyordu.
+      // Tek geçişte ayrıştırmak bu sınıfı tamamen ortadan kaldırıyor.
+      const dizeler = [...src.matchAll(/(['"])((?:[^\\\n]|\\.)*?)\1/g)];
+      for (let di = 0; di < dizeler.length; di += 1) {
+        const m = dizeler[di];
         const metin = m[2];
         if (!TURKCE.test(metin)) continue;
-        // Tek kelimelik kısa değerler kod olabiliyor (css sınıfı, id).
-        if (!/\s/.test(metin) && metin.length < 4) continue;
+        // Tek karakterlik değerler ayraç/işaret olabiliyor.
+        //
+        // Eşik önce 4'tü ve "Üye" (3 harf) bu yüzden hiç görülmüyordu:
+        // settings.jsx üye listesindeki çıplak `'Üye'` iki ayrı elekten
+        // birden kaçmıştı. Eşik düşürüldü, çünkü yukarıdaki TURKCE kontrolü
+        // zaten kod olma ihtimalini eliyor: css sınıfı, id ve anahtar adları
+        // Türkçe'ye özgü harf (ç ğ ı ö ş ü) taşımaz. Kısa olmak, arayüz
+        // metni olmamak anlamına gelmiyor.
+        if (metin.length < 2) continue;
         // Anahtar metnin solunda olabilir (T('k','Türkçe'), { k:'x', fb:'…' })
         // ya da sağında: _DOC_I18N_MAP gibi metinden anahtara giden eşleme
         // tabloları 'Açıklama': 'drawer_description' biçiminde yazılıyor.
         // Çift kalıbı iki yönde de meşru.
-        const once = src.slice(Math.max(0, m.index - 160), m.index);
-        const sonra = src.slice(m.index + m[0].length, m.index + m[0].length + 60).split(/\r?\n/)[0];
-        const yakinAnahtarlar = [
-          ...once.matchAll(/(['"])([a-z][a-z0-9_]{3,})\1/g),
-          ...sonra.matchAll(/(['"])([a-z][a-z0-9_]{3,})\1/g),
-        ].map((x) => x[2]);
-        if (yakinAnahtarlar.some((a) => sozluk.has(a))) continue;
+        // BİR ANAHTAR YALNIZCA BİR METNİ AKLAR.
+        //
+        // İlk hâli "solda 160 karakter içinde herhangi bir sözlük anahtarı
+        // varsa meşru" diyordu ve gerçek bir kaçağı kaçırdı:
+        //     m.ws_role === 'owner' ? _t('set_mem_owner','Sahip') : (m.role_name || 'Üye')
+        // Buradaki `set_mem_owner` zaten 'Sahip'e ait; ama 'Üye'nin de
+        // solunda kaldığı için onu da aklıyordu. `'Üye'` sözlükte yok,
+        // İngilizce arayüzde Türkçe çıkıyordu (settings.jsx üye listesi).
+        //
+        // Ölçüt artık yakınlık değil BİTİŞİKLİK: metinden hemen önceki
+        // tırnaklı belirteç sözlük anahtarı olmalı. Dört meşru kalıpta da
+        // anahtar zaten hemen soldadır:
+        //     T('k', 'tr')  ·  t?.('k') || 'tr'  ·  { k:'x', fb:'tr' }  ·  ['k','tr']
+        // Araya başka bir metin girdiyse o anahtar tüketilmiş demektir.
+        // Komşu dize: bir öncekiler ve bir sonraki. Mesafe sınırı var, yoksa
+        // dosyanın başka bir yerindeki alakasız anahtar metni aklayabilir.
+        const yakin = (k) => k && Math.abs(k.index - m.index) < 160 ? k[2] : null;
+        const aday = [yakin(dizeler[di - 1]), yakin(dizeler[di + 1])].filter(Boolean);
+        if (aday.some((a) => sozluk.has(a))) continue;
 
         // Kardeş alan kalıbı: `label:'Klasör', label_en:'Folder'`. Metin bir
         // nesne alanının değeriyse ve aynı nesnede `<alan>_en` varsa çeviri
         // yazılmış demektir — sözlük yerine yan yana duran iki dil.
         // PROJECT_ICONS (50 tooltip) ve TEMPLATE_META (şablon önizlemesi)
         // bunu kullanıyor; ikisi de sözlüğe taşınsa gereksiz yere şişerdi.
-        const alanEsl = [...once.matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*:/g)].pop();
+        const alanOnce = src.slice(Math.max(0, m.index - 160), m.index);
+        const alanEsl = [...alanOnce.matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*:/g)].pop();
         if (alanEsl) {
           const alan = alanEsl[1];
           if (!alan.endsWith('_en')) {

@@ -284,6 +284,32 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Kalan eksik geçmiş: hangi şemanın ne zaman gittiği kayıtlı değil.
       Gerçek kullanıcı verisi büyümeden düzenli migration dosyalarına geçilmeli.
 
+### Rol adları ve profil unvanı (3 Eylül'de bulundu)
+
+- [ ] **Varsayılan roller yalnızca Türkçe tohumlanıyor.** `workspaces.js`
+      çalışma alanı kurarken `Yönetici` / `Düzenleyici` / `Görüntüleyici`
+      rollerini yazıyor ve `WorkspaceRole` modelinde tek bir `name` alanı var.
+      Oysa varsayılan **kolonlar** iki dilli tohumlanıyor: `BoardColumn`
+      hem `title` (İngilizce) hem `titleTr` taşıyor ve pano dile göre
+      seçiyor. Aynı sorun, iki farklı çözüm: tutarsızlık.
+      Roller kullanıcı tarafından yeniden adlandırılabildiği için tam olarak
+      "kullanıcı verisi" de değil, "uygulama tohumu" da; kolonlarla aynı
+      kalıp doğru cevap gibi duruyor (`name` + `name_tr`).
+      **Şema değişikliği gerektiriyor** (katkı niteliğinde, veri kaybı yok),
+      yani ev işi: elle ve bilinçli uygulanmalı.
+- [ ] **Profil "Title / Role" alanı sabit Türkçe tohumlanıyor.**
+      `auth.js` kayıtta ve Google girişinde `roleTitle: 'Üye'` yazıyor.
+      İngilizce arayüzde kaydolan kullanıcının unvanı "Üye" oluyor.
+      **Ayrıca tasarım sorusu:** bu alan bir *iş unvanı* (Geliştirici,
+      Tasarımcı) ama çalışma alanı *yetki rolünün* yanında gösteriliyor
+      (`settings.jsx` üye satırı `Sahip · Üye` üretiyor). İki farklı kavram
+      aynı ada sahip ve yan yana duruyor.
+      **Öneri:** varsayılanı tamamen kaldır, boş bırak. Alan zaten
+      "E.g: Developer, Designer..." ipucu gösteriyor; boş bir unvan dürüst,
+      uydurulmuş "Üye" ise hem gereksiz hem yetki rolüyle çakışıyor.
+      Bu, projenin kendi ilkesiyle de uyumlu: bilinmeyen değer uydurulmaz.
+      Karar verilmeden koda girilmemeli.
+
 ### Bilinen kusurlar
 - [ ] Topbar'daki sohbet butonu bazı ekranlarda tepki vermiyor (yeniden
       üretilemedi — adım tarifi gerekiyor).

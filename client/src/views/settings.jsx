@@ -1391,7 +1391,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
           </div>
           <div className="settings-card settings-panel members-panel">
             {members.map(m => {
-              const workspaceRole = m.ws_role === 'owner' ? _t('set_mem_owner','Sahip') : (m.role_name || 'Üye');
+              const workspaceRole = m.ws_role === 'owner' ? _t('set_mem_owner','Sahip') : (m.role_name || window.t?.('set_mem_member') || 'Üye');
               const profileRole = m.role && m.role !== workspaceRole ? ` · ${m.role}` : '';
               return (
               <div key={m.id} className="member-row">

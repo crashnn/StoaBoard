@@ -515,7 +515,7 @@ function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onC
             : <span className="pip" />
           }
         </button>
-        {canManageTasks && <button className="btn btn-primary" onClick={openModal}><Icon name="plus" size={14} /> {window.t?.('topbar_new_task')?.replace('+ ','') || 'Yeni görev'}</button>}
+        {canManageTasks && <button className="btn btn-primary" onClick={openModal}><Icon name="plus" size={14} /> {(window.t?.('topbar_new_task') || 'Yeni görev').replace('+ ', '')}</button>}
       </div>
     </div>
   );
