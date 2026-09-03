@@ -22,7 +22,7 @@ export function DefaultDropdown({
   value,
   onChange,
   options = [],
-  placeholder = '— Seç —',
+  placeholder = window.t?.('dd_select') || '— Seç —',
   disabled = false,
   fullWidth = false,
   align = 'left',

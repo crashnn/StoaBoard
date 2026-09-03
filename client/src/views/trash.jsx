@@ -253,7 +253,7 @@ export function TrashView({ tasks, onRestore, onPermanentDelete, canManageTasks,
           {q && filteredTasks.length === 0 && filteredNotes.length === 0 && (
             <div className="empty-state" style={{ marginTop: 40 }}>
               <Icon name="search" size={24} strokeWidth={1.1} />
-              <div style={{ fontSize: 14 }}>"{search}" için sonuç bulunamadı</div>
+              <div style={{ fontSize: 14 }}>"{search}" {window.t?.('trash_no_results') || 'için sonuç bulunamadı'}</div>
             </div>
           )}
 

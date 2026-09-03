@@ -773,13 +773,13 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
                       <span className="attachment-name" style={{ cursor: 'pointer' }}
                         onClick={() => setImagePreview({ url: att.url, name: displayName })}
                         onDoubleClick={canManageTasks ? () => { setEditingAttId(att.id); setEditingAttName(displayName); } : undefined}
-                        title={canManageTasks ? 'Yeniden adlandırmak için çift tıkla' : undefined}>
+                        title={canManageTasks ? (window.t?.('drawer_rename_hint') || 'Yeniden adlandırmak için çift tıkla') : undefined}>
                         {displayName}
                       </span>
                     ) : (
                       <a href={att.url} download={att.file_name} className="attachment-name"
                         onDoubleClick={canManageTasks ? (e) => { e.preventDefault(); setEditingAttId(att.id); setEditingAttName(displayName); } : undefined}
-                        title={canManageTasks ? 'Yeniden adlandırmak için çift tıkla' : undefined}>
+                        title={canManageTasks ? (window.t?.('drawer_rename_hint') || 'Yeniden adlandırmak için çift tıkla') : undefined}>
                         {displayName}
                       </a>
                     )}

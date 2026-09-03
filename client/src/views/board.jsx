@@ -354,7 +354,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
                       <Icon name="edit" size={13} /> {window.t('board_col_rename')}
                     </button>
                     <button className="col-menu-item" onClick={() => setColorPickerOpen(o => !o)}>
-                      <Icon name="palette" size={13} /> Renk değiştir
+                      <Icon name="palette" size={13} /> {window.t?.('board_col_color') || 'Renk değiştir'}
                     </button>
                     {colorPickerOpen && (
                       <div className="col-menu-colors">
@@ -367,16 +367,17 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
                       </div>
                     )}
                     <button className="col-menu-item" onClick={() => setRulesOpen(o => !o)}>
-                      <Icon name="arrowRight" size={13} /> Geçiş kuralı
+                      <Icon name="arrowRight" size={13} /> {window.t?.('board_col_rule') || 'Geçiş kuralı'}
                       <span className="col-menu-hint">
-                        {allowedNext.length ? `${allowedNext.length} kolon` : 'kısıt yok'}
+                        {allowedNext.length
+                          ? `${allowedNext.length} ${window.t?.('board_col_rule_count') || 'kolon'}`
+                          : (window.t?.('board_col_rule_none') || 'kısıt yok')}
                       </span>
                     </button>
                     {rulesOpen && (
                       <div className="col-menu-rules">
                         <div className="col-menu-rules-help">
-                          Bu kolondan hangi kolonlara geçilebilir? Hiçbiri seçili
-                          değilse kart her kolona taşınabilir.
+                          {window.t?.('board_col_rule_help') || 'Bu kolondan hangi kolonlara geçilebilir? Hiçbiri seçili değilse kart her kolona taşınabilir.'}
                         </div>
                         {allColumns.filter(c => c.id !== col.id).map(c => {
                           const on = allowedNext.includes(c.id);
@@ -392,7 +393,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
                         {allowedNext.length > 0 && (
                           <button type="button" className="col-menu-rule col-menu-rule-clear"
                             onClick={() => onUpdateColumn?.(col.db_id, { allowed_next: [] })}>
-                            Kuralı kaldır
+                            {window.t?.('board_col_rule_clear') || 'Kuralı kaldır'}
                           </button>
                         )}
                       </div>
@@ -1223,7 +1224,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
 
     const projectId = window.CURRENT_PROJECT_ID || DATA.currentProject?.id;
     if (!projectId) {
-      window.showToast?.('Proje seçili değil.', 'error');
+      window.showToast?.(window.t?.('board_err_no_project') || 'Proje seçili değil.', 'error');
       return;
     }
 
@@ -1237,7 +1238,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
       setNewColumnColor(COL_COLORS[0]);
       setIsAddingColumn(false);
     } catch (e) {
-      window.showToast?.('Kolon oluşturulamadı: ' + e.message, 'error');
+      window.showToast?.((window.t?.('board_err_col_create') || 'Kolon oluşturulamadı: ') + e.message, 'error');
     } finally {
       setAddingColumnBusy(false);
     }

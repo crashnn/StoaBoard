@@ -705,7 +705,7 @@ function App() {
       }
       // Kolon geçiş kuralı gibi bilinçli engellemelerde sunucu açıklama
       // gönderiyor; sessizce geri sarmak yerine sebebi göster.
-      window.showToast?.(e.message || 'Görev taşınamadı', 'error');
+      window.showToast?.(e.message || window.t?.('app_err_move_task') || 'Görev taşınamadı', 'error');
       console.error('moveTask failed:', e.message);
     }
   };
@@ -869,7 +869,7 @@ function App() {
       }
       setNotifOpen(false);
     } catch (e) {
-      window.showToast?.(window.t?.('app_err_open_task') || 'Görev açılamadı: ' + (e.message || ''), 'error');
+      window.showToast?.((window.t?.('app_err_open_task') || 'Görev açılamadı: ') + (e.message || ''), 'error');
     }
   };
 
@@ -1284,8 +1284,8 @@ function ProjectIconPicker({ selected, color, onChange }) {
   const icons = window.PROJECT_ICONS || [];
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(10,1fr)', gap:4, maxHeight:180, overflowY:'auto', padding:'2px 0' }}>
-      {icons.map(({ id, label }) => (
-        <button key={id+label} type="button" title={label} onClick={() => onChange(id)}
+      {icons.map(({ id, label, label_en }) => (
+        <button key={id+label} type="button" title={window.iconLabel?.({ label, label_en }) || label} onClick={() => onChange(id)}
           style={{
             width:32, height:32, borderRadius:8, display:'grid', placeItems:'center',
             background: selected === id ? color : 'var(--bg-raised)',
@@ -1380,7 +1380,7 @@ function AddWorkspaceModal({ onClose, onDone, initialCode = '' }) {
       const res = await API.createWorkspace({ name: wsName.trim() });
       onDone(res.workspace_id);
     } catch (err) {
-      setError(err.message || 'Bir hata oluştu');
+      setError(err.message || window.t?.('app_error_generic') || 'Bir hata oluştu');
       setBusy(false);
     }
   };

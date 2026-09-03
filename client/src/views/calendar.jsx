@@ -452,8 +452,8 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
   // ── Guidance text (dynamically changes when rangeStart is set) ────────────
   const guidanceText = canCreateTasks
     ? (rangeStart
-        ? 'Bitiş tarihini seçin — aynı güne tıklarsanız tek günlük görev oluşturulur.'
-        : '+ Yeni görev oluşturmak için takvimde bir başlangıç tarihi seçin.')
+        ? (window.t?.('cal_guide_pick_end') || 'Bitiş tarihini seçin — aynı güne tıklarsanız tek günlük görev oluşturulur.')
+        : (window.t?.('cal_guide_pick_start') || '+ Yeni görev oluşturmak için takvimde bir başlangıç tarihi seçin.'))
     : null;
 
   // ─────────────────────────────────────────────────────────────────────────

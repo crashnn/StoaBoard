@@ -83,6 +83,10 @@ const AUTH_I18N = {
     feat_1: 'Pano, Liste ve Takvim — tek çatı altında',
     feat_2: 'Gerçek zamanlı takım senkronizasyonu',
     feat_3: 'Dakikalar içinde kurulum, sıfır karmaşıklık',
+    greet_back: 'Tekrar hoşgeldin.',
+    pw_updated: 'Şifreniz başarıyla güncellendi!',
+    room_type: '{n} Odası',
+    preview: 'ÖNİZLEME',
     ws_no_network: 'Ağ bağlantısı yok.',
     ws_invite_length: 'Davet kodu 8 karakter olmalı.',
     ws_tab_create: 'Yeni Oda Kur',
@@ -142,6 +146,13 @@ const AUTH_I18N = {
   },
   en: {
     greet_morning: 'Good morning, welcome back to StoaBoard.',
+    greet_back: 'Welcome back.',
+    pw_updated: 'Your password has been updated!',
+    room_type: '{n} Room',
+    preview: 'PREVIEW',
+    feat_1: 'Board, List and Calendar — under one roof',
+    feat_2: 'Real-time team synchronisation',
+    feat_3: 'Set up in minutes, zero complexity',
     greet_day: 'Good afternoon, welcome back to StoaBoard.',
     greet_evening: 'Good evening, welcome back to StoaBoard.',
     create_account: 'Create a New Account.',
@@ -472,7 +483,7 @@ function AuthPage({ onSignIn }) {
   const [forgotError, setForgotError] = useAuthState('');
   const [forgotBusy, setForgotBusy] = useAuthState(false);
   const [forgotShowNewPass, setForgotShowNewPass] = useAuthState(false);
-  const [greeting, setGreeting] = useAuthState('Tekrar hoşgeldin.');
+  const [greeting, setGreeting] = useAuthState(() => authT('greet_back'));
   const [lang, setLang] = useAuthState(() => {
     try { const tw = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}'); if (tw.locale) return tw.locale; } catch {}
     return localStorage.getItem('stoa.lang') || 'tr';
@@ -605,7 +616,7 @@ function AuthPage({ onSignIn }) {
     setForgotBusy(true);
     try {
       await window.API.resetPassword(forgotEmail, forgotNewPass, forgotCode.trim());
-      window.showToast?.('Şifreniz başarıyla güncellendi!', 'success');
+      window.showToast?.(authT('pw_updated', lang), 'success');
       setShowForgot(false); setForgotStep('email');
       setForgotEmail(''); setForgotCode(''); setForgotNewPass(''); setForgotConfirmPass('');
     } catch (err) { setForgotError(t(err.message || 'err_reset_fail')); }
@@ -889,20 +900,42 @@ const BlueprintSVG = () => (
 );
 
 // Oda rozeti önizlemesi (create)
+// Şablon önizlemesi iki dilde. Kolon adları sunucudaki varsayılanlarla
+// birebir aynı olmalı: workspace oluşturulurken kolonlar `title` (İngilizce)
+// ve `titleTr` alanlarıyla birlikte yazılıyor (routes/workspaces.js), pano da
+// dile göre hangisini göstereceğini seçiyor. Önizleme burada Türkçe kalırsa
+// İngilizce arayüzde "şunlar oluşturulacak" diye Türkçe kolon adları
+// gösterilir ve oluşturulan panoda İngilizce görünür — önizleme yalan söyler.
 const TEMPLATE_META = {
-  software: { iconName: 'cpu',    color: '#1a4a70', label: 'Yazılım Geliştirme',
-    cols: ['Backlog','Yapılacak','Devam Ediyor','İncelemede','Tamamlandı'],
-    labels: [['Bug','rose'],['Özellik','blue'],['Teknik Borç','amber'],['Sprint','green']] },
-  design:   { iconName: 'layers', color: '#6d28d9', label: 'Tasarım Stüdyosu',
-    cols: ['Brief','Taslak','Tasarım','Revizyon','Teslim'],
-    labels: [['UI','purple'],['UX','blue'],['Revizyon','amber'],['Onaylı','green']] },
-  personal: { iconName: 'target', color: '#065f46', label: 'Kişisel Yönetim',
-    cols: ['Fikirler','Bu Hafta','Yapıyor','Tamamlandı'],
-    labels: [['Hedef','blue'],['Alışkanlık','green'],['Proje','amber'],['Kişisel','rose']] },
+  software: { iconName: 'cpu',    color: '#1a4a70',
+    label: 'Yazılım Geliştirme', label_en: 'Software Development',
+    cols:    ['Backlog','Yapılacak','Devam Ediyor','İncelemede','Tamamlandı'],
+    cols_en: ['Backlog','To Do','In Progress','In Review','Done'],
+    labels:    [['Bug','rose'],['Özellik','blue'],['Teknik Borç','amber'],['Sprint','green']],
+    labels_en: [['Bug','rose'],['Feature','blue'],['Tech Debt','amber'],['Sprint','green']] },
+  design:   { iconName: 'layers', color: '#6d28d9',
+    label: 'Tasarım Stüdyosu', label_en: 'Design Studio',
+    cols:    ['Brief','Taslak','Tasarım','Revizyon','Teslim'],
+    cols_en: ['Brief','Draft','Design','Revision','Delivery'],
+    labels:    [['UI','purple'],['UX','blue'],['Revizyon','amber'],['Onaylı','green']],
+    labels_en: [['UI','purple'],['UX','blue'],['Revision','amber'],['Approved','green']] },
+  personal: { iconName: 'target', color: '#065f46',
+    label: 'Kişisel Yönetim', label_en: 'Personal Management',
+    cols:    ['Fikirler','Bu Hafta','Yapıyor','Tamamlandı'],
+    cols_en: ['Ideas','This Week','Doing','Done'],
+    labels:    [['Hedef','blue'],['Alışkanlık','green'],['Proje','amber'],['Kişisel','rose']],
+    labels_en: [['Goal','blue'],['Habit','green'],['Project','amber'],['Personal','rose']] },
 };
+
+// Şablon alanını arayüz diline göre seçer; İngilizce karşılık yoksa Türkçe'ye
+// düşer (eksik çeviri ekranı boş bırakmasın).
+const tmplField = (tmpl, alan, lang) => (
+  lang === 'tr' ? tmpl?.[alan] : (tmpl?.[alan + '_en'] || tmpl?.[alan])
+);
 
 const RoomBadge = ({ name, template }) => {
   const t = TEMPLATE_META[template] || TEMPLATE_META.software;
+  const lang = getAuthLang();
   if (!name) return null;
   return (
     <div className="room-badge-preview">
@@ -911,9 +944,9 @@ const RoomBadge = ({ name, template }) => {
       </div>
       <div>
         <div className="room-badge-name">{name}</div>
-        <div className="room-badge-type">{t.label} Odası</div>
+        <div className="room-badge-type">{authT('room_type', lang).replace('{n}', tmplField(t, 'label', lang))}</div>
       </div>
-      <div className="room-badge-live">ÖNİZLEME</div>
+      <div className="room-badge-live">{authT('preview', lang)}</div>
     </div>
   );
 };
@@ -1116,6 +1149,7 @@ function PendingLobby({ joinedAt, code, onApproved, onRejected }) {
 // ── 2. ÇALIŞMA ALANI SAYFASI ─────────────────────────────────────────────────────
 function WorkspaceSetupPage({ onReady, onLogout }) {
   const t = (k) => authT(k);
+  const lang = getAuthLang();
   const [tab, setTab] = React.useState(() => {
     try { return new URLSearchParams(window.location.search).get('join') ? 'join' : 'create'; } catch { return 'create'; }
   });
@@ -1324,7 +1358,7 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
                         <Icon name={tmpl.iconName} size={22} strokeWidth={1.8} />
                       </div>
                       <div className="template-title">{tmpl.label}</div>
-                      <div className="template-desc">{tmpl.cols.slice(0,3).join(' · ')}</div>
+                      <div className="template-desc">{tmplField(tmpl, 'cols', lang).slice(0,3).join(' · ')}</div>
                       {wsTemplate === key && <div className="template-check"><Icon name="check" size={11} strokeWidth={2.5} /></div>}
                     </div>
                   ))}
@@ -1333,16 +1367,16 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
               <div className="room-blueprint">
                 <strong>
                   <Icon name="layers" size={14} strokeWidth={2} />
-                  {t('ws_infra_prefix')}{TEMPLATE_META[wsTemplate]?.label}
+                  {t('ws_infra_prefix')}{tmplField(TEMPLATE_META[wsTemplate], 'label', lang)}
                 </strong>
                 <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:6 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <Icon name="layoutBoard" size={12} strokeWidth={2} />
-                    <span>{t('ws_infra_cols')}{TEMPLATE_META[wsTemplate]?.cols.join(' → ')}</span>
+                    <span>{t('ws_infra_cols')}{tmplField(TEMPLATE_META[wsTemplate], 'cols', lang).join(' → ')}</span>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <Icon name="tag" size={12} strokeWidth={2} />
-                    <span>{t('ws_infra_labels')}{TEMPLATE_META[wsTemplate]?.labels.map(([l]) => l).join(', ')}</span>
+                    <span>{t('ws_infra_labels')}{tmplField(TEMPLATE_META[wsTemplate], 'labels', lang).map(([l]) => l).join(', ')}</span>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <Icon name="lock" size={12} strokeWidth={2} />

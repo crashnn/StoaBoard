@@ -186,12 +186,12 @@ function _prefixLines(ta, prefix) {
 }
 
 const NOTE_EMOJI_CATS = [
-  { label: 'Sık Kullanılan', emojis: ['👍','❤️','😂','😮','🔥','🎉','✨','💯','🙌','👏','🤔','😊'] },
-  { label: 'Yüzler',         emojis: ['😀','😁','😃','😄','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😎','🥳','🤗','😏','😒','😞','😔','😟','😕','🫤','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤯','😱','😨','😰','😥','😓','🫣','🤫','🤭','🧐','🤓','😴','🥴','🤢','🤧','🥵','🥶','😵','🫠','🤖','👻','💀','👽'] },
-  { label: 'El & Vücut',     emojis: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','💪','🦾','🦿'] },
-  { label: 'Nesneler',       emojis: ['🔥','⭐','✨','💫','🌟','🎯','🏆','🥇','🎊','🎉','🎈','🎁','💎','🔑','💡','⚡','🌈','🌺','🍀','🚀','🛸','🎭','🎨','🎵','🎸','🎮','🎲','📌','📎','🔔','🔒','📱','💻','📷','🎬','🔭','🔬','⚙️','🛠️','💊','🧬','🧪','📚','✏️','📝'] },
-  { label: 'Yiyecek',        emojis: ['🍕','🍔','🍟','🌮','🌯','🥪','🍣','🍱','🍜','🍝','🍛','🍲','🥗','🥘','🍗','🍖','🥩','🥚','🍳','🧀','🥞','🧇','🥓','🍞','🥐','🥨','🧁','🎂','🍰','🍫','🍬','🍭','🍦','🍧','🍨','☕','🍵','🧃','🥤','🍺','🍻','🥂','🍷','🍸','🍹'] },
-  { label: 'Doğa',           emojis: ['🐶','🐱','🦊','🐼','🦁','🐸','🦄','🐉','🌍','🌊','🏔️','🌅','🌃','🏠','🏖️','🌵','🌲','🌳','🌴','🌱','🌿','🍀','🌺','🌸','🌼','🌻','🌞','🌝','🌛','⭐','🌙','☀️','🌤️','⛅','🌧️','⛈️','🌨️','❄️','🌬️','🌪️','🌈'] },
+  { k: 'notes_emoji_frequent', label: 'Sık Kullanılan', emojis: ['👍','❤️','😂','😮','🔥','🎉','✨','💯','🙌','👏','🤔','😊'] },
+  { k: 'notes_emoji_faces', label: 'Yüzler', emojis: ['😀','😁','😃','😄','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😎','🥳','🤗','😏','😒','😞','😔','😟','😕','🫤','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤯','😱','😨','😰','😥','😓','🫣','🤫','🤭','🧐','🤓','😴','🥴','🤢','🤧','🥵','🥶','😵','🫠','🤖','👻','💀','👽'] },
+  { k: 'notes_emoji_hands', label: 'El & Vücut', emojis: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','💪','🦾','🦿'] },
+  { k: 'notes_emoji_objects', label: 'Nesneler', emojis: ['🔥','⭐','✨','💫','🌟','🎯','🏆','🥇','🎊','🎉','🎈','🎁','💎','🔑','💡','⚡','🌈','🌺','🍀','🚀','🛸','🎭','🎨','🎵','🎸','🎮','🎲','📌','📎','🔔','🔒','📱','💻','📷','🎬','🔭','🔬','⚙️','🛠️','💊','🧬','🧪','📚','✏️','📝'] },
+  { k: 'notes_emoji_food', label: 'Yiyecek', emojis: ['🍕','🍔','🍟','🌮','🌯','🥪','🍣','🍱','🍜','🍝','🍛','🍲','🥗','🥘','🍗','🍖','🥩','🥚','🍳','🧀','🥞','🧇','🥓','🍞','🥐','🥨','🧁','🎂','🍰','🍫','🍬','🍭','🍦','🍧','🍨','☕','🍵','🧃','🥤','🍺','🍻','🥂','🍷','🍸','🍹'] },
+  { k: 'notes_emoji_nature', label: 'Doğa', emojis: ['🐶','🐱','🦊','🐼','🦁','🐸','🦄','🐉','🌍','🌊','🏔️','🌅','🌃','🏠','🏖️','🌵','🌲','🌳','🌴','🌱','🌿','🍀','🌺','🌸','🌼','🌻','🌞','🌝','🌛','⭐','🌙','☀️','🌤️','⛅','🌧️','⛈️','🌨️','❄️','🌬️','🌪️','🌈'] },
 ];
 
 function NoteEmojiPicker({ onSelect, onClose }) {
@@ -211,7 +211,7 @@ function NoteEmojiPicker({ onSelect, onClose }) {
           </button>
         ))}
       </div>
-      <div className="note-emoji-cat-label">{NOTE_EMOJI_CATS[activeTab].label}</div>
+      <div className="note-emoji-cat-label">{window.t?.(NOTE_EMOJI_CATS[activeTab].k) || NOTE_EMOJI_CATS[activeTab].label}</div>
       <div className="note-emoji-grid">
         {NOTE_EMOJI_CATS[activeTab].emojis.map((em, i) => (
           <button key={i} type="button" className="note-emoji-btn" onClick={() => { onSelect(em); onClose(); }} title={em}>
@@ -259,9 +259,9 @@ function MarkdownEditor({ body, onChange, onBlur, onKeyShortcut, disabled }) {
   const handleKey = (e) => {
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
       const k = e.key.toLowerCase();
-      if (k === 'b') { e.preventDefault(); wrap('**','**','güçlü'); return; }
-      if (k === 'i') { e.preventDefault(); wrap('*','*','italik'); return; }
-      if (k === 'e') { e.preventDefault(); e.stopPropagation(); wrap('`','`','kod'); return; }
+      if (k === 'b') { e.preventDefault(); wrap('**','**', window.t?.('notes_md_bold') || 'güçlü'); return; }
+      if (k === 'i') { e.preventDefault(); wrap('*','*', window.t?.('notes_md_italic') || 'italik'); return; }
+      if (k === 'e') { e.preventDefault(); e.stopPropagation(); wrap('`','`', window.t?.('notes_md_code') || 'kod'); return; }
       if (k === 'k') { e.preventDefault(); wrap('[', '](https://)','link'); return; }
       if (k === '1') { e.preventDefault(); prefix('# '); return; }
       if (k === '2') { e.preventDefault(); prefix('## '); return; }

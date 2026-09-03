@@ -239,7 +239,7 @@ function RoleDropdown({ value, roles, onChange, disabled, onRoleCreated }) {
         }}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {current ? current.name : '— Rol seç —'}
+          {current ? current.name : (window.t?.('set_rol_pick') || '— Rol seç —')}
         </span>
         <span style={{ color: 'var(--ink-faint)', flexShrink: 0, display: 'flex', transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }}>
           <Icon name="chevronDown" size={11} />
@@ -265,7 +265,7 @@ function RoleDropdown({ value, roles, onChange, disabled, onRoleCreated }) {
                 fontFamily: 'var(--font-ui)', cursor: 'pointer',
               }}
             >
-              — Rol seç —
+              {window.t?.('set_rol_pick') || '— Rol seç —'}
             </button>
           )}
           {roles.map(r => (
@@ -762,7 +762,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
 
   const transferOwnership = async () => {
     setTransferError('');
-    if (!transferSlug) { setTransferError('Lütfen bir üye seçin.'); return; }
+    if (!transferSlug) { setTransferError(window.t?.('set_transfer_pick_member') || 'Lütfen bir üye seçin.'); return; }
     setTransferBusy(true);
     try {
       await API.transferOwnership(transferSlug);
@@ -770,7 +770,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       setTransferOpen(false);
       setTimeout(() => window.location.reload(), 1200);
     } catch (e) {
-      setTransferError(e.message || 'Sahiplik aktarılamadı.');
+      setTransferError(e.message || window.t?.('set_transfer_failed') || 'Sahiplik aktarılamadı.');
     } finally {
       setTransferBusy(false);
     }
@@ -779,7 +779,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
   const deleteAccount = async () => {
     setDeleteError('');
     if (!deleteEmail.trim()) {
-      setDeleteError('Devam etmek için hesabınızın e-posta adresini yazın.');
+      setDeleteError(window.t?.('set_delete_email_required') || 'Devam etmek için hesabınızın e-posta adresini yazın.');
       return;
     }
     setDeleteBusy(true);
@@ -1324,8 +1324,8 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                       <div>
                         <div style={{ fontSize:11, fontWeight:600, color:'var(--ink-muted)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>{_t('set_prj_icon','İkon')}</div>
                         <div style={{ display:'grid', gridTemplateColumns:'repeat(10,1fr)', gap:4, maxHeight:160, overflowY:'auto' }}>
-                          {(window.PROJECT_ICONS||[]).map(({id,label}) => (
-                            <button key={id+label} type="button" title={label} onClick={() => setEditingProject(ep => ({...ep, icon:id}))}
+                          {(window.PROJECT_ICONS||[]).map(({id,label,label_en}) => (
+                            <button key={id+label} type="button" title={window.iconLabel?.({ label, label_en }) || label} onClick={() => setEditingProject(ep => ({...ep, icon:id}))}
                               style={{ width:30, height:30, borderRadius:7, display:'grid', placeItems:'center',
                                 background: editIcon===id ? editColor : 'var(--bg-raised)',
                                 color: editIcon===id ? 'white' : 'var(--ink-muted)',
@@ -1666,7 +1666,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
             </button>
             {Object.keys(customShortcuts).length > 0 && (
               <span style={{ fontSize: 11, color: 'var(--ink-muted)', marginLeft: 10 }}>
-                {Object.keys(customShortcuts).length} özelleştirilmiş kısayol
+                {Object.keys(customShortcuts).length} {window.t?.('set_shortcuts_custom_count') || 'özelleştirilmiş kısayol'}
               </span>
             )}
           </div>

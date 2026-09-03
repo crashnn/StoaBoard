@@ -173,33 +173,69 @@ const ICONS = {
   sun:          <><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></>,
 };
 
-// Proje ikonları — 50 seçenek
+// Proje ikonları — 50 seçenek.
+//
+// Etiket iki dilde birden yazılıyor (label / label_en). Bunlar yalnızca ikon
+// seçicideki tooltip metni; APP_I18N'e 50 anahtar eklemek yerine takvim
+// tatillerindeki gibi dile göre bölünmüş veri kalıbı kullanıldı. Yeni ikon
+// eklerken İKİ etiketi de yaz — `iconLabel()` eksik label_en'de Türkçe'ye
+// düşer ve İngilizce arayüzde Türkçe tooltip çıkar.
 window.PROJECT_ICONS = [
-  { id:'folder',    label:'Klasör' },   { id:'code',      label:'Kod' },
-  { id:'layers',    label:'Katmanlar' },{ id:'target',    label:'Hedef' },
-  { id:'chart',     label:'Grafik' },   { id:'users',     label:'Ekip' },
-  { id:'star',      label:'Yıldız' },   { id:'flag',      label:'Bayrak' },
-  { id:'bolt',      label:'Hız' },      { id:'cpu',       label:'İşlemci' },
-  { id:'globe',     label:'Dünya' },    { id:'lock',      label:'Güvenlik' },
-  { id:'msg',       label:'İletişim' }, { id:'calendar',  label:'Takvim' },
-  { id:'clock',     label:'Zaman' },    { id:'file',      label:'Dosya' },
-  { id:'tag',       label:'Etiket' },   { id:'sparkle',   label:'Öne Çıkan' },
-  { id:'pen',       label:'Yazı' },     { id:'edit',      label:'Düzenle' },
-  { id:'search',    label:'Araştırma' },{ id:'archive',   label:'Arşiv' },
-  { id:'inbox',     label:'Gelen' },    { id:'send',      label:'Gönder' },
-  { id:'video',     label:'Video' },    { id:'link',      label:'Bağlantı' },
-  { id:'home',      label:'Ev' },       { id:'mail',      label:'E-posta' },
-  { id:'rocket',    label:'Lansman' },  { id:'database',  label:'Veritabanı' },
-  { id:'shield',    label:'Güvenlik' }, { id:'briefcase', label:'İş' },
-  { id:'building',  label:'Şirket' },   { id:'lightbulb', label:'Fikir' },
-  { id:'fire',      label:'Trend' },    { id:'gem',       label:'Premium' },
-  { id:'trophy',    label:'Başarı' },   { id:'map',       label:'Yol Haritası' },
-  { id:'package',   label:'Paket' },    { id:'terminal',  label:'Terminal' },
-  { id:'wifi',      label:'Bağlantı' }, { id:'camera',    label:'Medya' },
-  { id:'music',     label:'Ses' },      { id:'book',      label:'Doküman' },
-  { id:'brush',     label:'Tasarım' },  { id:'layout',    label:'Düzen' },
-  { id:'zap',       label:'Otomasyon' },{ id:'compass',   label:'Pusula' },
-  { id:'server',    label:'Sunucu' },   { id:'chart',     label:'Analitik' },
+  { id:'folder', label:'Klasör', label_en:'Folder' },
+  { id:'code', label:'Kod', label_en:'Code' },
+  { id:'layers', label:'Katmanlar', label_en:'Layers' },
+  { id:'target', label:'Hedef', label_en:'Target' },
+  { id:'chart', label:'Grafik', label_en:'Chart' },
+  { id:'users', label:'Ekip', label_en:'Team' },
+  { id:'star', label:'Yıldız', label_en:'Star' },
+  { id:'flag', label:'Bayrak', label_en:'Flag' },
+  { id:'bolt', label:'Hız', label_en:'Speed' },
+  { id:'cpu', label:'İşlemci', label_en:'Processor' },
+  { id:'globe', label:'Dünya', label_en:'Globe' },
+  { id:'lock', label:'Güvenlik', label_en:'Security' },
+  { id:'msg', label:'İletişim', label_en:'Communication' },
+  { id:'calendar', label:'Takvim', label_en:'Calendar' },
+  { id:'clock', label:'Zaman', label_en:'Time' },
+  { id:'file', label:'Dosya', label_en:'File' },
+  { id:'tag', label:'Etiket', label_en:'Label' },
+  { id:'sparkle', label:'Öne Çıkan', label_en:'Featured' },
+  { id:'pen', label:'Yazı', label_en:'Writing' },
+  { id:'edit', label:'Düzenle', label_en:'Edit' },
+  { id:'search', label:'Araştırma', label_en:'Research' },
+  { id:'archive', label:'Arşiv', label_en:'Archive' },
+  { id:'inbox', label:'Gelen', label_en:'Inbox' },
+  { id:'send', label:'Gönder', label_en:'Send' },
+  { id:'video', label:'Video', label_en:'Video' },
+  { id:'link', label:'Bağlantı', label_en:'Link' },
+  { id:'home', label:'Ev', label_en:'Home' },
+  { id:'mail', label:'E-posta', label_en:'Email' },
+  { id:'rocket', label:'Lansman', label_en:'Launch' },
+  { id:'database', label:'Veritabanı', label_en:'Database' },
+  { id:'shield', label:'Güvenlik', label_en:'Security' },
+  { id:'briefcase', label:'İş', label_en:'Work' },
+  { id:'building', label:'Şirket', label_en:'Company' },
+  { id:'lightbulb', label:'Fikir', label_en:'Idea' },
+  { id:'fire', label:'Trend', label_en:'Trending' },
+  { id:'gem', label:'Premium', label_en:'Premium' },
+  { id:'trophy', label:'Başarı', label_en:'Achievement' },
+  { id:'map', label:'Yol Haritası', label_en:'Roadmap' },
+  { id:'package', label:'Paket', label_en:'Package' },
+  { id:'terminal', label:'Terminal', label_en:'Terminal' },
+  { id:'wifi', label:'Bağlantı', label_en:'Connection' },
+  { id:'camera', label:'Medya', label_en:'Media' },
+  { id:'music', label:'Ses', label_en:'Audio' },
+  { id:'book', label:'Doküman', label_en:'Docs' },
+  { id:'brush', label:'Tasarım', label_en:'Design' },
+  { id:'layout', label:'Düzen', label_en:'Layout' },
+  { id:'zap', label:'Otomasyon', label_en:'Automation' },
+  { id:'compass', label:'Pusula', label_en:'Compass' },
+  { id:'server', label:'Sunucu', label_en:'Server' },
+  { id:'chart', label:'Analitik', label_en:'Analytics' },
 ];
+
+// İkon etiketini arayüz diline göre seçer. label_en yoksa Türkçe'ye düşer.
+window.iconLabel = (icon) => (
+  (localStorage.getItem('stoa.lang') || 'tr') === 'tr' ? icon.label : (icon.label_en || icon.label)
+);
 
 export { Icon, ICONS };
