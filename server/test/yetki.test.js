@@ -1,0 +1,174 @@
+// Yetkilendirmenin UYGULANMASI — kuralın kendisi değil, çağrıldığının garantisi.
+//
+// `hasPermission` zaten guvenlik.test.js'te test ediliyor: sahip kısa devre
+// yapıyor mu, bozuk izin listesi reddediliyor mu, bilinmeyen izin adı geçiyor
+// mu. Yani KURAL doğrulanmış durumda.
+//
+// Doğrulanmamış olan şey kuralın UYGULANMASIYDI: bir route dosyasına yeni bir
+// uç eklendiğinde `requireAuth` yazmayı unutmak hiçbir yerde yakalanmıyordu.
+// Bu, 3 Eylül dil turunda görülen kusur sınıfının aynısı — orada da kural
+// (iki sözlüğe de anahtar ekle) belgeliydi, biliniyordu, uygulanıyordu ve
+// yine de 31 yerde sessizce atlanmıştı. Kuralı test etmek yetmiyor; kuralın
+// her çağrı yerinde uygulandığını test etmek gerekiyor.
+//
+// Buradaki iki değişmez statik olarak doğrulanabilir olduğu için seçildi.
+// Kapsam dışı bırakılanların gerekçesi dosyanın sonunda.
+
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROUTES = path.resolve(__dirname, '..', 'src', 'routes');
+const SOCKETS = path.resolve(__dirname, '..', 'src', 'sockets');
+
+// ─── 1. Kimlik doğrulaması olmayan uç ───────────────────────────────────────
+//
+// AÇIK UÇLAR — bilinçli olarak `requireAuth` taşımayanlar. Her biri niçin
+// açık olduğu yazılarak listelenir; liste kendiliğinden büyüyemez.
+//
+// Bu listenin asıl işi engellemek değil, KARARI GÖRÜNÜR KILMAK. Yeni bir uç
+// yanlışlıkla korumasız kalırsa test kırılır; bilerek açılıyorsa geliştirici
+// onu buraya gerekçesiyle yazmak zorunda kalır ve karar gözden geçirmede
+// görünür olur.
+const ACIK_UCLAR = new Map([
+  ['api.js GET /ping',              'sağlık kontrolü — Railway ayakta mı diye buraya bakıyor'],
+  ['api.js GET /health',            'sağlık kontrolü — aynı gerekçe'],
+  ['auth.js POST /login',           'giriş yapmamış kullanıcı çağırır; kimliğin kendisi burada kuruluyor'],
+  ['auth.js POST /register',        'kayıt — henüz kullanıcı yok'],
+  ['auth.js POST /logout',          'oturumu yıkar; oturumu olmayanın çağırması zararsız'],
+  ['auth.js GET /me',               'oturum var mı diye sorar, yoksa 401 döner — istemci açılışta buna bakıyor'],
+  ['auth.js POST /forgot-password', 'parola sıfırlama, tanımı gereği giriş yapmadan kullanılır'],
+  ['auth.js POST /reset-password',  'aynı akışın ikinci adımı; kod ile doğrulanıyor'],
+  ['auth.js POST /google',          'Google ile giriş — kimlik burada kuruluyor'],
+]);
+
+/** routes/ altındaki tüm uç kayıtlarını çıkarır. */
+function ucKayitlari() {
+  const kayitlar = [];
+  for (const ad of fs.readdirSync(ROUTES).sort()) {
+    if (!ad.endsWith('.js')) continue;
+    const src = fs.readFileSync(path.join(ROUTES, ad), 'utf8');
+    // tasksRouter.patch( · notesRouter.post( · router.get(
+    for (const m of src.matchAll(/(\w*[Rr]outer)\.(get|post|patch|put|delete)\(/g)) {
+      // Kayıt çok satırlı yazılıyor:
+      //     tasksRouter.patch(
+      //       '/:taskId',
+      //       requireAuth,
+      // Bu yüzden ara yazılım listesi için sabit bir pencereye bakıyoruz.
+      // 400 karakter, en uzun kayıtta bile ara yazılımları kapsıyor; handler
+      // gövdesine taşacak kadar da uzun değil.
+      const pencere = src.slice(m.index, m.index + 400);
+      const yolEsl = /['"`]([^'"`]*)['"`]/.exec(pencere);
+      kayitlar.push({
+        dosya: ad,
+        metot: m[2].toUpperCase(),
+        yol: yolEsl ? yolEsl[1] : '?',
+        satir: src.slice(0, m.index).split('\n').length,
+        auth: /requireAuth/.test(pencere),
+      });
+    }
+  }
+  return kayitlar;
+}
+
+const anahtar = (k) => `${k.dosya} ${k.metot} ${k.yol}`;
+
+describe('yetkilendirme — her uç kimlik doğrulamasından geçmeli', () => {
+  test('listede olmayan hiçbir uç requireAuth\'suz değil', () => {
+    const korumasiz = ucKayitlari()
+      .filter((k) => !k.auth && !ACIK_UCLAR.has(anahtar(k)))
+      .map((k) => `${k.dosya}:${k.satir}  ${k.metot} ${k.yol}`);
+
+    assert.deepEqual(
+      korumasiz, [],
+      'Bu uçlar requireAuth taşımıyor. Ara yazılımı ekle; uç gerçekten herkese '
+      + 'açık olacaksa yetki.test.js\'teki ACIK_UCLAR listesine GEREKÇESİYLE yaz.',
+    );
+  });
+
+  test('açık uç listesi bayatlamıyor — silinen uç listede kalmaz', () => {
+    // Bayat muafiyet, muafiyetin kendisinden tehlikeli: bir uç silinip aynı
+    // adla korumasız yeniden eklendiğinde liste onu sessizce aklardı.
+    const mevcut = new Set(ucKayitlari().map(anahtar));
+    const hayalet = [...ACIK_UCLAR.keys()].filter((k) => !mevcut.has(k));
+    assert.deepEqual(
+      hayalet, [],
+      'ACIK_UCLAR listesinde artık var olmayan uçlar var. Listeden çıkar.',
+    );
+  });
+
+  test('tarayıcı gerçekten uç buluyor', () => {
+    // Ayrıştırıcı bozulursa üstteki iki test boş kümeyle sessizce geçerdi.
+    const kayitlar = ucKayitlari();
+    assert.ok(kayitlar.length > 90, `Beklenenden az uç bulundu: ${kayitlar.length}`);
+    assert.ok(
+      kayitlar.filter((k) => k.auth).length > 90,
+      'requireAuth taşıyan uç sayısı beklenenden az — ara yazılım adı değişmiş olabilir',
+    );
+  });
+});
+
+// ─── 2. Soket kimliği yalnızca oturumdan okunur ─────────────────────────────
+//
+// Soket olaylarının HTTP uçlarından farklı ve daha sinsi bir riski var:
+// olayın gövdesi tamamen istemciden geliyor. `data.user_id` gibi bir alana
+// güvenen tek bir işleyici, herkesin herkes adına mesaj göndermesine yeter.
+//
+// Şu an doğru yapılıyor: kimlik `socket.request.session.userId` üzerinden bir
+// kez çözülüyor (sockets/chat.js) ve işleyiciler bağlantıdaki `user` nesnesini
+// kapatarak kullanıyor. Bu testin işi o kararı kilitlemek.
+const KIMLIK_SIZINTISI = /\b(?:data|payload|msg|body)\s*(?:\?\.)?\.\s*(user_id|userId|sender|sender_id|senderId|as_user|impersonate)\b/g;
+
+describe('soket — kimlik olay gövdesinden okunamaz', () => {
+  test('hiçbir işleyici istemcinin gönderdiği kullanıcı kimliğine güvenmiyor', () => {
+    const bulgular = [];
+    for (const ad of fs.readdirSync(SOCKETS).sort()) {
+      if (!ad.endsWith('.js')) continue;
+      const src = fs.readFileSync(path.join(SOCKETS, ad), 'utf8');
+      src.split('\n').forEach((satir, i) => {
+        const kirpik = satir.trim();
+        if (kirpik.startsWith('//') || kirpik.startsWith('*')) return;
+        for (const m of satir.matchAll(KIMLIK_SIZINTISI)) {
+          bulgular.push(`${ad}:${i + 1}  ${m[0]}`);
+        }
+      });
+    }
+    assert.deepEqual(
+      bulgular, [],
+      'Soket işleyicisi kullanıcı kimliğini olay gövdesinden okuyor. Kimlik '
+      + 'yalnızca socket.request.session.userId üzerinden çözülmeli — gövde '
+      + 'tamamen istemci denetiminde.',
+    );
+  });
+
+  test('kimlik çözümü oturuma bağlı', () => {
+    const src = fs.readFileSync(path.join(SOCKETS, 'chat.js'), 'utf8');
+    assert.match(
+      src, /socket\.request\??\.\s*session\??\.\s*userId/,
+      'sockets/chat.js kimliği oturumdan çözmüyor — auth modeli değişmiş olabilir.',
+    );
+  });
+});
+
+// ─── Bilinçli olarak kapsam dışı ────────────────────────────────────────────
+//
+// "Her mutasyon ucu bir izin kapısından geçmeli" diye bir test YAZILMADI ve
+// bu bilinçli bir karar. Denendi: 70 mutasyon ucunun 46'sı işaretlendi ve
+// hepsi yanlış pozitifti. Sebep, kapsamlamanın tek biçimde yapılmaması:
+//
+//   POST /notifications/read-all  → izin yok, `userId: user.id` ile kapsanıyor
+//   POST /notes                   → izin yok, aktif çalışma alanıyla kapsanıyor
+//   PATCH /tasks/:taskId          → loadTaskWithAccess(permission:'manage_tasks')
+//   DELETE /workspaces/me/trash   → requireWorkspacePermission
+//
+// Dördü de doğru; hiçbiri aynı imzayı taşımıyor. Kapsamlamanın DOĞRU olup
+// olmadığını statik olarak anlamak mümkün değil — bunun için isteğin gerçekten
+// çalıştırılması gerekiyor (supertest benzeri bir koşum, sahte oturum ve
+// veritabanı). Asıl engel de bu; TODO.md'de "uç testleri" maddesi altında.
+//
+// Yanlış pozitif üreten test, testsizlikten kötüdür: 46 kez kurt masalı
+// okuyan bir teste kimse bakmaz ve gerçek bulgu araya karışır. Bu yüzden
+// burada yalnızca kesin doğrulanabilen iki değişmez kilitlendi.

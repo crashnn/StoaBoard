@@ -43,7 +43,7 @@ dil turu: Raporlar ve süre kaydı ekranları, sonra on route dosyasındaki
 sunucu hata mesajları çeviriye bağlandı (`32644b9`, `2449240`, `df113c3`).
 Öksüz `list.jsx` silindi.
 
-Test sayısı **138**, hepsi geçiyor. Sözlükler TR/EN **1154'er anahtar**
+Test sayısı **143**, hepsi geçiyor. Sözlükler TR/EN **1154'er anahtar**
 (106'sı `err_` kodu), de/es/ru 43'er.
 
 ---
@@ -95,7 +95,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 138 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 143 test,
 veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
 "Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
 modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
@@ -130,6 +130,17 @@ Cevaplar commit mesajına yazılır.
 
 **Kapatılan her kusur için regresyon testi.** `server/test/guvenlik.test.js`
 içine, koruduğu kusuru anlatan bir yorumla birlikte.
+
+**Her yeni uç `requireAuth` taşır.** `server/test/yetki.test.js` bunu kilitliyor:
+113 ucun 9'u bilinçli olarak açık ve hepsi gerekçesiyle `ACIK_UCLAR` listesinde.
+Uç gerçekten herkese açık olacaksa listeye **niçin** olduğunu yazarsın; test
+seni karar vermeye zorlar, sessizce geçmene izin vermez. Aynı dosya soket
+tarafını da kilitliyor: kimlik yalnızca `socket.request.session.userId`'den
+okunur, olay gövdesinden asla — gövde tamamen istemci denetiminde.
+
+Kapsamlamanın *doğruluğu* (hangi uç hangi izni istemeli) statik olarak
+doğrulanamıyor ve bilinçli olarak denenmedi; gerekçesi testin sonundaki notta
+ve TODO.md'de. Oraya bakmadan "yetki testi var" diye güvenme.
 
 **Dil kapsamı zorunlu — Türkçe *ve* İngilizce.** Kullanıcının gördüğü hiçbir
 metin doğrudan yazılmaz. Anahtar `client/src/data.jsx` içindeki `APP_I18N`'e

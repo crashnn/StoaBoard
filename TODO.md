@@ -177,6 +177,24 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
 ## 🔜 Sıradakiler
 
 ### Öncelikli
+- [ ] **Uç testleri — kapsamlamanın DOĞRULUĞU test edilmiyor.** 3 Eylül'de
+      `yetki.test.js` eklendi ve iki değişmezi kilitledi: her uç `requireAuth`
+      taşıyor (113 uçtan 9'u gerekçeli açık listede), ve hiçbir soket
+      işleyicisi kimliği olay gövdesinden okumuyor. Bu, "kimlik doğrulaması
+      unutuldu" sınıfını kapatıyor.
+      **Kapanmayan sınıf:** bir ucun kapsamlamasının *doğru* olup olmadığı.
+      Denendi ve bilinçli olarak vazgeçildi — statik tarama 70 mutasyon
+      ucunun 46'sını işaretledi, hepsi yanlış pozitifti. Sebep kapsamlamanın
+      tek biçimde yapılmaması: kimi uç `userId: user.id` ile, kimi aktif
+      çalışma alanıyla, kimi `loadTaskWithAccess(permission:)` ile, kimi
+      `requireWorkspacePermission` ile kapsanıyor. Dördü de doğru, hiçbiri
+      aynı imzada. Ayırt etmek için isteğin gerçekten çalıştırılması gerek.
+      **Gereken:** supertest benzeri bir koşum + sahte oturum + veritabanı
+      taklidi. Asıl engel bu. Yazılınca ilk hedef: çalışma alanları arası
+      IDOR, rol yükseltme, ve `view_reports` olmadan başkasının raporu.
+- [ ] **`yetki.test.js` yalnızca `routes/` ve `sockets/` tarıyor.** Yeni bir
+      dizine uç eklenirse tarama onu görmez. Uç kayıtları başka bir yere
+      taşınırsa testteki `ROUTES`/`SOCKETS` yolları güncellenmeli.
 - [ ] **Test kapsamı saf mantıkla sınırlı.** ~~Otomatik test yok.~~ 1–3 Eylül
       arasında sıfırdan **137 test** yazıldı (`server/test/`): güvenlik
       regresyonları, modül yükleme (smoke), raporlama saf mantığı ve dil

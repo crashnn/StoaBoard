@@ -131,9 +131,10 @@ Ayrıntısı [CLAUDE.md](CLAUDE.md) içinde; buradakiler en çok ayağa dolaşan
 
 1. **Proje bazlı üyelik** — bugün bir üye çalışma alanındaki her şeyi görüyor,
    okuma izni diye bir kavram yok. En büyük açık.
-2. **Uç testleri** — 138 testin hepsi saf mantık. İzin katmanı
-   (`hasPermission`) ve soket yetki kontrolleri hâlâ elle doğrulanıyor. Asıl
-   engel oturum/veritabanı taklidi.
+2. **Uç testleri** — `yetki.test.js` (3 Eylül) "kimlik doğrulaması unutuldu"
+   sınıfını kapattı: her uç `requireAuth` taşıyor, soket kimliği yalnızca
+   oturumdan okunuyor. Kapanmayan sınıf, kapsamlamanın *doğruluğu* — bunun
+   için isteği gerçekten çalıştıran bir koşum gerekiyor. Gerekçe TODO.md'de.
 3. **Dosya depolama** — yüklenenler veritabanında `bytea`, S3/R2'ye taşınmalı.
 4. **Dönem dondurma**, **kanal geçmişi kesimi**.
 
