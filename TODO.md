@@ -238,10 +238,14 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       engeller, yani PR akışına geçmek gerekir. Kararı verilmedi.
       Şu an koruma `pre-push` kancasında (`.githooks/pre-push`), merdivende
       4.5 basamak: otomatik ama `--no-verify` ile atlanabilir.
-- [ ] **`dil-ve-ci` dalını main'e al.** 5 commit. PR açmak CI'ın main'e
-      girmeden önce doğrulamasını sağlar — dalın kurulma sebebi bu.
-- [ ] **`raporlama` dalını sil** (yerelde ve uzakta). `main`'in tamamen
-      içinde, tek fazla commit'i yok; artık ölü ağırlık ve kafa karıştırıyor.
+- [x] ~~`dil-ve-ci` dalını main'e al.~~ **Yapıldı (3 Eylül).** 11 commit
+      fast-forward ile main'e alındı, dal yerelde ve uzakta silindi.
+- [x] ~~`raporlama` dalını sil.~~ **Yapıldı (3 Eylül).** Yerelde ve uzakta
+      silindi; `main`'in tamamen içindeydi, tek fazla commit'i yoktu.
+- [ ] **Kök dizindeki öksüz `package-lock.json`.** Kökte `package.json` yok
+      ama kilit dosyası var ve git'te takipli. `client/` ve `server/` kendi
+      kilitlerini taşıyor. Muhtemelen kökte bir kez `npm install` çalıştırılmasından
+      kalma. Silinmeli; şu an sadece karışıklık yaratıyor.
 
 ### Öncelikli
 - [ ] **Uç testleri — kapsamlamanın DOĞRULUĞU test edilmiyor.** 3 Eylül'de
