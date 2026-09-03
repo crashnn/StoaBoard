@@ -1,0 +1,102 @@
+# Sürekli entegrasyon — testler ve derleme her itmede çalışır.
+#
+# Niçin var: 3 Eylül 2026'ya kadar 138 test vardı ama çalıştırmak geliştiricinin
+# hafızasına bağlıydı. Unutulan bir `npm test` bozuk kodun main'e gitmesine ve
+# Railway'in onu doğrudan canlıya dağıtmasına yol açardı. Testin varlığı ile
+# testin *zorunlu* olması ayrı şeyler; bu dosya ikincisini sağlıyor.
+#
+# ÖNEMLİ: Bu dosya tek başına bir "kapı" değil, yalnızca bir alarmdır.
+# Gerçekten engelleyici olması için GitHub'da branch protection açılmalı:
+#   Settings → Branches → Add rule → main
+#   ☑ Require status checks to pass before merging  → "sunucu testleri" ve
+#     "ön yüz derlemesi" işlerini seç.
+# O ayar yapılmadan kırmızı CI yalnızca kırmızı bir tik olarak kalır ve
+# merge/push engellenmez.
+
+name: CI
+
+on:
+  push:
+    branches: [main, raporlama]
+  pull_request:
+    branches: [main]
+
+# Aynı dal için arka arkaya itme yapılırsa eskisini iptal et: hem hızlı hem
+# ucuz. Yalnızca en son commit'in sonucu anlamlı.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: sunucu testleri
+    runs-on: ubuntu-latest
+
+    # Sahte, kasten çalışmayan bir bağlantı dizesi.
+    #
+    # Niçin boş bırakmıyoruz: `npm ci`, postinstall üzerinden `prisma generate`
+    # çalıştırıyor ve Prisma'nın değişken yokken şemayı nasıl doğrulayacağı
+    # sürüme göre değişiyor. Yerelde kesin olarak denenemedi (`.env` her zaman
+    # devrede). Denenmemiş bir varsayıma dayanmaktansa değişkeni tanımlıyoruz.
+    #
+    # Niçin gerçek bir bağlantı vermiyoruz: 138 testin hiçbiri veritabanı
+    # istemiyor. CI'a canlı bağlantı vermek, hiçbir testin ihtiyaç duymadığı
+    # bir yetkiyi her PR'a açmak olurdu — yabancı bir dalın çalıştırdığı kod
+    # o değişkeni okuyabilir.
+    #
+    # localhost:5432 runner'da kapalı; bağlantı denemesi anında reddedilir,
+    # uygulama bunu zaten yakalıyor (`[db] warmup failed`).
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 20 = LTS. package.json ">=18" diyor; CI'ı yerelden (24) daha eski
+          # bir sürümde tutmak, yalnızca yeni Node'da çalışan sözdiziminin
+          # fark edilmeden girmesini engelliyor.
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # `npm ci` — `npm install` değil. Farkı önemli: ci, package-lock.json'ı
+      # birebir kurar ve lock ile package.json çelişirse hata verir. install
+      # ise lock'u sessizce günceller; o yüzden CI'da yerelde olmayan bir
+      # bağımlılık sürümü çalışabilir ve "bende çalışıyordu" doğar.
+      - name: bağımlılıklar
+        working-directory: server
+        run: npm ci
+
+      # DATABASE_URL bilinçli olarak verilmiyor. 138 testin hiçbiri veritabanı
+      # istemiyor; değişken tanımlanırsa CI'ın canlı veriye erişimi olur ki
+      # bu hem gereksiz hem risklidir. Prisma bağlantı doğrulama hatası
+      # basabilir — test sonucu değil, gürültüdür.
+      - name: testler
+        working-directory: server
+        run: npm test
+
+  client:
+    name: ön yüz derlemesi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: bağımlılıklar
+        working-directory: client
+        run: npm ci
+
+      # Derleme, testlerin yakalayamadığı bir sınıfı yakalıyor: bozuk JSX,
+      # çözülemeyen import, sözdizimi hatası. Dil testi dosyaları metin olarak
+      # okuyor, çalıştırmıyor — derleme olmadan bir görünüm dosyasını bozup
+      # yeşil CI görmek mümkün.
+      - name: derleme
+        working-directory: client
+        run: npm run build
