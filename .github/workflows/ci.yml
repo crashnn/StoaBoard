@@ -16,8 +16,17 @@
 name: CI
 
 on:
+  # Dal filtresi BİLEREK yok: CI her dalda çalışmalı.
+  #
+  # İlk hâlinde `branches: [main, raporlama]` yazıyordu ve `dil-ve-ci` dalı
+  # itildiğinde hiç çalışma başlamadı — Actions sekmesi "hiç workflow yok"
+  # ekranını gösterdi. Sessiz başarısızlık: dosya deponun içindeydi, sözdizimi
+  # doğruydu, sadece tetikleyici eşleşmiyordu.
+  #
+  # Çalışma biçimi "dala it, CI yeşilse main'e al" olduğu için doğrulamanın
+  # gerektiği yer tam da main dışındaki dallar. Dal adı saymak, her yeni dalda
+  # aynı tuzağı kurar.
   push:
-    branches: [main, raporlama]
   pull_request:
     branches: [main]
 
