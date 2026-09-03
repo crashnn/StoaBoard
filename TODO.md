@@ -106,13 +106,19 @@ dönük, süre içeren raporlama.**
   projelerde tamamlanan sayacı, ilerlemenin %100'e çekilmesi ve tamamlanma
   zamanı hiç çalışmıyordu. Düzeltildi (yalnızca yeni projeleri etkiler).
 
-> ⚠️ **Veritabanı adımı bekliyor.** Şema dosyası güncel ama hiçbir veritabanına
-> gönderilmedi. `prisma db push` `DATABASE_URL`in gösterdiği yere yazıyor; test
-> için Neon'da `raporlama-test` dalı açıldı. Eklenenlerin hepsi katkı
-> niteliğinde (**üç yeni tablo**: `task_transitions`, `work_logs`, `audit_logs`;
-> **üç yeni sütun**: `tasks.completed_at`, `board_columns.allowed_next`,
-> `users.email_notifications`), veri kaybı beklenmiyor.
-> Adım adım talimat: [RAPORLAMA-TESTI.md](RAPORLAMA-TESTI.md).
+> ✅ **Veritabanı adımı tamamlandı (2 Eylül).** Şema production'a uygulandı —
+> Neon SQL Editor üzerinden, **üç yeni tablo** (`task_transitions`, `work_logs`,
+> `audit_logs`) ve **üç yeni sütun** (`tasks.completed_at`,
+> `board_columns.allowed_next`, `users.email_notifications`) yerinde ve
+> doğrulandı. Hepsi katkı niteliğindeydi, veri kaybı olmadı.
+>
+> Bunun için açılan Neon `raporlama-test` dalı **artık atıl** — silinebilir.
+> [RAPORLAMA-TESTI.md](RAPORLAMA-TESTI.md) tarihsel kayıt olarak duruyor;
+> yeniden kurulum talimatı değil.
+>
+> Bundan sonraki şema değişikliklerinde `db push`'un deploy zincirinden
+> çıkarıldığını unutma — şema artık **bilinçli ve elle** gönderiliyor
+> (gerekçe: [CLAUDE.md](CLAUDE.md), tuzaklar bölümü).
 
 ---
 
@@ -171,9 +177,15 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
 ## 🔜 Sıradakiler
 
 ### Öncelikli
-- [ ] **Otomatik test yok.** En büyük teknik açık. Başlanacak yer belli: izin
-      katmanı (`hasPermission`) ve soket olaylarının yetki kontrolleri — en
-      riskli ve en çok değişen kod orası.
+- [ ] **Test kapsamı saf mantıkla sınırlı.** ~~Otomatik test yok.~~ 1–3 Eylül
+      arasında sıfırdan **137 test** yazıldı (`server/test/`): güvenlik
+      regresyonları, modül yükleme (smoke), raporlama saf mantığı ve dil
+      sözlüğü/hata kodu kilidi. Hiçbiri veritabanı istemiyor.
+      **Kalan açık:** uçların kendisi test edilmiyor. İzin katmanı
+      (`hasPermission`) ve soket olaylarının yetki kontrolleri hâlâ elle
+      doğrulanıyor — en riskli ve en çok değişen kod orası. Gerçek testi
+      yazmak için istek düzeyinde (supertest benzeri) bir koşum gerekiyor;
+      asıl engel oturum/veritabanı taklidi.
 - [ ] **Dosya depolama ölçeklenmiyor.** Yüklenen dosyalar veritabanında `bytea`
       olarak duruyor. S3/R2'ye taşınmalı; kod tarafında yerelleştirilmiş bir
       değişiklik (`lib/uploads.js` + `routes/attachments.js`).
@@ -204,7 +216,18 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
       ölü import 2 Eylül'de kaldırılmış, dosyanın kendisi kalmıştı. `ListView`
       adının depoda başka geçtiği yer yoktu, derleme silmeden sonra da temiz.
 - [ ] Almanca, İspanyolca ve Rusça yalnızca gezinme ve ayarlar düzeyinde
-      (43'er anahtar); eksikler Türkçe'ye düşüyor. TR/EN tam (~940 anahtar).
+      (43'er anahtar); eksikler Türkçe'ye düşüyor. TR/EN tam: **1154'er
+      anahtar**, 106'sı sunucu hata kodu.
+      Dördüncü dil eklemek artık daha kolay ama otomatik değil: `dil.test.js`
+      bilinçli olarak yalnızca tr/en denkliğini kilitliyor. Yeni dil gerçekten
+      benimsenecekse testteki dil listesi genişletilmeli, yoksa eksik anahtar
+      yine sessizce Türkçe'ye düşer.
+- [x] ~~**`dil.test.js`'in kör noktası.**~~ **Kapatıldı (3 Eylül).** Ölçüt
+      "metin nerede duruyor"dan "metnin çevirisi var mı"ya çevrildi; tarama
+      artık dosyanın tamamını okuyor. Tur 58 kaçak buldu ve kapattı — bunların
+      **31'i kodda çağrılıp sözlüğe hiç eklenmemiş anahtardı**, yani ekran
+      doğru yazılmış ama İngilizce arayüzde Türkçe duruyordu. Ayrıntı:
+      [CLAUDE.md](CLAUDE.md) dil bölümü.
 
 ### Tasarım kararı bekleyenler
 - [ ] **Bildirimler baştan ele alınacak.** Toplantıda mesaj gönderildi, karşı
@@ -217,9 +240,16 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
       Şu an herkes yalnızca kendi süresini giriyor, zorunluluk yok. Kurumsalda
       gerçekten tartışmalı bir konu — **ikinci toplantıda masaya konacak soru
       bu.** Karar verilmeden hatırlatma/zorunluluk mekanizması yazılmamalı.
-- [ ] **Kolon geçiş kuralı arayüzü.** Sunucu tarafı hazır. Kural kolonun
-      ayarlarından mı, yoksa proje düzeyinde bir akış ekranından mı
-      tanımlanacak? İkincisi Jira'nın karmaşıklığına doğru bir adım — dikkat.
+- [x] ~~**Kolon geçiş kuralı arayüzü.** Kolon ayarından mı, proje düzeyinde akış
+      ekranından mı?~~ **Karar verildi ve yapıldı (1 Eylül, 9035c2a).** Kural
+      kolon menüsünden yönetiliyor (`views/board.jsx`); proje düzeyinde ayrı
+      akış ekranı bilinçli olarak seçilmedi — o, Jira'nın karmaşıklığına doğru
+      bir adımdı. Hiçbiri seçili değilse kısıt yok, mevcut panolar aynen
+      çalışıyor; engellenen taşımada kullanıcı sebebi görüyor.
+      **Kalan iş:** bu menünün metinleri çevrilmedi ("Geçiş kuralı", "kısıt
+      yok", "Kuralı kaldır", yardım cümlesi hâlâ çıplak Türkçe) ve
+      `dil.test.js` bunları göremiyor — kör noktası [CLAUDE.md](CLAUDE.md)
+      dil bölümünde anlatıldı.
 - [ ] **Sohbet kapsamı.** Şu an kanallar çalışma alanı geneli. Seçenekler:
       (A) böyle kalsın, (B) her projeye özel sohbet, (C) kanallar genel kalsın
       ama istenirse bir projeye bağlanabilsin. **Öneri: C** — B küçük takımlarda

@@ -12,6 +12,7 @@ Hangi işe girersen gir, ilgili belgeyi açmadan başlama:
 
 | Belge | Ne zaman |
 |---|---|
+| [DEVIR.md](DEVIR.md) | **İlk sırada.** Proje iki makinede sürüyor; son oturum nerede bıraktı |
 | [TODO.md](TODO.md) | Her zaman. Ne kapatıldı, ne bekliyor, **gerekçeleriyle** |
 | [GUVENLIK.md](GUVENLIK.md) | **Yeni bir uç, ayar veya ekran eklerken zorunlu** |
 | [BILDIRIMLER.md](BILDIRIMLER.md) | Bildirimlere dokunurken |
@@ -20,22 +21,30 @@ Hangi işe girersen gir, ilgili belgeyi açmadan başlama:
 
 ---
 
-## Şu anki durum (2 Eylül 2026)
+## Şu anki durum (3 Eylül 2026)
 
 `raporlama` dalı **`main`e birleştirildi** (58b1a6d). Şema production'a
 uygulandı (Neon SQL Editor, üç tablo + üç sütun, doğrulandı) ve `db push`
 deploy zincirinden çıkarıldı — artık şema bilinçli, elle gönderiliyor.
 
-**2 Eylül öğleden sonra ek tur (main'de, HENÜZ PUSH EDİLMEMİŞ olabilir):**
-çöp kutusu boşaltma yetki kapısı, denetim kaydı kapsamı (üye çıkarma, rol
-değişikliği, toplu silme), bahsetme bildirimi kapsam sızıntısı düzeltmesi,
-ön yüz kod bölme (satıcı + tembel görünümler), raporlama saf mantık testleri.
+**Depo durumu:** `main` ve `origin/main` eşit, çalışma ağacı temiz, bekleyen
+push yok. Son commit `df113c3`. Proje iki makinede sürdürülüyor; işe başlamadan
+`git fetch && git status` çalıştır. `raporlama` dalı tamamen `main`in içinde,
+artık ölü ağırlık.
+
+**2 Eylül:** çöp kutusu boşaltma yetki kapısı, denetim kaydı kapsamı (üye
+çıkarma, rol değişikliği, toplu silme), bahsetme bildirimi kapsam sızıntısı,
+ön yüz kod bölme (satıcı + tembel görünümler), raporlama saf mantık testleri,
+görünüm alanına `ErrorBoundary`.
 
 **3 Eylül:** `session` tablosu şemaya tanıtıldı (6242a7c) — `prisma db push`
-artık onu düşürmeye çalışmıyor. Gerekçe aşağıda, tuzaklar bölümünde.
+artık onu düşürmeye çalışmıyor, gerekçe aşağıda tuzaklar bölümünde. Ardından
+dil turu: Raporlar ve süre kaydı ekranları, sonra on route dosyasındaki
+sunucu hata mesajları çeviriye bağlandı (`32644b9`, `2449240`, `df113c3`).
+Öksüz `list.jsx` silindi.
 
-Test sayısı **130**. `git status` ile main'in origin'den ne kadar önde
-olduğunu kontrol et; push kullanıcı onayına bırakıldı.
+Test sayısı **138**, hepsi geçiyor. Sözlükler TR/EN **1154'er anahtar**
+(106'sı `err_` kodu), de/es/ru 43'er.
 
 ---
 
@@ -86,13 +95,34 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 130 test,
-veritabanı gerektirmez, birkaç saniye sürer.
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 138 test,
+veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
+"Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
+modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
+alttaki `pass` / `fail` satırlarıdır.
 
 ```bash
 cd server && npm test        # PowerShell'de: npm.cmd test
 cd client && npm run build   # ön yüz derlemesi
 ```
+
+İkisi CI'da da çalışıyor (`.github/workflows/ci.yml`, her itme ve PR).
+Yerelde çalıştırmayı yine de atlama: CI'ın geri bildirimi dakikalar sonra
+gelir, yereldeki saniyeler içinde. **CI güvenlik ağıdır, ilk savunma değil.**
+
+**Kuralı belgeye değil, doğrulayana yaz.** Bu depoda kanıtlanmış bir ders:
+dil kuralı CLAUDE.md'de net biçimde yazılıydı ve yine de 31 yerde ihlal
+edildi — kuralı uygulamaya çalışan biri tarafından. Bir kuralı kalıcı kılmak
+istiyorsan onu şu merdivende yukarı taşı:
+
+```
+belge → gözden geçirme listesi → test → CI kapısı → lint/tip → tasarımen imkânsız
+```
+
+Bu deponun en olgun iki hamlesi en üst basamakta: `db push --accept-data-loss`
+"deploy'da çalıştırma" diye belgelenmedi, **çağrı silindi**; `session` tablosu
+için "uyarıya hayır de" kuralı konmadı, **uyarının çıkması engellendi**. Bir
+kusuru kapatırken sor: *bunu bir daha yapmayı imkânsız kılabilir miyim?*
 
 **Güvenlik eleği zorunlu.** Yeni bir uç, ayar veya ekran eklerken
 [GUVENLIK.md](GUVENLIK.md) bölüm 4'teki on soru cevaplanmadan iş bitmiş sayılmaz.
@@ -125,6 +155,35 @@ birebir eşleşmeli, görünüm dosyalarında çıplak Türkçe metin kalmamalı
 `routes/*` içindeki her `error` alanı sözlükte karşılığı olan bir kod olmalı.
 Yeni bir route dosyası eklenirse testteki `HATA_DOSYALARI` listesine yazılmalı.
 `de`/`es`/`ru` bilinçli olarak kapsam dışı — onlar zaten Türkçe'ye düşüyor.
+
+**Testin sorduğu soru "metin nerede duruyor" değil, "metnin çevirisi var mı".**
+3 Eylül'de ölçüt değişti. Eski tarama satır satır çalışıp yalnızca aynı
+satırdaki `>metin<` kalıbını arıyordu; süslü parantez içindeki metni, çok
+satırlı JSX metnini ve sabit tablolardaki metni kaçırıyordu. Yeni tarama
+dosyanın tamamını okuyor ve bir Türkçe metni ancak **çevirisinin var olduğunu
+gösterebiliyorsa** geçiriyor. Dört meşru kalıp:
+
+```jsx
+T('rep_kind_person', 'Kişi raporu')          // sözlük anahtarı + yedek
+window.t?.('cal_months') || 'Ocak,Şubat,…'   // aynısı, çağrı biçimi farklı
+{ k: 'rep_kind_person', fb: 'Kişi raporu' }  // tablo/çift kalıbı
+{ label: 'Klasör', label_en: 'Folder' }      // kardeş alan kalıbı
+```
+
+Anahtarın `APP_I18N`de **gerçekten var olduğu** doğrulanıyor: uydurma bir
+anahtar metni aklamaz. Kardeş alan kalıbı (`label`/`label_en`) yalnızca tooltip
+gibi sözlüğe taşımanın gereksiz şişme yaratacağı yerlerde kullanılıyor —
+`PROJECT_ICONS`ın 50 etiketi ve `TEMPLATE_META`. Aynı mantık dosya düzeyinde
+de var: `const TR_X` tablosu, aynı dosyada `const EN_X` varsa dil verisi
+sayılıyor (takvim tatilleri böyle).
+
+Muafiyetler dar ve gerekçeli: `legal.jsx` (hukuki metin, çevirisi ürün kararı),
+giriş ekranındaki mimari çizimin SVG etiketleri (teknik resim), ve dil adları
+(endonim — İngilizce arayüzde de "Türkçe" yazmalı).
+
+`auth.jsx` kendi `AUTH_I18N` sözlüğünü taşıyor, çünkü giriş ekranı uygulama
+sözlüğü yüklenmeden çalışmak zorunda. O bloğun tr/en denkliği ayrı bir testle
+kilitli — aynı kural, ayrı mekanizma.
 
 **Sessiz başarısızlıktan kaçın.** Bu depoda üç kusurun kök sebebi buydu:
 `if (!window.io) return`, `window.showToast?.()`, `if (satır && !yetki)`.

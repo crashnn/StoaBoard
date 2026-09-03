@@ -1,0 +1,151 @@
+# Devir notu — makineler arası
+
+Bu proje iki makinede sürdürülüyor ve oturumlar birbirini görmüyor. Bu dosya,
+projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
+Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
+güven, düzyazıya değil.
+
+**Son güncelleme:** 3 Eylül 2026, ofis makinesinde (5432'nin kapalı olduğu ağ).
+`df113c3` alındı, üzerine dil turu yapıldı — henüz commit edilmedi.
+
+---
+
+## 1. Depo gerçekten nerede
+
+```
+main = origin/main = df113c3      çalışma ağacı temiz, bekleyen push yok
+raporlama                          tamamen main'in içinde — ölü ağırlık
+```
+
+`raporlama` dalı hem yerelde hem uzakta duruyor ama `main`e göre tek bir fazla
+commit'i yok (`git log origin/main..raporlama` boş). Silinebilir; bilinçli
+olarak dokunulmadı, karar kullanıcının.
+
+**İşe başlamadan `git fetch && git status` çalıştır.** Diğer makine gece
+çalışmış olabilir; 3 Eylül'deki altı commit tam olarak böyle geldi.
+
+---
+
+## 2. Kafa karıştıran dört çelişki — düzeltildi
+
+Bu dosyanın yazılma sebebi. Belgeler koddan geride kalmıştı ve dördü de
+okuyanı yanlış yöne sürüyordu. Hepsi 3 Eylül'de düzeltildi, ama nasıl
+oluştuklarını bilmek işine yarar:
+
+| Belge ne diyordu | Gerçek |
+|---|---|
+| "Otomatik test yok. En büyük teknik açık." | **137 test var**, hepsi geçiyor |
+| "Şema hiçbir veritabanına gönderilmedi" | 2 Eylül'de **production'a uygulandı**, doğrulandı |
+| "Kolon geçiş kuralı arayüzü: karar bekliyor" | 1 Eylül'de **yapıldı** (`9035c2a`), kolon menüsünde |
+| "main HENÜZ PUSH EDİLMEMİŞ olabilir" | Push edildi; belge o cümleyle donmuştu |
+
+Ortak sebep aynı: iş bittiğinde TODO'nun **iki ayrı yeri** güncellenmesi
+gerekiyordu ve yalnızca biri güncellendi. Örneğin geçiş kuralı, "kapatılanlar"
+bölümüne yazılmış ama "tasarım kararı bekleyenler" bölümünden silinmemişti.
+Bir maddeyi kapatırken belgede o maddenin **başka nerede geçtiğini ara.**
+
+---
+
+## 3. Son turda ne yapıldı (3 Eylül gecesi)
+
+Altı commit, tek konu: **İngilizce arayüzde Türkçe kalan metinler.**
+
+- `6242a7c` — `session` tablosu şemaya tanıtıldı. Prisma değil
+  `connect-pg-simple` oluşturuyor; şemada tanımlı olmadığı için `db push`
+  her seferinde `DROP TABLE "session"` üretiyordu. **Bu modeli şemadan
+  çıkarma**, tuzak aynen geri gelir.
+- `d227159` — öksüz `list.jsx` silindi (154 satır, hiç render edilmiyordu).
+- `32644b9` — Raporlar ve süre kaydı ekranları çevrildi.
+- `2449240` + `df113c3` — sunucu hata mesajları. On route dosyasındaki
+  **174 Türkçe metin 103 hata koduna** çevrildi.
+
+Sunucu hata sözleşmesi artık şu: `{ error: 'err_kod', message: 'Türkçe' }`.
+Çeviri **tek noktada**, `apiFetch` içinde: kodu sözlükten geçiriyor, karşılığı
+yoksa `message`a, o da yoksa ham koda düşüyor. Bu yüzden yüzden fazla çağrı
+noktasının hiçbirine dokunulmadı.
+
+Dinamik mesajlar (içine kolon adı gömülenler) istemcide çevrilemiyor; onlarda
+cümle sunucuda kuruluyor ve dil yeni `server/src/lib/lang.js` ile okunuyor —
+indirme bağlantılarında `?lang`, diğer her istekte `X-Stoa-Lang` başlığı.
+
+**Davet akışına bilerek dokunulmadı.** `invite_code_required` ve
+`invalid_invite_code` `err_` öneki taşımıyor, çünkü `auth.jsx` bunları ham
+hâliyle karşılaştırıyor. Bekleme lobisi daha önce canlıda kırıldığı için
+elleşilmedi. Oraya girersen bu iki karşılaştırmayı da birlikte taşı.
+
+---
+
+## 4. Dil turu tamamlandı — `dil.test.js` artık gerçek bir kilit
+
+3 Eylül'de testin kör noktası kapatıldı ve çıkan 58 kaçağın hepsi düzeltildi.
+Önemli olan **neyin değiştiği**: ölçüt "metin nerede duruyor"dan **"metnin
+çevirisi var mı"**ya çevrildi. Tarama artık dosyanın tamamını okuyor ve bir
+Türkçe metni ancak çevirisini gösterebiliyorsa geçiriyor.
+
+Turun en çarpıcı bulgusu: **58 kaçağın 31'i "kod doğru, anahtar yok"**du.
+Ekranlar `tx('chat_perm_admins', 'Yöneticiler')` diye düzgün yazılmıştı ama o
+anahtarlar sözlüğe hiç eklenmemişti — yani kural biliniyordu, uygulanıyordu ve
+yine de sessizce başarısız oluyordu. Somut örnekler:
+
+- `app_confirm` yoktu: **her onay kutusundaki "Onayla"** İngilizce arayüzde
+  Türkçe çıkıyordu.
+- Sekiz izin etiketinden sonradan eklenen ikisi (`view_reports`,
+  `manage_workspace`) eksikti: rol ekranında altı satır İngilizce, iki satır
+  Türkçe görünüyordu.
+- `ErrorBoundary` 2 Eylül'de eklenmiş, üç anahtarı hiç yazılmamıştı.
+
+Ders: belgeye kural yazmak yetmiyor, testin kuralı **doğrulayabiliyor** olması
+gerekiyor. Anahtarın sözlükte gerçekten var olduğu kontrol edilmeseydi bu 31
+kusurun hiçbiri görünmezdi.
+
+Meşru kalıplar, muafiyetler ve gerekçeleri [CLAUDE.md](CLAUDE.md) dil
+bölümünde. Muafiyet eklemen gerekirse **gerekçesini yaz** — listedeki her
+istisnanın yanında niçin orada olduğu duruyor.
+
+---
+
+## 5. Değişmeyen tuzaklar
+
+Ayrıntısı [CLAUDE.md](CLAUDE.md) içinde; buradakiler en çok ayağa dolaşanlar:
+
+- **Şema deploy'da kendiliğinden gitmiyor.** `postinstall`, `npm start` ve
+  Railway build komutundan `prisma db push --accept-data-loss` kaldırıldı.
+  Şema artık bilinçli, elle gönderiliyor. `--accept-data-loss` yazma refleksine
+  kapılma — o bayrak `session` tablosunu gerçekten siler ve **giriş yapmış
+  herkes düşer.**
+- **`npm test` çıktısındaki veritabanı hatası test hatası değil.**
+  `[db] warmup failed` / "Can't reach database server" — modül yüklenirken
+  bağlantı deneniyor, kurumsal ağda 5432 kapalı. Ölçüt en alttaki
+  `pass` / `fail` satırları.
+- **Windows PowerShell'de `npm` değil `npm.cmd`.** Git Bash'te düz `npm`.
+- **`server/.env` repoda yok ve olmamalı.** Şu an yereldeki `.env` production
+  veritabanını gösteriyor — yani `prisma db push` benzeri bir komut **canlıya**
+  yazar. Şema komutu çalıştırmadan önce `DATABASE_URL`in nereyi gösterdiğine
+  bak.
+
+---
+
+## 6. Sırada ne var
+
+Öncelik sırası [TODO.md](TODO.md) ve [GUVENLIK.md](GUVENLIK.md) içinde; özeti:
+
+1. **Proje bazlı üyelik** — bugün bir üye çalışma alanındaki her şeyi görüyor,
+   okuma izni diye bir kavram yok. En büyük açık.
+2. **Uç testleri** — 138 testin hepsi saf mantık. İzin katmanı
+   (`hasPermission`) ve soket yetki kontrolleri hâlâ elle doğrulanıyor. Asıl
+   engel oturum/veritabanı taklidi.
+3. **Dosya depolama** — yüklenenler veritabanında `bytea`, S3/R2'ye taşınmalı.
+4. **Dönem dondurma**, **kanal geçmişi kesimi**.
+
+**Karar bekleyen ürün soruları — bunlar cevaplanmadan ilgili koda girme:**
+süreyi kim girer (ikinci toplantıya kalan soru) · hangi bildirim ekranı kesmeli
+([BILDIRIMLER.md](BILDIRIMLER.md)) · sohbet kapsamı (öneri: kanallar genel
+kalsın ama bir projeye bağlanabilsin).
+
+---
+
+## 7. Bu dosyayı güncel tut
+
+Diğer makineye geçmeden önce buradaki 1. ve 3. bölümü güncelle — hangi
+commit'tesin, ne yaptın, yarım bıraktığın ne var. Devrin kırıldığı yer tam
+olarak burası.
