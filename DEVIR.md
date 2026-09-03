@@ -6,15 +6,30 @@ Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
 **Son güncelleme:** 3 Eylül 2026, ofis makinesinde (5432'nin kapalı olduğu ağ).
-`df113c3` alındı, üzerine dil turu yapıldı — henüz commit edilmedi.
+`df113c3` alındı, üzerine dil turu + CI + yetki turu yapıldı.
 
 ---
 
 ## 1. Depo gerçekten nerede
 
 ```
-main = origin/main = df113c3      çalışma ağacı temiz, bekleyen push yok
-raporlama                          tamamen main'in içinde — ölü ağırlık
+main       = df113c3              3 Eylül gecesi, evdeki oturumdan
+dil-ve-ci  = 4462c01              main'in 5 commit ÖNÜNDE  ← bu turun işi
+raporlama                         tamamen main'in içinde — ölü ağırlık
+```
+
+**`dil-ve-ci` dalı bu oturumda açıldı ve 5 commit taşıyor.** Doğrudan `main`e
+işlenmedi çünkü aynı turda CI kurulduğu için değerin tamamı Railway canlıya
+dağıtmadan ÖNCE doğrulamaktan geliyor. Push ve birleştirme kullanıcıya
+bırakıldı; sen devraldığında `git fetch` sonrası dalın uzağa gidip gitmediğine
+ve `main`e birleşip birleşmediğine bak.
+
+```
+0af6df9  fix  - 58 dil kaçağı (31'i sözlüğe eklenmemiş anahtar)
+be5e6e9  test - dil taramasının ölçütü değişti
+fe1bc91  ci   - testler ve derleme her itmede
+271bcd9  docs - belge çelişkileri + bu dosya + zorlama merdiveni
+4462c01  test - yetkilendirmenin uygulanması kilitlendi
 ```
 
 `raporlama` dalı hem yerelde hem uzakta duruyor ama `main`e göre tek bir fazla
@@ -23,6 +38,11 @@ olarak dokunulmadı, karar kullanıcının.
 
 **İşe başlamadan `git fetch && git status` çalıştır.** Diğer makine gece
 çalışmış olabilir; 3 Eylül'deki altı commit tam olarak böyle geldi.
+
+**CI ilk kez push'ta çalışacak.** O ana kadar `.github/workflows/ci.yml`
+yerelde doğrulandı ama gerçek runner'da hiç koşmadı. İlk koşuda kırılırsa en
+olası sebep `npm ci` → `postinstall` → `prisma generate` adımıdır; sahte
+`DATABASE_URL` tam da bunun için verildi, gerekçesi `fe1bc91`'de.
 
 ---
 
@@ -104,7 +124,40 @@ istisnanın yanında niçin orada olduğu duruyor.
 
 ---
 
-## 5. Değişmeyen tuzaklar
+## 5. Bu turda eklenen iki kilit — CI ve yetki
+
+**CI kapısı** (`.github/workflows/ci.yml`). 143 test vardı ama çalıştırmak
+geliştiricinin hafızasına bağlıydı; unutulan bir `npm test`, bozuk kodun
+main'e gidip Railway tarafından doğrudan canlıya dağıtılması demekti.
+
+> **Bu dosya tek başına kapı DEĞİL, alarm.** Engelleyici olması için GitHub'da
+> `Settings → Branches → main → Require status checks to pass before merging`
+> açılmalı ve iki iş de (`sunucu testleri`, `ön yüz derlemesi`) seçilmeli.
+> O ayar yapılmadan kırmızı CI yalnızca kırmızı bir tik olarak kalır.
+> **Bu ayar henüz yapılmadı** — depo dışı bir işlem, kullanıcıya bırakıldı.
+
+**Yetki kilidi** (`server/test/yetki.test.js`). Buradaki ayrım önemli ve
+yanlış hatırlanmaya açık: `hasPermission`'ın KENDİSİ zaten test ediliyordu
+(`guvenlik.test.js`). Eksik olan, kuralın UYGULANDIĞININ garantisiydi — yeni
+bir uca `requireAuth` yazmayı unutmak hiçbir yerde yakalanmıyordu. İki
+değişmez kilitlendi: her uç `requireAuth` taşır (113 uçtan 9'u gerekçeli açık
+listede), ve soket kimliği yalnızca oturumdan okunur, olay gövdesinden asla.
+
+**Kapsamlamanın DOĞRULUĞU hâlâ test edilmiyor** ve bu bilinçli. Statik tarama
+denendi: 70 mutasyon ucunun 46'sını işaretledi, hepsi yanlış pozitifti —
+kapsamlama tek biçimde yapılmıyor (kimi `userId: user.id` ile, kimi aktif
+çalışma alanıyla, kimi `loadTaskWithAccess(permission:)` ile). Ayırt etmek
+için isteğin gerçekten çalıştırılması gerekiyor. **"Yetki testi var" diye
+güvenme** — neyin kapsanmadığı testin sonundaki notta ve TODO.md'de.
+
+Bu turun yöntemsel dersi: **mutasyon testi.** Geçen bir test hiçbir şey
+kanıtlamaz. `tasks.js`'ten `requireAuth` kasten kaldırıldı, test tam yerinden
+kırıldı, dosya geri alındı. Yeni bir koruma testi yazdığında aynısını yap —
+kırılamayan test, tören.
+
+---
+
+## 6. Değişmeyen tuzaklar
 
 Ayrıntısı [CLAUDE.md](CLAUDE.md) içinde; buradakiler en çok ayağa dolaşanlar:
 
@@ -125,7 +178,7 @@ Ayrıntısı [CLAUDE.md](CLAUDE.md) içinde; buradakiler en çok ayağa dolaşan
 
 ---
 
-## 6. Sırada ne var
+## 7. Sırada ne var
 
 Öncelik sırası [TODO.md](TODO.md) ve [GUVENLIK.md](GUVENLIK.md) içinde; özeti:
 
@@ -145,7 +198,7 @@ kalsın ama bir projeye bağlanabilsin).
 
 ---
 
-## 7. Bu dosyayı güncel tut
+## 8. Bu dosyayı güncel tut
 
 Diğer makineye geçmeden önce buradaki 1. ve 3. bölümü güncelle — hangi
 commit'tesin, ne yaptın, yarım bıraktığın ne var. Devrin kırıldığı yer tam

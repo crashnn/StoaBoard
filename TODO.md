@@ -176,6 +176,17 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
 
 ## 🔜 Sıradakiler
 
+### Hemen yapılabilir — depo dışı, 5 dakikalık işler
+- [ ] **CI'ı gerçek kapıya çevir.** `.github/workflows/ci.yml` eklendi ama
+      şu an yalnızca alarm: kırmızı CI push'u engellemiyor. GitHub'da
+      `Settings → Branches → Add rule → main` → **Require status checks to
+      pass before merging** açılıp `sunucu testleri` ve `ön yüz derlemesi`
+      seçilmeli. Bu yapılmadan zorlama merdiveninde 4.5 basamakta kalıyoruz.
+- [ ] **`dil-ve-ci` dalını main'e al.** 5 commit. PR açmak CI'ın main'e
+      girmeden önce doğrulamasını sağlar — dalın kurulma sebebi bu.
+- [ ] **`raporlama` dalını sil** (yerelde ve uzakta). `main`'in tamamen
+      içinde, tek fazla commit'i yok; artık ölü ağırlık ve kafa karıştırıyor.
+
 ### Öncelikli
 - [ ] **Uç testleri — kapsamlamanın DOĞRULUĞU test edilmiyor.** 3 Eylül'de
       `yetki.test.js` eklendi ve iki değişmezi kilitledi: her uç `requireAuth`
