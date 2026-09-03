@@ -66,7 +66,7 @@ function ucKayitlari() {
         dosya: ad,
         metot: m[2].toUpperCase(),
         yol: yolEsl ? yolEsl[1] : '?',
-        satir: src.slice(0, m.index).split('\n').length,
+        satir: src.slice(0, m.index).split(/\r?\n/).length,
         auth: /requireAuth/.test(pencere),
       });
     }
@@ -128,7 +128,7 @@ describe('soket — kimlik olay gövdesinden okunamaz', () => {
     for (const ad of fs.readdirSync(SOCKETS).sort()) {
       if (!ad.endsWith('.js')) continue;
       const src = fs.readFileSync(path.join(SOCKETS, ad), 'utf8');
-      src.split('\n').forEach((satir, i) => {
+      src.split(/\r?\n/).forEach((satir, i) => {
         const kirpik = satir.trim();
         if (kirpik.startsWith('//') || kirpik.startsWith('*')) return;
         for (const m of satir.matchAll(KIMLIK_SIZINTISI)) {

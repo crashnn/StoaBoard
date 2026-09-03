@@ -30,7 +30,7 @@ const dataSrc = fs.readFileSync(path.join(CLIENT, 'data.jsx'), 'utf8');
 
 /** APP_I18N içindeki bir dil bloğunun anahtarlarını çıkarır. */
 function sozlukAnahtarlari(lang) {
-  const satirlar = dataSrc.split('\n');
+  const satirlar = dataSrc.split(/\r?\n/);
   const bas = satirlar.findIndex((l) => new RegExp(`^  ${lang}: \\{`).test(l));
   assert.ok(bas >= 0, `APP_I18N içinde '${lang}' bloğu bulunamadı`);
   // Blok, girintisi iki boşluk olan ilk '},' satırında biter.
@@ -168,7 +168,7 @@ function yorumSil(src) {
 // varsa muaf. Böylece "TR_" öneki tek başına kaçağı aklayamaz; İngilizce
 // karşılığı yazılmamışsa test yine kırılır.
 function dilVerisiSatirlari(ham) {
-  const satirlar = ham.split('\n');
+  const satirlar = ham.split(/\r?\n/);
   const atla = new Set();
   const adlar = [...ham.matchAll(/^const (TR|EN|DE)_([A-Z0-9_]+)\s*=/gm)].map((m) => ({ dil: m[1], ad: m[2] }));
   const enVar = new Set(adlar.filter((a) => a.dil === 'EN').map((a) => a.ad));
@@ -185,7 +185,7 @@ function dilVerisiSatirlari(ham) {
 
 // auth.jsx'in kendi sözlük bloğu — meşru, atlanır.
 function authSozlukSatirlari(ham) {
-  const satirlar = ham.split('\n');
+  const satirlar = ham.split(/\r?\n/);
   const bas = satirlar.findIndex((l) => /^const AUTH_I18N = \{/.test(l));
   if (bas < 0) return new Set();
   let son = bas;
@@ -214,8 +214,8 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
       const ham = fs.readFileSync(dosya, 'utf8');
       const src = yorumSil(ham);
       const atlanacak = new Set([...authSozlukSatirlari(ham), ...dilVerisiSatirlari(ham)]);
-      const satirlar = src.split('\n');
-      const satirNo = (idx) => src.slice(0, idx).split('\n').length;
+      const satirlar = src.split(/\r?\n/);
+      const satirNo = (idx) => src.slice(0, idx).split(/\r?\n/).length;
 
       const ekle = (idx, metin) => {
         const no = satirNo(idx);
@@ -258,7 +258,7 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
         // tabloları 'Açıklama': 'drawer_description' biçiminde yazılıyor.
         // Çift kalıbı iki yönde de meşru.
         const once = src.slice(Math.max(0, m.index - 160), m.index);
-        const sonra = src.slice(m.index + m[0].length, m.index + m[0].length + 60).split('\n')[0];
+        const sonra = src.slice(m.index + m[0].length, m.index + m[0].length + 60).split(/\r?\n/)[0];
         const yakinAnahtarlar = [
           ...once.matchAll(/(['"])([a-z][a-z0-9_]{3,})\1/g),
           ...sonra.matchAll(/(['"])([a-z][a-z0-9_]{3,})\1/g),
@@ -294,7 +294,7 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
   // eksiksiz olmalı, yoksa authT sessizce Türkçe'ye düşer.
   test('AUTH_I18N tr ve en aynı anahtarları taşımalı', () => {
     const src = fs.readFileSync(path.join(CLIENT, 'views', 'auth.jsx'), 'utf8');
-    const satirlar = src.split('\n');
+    const satirlar = src.split(/\r?\n/);
     const blok = (lang) => {
       const bas = satirlar.findIndex((l) => new RegExp(`^  ${lang}: \\{`).test(l));
       assert.ok(bas >= 0, `AUTH_I18N içinde '${lang}' bloğu bulunamadı`);
@@ -324,7 +324,7 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
     for (const dosya of jsxDosyalari(CLIENT)) {
       const ad = path.basename(dosya);
       if (ISTISNA.has(ad)) continue;
-      const satirlar = fs.readFileSync(dosya, 'utf8').split('\n');
+      const satirlar = fs.readFileSync(dosya, 'utf8').split(/\r?\n/);
       satirlar.forEach((satir, i) => {
         const kirpik = satir.trim();
         if (kirpik.startsWith('//') || kirpik.startsWith('*')) return;
