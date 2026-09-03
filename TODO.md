@@ -176,6 +176,48 @@ Canlı sistem üzerinde yapılan inceleme sonucu bulunan ve düzeltilen hatalar.
 
 ## 🔜 Sıradakiler
 
+### Eray — yerelde çalıştırma kısıtı
+
+Bu bölüm koda değil, **çalışma ortamına** ait. Kararı ve denemesi Eray'da;
+bir sonraki oturumda buradan devam edilebilir.
+
+**Durum.** Ofis ağı (BDH Netaş) dışarıya giden 5432'yi kesiyor. TCP el sıkışması
+tamamlanıyor ama ilk pakete cevap gelmiyor: araya giren şeffaf bir güvenlik
+duvarı var. Kodda ya da Neon'da sorun yok. Sonuç: **iş bilgisayarında uygulama
+yerel olarak ayağa kaldırılamıyor**, çünkü veritabanına ulaşamıyor. Evde
+kısıtlama yok, ama ev vakti sınırlı.
+
+**Bu kısıtın göründüğü kadar geniş olmadığı 3 Eylül'de ölçüldü.** 143 testin
+hiçbiri veritabanı istemiyor; `DATABASE_URL` tamamen boşken de 143/143 geçiyor.
+Ön yüz derlemesi de veritabanı istemiyor. Yani ofiste yapılabilecek iş
+sanıldığından çok daha geniş:
+
+| Ofiste yapılabilir (CI doğruluyor) | Ev işi (gerçek veritabanı gerekiyor) |
+|---|---|
+| Arayüz, dil, metin | Şema değişikliği ve göç |
+| Saf mantık ve hesaplar | Prisma sorgu doğruluğu |
+| Test yazmak, refactor | Uçtan uca akış denemesi |
+| Belgeler | Gerçek veriyle kontrol |
+
+CI, GitHub'ın sunucusunda çalıştığı için ofis güvenlik duvarından etkilenmiyor.
+Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
+
+- [ ] **Neon'un HTTP/WebSocket sürücüsünü dene.** `@prisma/adapter-neon` +
+      `@neondatabase/serverless`, 5432 yerine 443 üzerinden bağlanıyor. Prisma
+      5.22 kullanılıyor, `driverAdapters` preview özelliğiyle destekleniyor.
+      Çalışırsa ofiste de yerel geliştirme açılır ve bu kısıt tamamen kalkar.
+      **Garanti değil:** kurumsal proxy WebSocket'i de kesebilir. Denemesi bir
+      oturumluk iş, kazancı büyük. Sadece yerel geliştirme için denenmeli,
+      üretim bağlantısı değiştirilmemeli.
+- [ ] **Alternatif: ofiste yerel Postgres.** Docker ve `psql` iş makinesinde
+      kurulu değil (3 Eylül'de kontrol edildi), kurulum yönetici hakkı
+      isteyebilir. Seed betikleri hazır (`stoa-seed.mjs`, `stoa-seed-more.mjs`,
+      toplantı klasöründe), yani veritabanı ayağa kalkarsa doldurmak kolay.
+      Yukarıdaki madde çalışmazsa bu denenir.
+- [ ] **Şu anki çalışma biçimi** (kısıt kalkana kadar): ofiste dala it, CI
+      yeşilse `main`e al. PR ve branch protection gerekmiyor; korumayı sağlayan
+      şey CI'ın dağıtımdan önce çalışması.
+
 ### Hemen yapılabilir — depo dışı, 5 dakikalık işler
 - [ ] **CI'ı gerçek kapıya çevir.** `.github/workflows/ci.yml` eklendi ama
       şu an yalnızca alarm: kırmızı CI push'u engellemiyor. GitHub'da
