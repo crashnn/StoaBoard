@@ -87,17 +87,113 @@ describe('dil sözlüğü — tr ve en aynı anahtarları taşımalı', () => {
 });
 
 // ─── Çıplak Türkçe metin taraması ──────────────────────────────────────────
+//
+// Bu taramanın ilk hâli (3 Eylül) satır satır çalışıyor ve yalnızca aynı
+// satırdaki `>metin<` kalıbını arıyordu. Üç sınıf metni kaçırıyordu ve
+// "test geçiyorsa dil tamam" sanmaya yol açıyordu:
+//   1. Süslü parantez içinde üretilen metin — {kosul ? 'kısıt yok' : …}
+//   2. Açılış `>` ile kapanış `<` farklı satırlarda olan çok satırlı JSX metni
+//   3. Öznitelik dışında kalan her türlü dize (toast mesajı, sabit tablo…)
+// Bu yüzden ölçüt değişti: artık dosyanın tamamı taranıyor ve soru
+// "metin nerede duruyor" değil, **"metnin bir sözlük anahtarı var mı"**.
+//
+// Türkçe metin dört meşru kalıpta bulunabiliyor ve dördünde de metnin hemen
+// solunda ONA AİT bir sözlük anahtarı duruyor:
+//     T('rep_kind_person', 'Kişi raporu')
+//     window.t?.('cal_months') || 'Ocak,Şubat,…'
+//     { k: 'rep_kind_person', fb: 'Kişi raporu' }      ← tablo kalıbı
+//     ['rep_act_export', 'Rapor dışa aktarıldı']       ← çift kalıbı
+// Anahtarın APP_I18N'de gerçekten var olduğu doğrulanıyor; uydurma bir anahtar
+// kaçağı meşrulaştıramasın.
 
 // Bilinçli istisnalar:
 //   legal.jsx  — gizlilik ve hizmet şartları metni yalnızca Türkçe yayımlandı;
 //                hukuki metnin çevirisi ürün kararı, çeviri boşluğu değil.
-//   auth.jsx   — giriş ekranındaki dekoratif Stoa çizimi SVG <text> etiketleri
-//                taşıyor ("Arşitrav", "KESİT A-A"); bunlar illüstrasyonun
-//                parçası, arayüz metni değil.
 //   data.jsx   — APP_I18N sözlüğünün kendisi; Türkçe olması zaten amaç.
-const ISTISNA = new Set(['legal.jsx', 'auth.jsx', 'data.jsx']);
+// auth.jsx artık istisna DEĞİL: kendi AUTH_I18N sözlüğü var (giriş ekranı,
+// uygulama sözlüğü yüklenmeden çalışmak zorunda), o blok atlanıyor ama
+// dışındaki metin taranıyor. Sözlüğün tr/en denkliği ayrıca kilitli.
+const ISTISNA = new Set(['legal.jsx', 'data.jsx']);
+
+// Dekoratif istisna: giriş ekranındaki Stoa mimari çizimi SVG <text> etiketleri
+// taşıyor ("Arşitrav", "KESİT A-A — M 1:200"). Bunlar illüstrasyonun parçası,
+// arayüz metni değil — teknik resim başka dile çevrilmez. Satır aralığı değil
+// metnin kendisi listeleniyor: çizim düzenlenince aralık kayar, metin kalır.
+const DEKORATIF = new Set([
+  'Arşitrav', 'Sütun — İon. Düz.', 'KESİT A-A — M 1:200',
+  '69.5 m — STOA CEPHESİ', '18.2 m — YÜKSEKLİK',
+  // Dil adları kendi dillerinde yazılır (endonim): dil seçicide İngilizce
+  // arayüzde de "Türkçe" görünmeli, "Turkish" değil. Çevrilmesi kusur olurdu.
+  'Türkçe',
+]);
 
 const TURKCE = /[çğıöşüÇĞİÖŞÜ]/;
+
+// Yorumları boşlukla değiştirir; satır numaraları korunur, dize içerikleri
+// olduğu gibi kalır. Yorumlardaki Türkçe açıklama bulgu sayılmasın diye.
+function yorumSil(src) {
+  let out = '';
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    const c2 = src[i + 1];
+    if (c === '/' && c2 === '/') {
+      while (i < n && src[i] !== '\n') { out += ' '; i += 1; }
+    } else if (c === '/' && c2 === '*') {
+      while (i < n && !(src[i] === '*' && src[i + 1] === '/')) {
+        out += src[i] === '\n' ? '\n' : ' '; i += 1;
+      }
+      out += '  '; i += 2;
+    } else if (c === '"' || c === "'" || c === '`') {
+      out += c; i += 1;
+      while (i < n && src[i] !== c) {
+        if (src[i] === '\\') { out += src[i]; i += 1; if (i < n) { out += src[i]; i += 1; } continue; }
+        out += src[i]; i += 1;
+      }
+      if (i < n) { out += src[i]; i += 1; }
+    } else { out += c; i += 1; }
+  }
+  return out;
+}
+
+// Dile göre bölünmüş veri tabloları — meşru, atlanır.
+//
+// Takvim tatilleri dile göre AYRI KÜME kullanıyor: getHoliday() içinde
+// lang==='de' ise DE_*, lang!=='tr' ise EN_*, değilse TR_* okunuyor. Yani
+// TR_FIXED_HOL içindeki "Cumhuriyet Bayramı" yalnızca Türkçe arayüzde
+// görünür — çevrilmemiş metin değil, o dile ait veri.
+//
+// Ölçüt isim değil eşleşme: `const TR_X` yalnızca aynı dosyada `const EN_X`
+// varsa muaf. Böylece "TR_" öneki tek başına kaçağı aklayamaz; İngilizce
+// karşılığı yazılmamışsa test yine kırılır.
+function dilVerisiSatirlari(ham) {
+  const satirlar = ham.split('\n');
+  const atla = new Set();
+  const adlar = [...ham.matchAll(/^const (TR|EN|DE)_([A-Z0-9_]+)\s*=/gm)].map((m) => ({ dil: m[1], ad: m[2] }));
+  const enVar = new Set(adlar.filter((a) => a.dil === 'EN').map((a) => a.ad));
+  for (let i = 0; i < satirlar.length; i += 1) {
+    const m = /^const (TR|EN|DE)_([A-Z0-9_]+)\s*=/.exec(satirlar[i]);
+    if (!m || !enVar.has(m[2])) continue;
+    // Bildirimin sonuna kadar: girintisiz `};` ya da `];`
+    let son = i;
+    while (son < satirlar.length && !/^[}\]];/.test(satirlar[son])) son += 1;
+    for (let j = i; j <= son; j += 1) atla.add(j + 1);
+  }
+  return atla;
+}
+
+// auth.jsx'in kendi sözlük bloğu — meşru, atlanır.
+function authSozlukSatirlari(ham) {
+  const satirlar = ham.split('\n');
+  const bas = satirlar.findIndex((l) => /^const AUTH_I18N = \{/.test(l));
+  if (bas < 0) return new Set();
+  let son = bas;
+  while (son < satirlar.length && !/^\};/.test(satirlar[son])) son += 1;
+  const s = new Set();
+  for (let i = bas; i <= son; i += 1) s.add(i + 1);
+  return s;
+}
 
 function jsxDosyalari(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -108,28 +204,115 @@ function jsxDosyalari(dir) {
 }
 
 describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
-  test('JSX etiketleri arasında çevrilmemiş Türkçe yok', () => {
+  test('sözlük anahtarı olmayan Türkçe metin yok', () => {
+    const sozluk = sozlukAnahtarlari('tr');
     const bulgular = [];
+
     for (const dosya of jsxDosyalari(CLIENT)) {
       const ad = path.basename(dosya);
       if (ISTISNA.has(ad)) continue;
-      const satirlar = fs.readFileSync(dosya, 'utf8').split('\n');
-      satirlar.forEach((satir, i) => {
-        const kirpik = satir.trim();
-        if (kirpik.startsWith('//') || kirpik.startsWith('*') || kirpik.startsWith('/*')) return;
-        // >metin< — süslü parantez ve etiket içermeyen, yani doğrudan yazılmış
-        // metin. T('anahtar', 'yedek') biçimindeki yedekler {} içinde olduğu
-        // için buraya düşmez.
-        for (const m of satir.matchAll(/>([^<>{}]+)</g)) {
-          if (TURKCE.test(m[1])) bulgular.push(`${ad}:${i + 1}  ${kirpik.slice(0, 90)}`);
+      const ham = fs.readFileSync(dosya, 'utf8');
+      const src = yorumSil(ham);
+      const atlanacak = new Set([...authSozlukSatirlari(ham), ...dilVerisiSatirlari(ham)]);
+      const satirlar = src.split('\n');
+      const satirNo = (idx) => src.slice(0, idx).split('\n').length;
+
+      const ekle = (idx, metin) => {
+        const no = satirNo(idx);
+        if (atlanacak.has(no)) return;
+        if (DEKORATIF.has(metin.trim())) return;
+        // lang === 'en' ? [...İngilizce...] : [...Türkçe...] — paralel dizi
+        // kalıbı. İki dil de yazılmış, çeviri var; anahtar aranmaz.
+        const pencere = satirlar.slice(Math.max(0, no - 4), no + 1).join('\n');
+        if (/===\s*'en'|===\s*"en"|'en'\s*\?/.test(pencere)) return;
+        bulgular.push(`${ad}:${no}  ${metin.trim().replace(/\s+/g, ' ').slice(0, 70)}`);
+      };
+
+      // 1. JSX metin düğümleri — çok satırlı olanlar dahil.
+      //
+      // İki ayrı kalıp gerekiyor. `>metin<` açılış etiketinden sonra geleni
+      // yakalar; ama `{t.label} Odası` gibi ifadeyle metnin karıştığı
+      // düğümlerde metin `}` ile `<` arasında kalıyor ve ilk kalıba düşmüyor.
+      // Bu boşluktan "Odası" kaçmıştı (3 Eylül).
+      for (const re of [/>([^<>{}]+)</g, /\}([^<>{}]+)</g]) {
+        for (const m of src.matchAll(re)) {
+          if (!TURKCE.test(m[1])) continue;
+          if (!/[a-zçğıöşü]/i.test(m[1])) continue;
+          // `}…<` kalıbı iki `}` ile `<` arasındaki her şeye uyuyor; bu
+          // aralık bazen JSX metni değil koddur (`}); const x = a ? (b` gibi,
+          // sonrasında bir `<` gelirse). Noktalı virgül, eşittir ve parantez
+          // metinde geçmez — geçiyorsa bu kod, bulgu değil.
+          if (/[;=()]/.test(m[1])) continue;
+          ekle(m.index, m[1]);
         }
-      });
+      }
+
+      // 2. Sözlük anahtarıyla eşleşmeyen Türkçe dizeler.
+      for (const m of src.matchAll(/(['"])((?:[^\\\n]|\\.)*?)\1/g)) {
+        const metin = m[2];
+        if (!TURKCE.test(metin)) continue;
+        // Tek kelimelik kısa değerler kod olabiliyor (css sınıfı, id).
+        if (!/\s/.test(metin) && metin.length < 4) continue;
+        // Anahtar metnin solunda olabilir (T('k','Türkçe'), { k:'x', fb:'…' })
+        // ya da sağında: _DOC_I18N_MAP gibi metinden anahtara giden eşleme
+        // tabloları 'Açıklama': 'drawer_description' biçiminde yazılıyor.
+        // Çift kalıbı iki yönde de meşru.
+        const once = src.slice(Math.max(0, m.index - 160), m.index);
+        const sonra = src.slice(m.index + m[0].length, m.index + m[0].length + 60).split('\n')[0];
+        const yakinAnahtarlar = [
+          ...once.matchAll(/(['"])([a-z][a-z0-9_]{3,})\1/g),
+          ...sonra.matchAll(/(['"])([a-z][a-z0-9_]{3,})\1/g),
+        ].map((x) => x[2]);
+        if (yakinAnahtarlar.some((a) => sozluk.has(a))) continue;
+
+        // Kardeş alan kalıbı: `label:'Klasör', label_en:'Folder'`. Metin bir
+        // nesne alanının değeriyse ve aynı nesnede `<alan>_en` varsa çeviri
+        // yazılmış demektir — sözlük yerine yan yana duran iki dil.
+        // PROJECT_ICONS (50 tooltip) ve TEMPLATE_META (şablon önizlemesi)
+        // bunu kullanıyor; ikisi de sözlüğe taşınsa gereksiz yere şişerdi.
+        const alanEsl = [...once.matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*:/g)].pop();
+        if (alanEsl) {
+          const alan = alanEsl[1];
+          if (!alan.endsWith('_en')) {
+            const kardesPencere = src.slice(m.index, m.index + 600);
+            if (new RegExp(`\\b${alan}_en\\s*:`).test(kardesPencere)) continue;
+          }
+        }
+        ekle(m.index, metin);
+      }
     }
+
     assert.deepEqual(
       bulgular, [],
-      'Çevrilmemiş Türkçe metin. T(\'anahtar\', \'Türkçe\') kullan ve anahtarı '
-      + 'data.jsx içindeki hem tr hem en sözlüğüne ekle.',
+      'Sözlük anahtarı olmayan Türkçe metin. T(\'anahtar\', \'Türkçe\') kullan '
+      + 've anahtarı data.jsx içindeki hem tr hem en sözlüğüne ekle.',
     );
+  });
+
+  // Giriş ekranı uygulama sözlüğünden önce çalıştığı için kendi AUTH_I18N
+  // sözlüğünü taşıyor. Ayrı mekanizma ama aynı kural geçerli: iki dil de
+  // eksiksiz olmalı, yoksa authT sessizce Türkçe'ye düşer.
+  test('AUTH_I18N tr ve en aynı anahtarları taşımalı', () => {
+    const src = fs.readFileSync(path.join(CLIENT, 'views', 'auth.jsx'), 'utf8');
+    const satirlar = src.split('\n');
+    const blok = (lang) => {
+      const bas = satirlar.findIndex((l) => new RegExp(`^  ${lang}: \\{`).test(l));
+      assert.ok(bas >= 0, `AUTH_I18N içinde '${lang}' bloğu bulunamadı`);
+      let son = bas + 1;
+      while (son < satirlar.length && !/^ {2}\},?$/.test(satirlar[son])) son += 1;
+      const set = new Set();
+      for (const s of satirlar.slice(bas + 1, son)) {
+        if (s.trim().startsWith('//')) continue;
+        const t = s.replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g, "''");
+        for (const m of t.matchAll(/\b([a-z][a-z0-9_]*)\s*:/g)) set.add(m[1]);
+      }
+      return set;
+    };
+    const tr = blok('tr');
+    const en = blok('en');
+    assert.ok(tr.size > 20, 'AUTH_I18N tr bloğu beklenenden küçük');
+    assert.deepEqual([...tr].filter((k) => !en.has(k)), [], 'AUTH_I18N en\'de eksik anahtar');
+    assert.deepEqual([...en].filter((k) => !tr.has(k)), [], 'AUTH_I18N tr\'de eksik anahtar');
   });
 
   // Kullanıcının gördüğü metin yalnızca etiketler arasında olmuyor: title,
