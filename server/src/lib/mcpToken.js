@@ -131,6 +131,75 @@ export function anahtarOzetSatiri(tokens) {
   return `${tokens.size} anahtar: ${parcalar.join(', ')}`;
 }
 
+// ─── Kişinin kendi ürettiği anahtarlar (veritabanı) ────────────────────────
+//
+// 13 Eylül 2026'ya kadar tek yol ortam değişkeniydi ve her yeni kişi için
+// Railway'de elle düzenleme gerekiyordu. Ayarlar ekranından üretilen anahtar
+// `mcp_tokens` tablosunda duruyor. Bu bölüm o yolun saf parçaları: üretim,
+// etiket, sınır ve kaydın geçerliliği. Veritabanı işi `lib/mcpTokenStore.js`te.
+
+/** Üretilen anahtarların öneki — sızdığında ne olduğu tanınsın diye. */
+export const ANAHTAR_ONEKI = 'stoa_';
+
+/**
+ * Kişi başına etkin anahtar sınırı. Bir kişinin birkaç cihazı ya da istemcisi
+ * olabilir; sınırsız üretim ise unutulmuş, hâlâ geçerli anahtar yığını demek.
+ */
+export const AKTIF_ANAHTAR_SINIRI = 5;
+
+/**
+ * Yeni bir anahtar üretir: 32 bayt rastgele, base64url.
+ *
+ * `ham` yalnızca oluşturma yanıtında bir kez kullanıcıya gider; saklanan
+ * `ozet`tir. `onek` listede tanımak için — önek + dört karakter, anahtarın
+ * 256 bitinden 24'ünü açık eder, geri kalanı tahmin edilemez.
+ */
+export function yeniMcpAnahtari() {
+  const ham = `${ANAHTAR_ONEKI}${crypto.randomBytes(32).toString('base64url')}`;
+  return { ham, ozet: hashToken(ham), onek: ham.slice(0, ANAHTAR_ONEKI.length + 4) };
+}
+
+/**
+ * Kullanıcının verdiği etiketi temizler: kırpılır, iç boşluk sıkıştırılır,
+ * kontrol karakterleri atılır, 80 karakterle sınırlanır. Boş ya da metin
+ * değilse `Claude` — etiketsiz anahtar listede ayırt edilemezdi.
+ */
+export function anahtarEtiketi(girdi) {
+  const temiz = typeof girdi === 'string'
+    ? girdi.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
+    : '';
+  return temiz || 'Claude';
+}
+
+/**
+ * Anahtar satırının temsil ettiği kullanıcı; geçersizse `null`.
+ *
+ * Kapalı başarısızlık: satır yoksa, iptal edilmişse ya da kullanıcısı
+ * yüklenmemişse reddedilir. `if (satir && satir.revokedAt)` gibi bir yazım
+ * satır yokken kontrolü hiç çalıştırmazdı — bu deponun tekrar eden kusuru.
+ */
+export function kayittanKullanici(satir) {
+  if (!satir || satir.revokedAt) return null;
+  return satir.user || null;
+}
+
+/**
+ * Liste yanıtı için anahtar — özet ve ham anahtar yok.
+ *
+ * `token_hash` bilerek dışarıda: özet ham anahtar değil, ama veritabanı
+ * dışına çıkması için hiçbir sebep yok. Sözleşme testi alan kümesini
+ * sabitliyor.
+ */
+export function mcpTokenToDict(satir) {
+  return {
+    id: String(satir.id),
+    label: satir.label,
+    prefix: satir.prefix,
+    created_at: satir.createdAt ? new Date(satir.createdAt).toISOString() : null,
+    last_used_at: satir.lastUsedAt ? new Date(satir.lastUsedAt).toISOString() : null,
+  };
+}
+
 /** Uyarı metinlerinde ham değeri kısaltır — anahtarın tamamı loga düşmesin. */
 function kirp(s) {
   const t = String(s);

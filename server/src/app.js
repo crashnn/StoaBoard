@@ -40,6 +40,7 @@ import {
 } from './routes/attachments.js';
 import { channelsRouter } from './routes/channels.js';
 import { mcpRouter } from './routes/mcp.js';
+import { mcpTokensRouter } from './routes/mcpTokens.js';
 import { chatRouter } from './routes/chat.js';
 import {
   taskWorkLogsRouter,
@@ -161,6 +162,7 @@ export function createApp() {
   app.use('/api/chat', chatRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/notes', notesRouter);
+  app.use('/api/mcp-tokens', mcpTokensRouter);
   app.use('/api/tasks', taskLinkedNotesRouter);
   app.use('/api', apiRouter);
 

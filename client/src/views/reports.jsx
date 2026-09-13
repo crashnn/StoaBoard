@@ -83,6 +83,9 @@ const ACTION_LABEL = {
   'mcp.subtask_updated': ['rep_act_mcp_sub_updated', 'Alt görev düzenlendi — MCP'],
   'mcp.subtask_deleted': ['rep_act_mcp_sub_deleted', 'Alt görev silindi — MCP'],
   'mcp.workspace_switched': ['rep_act_mcp_ws_switched', 'Aktif alan değişti — MCP'],
+  // Kişinin Ayarlar'dan ürettiği ve iptal ettiği anahtarlar.
+  'mcp.token_created': ['rep_act_mcp_token_created', 'MCP anahtarı oluşturuldu'],
+  'mcp.token_revoked': ['rep_act_mcp_token_revoked', 'MCP anahtarı iptal edildi'],
 };
 
 const REPORT_LABEL = {

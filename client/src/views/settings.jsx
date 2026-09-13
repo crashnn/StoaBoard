@@ -3,7 +3,7 @@
 import React from 'react';
 import { Icon } from '../icons.jsx';
 import { Avatar } from '../shell.jsx';
-import { API } from '../data.jsx';
+import { API, fmtDate, fmtTimeAgo } from '../data.jsx';
 import { DefaultDropdown } from '../dropdown.jsx';
 
 const LABEL_TONES = () => {
@@ -459,6 +459,183 @@ function JoinRequestsSection() {
   );
 }
 
+// ── Claude bağlantısı — kişinin kendi MCP anahtarları ────────────────────
+//
+// 13 Eylül 2026'ya kadar her anahtar Railway'de elle ekleniyordu. Bu bölüm
+// kişinin anahtarını kendisinin üretmesini, görmesini ve iptal etmesini
+// sağlıyor. Ham anahtar sunucudan yalnızca oluşturma yanıtında bir kez gelir;
+// sayfa yenilenince ya da kutu kapatılınca bir daha gösterilemez (sunucuda
+// yalnızca özeti var). Kurulum adımları gerçek kurulumdan (DEVIR 0-I).
+
+function ClaudeConnectionSection() {
+  const _t = (k, fb) => window.t?.(k) || fb;
+  const [tokens, setTokens]     = React.useState([]);
+  const [limit, setLimit]       = React.useState(5);
+  const [loading, setLoading]   = React.useState(true);
+  const [label, setLabel]       = React.useState('');
+  const [creating, setCreating] = React.useState(false);
+  const [fresh, setFresh]       = React.useState(null);   // { token, label } — yalnızca bir kez
+  const [confirmId, setConfirmId] = React.useState(null);
+
+  const mcpUrl = `${window.location.origin}/mcp`;
+
+  React.useEffect(() => {
+    API.listMcpTokens()
+      .then((r) => { setTokens(r.tokens || []); if (r.limit) setLimit(r.limit); })
+      .catch((e) => window.showToast?.(e.message, 'error'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const copy = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      window.showToast?.(_t('set_mcp_copied', 'Kopyalandı.'), 'success');
+    } catch {
+      window.showToast?.(_t('set_mcp_copy_failed', 'Kopyalanamadı; metni elle seçip kopyala.'), 'error');
+    }
+  };
+
+  const create = async () => {
+    if (creating) return;
+    setCreating(true);
+    try {
+      const r = await API.createMcpToken(label.trim());
+      const { token, ...row } = r;
+      setFresh({ token, label: row.label });
+      setTokens((prev) => [row, ...prev]);
+      setLabel('');
+    } catch (e) {
+      window.showToast?.(e.message, 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const revoke = async (id) => {
+    try {
+      await API.revokeMcpToken(id);
+      setTokens((prev) => prev.filter((t) => t.id !== id));
+      setConfirmId(null);
+      window.showToast?.(_t('set_mcp_revoked', 'Anahtar iptal edildi.'), 'info');
+    } catch (e) {
+      window.showToast?.(e.message, 'error');
+    }
+  };
+
+  const atLimit = tokens.length >= limit;
+  const mono = { fontFamily: 'var(--font-mono)', fontSize: 12 };
+  const steps = [
+    _t('set_mcp_step1', 'Claude → Ayarlar → Bağlayıcılar → Özel bağlayıcı ekle'),
+    _t('set_mcp_step2', 'Adres alanına yukarıdaki bağlantıyı yapıştır'),
+    _t('set_mcp_step3', 'Kimlik doğrulamada “No sign-in” seç'),
+    _t('set_mcp_step4', 'İstek başlığı ekle: x-auth-token = anahtarın'),
+    _t('set_mcp_step5', '“Add” ile kaydet; “Connect” düğmesine basma'),
+  ];
+
+  return (
+    <div className="settings-section">
+      <div>
+        <h3>{_t('set_mcp_title', 'Claude bağlantısı')}</h3>
+        <p className="desc">{_t('set_mcp_desc', 'Claude’un panoyu senin adına okuyup güncelleyebilmesi için kişisel anahtar. Anahtar senin izinlerinle çalışır; senin göremediğini göremez.')}</p>
+      </div>
+      <div className="settings-card settings-panel" style={{ display: 'grid', gap: 16 }}>
+
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-muted)' }}>{_t('set_mcp_url', 'Bağlantı adresi')}</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <code style={{ ...mono, padding: '6px 10px', borderRadius: 6, background: 'var(--bg-subtle)', border: '1px solid var(--line)', overflowWrap: 'anywhere' }}>{mcpUrl}</code>
+            <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => copy(mcpUrl)}>
+              {_t('set_mcp_copy', 'Kopyala')}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-muted)' }}>{_t('set_mcp_steps_title', 'Claude’da kurulum')}</div>
+          <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4, fontSize: 13 }}>
+            {steps.map((s, i) => <li key={i}>{s}</li>)}
+          </ol>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-muted)' }}>{_t('set_mcp_warn', 'Bağlayıcıyı “disconnect” edersen geri bağlanamaz; kaldırıp yeniden ekle. Parolanı değiştirdiğinde bütün anahtarların iptal edilir.')}</p>
+        </div>
+
+        {fresh && (
+          <div role="status" style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 8, border: '1px solid var(--accent)', background: 'var(--accent-softer)' }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{_t('set_mcp_new_title', 'Yeni anahtarın')} · {fresh.label}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <code style={{ ...mono, padding: '6px 10px', borderRadius: 6, background: 'var(--bg)', border: '1px solid var(--line)', overflowWrap: 'anywhere', userSelect: 'all' }}>{fresh.token}</code>
+              <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 12px' }} onClick={() => copy(fresh.token)}>
+                {_t('set_mcp_copy', 'Kopyala')}
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{_t('set_mcp_new_warn', 'Bu anahtar bir daha gösterilmeyecek. Şimdi kopyala ve Claude’daki bağlayıcıya yapıştır.')}</div>
+            <div>
+              <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setFresh(null)}>
+                {_t('set_mcp_new_done', 'Kopyaladım, kapat')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            id="mcp-token-label"
+            className="label-add-input"
+            style={{ flex: '1 1 220px' }}
+            maxLength={80}
+            value={label}
+            placeholder={_t('set_mcp_label_ph', 'Anahtar adı, ör. İş bilgisayarı')}
+            aria-label={_t('set_mcp_label_ph', 'Anahtar adı, ör. İş bilgisayarı')}
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !atLimit) create(); }}
+            disabled={atLimit}
+          />
+          <button className="btn btn-primary" onClick={create} disabled={creating || atLimit}>
+            {creating ? _t('set_mcp_creating', 'Oluşturuluyor…') : _t('set_mcp_create', 'Anahtar oluştur')}
+          </button>
+        </div>
+        {atLimit && <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{_t('set_mcp_limit_reached', 'Sınıra ulaştın; yeni anahtar için birini iptal et.')}</div>}
+
+        <div style={{ display: 'grid', gap: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-muted)', paddingBottom: 6 }}>
+            {_t('set_mcp_list_title', 'Etkin anahtarlar')} · {tokens.length} / {limit}
+          </div>
+          {loading ? (
+            <div style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{_t('set_mcp_loading', 'Yükleniyor…')}</div>
+          ) : tokens.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--ink-muted)' }}>{_t('set_mcp_none', 'Henüz anahtarın yok.')}</div>
+          ) : tokens.map((t, i) => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 0', borderTop: i === 0 ? '1px solid var(--line)' : 'none', borderBottom: '1px solid var(--line)' }}>
+              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <div style={{ fontWeight: 500, fontSize: 13 }}>{t.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--ink-muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={mono}>{t.prefix}…</span>
+                  <span>{_t('set_mcp_created', 'Oluşturuldu')} {fmtDate(t.created_at)}</span>
+                  <span>{_t('set_mcp_last_used', 'Son kullanım')}: {t.last_used_at ? fmtTimeAgo(t.last_used_at) : _t('set_mcp_never_used', 'Hiç kullanılmadı')}</span>
+                </div>
+              </div>
+              {confirmId === t.id ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{_t('set_mcp_revoke_confirm', 'Bu anahtarı kullanan bağlayıcı hemen çalışmaz hâle gelir.')}</span>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px', color: 'var(--status-rose)' }} onClick={() => revoke(t.id)}>
+                    {_t('set_mcp_revoke', 'İptal et')}
+                  </button>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setConfirmId(null)}>
+                    {_t('set_mcp_cancel', 'Vazgeç')}
+                  </button>
+                </div>
+              ) : (
+                <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px', color: 'var(--status-rose)' }} onClick={() => setConfirmId(t.id)}>
+                  {_t('set_mcp_revoke', 'İptal et')}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersChange }) {
   const _t = (k, fb) => window.t?.(k) || fb;
 
@@ -899,6 +1076,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
     { id: 'labels',         label: _t('set_labels','Etiketler'),             icon: 'tag' },
     { id: 'members',        label: _t('set_members','Üyeler'),               icon: 'users' },
     { id: 'notifications',  label: _t('set_notifications','Bildirimler'),    icon: 'bell' },
+    { id: 'claude',         label: _t('set_mcp_nav','Claude bağlantısı'),    icon: 'key' },
     { id: 'shortcuts',      label: _t('set_shortcuts','Kısayollar'),         icon: 'cmd' },
     { id: 'language',       label: _t('set_language','Dil & Bölge'),         icon: 'languages' },
     { id: 'danger',         label: _t('set_danger','Tehlikeli Bölge'),       icon: 'alertTriangle', danger: true },
@@ -1722,6 +1900,9 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
 
         </div>
       </div>
+
+      {/* ── Claude connection ── */}
+      <div data-nav-id="claude"><ClaudeConnectionSection /></div>
 
       {/* ── Keyboard shortcuts ── */}
       <div className="settings-section" data-nav-id="shortcuts">

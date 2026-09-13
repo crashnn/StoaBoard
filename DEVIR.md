@@ -236,6 +236,81 @@ sonrası ilk iş** — TODO "hemen yapılabilir", dört kural, kancaya bağlanı
 3. claude.ai'de **yeni sohbet**, `whoami` → 0.6.0.
 4. Tarayıcıda F5, dil Türkçe, bildirim sesi kısık, Eray-2'de bildirim paneli
    açılmasın (Mayıs mesajları görünür).
+---
+
+## 0-V2. 13 Eylül, gece — kişinin kendi MCP anahtarı
+
+TODO'daki "MCP anahtarı kendi kendine alınabilmeli" maddesinin (a) basamağı.
+Sebep ölçek: bugüne kadar yeni birine Claude erişimi vermek, Railway'de ortam
+değişkenini düzenleyip yeniden dağıtmak demekti — yani her yeni kişi, Railway
+erişimi olan tek kişiden geçiyordu. Ekip büyüdükçe dayanılmaz.
+
+### Ne yapıldı
+
+- **`mcp_tokens` tablosu.** Ham anahtar saklanmıyor; SHA-256 özeti, listede
+  tanımak için `stoa_` + dört karakterlik önek, oluşturma / son kullanım /
+  iptal tarihleri. Silme yok, iptal var.
+- **Uçlar** (`routes/mcpTokens.js`, `requireAuth`): liste, oluştur, iptal. Her
+  sorgu `userId: user.id` ile sınırlı; başkasının anahtar kimliği olmayanla
+  aynı 404. Oluşturma saatte on, kişi başına beş etkin anahtar. Ham anahtar
+  yalnızca oluşturma yanıtında, `Cache-Control: no-store` ile.
+- **Kimlik kapısı** önce ortam değişkenine, sonra veritabanına bakıyor. İptal
+  edilmiş anahtar olmayanla aynı 401; denetim satırı sahibine bağlanıyor.
+  Son kullanım en fazla beş dakikada bir yazılıyor.
+- **Parola sıfırlanınca ve profilden değişince bütün anahtarlar iptal.**
+  Oturumlarla aynı ders: hesabı ele geçiren birinin ürettiği anahtar, parola
+  değişince yaşarsa parola değiştirmek işe yaramaz.
+- **Denetim:** `mcp.token_created`, `mcp.token_revoked` (Raporlar'da iki dilli
+  etiketle); ayrıntıda kimlik ve önek, anahtar da özet de yok.
+- **Arayüz:** bağlantı adresi (kopyala), gerçek kurulum adımları (0-I: No
+  sign-in + `x-auth-token`, "Connect"e basma), anahtar bir kez gösteriliyor,
+  liste, iki adımlı iptal. TR + EN.
+
+### GUVENLIK.md eleği
+
+1. Kim? `requireAuth`; yetki testi yeni uçları kendiliğinden gördü.
+2. Neyin üstünde? Yalnızca kişinin kendi anahtarları; anahtar da kişinin
+   izinlerinden fazlasını yapamıyor, o yüzden ayrı izin istemiyor.
+3. IDOR? İptal tek sorguda aitlik + varlık; başkasının kimliği = olmayan.
+4. Kapalı mı? `kayittanKullanici`: satır yok / iptal / kullanıcı yok → red.
+5. Yanıtta ne? `mcpTokenToDict` özeti taşımıyor — sözleşme testinde kilitli.
+6. Girdi? Etiket kırpılıyor, kontrol karakteri atılıyor, 80 karakter.
+7. Dışarı çıkıyor mu? Ham anahtar tek yanıtta; denetim kaydına düşmüyor.
+8. Hata? İptal edilmiş / olmayan anahtar ayırt edilemiyor (401 aynı).
+9. Silme? Kullanıcı silinince anahtarlar da gidiyor (CASCADE) — kimliği
+   olmayan anahtarın yaşaması için sebep yok. Denetim satırları kalıyor.
+10. Test? `anahtar.test.js` (21 test). **On dört mutasyonun on dördü
+    yakalandı:** kapsamı kaldırmak (liste ve iptal ayrı ayrı), denetime ham
+    anahtar yazmak, `no-store`u kaldırmak, veritabanı aramasını kapatmak,
+    geçerlilik kapısını atlamak, iptal edilmişi yeniden yazmak, iki parola
+    yolunda iptali kaldırmak, iptal edilmiş anahtara kimlik vermek, etiket
+    temizliğini kaldırmak, özeti serileştirmek, yanlış değerden özet almak,
+    tekil iptalde önce sahipsiz arama.
+
+**Ödün:** ortam değişkenindeki anahtarlar parola akışının dışında kalıyor —
+onlar Railway'de yönetiliyor.
+
+### Yol üstünde: araç kaçışları çözüyor
+
+Etiket temizleyen düzenli ifade `[\u0000-\u001f\u007f]` diye yazıldı ama dosyaya
+**ham kontrol karakterleri** olarak düştü; `grep` dosyayı ikili sandı. Düzenleme
+aracı parametredeki `\u` kaçışlarını yazmadan önce çözüyor. Aynı tuzak aynı
+gece DEVIR.md'deki bu paragrafa da düştü. İki kez düşünce kural teste taşındı:
+**`test/kaynak.test.js`** sunucu ve istemci kaynağında, şemada ve kökteki
+belgelerde ham kontrol karakteri arıyor. Üçüncü vaka testin kendi başlık
+yorumuna düştü ve test onu **ilk koşusunda** yakaladı — aranmış bir mutasyon
+değil, gerçek bir vaka. Test tarafında kontrol karakterleri artık
+`String.fromCharCode` ile üretiliyor.
+
+### Canlıya çıkış — sıra önemli
+
+1. **Tablo önce** (`prisma migrate diff`, canlıya karşı salt okuma: fark
+   yalnızca `mcp_tokens` + iki indeks + yabancı anahtar). Tersi olursa geçersiz
+   anahtarla gelen MCP istekleri 401 yerine 500 alır — veritabanı araması tablo
+   yokken patlar.
+2. Push, dağıtım (`serverInfo.version` 0.6.1).
+3. Canlı tarama; Eray Ayarlar'dan bir anahtar üretip Claude'da dener;
+   veritabanında `last_used_at` dolmalı.
 
 ---
 

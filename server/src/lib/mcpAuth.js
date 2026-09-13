@@ -13,6 +13,7 @@
 import { prisma } from '../db.js';
 import { config } from '../config.js';
 import { lookupSlug } from './mcpToken.js';
+import { anahtarSahibiniBul } from './mcpTokenStore.js';
 import { recordAudit, AUDIT } from './audit.js';
 
 /**
@@ -72,10 +73,27 @@ export async function requireMcpToken(req, res, next) {
     const token = bearerToken(req);
     const slug = lookupSlug(config.mcp.tokens, token);
 
+    // Ortam değişkeninde yoksa kişinin kendi ürettiği anahtarlara bakılıyor
+    // (Ayarlar → Claude bağlantısı, `mcp_tokens`). Sıra bilinçli: ortam
+    // değişkeni ilk kurulum ve acil durum yolu, veritabanına ulaşılamasa da
+    // çalışmalı.
     if (!slug) {
+      const kayit = token ? await anahtarSahibiniBul(token) : null;
+      if (kayit?.user) {
+        req.mcpUser = kayit.user;
+        req.mcpTokenId = kayit.tokenId;
+        return next();
+      }
+      // İptal edilmiş anahtar, olmayanla aynı 401'i alıyor; ayrım yalnızca
+      // denetim kaydında — sahibinin "iptal ettiğim anahtar hâlâ deneniyor mu"
+      // sorusu için.
+      let reason = 'anahtar sunulmadı';
+      if (token) reason = kayit?.iptal ? 'iptal edilmiş anahtar' : 'bilinmeyen anahtar';
       recordAudit(req, {
         action: AUDIT.MCP_AUTH_FAILED,
-        detail: { reason: token ? 'bilinmeyen anahtar' : 'anahtar sunulmadı' },
+        // Yalnızca iptal edilmiş anahtarda dolu: deneme sahibinin kaydına düşsün.
+        user: kayit?.sahip || null,
+        detail: { reason, ...(kayit?.tokenId ? { token_id: String(kayit.tokenId) } : {}) },
       });
       return res.status(401).json({
         error: 'err_mcp_token_invalid',

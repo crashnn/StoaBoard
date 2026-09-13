@@ -44,6 +44,7 @@ import { memberToDict, userPrivateDict } from '../src/lib/workspace.js';
 import { noteToDict } from '../src/lib/notes.js';
 import { channelToDict } from '../src/lib/channels.js';
 import { auditToDict } from '../src/lib/audit.js';
+import { mcpTokenToDict } from '../src/lib/mcpToken.js';
 import {
   gorevOzeti, gorevDetayi, acikMi, notOzeti, uyeOzeti,
 } from '../src/lib/mcpShape.js';
@@ -178,6 +179,10 @@ const SOZLESME = [
       'members', 'last_message']],
   ['auditToDict', () => auditToDict({ id: 11, action: 'mcp.task_created', userId: 5, userName: 'Eray', detail: null, ip: null, userAgent: null, at: new Date() }),
     ['id', 'action', 'user_id', 'user_name', 'detail', 'ip', 'user_agent', 'at']],
+  // `token_hash` BİLEREK yok: özet ham anahtar değil ama veritabanından çıkması
+  // için sebep yok. Alan eklenirse bu satır kırılır ve karar görünür olur.
+  ['mcpTokenToDict', () => mcpTokenToDict({ id: 3, userId: 5, label: 'İş', tokenHash: 'a'.repeat(64), prefix: 'stoa_ab12', createdAt: new Date(), lastUsedAt: null, revokedAt: null }),
+    ['id', 'label', 'prefix', 'created_at', 'last_used_at']],
 ];
 
 describe('serileştirici şekli — alan kümesi sabit', () => {

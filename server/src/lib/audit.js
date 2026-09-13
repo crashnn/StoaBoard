@@ -42,6 +42,10 @@ export const AUDIT = {
   // Aktif alan tarayıcı oturumuyla ortak: bu kayıt "kullanıcının ekranındaki
   // alanı Claude değiştirdi" sorusunun tek cevabı.
   MCP_WORKSPACE_SWITCHED: 'mcp.workspace_switched',
+  // Kişinin kendi ürettiği anahtarlar (Ayarlar → Claude bağlantısı). Ayrıntıda
+  // anahtar kimliği ve öneki; ham anahtar da özeti de ASLA yazılmaz.
+  MCP_TOKEN_CREATED: 'mcp.token_created',
+  MCP_TOKEN_REVOKED: 'mcp.token_revoked',
 };
 
 function clientIp(req) {

@@ -157,6 +157,16 @@ birleştirilmez.** Cevaplar commit mesajına ya da PR açıklamasına yazılır.
 ## 5 · Mevcut durum
 
 **Yapıldı**
+- **Kişisel MCP anahtarları** *(13 Eylül, DEVIR 0-V2)* — Ayarlar'dan üretiliyor;
+  ham anahtar saklanmıyor (SHA-256 özeti), yalnızca oluşturma yanıtında bir kez
+  ve `no-store` ile gidiyor. Her sorgu kişinin kendisiyle sınırlı; başkasının
+  anahtar kimliği olmayanla aynı 404'ü alıyor. İptal edilen anahtar olmayanla
+  aynı 401. **Parola sıfırlanınca ve değişince bütün anahtarlar iptal ediliyor**
+  — hesabı ele geçiren birinin ürettiği anahtar, oturumlar düştükten sonra
+  içeride kalmanın yolu olmasın (bölüm 3, parola dersi). Oluşturma saatte on,
+  kişi başına beş etkin anahtar. Hepsi `anahtar.test.js`te; on dört mutasyonun
+  on dördü yakalanıyor. **Ödün:** ortam değişkenindeki anahtarlar parola
+  akışının dışında, Railway'de yönetiliyor
 - `POST /api/notifications` üyelik kapısından geçiyor: hedef, gönderenin aktif
   çalışma alanının üyesi olmalı. Olmayan kullanıcı ile üye olmayan aynı 403'ü
   alıyor — kullanıcı-var-mı kahini kapandı *(12 Eylül, DEVIR 0-Q)*

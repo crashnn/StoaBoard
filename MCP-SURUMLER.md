@@ -16,6 +16,26 @@ commit'te sürüm artırılır ve buraya yazılır.
 
 ---
 
+## 0.6.1 — 13 Eylül 2026
+
+**Araç yüzeyi değişmedi; kimlik kapısı genişledi.** Kişi kendi MCP anahtarını
+StoaBoard'da **Ayarlar → Claude bağlantısı** ekranından üretebiliyor (DEVIR
+0-V2). Bağlayıcıya yapıştırma yolu aynı: `x-auth-token` başlığı ya da
+`Authorization: Bearer`.
+
+- Kapı önce `STOA_MCP_TOKENS` ortam değişkenine, sonra veritabanındaki
+  anahtarlara bakıyor. Ortam değişkeni yolu ilk kurulum ve acil durum için
+  duruyor.
+- İptal edilmiş anahtar, olmayan anahtarla **aynı** 401'i alıyor
+  (`err_mcp_token_invalid`); ayrım yalnızca denetim kaydında.
+- **Parola sıfırlanınca ya da değişince kişinin bütün anahtarları iptal
+  ediliyor** — bağlayıcı çalışmayı bırakır, yeni anahtar Ayarlar'dan üretilir.
+
+Sürüm numarası yalnızca dağıtımın indiğini görmek için arttı; istemci
+tarafında değişiklik gerekmiyor.
+
+---
+
 ## 0.6.0 — 13 Eylül 2026
 
 **Okuma yüzeyine üç ek alan.** Araç eklenmedi; kırıcı değişiklik yok, yeni

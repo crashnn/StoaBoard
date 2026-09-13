@@ -20,6 +20,7 @@ import {
 } from '../lib/user.js';
 import { sendResetEmail } from '../lib/mailer.js';
 import { destroyUserSessions } from '../lib/sessionStore.js';
+import { kullanicininAnahtarlariniIptalEt } from '../lib/mcpTokenStore.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 
 export const authRouter = Router();
@@ -206,6 +207,12 @@ authRouter.post('/reset-password', asyncHandler(async (req, res) => {
   const killed = await destroyUserSessions(user.id);
   if (killed) {
     console.log(`[auth] parola sıfırlandı, ${killed} oturum sonlandırıldı (user ${user.id})`);
+  }
+  // Kişinin ürettiği MCP anahtarları da aynı gerekçeyle: hesabı ele geçiren
+  // biri kendine anahtar ürettiyse, sıfırlama o anahtarı da öldürmeli.
+  const iptal = await kullanicininAnahtarlariniIptalEt(user.id);
+  if (iptal) {
+    console.log(`[auth] parola sıfırlandı, ${iptal} MCP anahtarı iptal edildi (user ${user.id})`);
   }
 
   return res.json({ ok: true });

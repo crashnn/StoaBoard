@@ -18,6 +18,7 @@ import { hashPassword } from '../lib/password.js';
 import { userToDict, initialsFromName } from '../lib/user.js';
 import * as onlineState from '../lib/onlineState.js';
 import { destroyUserSessions } from '../lib/sessionStore.js';
+import { kullanicininAnahtarlariniIptalEt } from '../lib/mcpTokenStore.js';
 import {
   currentMember,
   hasPermission,
@@ -443,6 +444,14 @@ apiRouter.put(
       const killed = await destroyUserSessions(user.id, req.sessionID);
       if (killed) {
         console.log(`[auth] parola değişti, ${killed} diğer oturum sonlandırıldı (user ${user.id})`);
+      }
+      // MCP anahtarlarının HEPSİ iptal ediliyor, kendi cihazındaki oturum gibi
+      // bir istisna yok: anahtarın hangi istemcide durduğunu sunucu bilemez.
+      // Hesabı ele geçiren birinin ürettiği anahtar, parola değişince yaşamamalı.
+      // Kişi yeni anahtarı Ayarlar'dan tek tıkla üretir.
+      const iptal = await kullanicininAnahtarlariniIptalEt(user.id);
+      if (iptal) {
+        console.log(`[auth] parola değişti, ${iptal} MCP anahtarı iptal edildi (user ${user.id})`);
       }
     }
 

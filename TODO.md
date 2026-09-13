@@ -760,10 +760,14 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       çıktısıyla besleniyor — `mcp.test.js` elle yazılmış sözlük kullandığı
       için kusuru hiç görememişti) ve kimlik anlamları (slug / metne
       çevrilmiş sayı / ham sayı). Yedi mutasyonun yedisi de yakalandı.
-- [ ] **MCP anahtarı kendi kendine alınabilmeli — bugün her kişi için Railway
-      elle düzenleniyor.** *(16 Eylül: vitrin sayfasının ön koşulu oldu;
-      [VITRIN-BRIEF.md](VITRIN-BRIEF.md). Sayfa "yapay zekâ ile konuş" diyecekse
-      kayıt olan kişi bunu deneyebilmeli. Önce (a).)* Bugünkü akış: anahtar üret → `STOA_MCP_TOKENS`
+- [~] **MCP anahtarı kendi kendine alınabilmeli — bugün her kişi için Railway
+      elle düzenleniyor.** *(13 Eylül 2026: (a) yapıldı — DEVIR 0-V2. Ayarlar →
+      Claude bağlantısı; anahtar veritabanında özet olarak, bir kez gösteriliyor,
+      iptal edilebiliyor, parola değişince hepsi düşüyor. (b) OAuth hâlâ açık.
+      16 Eylül: (a) vitrin sayfasının ön koşuluydu —
+      [VITRIN-BRIEF.md](VITRIN-BRIEF.md); sayfa "yapay zekâ ile konuş" diyecekse
+      kayıt olan kişi bunu deneyebilmeli, o kapı artık açık.)*
+      Bugünkü akış: anahtar üret → `STOA_MCP_TOKENS`
       sonuna ekle → yeniden dağıt → anahtarı kişiye özel olarak ulaştır.
       İki-üç kişide katlanılır, beşte dayanılmaz, ekip değiştikçe imkânsız.
 

@@ -92,7 +92,7 @@ export const mcpRouter = Router();
 // cevaplanamıyor. Yüzeyi değiştiren her commit'te bump et; `initialize`
 // yanıtındaki serverInfo.version dağıtım kanıtı olarak okunabilsin.
 // Sürüm geçmişi ve kırıcı değişiklikler: MCP-SURUMLER.md.
-const MCP_VERSION = '0.6.0';
+const MCP_VERSION = '0.6.1';
 
 /**
  * Araçların fiilen kullandığı izinler.
