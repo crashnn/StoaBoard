@@ -1,7 +1,11 @@
 # İkinci toplantı — konuşma planı, demo senaryosu, davet
 
-**Hedef tarih:** staj bitiş haftası, 15-19 Eylül 2026.
+**Tarih:** 16 Eylül 2026, 13:30–14:30, Teams ekran paylaşımı.
 **Amaç sırası:** ne yapıldı → nasıl çalışıldı → karar soruları → devir.
+**Sunum sayfası:** https://claude.ai/artifact/UDvf3wAgHpTGKf9m1X2fzx
+(15 Eylül'de yeni Claude hesabından yayımlandı; kaynağı depoda
+`TOPLANTI-2-SUNUM.html`, sayılar 15 Eylül itibarıyla — commit sonrası
+yeniden hesaplanıp yayımlanır.)
 
 Bu dosya sunum sayfasının ikizi değil. Sayfa **karşı tarafın gördüğü** şey;
 bu dosya **elde tutulan** şey: hangi dakikada ne söyleneceği, demo nasıl
@@ -57,11 +61,15 @@ Kesilecekler, bu sırayla:
 
 ### Önce hazırlık — toplantıdan en az bir gün önce
 
-- [ ] **Panoyu temizle.** Bugün canlıda çalışma alanları `asdasd`, `ghghhg`,
-      `sadsada` adını taşıyor ve pano Mayıs'tan beri güncel değil. Demo için
-      gerçekçi adlar ve 8-10 gerçekçi kart gerekiyor. *Bu, toplantının en
-      büyük tek riski: teknik hiçbir şey kırılmasa bile ekrandaki `asdasd`,
-      "bunu kimse kullanmıyor" mesajını sunumdan daha yüksek sesle verir.*
+- [x] **Panoyu temizle.** *(15 Eylül'de yapıldı.)* Demo yeni bir alanda:
+      **StoaBoard Toplantı - BDH Netaş** (kullanıcı `eray-atalay-3`, MCP
+      anahtarı buna bağlı). İçerik uydurma değil, StoaBoard'un gerçek ileri
+      backlog'u: toplantıda karar bekleyen altı soru (Backlog/Yapılacak),
+      gerçekten gecikmiş iki iş, süren hazırlık kartı, bir kart İncelemede,
+      bir kart Tamamlandı. Eski `asdasd` alanları eski kullanıcıda kaldı,
+      demoda görünmüyor. İkinci üye: "Eray Atalay - 2" (`eray-atalay`,
+      Düzenleyici) — ekranda iki aynı ad yorucu, profil adını değiştirmek
+      iyi olur.
 - [ ] **Yeni sohbet aç.** MCP istemcisi araç listesini bağlantı başında bir
       kez çekiyor; sunucu "liste değişti" diyemiyor. Eski sohbet 0.6.0'ın
       araçlarını görmez. 11 Eylül'de yaşandı.
@@ -78,14 +86,21 @@ Kesilecekler, bu sırayla:
 
 > Claude'a: **"StoaBoard'da hangi işler gecikmiş, kim üzerinde?"**
 
-Beklenen: `list_tasks` / `search_tasks` çalışır, geciken kartlar kişi adıyla
-listelenir. Söylenecek: *"Bu veri panodan geliyor, Claude'un hafızasından
+Beklenen: `list_tasks(overdue=true)` iki kart döndürür — **"Davet kodu
+görüntüleme denetim kaydına yazılsın"** (11 Eylül) ve **"Uç testleri:
+yetkilendirme akışları otomatikleşsin"** (12 Eylül), ikisi de Eray'da.
+15 Eylül'de MCP'den doğrulandı. Söylenecek: *"Bu veri panodan geliyor, Claude'un hafızasından
 değil. Yanlış alandaki kaydı da döndüremez — 0.3.1'de tam bunu kapattık."*
 
 **2. Yazma — "ve değiştirebiliyor"** *(3 dk)*
 
-> Claude'a: **"Şu kartı [Ad] Bey'e ata, bitiş tarihini cumaya çek ve altına
-> 'toplantıda konuşuldu' diye not düş."**
+> Claude'a: **"'Proje bazlı üyelik ve okuma izni' kartını [Ad] Bey'e ata,
+> bitişi cumaya (18 Eylül) çek ve altına 'toplantıda konuşuldu' diye not
+> düş."**
+
+*Kartı adıyla söyle, numarasıyla değil — arayüzde kart numarası görünmüyor.
+Gerçek bir karar kartı olduğu için eylem göstermelik olmaz: kararı kim
+sahiplenecekse ona atanır.*
 
 *Odadaki birinin adını kullanacaksan hitabı koru — "Furkan Bey'e ata", "Furkan'a
 ata" değil. Demoda geçen isim gerçek bir kişiyse cümle ekranda kalıcı bir kayıt
@@ -99,7 +114,11 @@ araç çağrısı, tek cümle."*
 
 > Claude'a: **"Bu kartı [alanın üyesi olmayan biri]'ne ata."**
 
-Beklenen: **reddedilir.** Söylenecek: *"Bu kapı geçen hafta yoktu. MCP ayrı
+Beklenen: **reddedilir** — *"Atanan kişi bu çalışma alanının üyesi değil."*
+Sunucu "yok" ile "üye değil"i bilerek aynı cevapla geçiştiriyor
+(`tasks.js`, `atamaReddi`), yani olmayan bir ad da aynı reddi alır; ama
+gerçek bir kullanıcı daha inandırıcı. `eray-atalay` artık üye olduğu için
+**kullanılamaz**; e-postayla üçüncü bir hesap açıp davet etmemek en temizi. Söylenecek: *"Bu kapı geçen hafta yoktu. MCP ayrı
 bir arka kapı olsaydı bunu fark etmezdik — aynı izin kapısından geçtiği için
 uygulamanın kuralı MCP'ye de uygulanıyor."*
 
@@ -117,6 +136,10 @@ Söylenecek: *"Bu ofis ağında da koşuyor, veritabanına erişim gerektirmiyor
 ### Demo kırılırsa
 
 - **Claude araçları görmüyor** → yeni sohbet. En sık sebep bu.
+- **502 / "Bad gateway"** → Anthropic'in MCP proxy'si ile sunucu arasında
+  geçici kopma; 15 Eylül'de bir kez oldu, bir dakika sonra aynı çağrı geçti.
+  Yazma aracıysa (özellikle `add_comment`, tekrarlanabilir değil) körlemesine
+  yeniden deneme: önce Claude'a "kartı yeniden oku" de, yazılmışsa bırak.
 - **401 / yetki hatası** → Railway'deki anahtar ortam değişkeni. Canlıda
   düzeltilemez; yedek kayda geç.
 - **Kart güncellenmiyor ama hata da yok** → sayfayı yenile (F5). 13 Eylül'de

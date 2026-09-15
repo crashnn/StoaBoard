@@ -1,0 +1,1059 @@
+<title>StoaBoard İkinci Tur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --navy:        #1a4a70;
+    --navy-deep:   #10314b;
+    --navy-lift:   #2e6d9e;
+
+    --ground:      #f2f5f8;
+    --surface:     #ffffff;
+    --surface-2:   #e9eef3;
+    --line:        #d2dbe4;
+    --line-soft:   #e2e9f0;
+
+    --ink:         #101f2c;
+    --ink-2:       #3d5061;
+    --ink-3:       #66788a;
+
+    --ok:          #2f6a4f;
+    --ok-bg:       #e4f0ea;
+    --open:        #8a5c14;
+    --open-bg:     #f6ecd9;
+    --risk:        #9d3a2c;
+    --risk-bg:     #f7e5e1;
+
+    --accent:      var(--navy);
+    --accent-ink:  #ffffff;
+
+    --f-display: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    --f-body:    'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --f-mono:    'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+    --wrap: 1080px;
+    --read: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --navy:      #5f9fce;
+      --navy-deep: #cfe2f0;
+      --navy-lift: #8cc0e6;
+
+      --ground:    #0c141c;
+      --surface:   #131f2a;
+      --surface-2: #1b2a37;
+      --line:      #2a3a49;
+      --line-soft: #1f2d3a;
+
+      --ink:       #e2eaf1;
+      --ink-2:     #a9bccd;
+      --ink-3:     #7b8fa1;
+
+      --ok:        #7cc49f;
+      --ok-bg:     #16332a;
+      --open:      #d9ab5c;
+      --open-bg:   #35290f;
+      --risk:      #e0897a;
+      --risk-bg:   #38201b;
+
+      --accent:    #5f9fce;
+      --accent-ink:#0c141c;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --navy:      #5f9fce;
+    --navy-deep: #cfe2f0;
+    --navy-lift: #8cc0e6;
+
+    --ground:    #0c141c;
+    --surface:   #131f2a;
+    --surface-2: #1b2a37;
+    --line:      #2a3a49;
+    --line-soft: #1f2d3a;
+
+    --ink:       #e2eaf1;
+    --ink-2:     #a9bccd;
+    --ink-3:     #7b8fa1;
+
+    --ok:        #7cc49f;
+    --ok-bg:     #16332a;
+    --open:      #d9ab5c;
+    --open-bg:   #35290f;
+    --risk:      #e0897a;
+    --risk-bg:   #38201b;
+
+    --accent:    #5f9fce;
+    --accent-ink:#0c141c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 17px;
+    line-height: 1.62;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: var(--wrap); margin-inline: auto; }
+  .read { max-width: var(--read); }
+
+  p { margin: 0 0 1em; }
+  p:last-child { margin-bottom: 0; }
+  strong { font-weight: 600; color: var(--ink); }
+  em { font-style: italic; }
+
+  code, .mono {
+    font-family: var(--f-mono);
+    font-size: 0.86em;
+    font-variant-numeric: tabular-nums;
+  }
+  code {
+    background: var(--surface-2);
+    padding: 0.1em 0.36em;
+    border-radius: 3px;
+    color: var(--navy-deep);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--f-display);
+    text-wrap: balance;
+    margin: 0;
+    letter-spacing: -0.014em;
+  }
+
+  .eyebrow {
+    font-family: var(--f-display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* ── başlık ───────────────────────────────────────────────── */
+
+  .masthead {
+    border-bottom: 2px solid var(--navy);
+    padding-block: 56px 26px;
+    margin-bottom: 0;
+  }
+  .masthead h1 {
+    font-size: clamp(34px, 6vw, 54px);
+    font-weight: 700;
+    line-height: 1.04;
+    color: var(--navy-deep);
+    margin-block: 14px 12px;
+  }
+  .masthead .deck {
+    font-size: clamp(17px, 2.2vw, 20px);
+    color: var(--ink-2);
+    max-width: 62ch;
+  }
+  .masthead .meta {
+    font-family: var(--f-display);
+    font-size: 13.5px;
+    color: var(--ink-3);
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+  .masthead .meta b { color: var(--ink-2); font-weight: 600; }
+
+  /* ── sayı bandı ───────────────────────────────────────────── */
+
+  .figures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .fig {
+    padding: 22px 20px 20px;
+    border-right: 1px solid var(--line-soft);
+  }
+  .fig:last-child { border-right: none; }
+  .fig .n {
+    font-family: var(--f-display);
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .fig .n small { font-size: 17px; font-weight: 500; color: var(--ink-3); }
+  .fig .l {
+    font-family: var(--f-display);
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin-top: 5px;
+    line-height: 1.35;
+  }
+
+  /* ── bölümler ─────────────────────────────────────────────── */
+
+  .part { padding-block: 54px 0; }
+  .part-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+    margin-bottom: 30px;
+  }
+  .part-num {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    padding-top: 4px;
+    white-space: nowrap;
+  }
+  .part-head h2 {
+    font-size: clamp(23px, 3.4vw, 31px);
+    font-weight: 600;
+    color: var(--navy-deep);
+    flex: 1;
+  }
+  .part-head .clock {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  h3.sub {
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-block: 34px 10px;
+  }
+  h3.sub:first-child { margin-top: 0; }
+
+  /* ── sürüm merdiveni ──────────────────────────────────────── */
+
+  .ladder-scroll { overflow-x: auto; margin-block: 8px 4px; padding-bottom: 8px; }
+  .ladder {
+    display: flex;
+    min-width: 660px;
+    border-top: 1px solid var(--line);
+    padding-top: 0;
+  }
+  .rung {
+    flex: 1;
+    padding: 16px 10px 14px 0;
+    position: relative;
+  }
+  .rung::before {
+    content: "";
+    position: absolute;
+    top: -4px; left: 0;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--line);
+  }
+  .rung.key::before { background: var(--accent); width: 9px; height: 9px; top: -5px; }
+  .rung .v {
+    font-family: var(--f-mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .rung.key .v { color: var(--accent); }
+  .rung .d {
+    font-family: var(--f-display);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    margin-top: 2px;
+  }
+  .rung .w {
+    font-family: var(--f-display);
+    font-size: 12.5px;
+    color: var(--ink-2);
+    margin-top: 7px;
+    line-height: 1.35;
+    max-width: 15ch;
+  }
+
+  /* ── faz şeridi ───────────────────────────────────────────── */
+
+  .phases {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+    margin-block: 24px 8px;
+  }
+  @media (max-width: 640px) { .phases { grid-template-columns: 1fr; } }
+  .phase {
+    background: var(--surface);
+    padding: 16px 18px 18px;
+    border-top: 3px solid var(--accent);
+  }
+  .phase.gap { border-top-color: var(--line); background: var(--surface-2); }
+  .phase .when {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.01em;
+  }
+  .phase.gap .when { color: var(--ink-3); }
+  .phase .count {
+    font-family: var(--f-display);
+    font-size: 21px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .phase.gap .count { color: var(--ink-3); font-size: 17px; }
+  .phase .what {
+    font-family: var(--f-display);
+    font-size: 13.5px;
+    color: var(--ink-2);
+    margin-top: 6px;
+    line-height: 1.45;
+  }
+  .phase.gap .what { color: var(--ink-3); }
+
+  /* ── araç ızgarası ────────────────────────────────────────── */
+
+  .tools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 26px;
+    margin-block: 22px 6px;
+  }
+  @media (max-width: 620px) { .tools { grid-template-columns: 1fr; } }
+  .tool-col .eyebrow { display: block; margin-bottom: 10px; }
+  .tool-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tool {
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+  .tool.w { border-color: var(--accent); color: var(--accent); }
+
+  /* ── tablolar ─────────────────────────────────────────────── */
+
+  .table-scroll { overflow-x: auto; margin-block: 18px 8px; }
+  table {
+    width: 100%;
+    min-width: 520px;
+    border-collapse: collapse;
+    font-family: var(--f-display);
+    font-size: 14.5px;
+    background: var(--surface);
+  }
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: bottom;
+  }
+  td {
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  td:first-child { color: var(--ink); font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--f-display);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .pill.ok   { background: var(--ok-bg);   color: var(--ok); }
+  .pill.open { background: var(--open-bg); color: var(--open); }
+  .pill.risk { background: var(--risk-bg); color: var(--risk); }
+
+  /* ── kural merdiveni ──────────────────────────────────────── */
+
+  .rule-ladder {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-block: 20px 8px;
+    font-family: var(--f-display);
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 14px;
+    background: var(--surface);
+    border-left: 3px solid var(--line);
+    font-size: 14.5px;
+    color: var(--ink-3);
+  }
+  .step .rank {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    width: 1.4em;
+  }
+  .step .name { font-weight: 500; }
+  .step .note {
+    margin-left: auto;
+    font-size: 12.5px;
+    text-align: right;
+    color: var(--ink-3);
+    max-width: 32ch;
+    line-height: 1.35;
+  }
+  .step.reached {
+    border-left-color: var(--accent);
+    color: var(--ink);
+    background: var(--surface);
+  }
+  .step.reached .rank { color: var(--accent); }
+  .step.reached .note { color: var(--ink-2); }
+  @media (max-width: 620px) {
+    .step { flex-wrap: wrap; }
+    .step .note { margin-left: 0; width: 100%; text-align: left; max-width: none; }
+  }
+
+  /* ── vurgu bloğu ──────────────────────────────────────────── */
+
+  .pull {
+    border-left: 3px solid var(--accent);
+    padding: 4px 0 4px 20px;
+    margin-block: 26px;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--navy-deep);
+    max-width: 58ch;
+  }
+  .pull .attr {
+    display: block;
+    font-family: var(--f-display);
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin-top: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  .note-box {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 16px 18px;
+    margin-block: 22px;
+    font-size: 15.5px;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+  .note-box .eyebrow { display: block; margin-bottom: 7px; }
+
+  /* ── karar kartları ───────────────────────────────────────── */
+
+  .decisions { display: flex; flex-direction: column; gap: 1px; background: var(--line-soft); margin-block: 22px 8px; }
+  .dec {
+    background: var(--surface);
+    padding: 20px 22px;
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 4px 16px;
+  }
+  .dec .idx {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    padding-top: 3px;
+  }
+  .dec h4 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .dec .body { grid-column: 2; font-size: 15.5px; color: var(--ink-2); line-height: 1.55; margin-top: 6px; }
+  .dec .ask {
+    grid-column: 2;
+    margin-top: 11px;
+    font-family: var(--f-display);
+    font-size: 14.5px;
+    color: var(--navy-deep);
+    background: var(--surface-2);
+    padding: 9px 13px;
+    border-radius: 3px;
+  }
+  .dec .ask b { font-weight: 600; }
+  @media (max-width: 520px) {
+    .dec { grid-template-columns: 1fr; }
+    .dec .body, .dec .ask { grid-column: 1; }
+  }
+
+  /* ── kapsam dışı ──────────────────────────────────────────── */
+
+  .oos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-block: 16px 8px;
+  }
+  .oos span {
+    font-family: var(--f-display);
+    font-size: 13.5px;
+    color: var(--ink-3);
+    border: 1px dashed var(--line);
+    padding: 4px 10px;
+    border-radius: 3px;
+  }
+
+  /* ── alt ──────────────────────────────────────────────────── */
+
+  .colophon {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-family: var(--f-display);
+    font-size: 13px;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, .tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  /* ── öncesi / sonrası ─────────────────────────────────────── */
+
+  table.ba td.before {
+    color: var(--ink-3);
+    font-weight: 400;
+  }
+  table.ba td.before.none {
+    font-family: var(--f-display);
+    font-style: italic;
+  }
+  table.ba td.after { color: var(--ink-2); }
+  table.ba td.after b { color: var(--ink); font-weight: 600; }
+  table.ba th.new { color: var(--accent); }
+  .newdot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 7px;
+    vertical-align: 0.12em;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">BDH Netaş · İkinci tanıtım toplantısı</div>
+    <h1>StoaBoard — ikinci tur</h1>
+    <p class="deck">1 Eylül toplantısından bugüne: ne eklendi, hangi kararlar masaya geliyor, devirde ne kırılır.</p>
+    <div class="meta">
+      <span><b>16 Eylül 2026</b></span>
+      <span>Canlı: <b>stoaboard.com</b></span>
+      <span>Node · Express · Prisma · PostgreSQL · React · Socket.IO</span>
+      <span>Railway + Neon</span>
+    </div>
+  </header>
+
+</div>
+
+<div class="wrap">
+  <div class="figures">
+    <div class="fig">
+      <div class="n">115</div>
+      <div class="l">commit · 1 Eylül’den beri</div>
+    </div>
+    <div class="fig">
+      <div class="n">+20.193<small> / −924</small></div>
+      <div class="l">satır · 92 dosya</div>
+    </div>
+    <div class="fig">
+      <div class="n">494</div>
+      <div class="l">otomatik test · hepsi geçiyor<br>1 Eylül’de hiç yoktu</div>
+    </div>
+    <div class="fig">
+      <div class="n">13</div>
+      <div class="l">kapatılan güvenlik kusuru<br>iki turda</div>
+    </div>
+    <div class="fig">
+      <div class="n">20</div>
+      <div class="l">MCP aracı · 10 okuma, 10 yazma</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ══ BÖLÜM 1 ══════════════════════════════════════════════ -->
+  <section class="part">
+    <div class="part-head">
+      <div class="part-num">01</div>
+      <h2>Toplantı öncesi ve sonrası</h2>
+      <div class="clock">~20 dk</div>
+    </div>
+
+    <div class="phases">
+      <div class="phase">
+        <div class="when">1–3 EYLÜL</div>
+        <div class="count">52 commit</div>
+        <div class="what">Toplantı geri bildirimlerinin karşılığı: raporlama, iş akışı kuralı, güvenlik turu, ilk testler, dil turu</div>
+      </div>
+      <div class="phase gap">
+        <div class="when">4–8 EYLÜL</div>
+        <div class="count">ara</div>
+        <div class="what">Kod yazılmadı; proje bazlı erişim tasarımı düşünüldü</div>
+      </div>
+      <div class="phase">
+        <div class="when">9–15 EYLÜL</div>
+        <div class="count">63 commit</div>
+        <div class="what">MCP yüzeyi sıfırdan 0.6.0’a; arada gösterge paneli, erişilebilirlik ve bildirim düzeltmeleri; son gün rapor çıktıları ve demo provası</div>
+      </div>
+    </div>
+
+    <h3 class="sub">Uygulama neyi kazandı</h3>
+
+    <div class="table-scroll">
+      <table class="ba">
+        <thead>
+          <tr>
+            <th style="width:19%">Alan</th>
+            <th style="width:33%">1 Eylül’de</th>
+            <th class="new">Bugün</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Raporlama</td>
+            <td class="before none">Yok</td>
+            <td class="after"><span class="newdot"></span><b>Üç rapor:</b> kişi, dönem, akış · son 6 ay dahil aralık ön ayarları · Excel’in her bölgede doğru açtığı CSV · yazdırma sayfası</td>
+          </tr>
+          <tr>
+            <td>Rapor verisi</td>
+            <td class="before none">Yok — geçmiş geri doldurulamaz</td>
+            <td class="after"><span class="newdot"></span>Kart geçiş kayıtları · süre kayıtları · “ne zaman tamamlandı” alanı</td>
+          </tr>
+          <tr>
+            <td>Süre kaydı</td>
+            <td class="before none">Yok</td>
+            <td class="after"><span class="newdot"></span>Manuel giriş: <code>90</code> · <code>1:30</code> · <code>1s 30d</code>. Otomatik sayaç <b>bilinçli yok</b></td>
+          </tr>
+          <tr>
+            <td>İş akışı</td>
+            <td class="before">Kolonlar serbest, her kart her yere</td>
+            <td class="after"><span class="newdot"></span>Kolon geçiş kuralı: izin verilmeyen taşımada kart geri döner, sebep görünür</td>
+          </tr>
+          <tr>
+            <td>Bildirim</td>
+            <td class="before">Zil rozeti, uygulama içi</td>
+            <td class="after"><span class="newdot"></span>Atama ve bahsetme <b>e-postası</b> (varsayılan kapalı) · 13 sessiz yutulan hata açığa çıktı · rozet artık “son bakıştan beri gelen”, bildirimde kimin yaptığı görünüyor</td>
+          </tr>
+          <tr>
+            <td>Denetim kaydı</td>
+            <td class="before none">Yok</td>
+            <td class="after"><span class="newdot"></span>Kim, ne zaman, hangi raporu, kaç satır dışa aktardı · üye çıkarma · rol değişikliği · toplu silme</td>
+          </tr>
+          <tr>
+            <td>Güvenlik</td>
+            <td class="before">Denetlenmemiş</td>
+            <td class="after"><span class="newdot"></span><b>13 kusur kapatıldı</b> · her yeni özellik on soruluk elekten geçiyor, cevaplar commit mesajında</td>
+          </tr>
+          <tr>
+            <td>Otomatik test</td>
+            <td class="before none">Hiç yok</td>
+            <td class="after"><span class="newdot"></span><b>494 test</b>, 83 süit, ~22 sn · veritabanı gerektirmiyor</td>
+          </tr>
+          <tr>
+            <td>Push koruması</td>
+            <td class="before none">Yok</td>
+            <td class="after"><span class="newdot"></span><code>pre-push</code> kancası test ve derlemeyi koşuyor · CI dosyası hazır, hesap kilitli</td>
+          </tr>
+          <tr>
+            <td>Dil</td>
+            <td class="before">TR/EN — ama İngilizce arayüzde 58 metin Türkçe kalıyordu</td>
+            <td class="after"><span class="newdot"></span>TR/EN tam: <b>1.154 anahtar</b> · tarama testi kilitliyor, yeni kaçak giremiyor</td>
+          </tr>
+          <tr>
+            <td>Yapay zekâ erişimi</td>
+            <td class="before none">Yok</td>
+            <td class="after"><span class="newdot"></span><b>MCP 0.6.0</b> · 20 araç (10 okuma, 10 yazma) · uygulamanın kendi izin kapısından geçiyor</td>
+          </tr>
+          <tr>
+            <td>Ön yüz</td>
+            <td class="before">Tek parça 787 KB paket</td>
+            <td class="after"><span class="newdot"></span>Kod bölme + altı görünüm tembel yükleniyor · bir bölüm çökse uygulama ayakta kalıyor</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">Toplantı notu → karşılığı</h3>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th style="width:30%">Not</th><th>Karşılığı</th><th style="width:13%">Durum</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>“Raporlama 6 ayda bir” · “kim ne kadar süre harcadı” · “Furkan Bey hangi işlerde çalışmış”</td>
+            <td>Üç rapor + veri altyapısı. Vurgulanacak ayrım: <b>geçiş süresi</b> ile <b>harcanan emek</b> ayrı şeyler — bir iş üç haftada bitip altı saat emek almış olabilir.</td>
+            <td><span class="pill ok">Yapıldı</span></td>
+          </tr>
+          <tr>
+            <td>“Log girişi, manuel giriş, work log developer”</td>
+            <td>Süre girişi çekmecede. Otomatik sayaç yapılmadı: sekmenin açık kaldığı süreyi ölçer, çalışılanı değil.</td>
+            <td><span class="pill ok">Yapıldı</span></td>
+          </tr>
+          <tr>
+            <td>“Development workflow oluşturma”</td>
+            <td>Gösterilen Jira ekranının asıl mesajı durum sayısı değil, <i>“buradan şuraya geçilebilir”</i> satırıydı. Geçiş kuralı eklendi; kural tanımlanmayan kolonlarda kısıt yok.</td>
+            <td><span class="pill ok">Yapıldı</span></td>
+          </tr>
+          <tr>
+            <td>“Teknik tarafta sistem açıkları”</td>
+            <td>Turun en çok mesai alan parçası. Birinci turda sekiz kusur.</td>
+            <td><span class="pill ok">Yapıldı</span></td>
+          </tr>
+          <tr>
+            <td>“SAP kullanımı, mail”</td>
+            <td>Mail yapıldı. <b>SAP kapsam dışı</b> — entegrasyon değil giriş bileti meselesi; gerçek şartname olmadan yapılacak iş değil.</td>
+            <td><span class="pill open">Yarısı</span></td>
+          </tr>
+          <tr>
+            <td>“Jira daha kompleks”</td>
+            <td>Yapılacak iş değil, konumlandırma teyidi — ve lehimize.</td>
+            <td><span class="pill ok">Teyit</span></td>
+          </tr>
+          <tr>
+            <td>Mesaj gönderildi, karşı tarafta bildirim çıkmadı</td>
+            <td>İki sebebi vardı: biri kırık koddu, düzeltildi. Diğeri tasarım boşluğu — 3. bölümde karar sorusu olarak duruyor.</td>
+            <td><span class="pill open">Yarısı</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">MCP — beş günde on sürüm</h3>
+
+    <div class="ladder-scroll">
+      <div class="ladder">
+        <div class="rung key">
+          <div class="v">0.1.0</div><div class="d">9 Eylül</div>
+          <div class="w">İlk bağlantı, kimlik</div>
+        </div>
+        <div class="rung">
+          <div class="v">0.2.x</div><div class="d">9–10 Eylül</div>
+          <div class="w">Okuma araçları, anahtar dağıtımı</div>
+        </div>
+        <div class="rung key">
+          <div class="v">0.3.0</div><div class="d">11 Eylül</div>
+          <div class="w">Okuma yüzeyi kapandı</div>
+        </div>
+        <div class="rung">
+          <div class="v">0.3.1</div><div class="d">11 Eylül</div>
+          <div class="w">Alan dışı kayıt reddediliyor</div>
+        </div>
+        <div class="rung key">
+          <div class="v">0.4.0</div><div class="d">11 Eylül</div>
+          <div class="w">İlk yazma: aç, güncelle, taşı</div>
+        </div>
+        <div class="rung">
+          <div class="v">0.4.1</div><div class="d">12 Eylül</div>
+          <div class="w">Yorum ekleme</div>
+        </div>
+        <div class="rung key">
+          <div class="v">0.5.0</div><div class="d">13 Eylül</div>
+          <div class="w">Yazma tamam: silme, alt görev, etiket</div>
+        </div>
+        <div class="rung">
+          <div class="v">0.5.1–.2</div><div class="d">13 Eylül</div>
+          <div class="w">Alt görev tek kaynağa indi</div>
+        </div>
+        <div class="rung key">
+          <div class="v">0.6.0</div><div class="d">13 Eylül</div>
+          <div class="w">Yetim atanan işareti, araç listesi, anahtar izi</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tools">
+      <div class="tool-col">
+        <span class="eyebrow">Okuma — 10 araç</span>
+        <div class="tool-list">
+          <span class="tool">whoami</span><span class="tool">list_workspaces</span><span class="tool">list_members</span><span class="tool">list_projects</span><span class="tool">list_columns</span><span class="tool">list_tasks</span><span class="tool">search_tasks</span><span class="tool">get_task</span><span class="tool">list_notes</span><span class="tool">get_note</span>
+        </div>
+      </div>
+      <div class="tool-col">
+        <span class="eyebrow">Yazma — 10 araç</span>
+        <div class="tool-list">
+          <span class="tool w">create_task</span><span class="tool w">update_task</span><span class="tool w">move_task</span><span class="tool w">add_comment</span><span class="tool w">delete_task</span><span class="tool w">restore_task</span><span class="tool w">add_subtask</span><span class="tool w">update_subtask</span><span class="tool w">delete_subtask</span><span class="tool w">set_active_workspace</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pull">
+      MCP ayrı bir arka kapı değil: aynı izin kapısından geçiyor, aynı denetim kaydını yazıyor, aynı bildirimleri üretiyor.
+      <span class="attr">“Claude’a sor, panonu sürsün” — Trello, Asana ve Notion’da düzgün karşılığı yok</span>
+    </div>
+
+    <h3 class="sub">Kapatılan güvenlik kusurları — iki turda on üç</h3>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th style="width:8%">Tur</th><th style="width:27%">Kusur</th><th>Neyi mümkün kılıyordu</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>CSV formül enjeksiyonu</td><td>Bir üye kart başlığını formüle çevirip <b>raporu açan yöneticinin makinesinde</b> veri sızdırabilirdi</td></tr>
+          <tr><td>1</td><td>İç hata mesajı sızıntısı</td><td>Veritabanı sunucusunun adresi kayıt ekranından, <b>giriş yapmadan</b> görülebiliyordu</td></tr>
+          <tr><td>1</td><td>Hayalet kanallar</td><td>Kanal satırı bulunamayınca üyelik kontrolü tamamen atlanıyordu — dört yerde</td></tr>
+          <tr><td>1</td><td>Hayalet izin</td><td>Arayüz “üye davet et” iznini sunuyor, sunucu kontrol etmiyordu: yönetici verdiğini sandığı yetkiyi vermiyordu</td></tr>
+          <tr><td>1</td><td>Eksik izin</td><td>Sunucuda uygulanan bir izin arayüzde listelenmediği için hiçbir role verilemiyordu</td></tr>
+          <tr><td>1</td><td>Oturumlar düşmüyordu</td><td>Hesabı ele geçirilen kullanıcı parolasını değiştirse bile <b>saldırganın oturumu yaşıyordu</b></td></tr>
+          <tr><td>1</td><td>Kullanıcı varlığı oracle’ı</td><td>Yanıt farkı, platformdaki tüm hesaplar için “bu kullanıcı var mı” bilgisini veriyordu</td></tr>
+          <tr><td>1</td><td>Parola alt sınırı tutarsız</td><td>Profil 6, kayıt 8 istiyordu; kural profilden dolaşılabiliyordu</td></tr>
+          <tr><td>2</td><td>Atama üyelik kapısı yoktu</td><td>Alanın üyesi olmayan birine görev atanabiliyordu; rapor sessizce yanlış çıkıyordu</td></tr>
+          <tr><td>2</td><td>Bildirim metninde saklı XSS</td><td>Kart başlığına yerleştirilen kod, bildirimi <b>okuyan</b> kişinin tarayıcısında çalışabiliyordu</td></tr>
+          <tr><td>2</td><td>Bildirim ucunda üyelik kapısı</td><td>Uç üyelik sormuyordu; düzeltilirken ikinci bir kâhin kusuru daha çıktı</td></tr>
+          <tr><td>2</td><td>Yorumda bahsetme kapsamı</td><td>Kart yorumundaki bahsetme, alanın üyesi olmayanlara da bildirim gönderiyordu</td></tr>
+          <tr><td>2</td><td><code>/.well-known/*</code> 200 dönüyordu</td><td>Tek sayfa yedeği standart keşif yolunu HTML ile cevaplıyor, dış istemciler yanlış yola sapıyordu</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-box">
+      <span class="eyebrow">Ortak nokta</span>
+      <p style="margin-bottom:0">On üçünün hiçbiri kullanıcıdan gelmedi — hepsi <b>aranarak</b> bulundu. Turun çıkış varsayımı: <i>aranmadan bir açık bulunduysa, arayınca daha fazlası çıkar.</i> İki turda da çıktı.</p>
+    </div>
+  </section>
+
+  <!-- ══ BÖLÜM 2 ══════════════════════════════════════════════ -->
+  <section class="part">
+    <div class="part-head">
+      <div class="part-num">02</div>
+      <h2>Nasıl çalışıldı</h2>
+      <div class="clock">~10 dk</div>
+    </div>
+
+    <h3 class="sub">Kuralı belgeye değil, doğrulayana yaz</h3>
+    <div class="read">
+      <p>Dil kuralı proje belgesinde net biçimde yazılıydı ve yine de <b>31 yerde ihlal edildi</b> — kuralı uygulamaya çalışan biri tarafından. Yazılı kural çalışmıyor; kalıcı olması için şu merdivende yukarı taşınması gerekiyor.</p>
+    </div>
+
+    <div class="rule-ladder">
+      <div class="step"><span class="rank">1</span><span class="name">Belgeye yaz</span><span class="note">En ucuz, en zayıf — 31 ihlal buradan çıktı</span></div>
+      <div class="step"><span class="rank">2</span><span class="name">Gözden geçirme listesine koy</span><span class="note">İnsan hatırlarsa çalışır</span></div>
+      <div class="step reached"><span class="rank">3</span><span class="name">Teste bağla</span><span class="note">Dil, yetki ve bildirim sözleşmeleri burada kilitli</span></div>
+      <div class="step"><span class="rank">4</span><span class="name">CI kapısına koy</span><span class="note">Dosya hazır, hesap kilitli — bugün koruyan şey <code>pre-push</code> kancası</span></div>
+      <div class="step"><span class="rank">5</span><span class="name">Lint / tip sistemine ver</span><span class="note">Yazarken engeller</span></div>
+      <div class="step reached"><span class="rank">6</span><span class="name">Tasarımen imkânsız kıl</span><span class="note">Deponun en olgun iki hamlesi burada</span></div>
+    </div>
+
+    <div class="read">
+      <p>Altıncı basamak somut olarak: veritabanı şemasını deploy’da ezen tehlikeli komut için “bunu çalıştırmayın” diye kural yazılmadı — <b>çağrı silindi</b>. Oturum tablosunu düşürme uyarısı için “uyarıya hayır deyin” denmedi — <b>uyarının çıkması engellendi</b>.</p>
+    </div>
+
+    <h3 class="sub">Test yazmak yetmiyor — kırıldığını görmek gerekiyor</h3>
+    <div class="read">
+      <p>Test yazıldıktan sonra korunan satır <b>kasten bozulur</b> ve testin kırmızıya döndüğü görülür. Son turda 11 mutasyon koşuldu:</p>
+    </div>
+
+    <div class="note-box">
+      <span class="eyebrow">11 mutasyon · ilk turda üç sorun</span>
+      <p><b>İkisi kaçtı</b> — test aranan adı dosyada düz metin arıyordu, ama o ad aracın <i>açıklama cümlesinde</i> de geçiyordu. Kod silinse bile test yeşil kalıyordu.</p>
+      <p><b>Biri yanlış yeri korudu</b> — aynı satır dosyada iki kez geçiyordu; test “yakalandı” diyordu ama başka bir işlevi koruyordu.</p>
+      <p><b>Biri hiç korunmuyordu</b> — sunucunun açılış uyarısını hiçbir test tutmuyordu.</p>
+      <p style="margin-bottom:0">Düzeltildi: <b>on birin on biri, doğru yerde yakalanıyor.</b> Bu üç bulgu olmasaydı “494 test geçiyor” cümlesi yine kurulacaktı — ama üç yerde anlamsız.</p>
+    </div>
+
+    <h3 class="sub">Sessiz başarısızlık yasak</h3>
+    <div class="read">
+      <p>Üç ayrı kusurun kök sebebi aynıydı: koşul sağlanmayınca kodun <i>sessizce çıkması</i>. Bildirim gitmiyordu, kimse fark etmiyordu. Kural: bir koşulun yokluk hâli ya <b>reddetmeli</b> ya <b>gürültü çıkarmalı</b>. On üç yutulan hata bu kuralla açığa çıktı.</p>
+    </div>
+  </section>
+
+  <!-- ══ BÖLÜM 3 ══════════════════════════════════════════════ -->
+  <section class="part">
+    <div class="part-head">
+      <div class="part-num">03</div>
+      <h2>Masaya gelen kararlar</h2>
+      <div class="clock">~12 dk · tartışma</div>
+    </div>
+
+    <div class="read">
+      <p>Yapılacak iş listesi değil — <b>cevabı bu odada olan sorular.</b> Kod tarafı hazır ya da hazırlanabilir; eksik olan karar.</p>
+    </div>
+
+    <div class="decisions">
+
+      <div class="dec">
+        <div class="idx">01</div>
+        <h4>Proje bazlı üyelik <span class="pill risk">En büyük açık</span></h4>
+        <div class="body">Bir üye alandaki <b>her şeyi</b> görüyor; “okuma izni” diye bir kavram yok. Aynı zamanda <b>satışın ön koşulu</b>: paket/kademe demek alan başına sınır demek, o sınırların yaşadığı katman burası.</div>
+        <div class="ask"><b>Soru:</b> kurumsalda beklenen ayrım hangisi — proje bazlı görünürlük mü, rol bazlı alan kısıtı yeterli mi?</div>
+      </div>
+
+      <div class="dec">
+        <div class="idx">02</div>
+        <h4>MCP anahtarının kendi kendine alınması <span class="pill risk">Devir riski</span></h4>
+        <div class="body">Her yeni kişi için Railway’de ortam değişkeni <b>elle</b> düzenleniyor. Sistemin en değerli farkı tek kişinin erişimine bağlı.</div>
+        <div class="ask"><b>Soru:</b> staj bitince Railway ve Neon erişimi kimde olacak? Bu cevaplanmadan diğer her şey teorik.</div>
+      </div>
+
+      <div class="dec">
+        <div class="idx">03</div>
+        <h4>Dönem dondurma <span class="pill open">1 Eylül’den devreden</span></h4>
+        <div class="body">Kapanmış dönemin raporu her açılışta yeniden hesaplanıyor. Aynı dönemin sayıları altı ay sonra değişebilir; yönetime iki kez farklı rakam gitmesi raporlamaya güveni tek seferde bitirir.</div>
+        <div class="ask"><b>Soru:</b> dönemi kim mühürler, ve mühürden sonra düzeltme gelirse ne olur?</div>
+      </div>
+
+      <div class="dec">
+        <div class="idx">04</div>
+        <h4>Süreyi kim girer <span class="pill open">1 Eylül’den devreden</span></h4>
+        <div class="body">Süre girişi çalışıyor ama zorunluluk ve hatırlatma bilinçli konmadı — tartışmalı bir konu ve masadakilerin deneyimi bizimkinden fazla.</div>
+        <div class="ask"><b>Soru:</b> geliştirici mi girer, yönetici mi? Girilmezse ne olur — uyarı, engel, yoksa hiçbir şey?</div>
+      </div>
+
+      <div class="dec">
+        <div class="idx">05</div>
+        <h4>Hangi bildirim ekranı kesmeli</h4>
+        <div class="body">Görev atama, bahsetme ve yorum bildirimleri <b>hiç toast üretmiyor</b> — yalnızca zil rozeti ve ses. Kurumsalda en kritik bildirim en sessiz olanı. Mobil push açılmadan cevaplanmalı.</div>
+        <div class="ask"><b>Soru:</b> bir kullanıcının ekranını bölmeye hangi olay hak kazanır?</div>
+      </div>
+
+      <div class="dec">
+        <div class="idx">06</div>
+        <h4>Ve asıl soru: bunu kim kullanacak <span class="pill risk">Cevapsız</span></h4>
+        <div class="body">Gerçek veriye bakıldığında: pano <b>Mayıs’tan beri güncellenmemiş</b>, dört kartın açıklaması birebir aynı, çalışma alanlarının adları <code>asdasd</code> ve <code>ghghhg</code>. Ürün iyi kurulmuş — <b>eksik olan kod değil.</b></div>
+        <div class="ask"><b>Soru:</b> bir ekip iki hafta bunu gerçekten kullanabilir mi? O iki hafta, hangi özelliğin eksik olduğunu bu listeden daha iyi söyler.</div>
+      </div>
+
+    </div>
+
+    <h3 class="sub">Bilinçli olarak yapılmayanlar</h3>
+    <div class="read">
+      <p>Eksik değil, <b>seçim</b>. Ortak gerekçe: hepsi Jira’yı ağır yapan katman; StoaBoard’un tek gerçek üstünlüğü sadelik.</p>
+    </div>
+    <div class="oos">
+      <span>Jira’nın iş akışı motoru</span>
+      <span>JQL</span>
+      <span>Sprint ve hız</span>
+      <span>Story point</span>
+      <span>Özel alanlar</span>
+      <span>Kayıt tipleri</span>
+      <span>SAP entegrasyonu</span>
+      <span>Sesli/görüntülü arama</span>
+      <span>Otomatik süre sayacı</span>
+    </div>
+  </section>
+
+  <!-- ══ BÖLÜM 4 ══════════════════════════════════════════════ -->
+  <section class="part">
+    <div class="part-head">
+      <div class="part-num">04</div>
+      <h2>Devir</h2>
+      <div class="clock">~6 dk</div>
+    </div>
+
+    <div class="read">
+      <p>“Neler yaptım” değil, <b>“ben gidince ne kırılır”</b> sorusunun cevabı.</p>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th style="width:24%">Bağımlılık</th><th>Bugünkü durum</th><th style="width:14%">Risk</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Railway ve Neon erişimi</td>
+            <td>Üretim bağlantısı yalnızca Railway ortam değişkenlerinde, hiçbir geliştirici makinesinde durmuyor. Doğru karar — ama erişim devredilmeli.</td>
+            <td><span class="pill risk">Yüksek</span></td>
+          </tr>
+          <tr>
+            <td>MCP anahtarı dağıtımı</td>
+            <td>Elle, Railway üzerinden. Kendi kendine anahtar üretme yapılmadan MCP yeni kişiye açılamaz.</td>
+            <td><span class="pill risk">Yüksek</span></td>
+          </tr>
+          <tr>
+            <td>CI kapısı</td>
+            <td>GitHub Actions dosyası yerinde ama <b>çalışmıyor</b> — hesabın faturalandırması kilitli. Bugün koruyan şey her makinedeki <code>pre-push</code> kancası. Kilit açılınca dosya değişiklik gerekmeden çalışacak.</td>
+            <td><span class="pill open">Orta</span></td>
+          </tr>
+          <tr>
+            <td>Veritabanı şeması</td>
+            <td>Deploy’da kendiliğinden gitmiyor, bilinçli ve elle uygulanıyor. Ama göç geçmişi sürümlü değil.</td>
+            <td><span class="pill open">Orta</span></td>
+          </tr>
+          <tr>
+            <td>Dosya depolama</td>
+            <td>Dosyalar veritabanında saklanıyor; ölçeklenmez. S3/R2’ye taşınmalı — iki dosyalık yerelleştirilmiş değişiklik.</td>
+            <td><span class="pill open">Orta</span></td>
+          </tr>
+          <tr>
+            <td>Bilgi / bağlam</td>
+            <td>Dokuz belge, her kararın gerekçesiyle. Giriş noktası <code>DEVIR.md</code> ve <code>TODO.md</code>; commit mesajları uzun ve gerekçeli.</td>
+            <td><span class="pill ok">Düşük</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pull">
+      Devredilen şey kod değil, kararların gerekçesi. Kod zaten okunabilir; okunamayan şey <i>neden böyle yapıldığıdır</i>.
+    </div>
+
+    <div class="note-box">
+      <span class="eyebrow">Devralan biri ilk gün</span>
+      <p style="margin-bottom:0">Tek komut makineyi hazırlıyor: <code>git config core.hooksPath .githooks</code>. Yapılmazsa push öncesi test ve derleme kapısı çalışmaz — bugün koruyan tek şey o. Ardından <code>DEVIR.md</code>’nin en üst bölümü “şu an gerçekte ne doğru” diyor; belgeler çelişirse o dosyaya ve <code>git log</code>’a güvenilir.</p>
+    </div>
+  </section>
+
+  <div class="colophon">
+    <span>StoaBoard · ikinci tur · 16 Eylül 2026</span>
+    <span>494 test · 83 süit · 0 hata</span>
+    <span>MCP yüzeyi 0.6.0</span>
+    <span>TR/EN tam çeviri: 1.154 anahtar</span>
+  </div>
+
+</div>

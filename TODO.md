@@ -320,8 +320,10 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       **Tarama kapsamı:** dashboard'daki her sayının kaynağı tek tek
       doğrulanmalı. "Ay" verisinin uydurma olduğu iki oturum boyunca kimsenin
       dikkatini çekmemişti; aynı ekranda başka bir tahmin daha olabilir.
-- [ ] **Bildirim okundu bilgisi sunucuya hiç yazılmıyor.** *(Bildirildi ve
-      doğrulandı, 10 Eylül 2026.)* Belirti: her girişte rozet dolu görünüyor,
+- [x] **Bildirim okundu bilgisi sunucuya hiç yazılmıyor.** *(Bildirildi ve
+      doğrulandı, 10 Eylül 2026. **Kapandı 15 Eylül 2026**, karar (c):
+      rozet "son bakıştan beri gelen okunmamış"; `client/src/rozet.js`,
+      testi `bildirim.test.js`, gerekçesi BILDIRIMLER.md.)* Belirti: her girişte rozet dolu görünüyor,
       panel açılınca sıfırlanıyor, günler önce okunmuş bildirim tekrar tekrar
       geri geliyor.
 
@@ -1105,6 +1107,45 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
+- [x] **Kendi yorumunu silme düğmesi yoktu** *(15 Eylül 2026; aynı gün
+      kapandı)*. `DELETE /api/comments/:id` (yalnızca sahibi) ve
+      `API.deleteComment` baştan beri vardı, çekmecede düğme yoktu. Bozuk
+      kodlamayla yazılmış bir prova yorumu demo kartında kalınca fark
+      edildi. Düğme yalnızca kendi yorumunda, sunucu sahipliği ayrıca
+      denetliyor (`drawer.jsx`, `handleCommentDelete`).
+- [x] **Rapor yazdırma: tablo karta dönüyor, metin üst üste biniyor, ilk
+      sayfa boş** *(15 Eylül 2026, demo provası; aynı gün kapandı)*. Üçü tek
+      kökten: 768px mobil kuralı (`.list-table` → kart) Chrome'un A4 dizimi
+      dar olduğu için yazdırmada da tetikleniyordu; ilk hücre onay kutusu
+      sanılıp 18px'e sıkışıyor, `.panel { break-inside: avoid }` sığmayan
+      bölümü önce yeni sayfaya atıyordu. Baskı bloğu tabloyu tablo olarak
+      geri alıyor, bölüm bölünebiliyor, satır bölünmüyor (`styles.css`
+      `@media print`). Tarayıcıda Ctrl+P ile doğrulanacak.
+- [x] **CSV Excel'de Türkçe karakterleri bozuyor** *(15 Eylül 2026; aynı gün
+      kapandı)*. BOM vardı ama Excel `sep=` satırını görünce BOM'u yok sayıp
+      ANSI okuyor. `sep=`siz de ayraç Windows bölge ayarına bağlı (TR `;`,
+      ABD `,`). Biçim UTF-16LE + sekmeye geçti (`lib/csv.js`, gerekçe dosya
+      başında; test `guvenlik.test.js`). Excel'de elle doğrulanacak.
+- [ ] **Görev görünümü göz yoruyor — Notion kıyası** *(15 Eylül 2026,
+      demo hazırlığında yan yana bakıldı)*. Sebep tasarım değil yapı:
+      `.props-grid` 140px + kalan genişlik tek sütun (göz her satırda uzun
+      yol yürüyor); `.doc-content h2` 24px display ("Description" sayfa
+      başlığı kadar); beş bölüm (Yapılacaklar, Linked Notes, Files, Time
+      spent, Comments) aynı 18px başlıkla, `margin-top: 36px`, boşken de
+      boş-durum cümlesi + düğme — boş kartta ~550px "henüz yok".
+      **Hızlı üçlü** (sunum katmanı, `drawer.jsx` + `styles.css`): boş
+      bölümleri tek satıra katla · özellikleri iki sütuna al · Description
+      başlığını küçük gri etikete indir, bölüm başlıklarını 14px'e çek.
+      **Ürün kararı:** paragraf içi biçim (kalın/liste/kod). Blok belge
+      yapısı hazır (`h2`/`h3`/`p`) ama açıklama kullanıcı girdisi;
+      bildirim metnindeki saklı XSS dersi burada da geçerli, kaçışsız HTML
+      basılmaz.
+- [ ] **Projeyi yeniden adlandırma ekranı yok** *(15 Eylül 2026, demo
+      hazırlığında bulundu)*. Sunucu `PATCH /api/projects/:id` ile `name`
+      kabul ediyor (`projects.js`), istemci yalnızca `icon` ve `color`
+      gönderiyor (`settings.jsx`, `saveProjectIcon`). Proje bir kez açılınca
+      adı değiştirilemiyor; tek yol silip yeniden açmak. Küçük iş: ayarlardaki
+      proje kartına ad alanı + `updateProject({ name })`, iki dile anahtar.
 - [ ] Topbar'daki sohbet butonu bazı ekranlarda tepki vermiyor (yeniden
       üretilemedi — adım tarifi gerekiyor).
 - [x] Alt görevi olmayan bir kart "tamamlandı" kolonundan çıkarılınca ilerleme
