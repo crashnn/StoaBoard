@@ -141,6 +141,9 @@ const AUTH_I18N = {
     ws_bp_stat_setup: 'başlama süresi',
     ws_bp_stat_reports: 'rapor aralığı',
     stat_langs: 'iki dilli arayüz',
+    stat_completed: 'görev tamamlandı',
+    ws_bp_stat_teams: 'takım',
+    ws_bp_stat_completed: 'görev tamamlandı',
     stat_mcp: 'Claude ile sürülebilir',
     stat_setup: 'başlama süresi',
     stat_setup_val: '15 sn',
@@ -213,6 +216,9 @@ const AUTH_I18N = {
     hero_h1_after: ' tools.',
     hero_p: "The tech world no longer tolerates heavy, clunky systems. StoaBoard was designed with startup agility at its core: 15-second setup, zero complexity, and full synchronization. Seamlessly switch between board, list, and calendar views while feeling your team's creativity, not the system's weight. The future starts here, powered by lightness.",
     stat_langs: 'bilingual UI',
+    stat_completed: 'tasks completed',
+    ws_bp_stat_teams: 'teams',
+    ws_bp_stat_completed: 'tasks completed',
     stat_mcp: 'drivable by Claude',
     stat_setup: 'avg. setup',
     stat_setup_val: '15 s',
@@ -465,7 +471,28 @@ function isValidEmailDomain(email) {
 }
 
 // ── 1. GİRİŞ YAP / KAYDOL SAYFASI ───────────────────────────────────────────────
+// Giriş ekranındaki gerçek sayılar (GET /api/public/stats, oturumsuz).
+// Uç cevap vermezse `null` kalır ve kutular ürün olgularına düşer (TR/EN,
+// MCP, 15 sn) — boş kutu ya da "0" gösterilmez; yokluk hâli belli, sessiz
+// değil. Bir kez çekilir; sunucu zaten 10 dk önbellekliyor.
+function usePublicStats() {
+  const [stats, setStats] = React.useState(null);
+  React.useEffect(() => {
+    let iptal = false;
+    fetch('/api/public/stats', { headers: { accept: 'application/json' } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!iptal && d && typeof d.completed === 'number') setStats(d); })
+      .catch(() => { /* kutular olgulara düşer */ });
+    return () => { iptal = true; };
+  }, []);
+  return stats;
+}
+function fmtSayi(n, lang) {
+  try { return Number(n).toLocaleString(lang === 'tr' ? 'tr-TR' : 'en-US'); } catch { return String(n); }
+}
+
 function AuthPage({ onSignIn }) {
+  const stats = usePublicStats();
   const joinInviteCode = React.useMemo(() => {
     try { return new URLSearchParams(window.location.search).get('join') || ''; } catch { return ''; }
   }, []);
@@ -678,7 +705,9 @@ function AuthPage({ onSignIn }) {
                   "38k+ görev" yazıyordu — uydurmaydı (veritabanında 11 alan vardı).
                   Karar: ürün gerçeğini söyle. TR/EN sözlük testle kilitli, MCP
                   yüzeyi 20 araç (mcpShape.js), 15 sn kurulum bir iddia, sayım değil. */}
-              <div><strong>TR/EN</strong><span>{t('stat_langs')}</span></div>
+              {stats
+                ? <div><strong>{fmtSayi(stats.completed, getAuthLang())}</strong><span>{t('stat_completed')}</span></div>
+                : <div><strong>TR/EN</strong><span>{t('stat_langs')}</span></div>}
               <div><strong>MCP</strong><span>{t('stat_mcp')}</span></div>
               <div><strong>{t('stat_setup_val')}</strong><span>{t('stat_setup')}</span></div>
             </div>
@@ -1156,6 +1185,7 @@ function PendingLobby({ joinedAt, code, onApproved, onRejected }) {
 
 // ── 2. ÇALIŞMA ALANI SAYFASI ─────────────────────────────────────────────────────
 function WorkspaceSetupPage({ onReady, onLogout }) {
+  const stats = usePublicStats();
   const t = (k) => authT(k);
   const lang = getAuthLang();
   const [tab, setTab] = React.useState(() => {
@@ -1299,7 +1329,10 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
             </div>
             <div className="ws-bp-stats" style={{ borderColor: joinActive ? 'rgba(160,200,255,0.12)' : 'rgba(255,255,255,0.08)', background: joinActive ? 'rgba(160,200,255,0.05)' : 'rgba(255,255,255,0.04)' }}>
               {/* Aynı karar: "6k+ takım", "%98 memnuniyet", "15m+ görev" uydurmaydı; gerçek değerler. */}
-              {[['TR/EN', t('ws_bp_stat_langs')], ['MCP', t('ws_bp_stat_mcp')], [t('stat_setup_val'), t('ws_bp_stat_setup')], [t('ws_bp_val_reports'), t('ws_bp_stat_reports')]].map(([v, l]) => (
+              {(stats
+                ? [[fmtSayi(stats.workspaces, lang), t('ws_bp_stat_teams')], [fmtSayi(stats.completed, lang), t('ws_bp_stat_completed')], ['MCP', t('ws_bp_stat_mcp')], [t('stat_setup_val'), t('ws_bp_stat_setup')]]
+                : [['TR/EN', t('ws_bp_stat_langs')], ['MCP', t('ws_bp_stat_mcp')], [t('stat_setup_val'), t('ws_bp_stat_setup')], [t('ws_bp_val_reports'), t('ws_bp_stat_reports')]]
+              ).map(([v, l]) => (
                 <div key={l}>
                   <strong style={{ color: joinActive ? 'rgba(200,230,255,0.9)' : 'rgba(255,255,255,0.85)' }}>{v}</strong>
                   <span style={{ color: joinActive ? 'rgba(160,200,255,0.55)' : 'rgba(255,255,255,0.35)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{l}</span>

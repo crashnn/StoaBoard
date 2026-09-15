@@ -1012,6 +1012,13 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       şey CI'ın dağıtımdan önce çalışması.
 
 ### Hemen yapılabilir — depo dışı, 5 dakikalık işler
+- [ ] **ESLint + `react-hooks/rules-of-hooks`.** *(15 Eylül 2026.)* Blok
+      düzenleyicinin kancaları çekmecenin erken dönüşünün altına konunca
+      canlıda kart açılınca çöktü (9843983). Kod okumasında kaçtı çünkü erken
+      dönüş 100 satır yukarıdaydı; bu sınıfı yalnızca lint yakalar. Kural
+      merdiveni: belge → test → **lint**. Yalnızca iki kural yeter
+      (`rules-of-hooks`, `exhaustive-deps` uyarı olarak); pre-push kancasına
+      ve CI'a eklenir. Depo içi ama kurulum 5 dakika.
 - [ ] **GitHub faturalandırma kilidi (crashnn hesabı).** CI kuruldu ama hiç
       çalışamıyor: "The job was not started because your account is locked due
       to a billing issue". İşler başlamıyor, yani kırmızı da değil, sessiz.
