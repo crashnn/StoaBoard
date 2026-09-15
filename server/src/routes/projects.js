@@ -184,7 +184,14 @@ projectsRouter.patch(
 
     const data = req.body || {};
     const updates = {};
-    if ('name' in data) updates.name = data.name;
+    // Ad boş gönderilirse reddet: oluşturma ucu (yukarıda) aynı kuralı
+    // uyguluyor, güncelleme sessizce boş ad yazmamalı. 15 Eylül'de ayarlara
+    // ad alanı eklendi; o güne kadar bu dal hiç çağrılmıyordu.
+    if ('name' in data) {
+      const ad = String(data.name ?? '').trim();
+      if (!ad) return res.status(400).json({ error: 'err_project_name_required', message: 'Proje adı zorunludur' });
+      updates.name = ad.slice(0, 120);
+    }
     if ('color' in data) updates.color = data.color;
     if ('icon' in data) updates.icon = data.icon;
 

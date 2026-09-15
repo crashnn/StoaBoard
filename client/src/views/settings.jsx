@@ -823,9 +823,15 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
     }
   };
 
-  const saveProjectIcon = async (projectId, icon, color) => {
+  // Ad alanı 15 Eylül'de eklendi: sunucu `name`i baştan beri kabul ediyordu
+  // ama bu ekran yalnızca simge ve rengi gönderiyordu, yani bir proje bir kez
+  // açılınca adı değiştirilemiyordu (tek yol silip yeniden açmaktı). Boş ad
+  // gönderilmez; sunucu da ayrıca reddediyor.
+  const saveProjectIcon = async (projectId, icon, color, name) => {
+    const ad = (name ?? '').trim();
+    if (!ad) { window.showToast?.(_t('err_project_name_required', 'Proje adı zorunludur'), 'error'); return; }
     try {
-      const updated = await API.updateProject(projectId, { icon, color });
+      const updated = await API.updateProject(projectId, { icon, color, name: ad });
       setProjects(ps => ps.map(p => p.id === updated.id ? { ...p, ...updated } : p));
       DATA.PROJECTS = DATA.PROJECTS.map(p => p.id === updated.id ? { ...p, ...updated } : p);
       setEditingProject(null);
@@ -1289,6 +1295,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
               const isEditing = editingProject?.id === p.id;
               const editColor = editingProject?.id === p.id ? editingProject.color : p.color;
               const editIcon  = editingProject?.id === p.id ? editingProject.icon  : (p.icon || 'folder');
+              const editName  = editingProject?.id === p.id ? editingProject.name  : p.name;
               const COLORS = [
                 ['Terracotta','oklch(55% 0.13 25)'],['Sage','oklch(55% 0.09 150)'],
                 ['Indigo','oklch(52% 0.15 270)'],   ['Plum','oklch(50% 0.14 340)'],
@@ -1301,7 +1308,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                       <Icon name={p.icon || 'folder'} size={16} strokeWidth={1.8} />
                     </div>
                     <span style={{ fontWeight:500, fontSize:13, flex:1 }}>{p.name}</span>
-                    <button className="icon-btn" title={_t('set_prj_edit','Düzenle')} onClick={() => { setEditingProject(isEditing ? null : { id:p.id, color:p.color, icon:p.icon||'folder' }); setDeletingProjectId(null); }}>
+                    <button className="icon-btn" title={_t('set_prj_edit','Düzenle')} onClick={() => { setEditingProject(isEditing ? null : { id:p.id, color:p.color, icon:p.icon||'folder', name:p.name }); setDeletingProjectId(null); }}>
                       <Icon name={isEditing ? 'x' : 'edit'} size={13} />
                     </button>
                     <button className="icon-btn icon-btn-danger" title={_t('set_prj_delete','Projeyi sil')} onClick={() => { setDeletingProjectId(deletingProjectId === p.id ? null : p.id); setDeleteProjectName(''); setDeleteProjectError(''); setEditingProject(null); }}>
@@ -1310,6 +1317,18 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                   </div>
                   {isEditing && (
                     <div style={{ padding:'0 14px 14px', borderTop:'1px solid var(--line)', paddingTop:14, display:'flex', flexDirection:'column', gap:12 }}>
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:600, color:'var(--ink-muted)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>{_t('set_prj_name','Ad')}</div>
+                        <input
+                          id={`prj-name-${p.id}`}
+                          className="input"
+                          value={editName}
+                          maxLength={120}
+                          onChange={e => setEditingProject(ep => ({ ...ep, name: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') saveProjectIcon(p.id, editIcon, editColor, editName); }}
+                          style={{ width:'100%', fontSize:13 }}
+                        />
+                      </div>
                       <div>
                         <div style={{ fontSize:11, fontWeight:600, color:'var(--ink-muted)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>{_t('set_prj_color','Renk')}</div>
                         <div style={{ display:'flex', gap:7 }}>
@@ -1337,7 +1356,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                         </div>
                       </div>
                       <div style={{ display:'flex', gap:8, marginTop:2 }}>
-                        <button className="btn btn-primary" style={{ fontSize:12 }} onClick={() => saveProjectIcon(p.id, editIcon, editColor)}>{_t('set_prj_save','Kaydet')}</button>
+                        <button className="btn btn-primary" style={{ fontSize:12 }} onClick={() => saveProjectIcon(p.id, editIcon, editColor, editName)}>{_t('set_prj_save','Kaydet')}</button>
                         <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => setEditingProject(null)}>{_t('set_prj_cancel','İptal')}</button>
                       </div>
                     </div>

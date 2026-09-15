@@ -323,7 +323,10 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
 - [x] **Bildirim okundu bilgisi sunucuya hiç yazılmıyor.** *(Bildirildi ve
       doğrulandı, 10 Eylül 2026. **Kapandı 15 Eylül 2026**, karar (c):
       rozet "son bakıştan beri gelen okunmamış"; `client/src/rozet.js`,
-      testi `bildirim.test.js`, gerekçesi BILDIRIMLER.md.)* Belirti: her girişte rozet dolu görünüyor,
+      testi `bildirim.test.js`, gerekçesi BILDIRIMLER.md. Dağıtım sonrası
+      ikinci kusur: zil bütün alanları sayıyor, panel yalnızca aktif alanı
+      gösteriyordu — zil "1", panel "hepsi okundu". Süzgeç `panelGorunur`
+      olarak tek yere alındı; zil ve panel aynı kümeyi kullanıyor.)* Belirti: her girişte rozet dolu görünüyor,
       panel açılınca sıfırlanıyor, günler önce okunmuş bildirim tekrar tekrar
       geri geliyor.
 
@@ -1120,7 +1123,9 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       sanılıp 18px'e sıkışıyor, `.panel { break-inside: avoid }` sığmayan
       bölümü önce yeni sayfaya atıyordu. Baskı bloğu tabloyu tablo olarak
       geri alıyor, bölüm bölünebiliyor, satır bölünmüyor (`styles.css`
-      `@media print`). Tarayıcıda Ctrl+P ile doğrulanacak.
+      `@media print`). Ctrl+P ile doğrulandı; ardından denetim kaydı
+      PDF'inde panelin sağında siyah şerit çıktı: koyu temanın scrollbar
+      başparmağı kâğıda basılıyordu. Baskıda scrollbar kapatıldı.
 - [x] **CSV Excel'de Türkçe karakterleri bozuyor** *(15 Eylül 2026; aynı gün
       kapandı)*. BOM vardı ama Excel `sep=` satırını görünce BOM'u yok sayıp
       ANSI okuyor. `sep=`siz de ayraç Windows bölge ayarına bağlı (TR `;`,
@@ -1136,12 +1141,18 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       **Hızlı üçlü** (sunum katmanı, `drawer.jsx` + `styles.css`): boş
       bölümleri tek satıra katla · özellikleri iki sütuna al · Description
       başlığını küçük gri etikete indir, bölüm başlıklarını 14px'e çek.
+      **Düzenleme hissi** (15 Eylül, Notion kıyası 2): açıklamaya tıklayınca
+      kutu, kenarlık ve Kaydet/İptal düğmeleri çıkıyor; Notion'da imleç
+      olduğu yerde yanıp söner, odak kaybında kaydedilir. Blok zaten
+      `contentEditable`; iş kutuyu ve düğmeleri kaldırıp odak kaybında
+      kaydetmek (sessiz olmasın: küçük "kaydedildi" işareti).
       **Ürün kararı:** paragraf içi biçim (kalın/liste/kod). Blok belge
       yapısı hazır (`h2`/`h3`/`p`) ama açıklama kullanıcı girdisi;
       bildirim metnindeki saklı XSS dersi burada da geçerli, kaçışsız HTML
       basılmaz.
-- [ ] **Projeyi yeniden adlandırma ekranı yok** *(15 Eylül 2026, demo
-      hazırlığında bulundu)*. Sunucu `PATCH /api/projects/:id` ile `name`
+- [x] **Projeyi yeniden adlandırma ekranı yok** *(15 Eylül 2026, demo
+      hazırlığında bulundu; aynı gün kapandı: ayarlardaki proje kartına ad
+      alanı, sunucu boş adı reddediyor)*. Sunucu `PATCH /api/projects/:id` ile `name`
       kabul ediyor (`projects.js`), istemci yalnızca `icon` ve `color`
       gönderiyor (`settings.jsx`, `saveProjectIcon`). Proje bir kez açılınca
       adı değiştirilemiyor; tek yol silip yeniden açmak. Küçük iş: ayarlardaki

@@ -541,7 +541,7 @@ window.APP_I18N = {
     // Settings — Projects
     set_prj_nav:'Projeler',
     set_prj_title:'Projeler', set_prj_desc:'Her projenin ikon ve rengini özelleştirin.',
-    set_prj_edit:'Düzenle', set_prj_color:'Renk', set_prj_icon:'İkon',
+    set_prj_edit:'Düzenle', set_prj_name:'Ad', set_prj_color:'Renk', set_prj_icon:'İkon',
     set_prj_save:'Kaydet', set_prj_cancel:'İptal',
     // App — modals, toasts, errors
     app_new_project:'Yeni Proje', app_new_project_desc:'Projeniz için isim, renk ve ikon seçin.',
@@ -1384,7 +1384,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     // Settings — Projects
     set_prj_nav:'Projects',
     set_prj_title:'Projects', set_prj_desc:'Customize the icon and color for each project.',
-    set_prj_edit:'Edit', set_prj_color:'Color', set_prj_icon:'Icon',
+    set_prj_edit:'Edit', set_prj_name:'Name', set_prj_color:'Color', set_prj_icon:'Icon',
     set_prj_save:'Save', set_prj_cancel:'Cancel',
     // App — modals, toasts, errors
     app_new_project:'New Project', app_new_project_desc:'Choose a name, color and icon for your project.',
