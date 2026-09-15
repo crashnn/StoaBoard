@@ -607,6 +607,13 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       bitmemiş kart dururken kontrol "veri yok" diye atlandı (0.5.1'de sorgu
       düzeltildi). Kalıcı çözüm sütunu `NOT NULL DEFAULT false` yapmak —
       üretime yazıyor, elle.
+- [ ] **MCP: `add_attachment` aracı** *(15 Eylül 2026)*. Kullanıcı sohbette
+      paylaştığı bir PDF'i ilgili karta bağlamak istedi; MCP'de dosya aracı
+      yok, uç (`POST /tasks/:id/attachments`, multipart) oturum çerezi
+      istiyor. Araç: `task_id` + dosya adı + base64 gövde (ya da MCP
+      kaynak/`blob` içeriği), sunucudaki boyut ve tür sınırlarından aynen
+      geçer, denetim kaydına `mcp.attachment_add` yazar. Silme yüzeye
+      çıkmasın (kalıcı silme kuralıyla aynı gerekçe). Sürüm 0.7.0 adayı.
 - [ ] **MCP yüzeyinde küçük pürüzler — 0.5.0 denemesinden.** Alt görev
       araçları girdide `title` alıp yanıtta `text` dönüyor (`subtaskToDict`
       sözleşmesi; `subtasks_detail` de `text` — değiştirmek kırıcı).
