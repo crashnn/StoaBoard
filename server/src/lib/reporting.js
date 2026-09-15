@@ -112,7 +112,14 @@ function median(nums) {
  * Emek süresi WorkLog'dan, hareket ve tamamlama sayısı TaskTransition'dan gelir.
  * userId verilirse tek kişi, verilmezse çalışma alanındaki herkes döner.
  */
-export async function personReport(projectIds, { from, to, userId = null }) {
+/**
+ * `projectNames`: id → ad (isteğe bağlı). Satırlara `project_id` ve
+ * `project_name` eklenir; kişi raporu birden çok projeyi birleştirdiğinde
+ * kartın hangi projeden geldiği görünmüyordu (15 Eylül). Geçiş ve süre
+ * kayıtları `projectId`yi denormalize taşıdığı için kart silinse de proje
+ * bilinir; proje silinmişse ad `null` kalır, istemci "—" basar.
+ */
+export async function personReport(projectIds, { from, to, userId = null, projectNames = null }) {
   if (!projectIds.length) return { people: [], from, to };
 
   const [logs, transitions] = await Promise.all([
@@ -160,6 +167,8 @@ export async function personReport(projectIds, { from, to, userId = null }) {
       p.tasks.set(k, {
         task_id: l.taskId,
         title: l.taskTitle,
+        project_id: l.projectId ?? null,
+        project_name: (projectNames && l.projectId != null) ? (projectNames.get(l.projectId) ?? null) : null,
         minutes: 0,
         moves: 0,
         completed: false,
@@ -177,6 +186,8 @@ export async function personReport(projectIds, { from, to, userId = null }) {
       p.tasks.set(k, {
         task_id: t.taskId,
         title: t.taskTitle,
+        project_id: t.projectId ?? null,
+        project_name: (projectNames && t.projectId != null) ? (projectNames.get(t.projectId) ?? null) : null,
         minutes: 0,
         moves: 0,
         completed: false,

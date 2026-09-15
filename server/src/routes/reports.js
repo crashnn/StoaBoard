@@ -34,14 +34,14 @@ import { reqLang } from '../lib/lang.js';
 // ile, sayısal "Dakika" sütunu ham int olarak kalıyor (analiz için).
 const CSV_I18N = {
   tr: {
-    person: ['Kişi', 'Görev', 'Dakika', 'Süre', 'Hareket', 'Tamamlandı'],
+    person: ['Kişi', 'Proje', 'Görev', 'Dakika', 'Süre', 'Hareket', 'Tamamlandı'],
     period: ['Görev', 'Öncelik', 'Açılış', 'Tamamlanma', 'Geçen gün', 'Dakika', 'Emek'],
     flow: ['Görev', 'Tamamlanma süresi (gün)', 'Tamamlanma tarihi'],
     yes: 'Evet',
     no: 'Hayır',
   },
   en: {
-    person: ['Person', 'Task', 'Minutes', 'Duration', 'Moves', 'Completed'],
+    person: ['Person', 'Project', 'Task', 'Minutes', 'Duration', 'Moves', 'Completed'],
     period: ['Task', 'Priority', 'Created', 'Completed', 'Cycle days', 'Minutes', 'Effort'],
     flow: ['Task', 'Cycle time (days)', 'Completed on'],
     yes: 'Yes',
@@ -387,12 +387,14 @@ reportsRouter.get(
       // İzin yoksa sessizce kendi raporuna daralt — boş sayfa göstermektense.
       report = await personReport(scope.projectIds, {
         ...scope.range,
+        projectNames: new Map(scope.projects.map((p) => [p.id, p.name])),
         userId: scope.user.id,
       });
       scopedToSelf = true;
     } else {
       report = await personReport(scope.projectIds, {
         ...scope.range,
+        projectNames: new Map(scope.projects.map((p) => [p.id, p.name])),
         userId: wantedUser,
       });
     }
@@ -408,6 +410,7 @@ reportsRouter.get(
         for (const t of p.tasks) {
           rows.push([
             p.name,
+            t.project_name || '',
             t.title,
             t.minutes,
             formatDurationLong(t.minutes, reqLang(req)),

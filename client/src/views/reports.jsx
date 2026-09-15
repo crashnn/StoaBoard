@@ -101,6 +101,8 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
   const [kind, setKind] = useState('person');
   const [range, setRange] = useState(() => presetRange('month'));
   const [person, setPerson] = useState('');
+  // Proje süzgeci (15 Eylül): sunucu ?project= zaten destekliyordu, seçici yoktu.
+  const [project, setProject] = useState('');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -136,8 +138,9 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
   const params = useCallback(() => {
     const p = { workspace: workspaceId, from: range.from, to: range.to };
     if (kind === 'person' && person) p.user = person;
+    if (project) p.project = project;
     return p;
-  }, [workspaceId, range.from, range.to, kind, person]);
+  }, [workspaceId, range.from, range.to, kind, person, project]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -245,6 +248,17 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
           />
         </div>
 
+        <div className="report-range">
+          <DefaultDropdown
+            value={project}
+            onChange={setProject}
+            ariaLabel={T('rep_project', 'Proje')}
+            options={[
+              { value: '', label: T('rep_all_projects', 'Tüm projeler') },
+              ...(DATA.PROJECTS || []).map((pr) => ({ value: String(pr.id), label: pr.name })),
+            ]}
+          />
+        </div>
         {kind === 'person' && (
           <div className="report-range">
             <DefaultDropdown
@@ -304,6 +318,7 @@ function PersonReport({ data, onOpenTask }) {
               <thead>
                 <tr>
                   <th>{T('rep_col_task', 'Görev')}</th>
+                  {!project && <th style={{ width: 150 }}>{T('rep_col_project', 'Proje')}</th>}
                   <th style={{ width: 90 }}>{T('rep_col_duration', 'Süre')}</th>
                   <th style={{ width: 90 }}>{T('rep_moves', 'Hareket')}</th>
                   <th style={{ width: 110 }}>{T('rep_col_status', 'Durum')}</th>
@@ -316,6 +331,7 @@ function PersonReport({ data, onOpenTask }) {
                     onClick={() => t.task_id && onOpenTask?.(String(t.task_id))}
                   >
                     <td className="title">{t.title}</td>
+                    {!project && <td style={{ color: 'var(--ink-muted)' }}>{t.project_name || '—'}</td>}
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>
                       {t.minutes ? formatDuration(t.minutes) : '—'}
                     </td>
