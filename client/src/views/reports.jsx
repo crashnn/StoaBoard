@@ -284,7 +284,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
               {T('rep_scoped_self', 'Yalnızca kendi kayıtlarınız gösteriliyor. Diğer kişilerin raporu için üye yönetimi izni gerekiyor.')}
             </div>
           )}
-          {kind === 'person' && <PersonReport data={data} onOpenTask={onOpenTask} />}
+          {kind === 'person' && <PersonReport data={data} onOpenTask={onOpenTask} project={project} />}
           {kind === 'period' && <PeriodReport data={data} onOpenTask={onOpenTask} />}
           {kind === 'flow' && <FlowReport data={data} onOpenTask={onOpenTask} />}
           {kind === 'audit' && <AuditReport data={data} />}
@@ -296,7 +296,7 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
 
 // ─── Kişi raporu ────────────────────────────────────────────────────────────
 
-function PersonReport({ data, onOpenTask }) {
+function PersonReport({ data, onOpenTask, project }) {
   if (!data.people?.length) {
     return <div className="dash-empty-state">{T('rep_empty', 'Bu aralıkta kayıt yok.')}</div>;
   }
