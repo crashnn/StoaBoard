@@ -195,11 +195,16 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
   // Aktif alanın bildirimleri + doğrudan mesajlar. Kural rozet.js'te; zil de
   // aynı kuralla sayıyor, aksi hâlde zil dolu panel boş kalıyordu (15 Eylül).
   const visibleItems = items.filter(n => panelGorunur(n, currentWsId, _notifType(n.text)));
+  // Sekme sayıları yalnızca OKUNMAMIŞ sayar (15 Eylül). Eskiden toplamı
+  // sayıyordu: "All 14" hepsi okunduktan sonra da 14 kalıyor, kullanıcı
+  // "baktım, neden gitmiyor" diyordu. Hepsi okununca sayı kaybolur; liste
+  // yine tamamını gösterir.
   const counts = visibleItems.reduce((acc, n) => {
+    if (!n.unread) return acc;
     const c = _notifCategory(n);
     acc[c] = (acc[c] || 0) + 1;
     acc.all = (acc.all || 0) + 1;
-    if (n.unread) acc.unread = (acc.unread || 0) + 1;
+    acc.unread = (acc.unread || 0) + 1;
     return acc;
   }, {});
   const filtered = tab === 'all' ? visibleItems
