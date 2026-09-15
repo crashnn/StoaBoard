@@ -41,6 +41,22 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
 
   // ── Doc state for inline editing ─────────────────────────────────────────
   const [docState, setDocState] = useDrawerState(null);
+  // Blok düzenleyicinin kancaları BURADA, bileşenin erken dönüşünden
+  // (`if (!task) return null`) önce: 15 Eylül'de aşağıda tanımlanınca kart
+  // yokken atlanıyor, kart açılınca "Rendered more hooks" ile çöküyordu.
+  const docLatest = useDrawerRef(null);
+  const [docFocus, setDocFocus] = useDrawerState(null);
+  const docRef = useDrawerRef(null);
+  useDrawerEffect(() => {
+    if (docFocus === null || !docRef.current) return;
+    const el = docRef.current.querySelector(`[data-block-index="${docFocus}"]`);
+    if (!el) return;
+    el.focus();
+    // İmleci sona koy: yeni blok boş, dönüştürülen blokta metin korunuyor.
+    const sel = window.getSelection?.();
+    if (sel && el.childNodes.length) { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+    setDocFocus(null);
+  }, [docFocus, docState]);
 
   // ── Note linking ─────────────────────────────────────────────────────────
   const [noteLinkOpen, setNoteLinkOpen] = useDrawerState(false);
@@ -282,7 +298,6 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   // en son kaydedilen belgeyi okur. Enter akışı önce metni kaydedip sonra
   // blok ekliyor; kapanış eski metni taşıdığı için ekleme az önce
   // kaydedileni ezerdi (kod okumasında bulundu, 15 Eylül).
-  const docLatest = useDrawerRef(null);
   const sonDoc = () => docLatest.current || doc;
   const saveDoc = async (newDoc) => {
     docLatest.current = newDoc;
@@ -317,18 +332,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
     setDocFocus(index);
     return saveDoc(sonDoc().map((b, i) => i === index ? { kind, text: b.text || '' } : b));
   };
-  const [docFocus, setDocFocus] = useDrawerState(null);
-  const docRef = useDrawerRef(null);
-  useDrawerEffect(() => {
-    if (docFocus === null || !docRef.current) return;
-    const el = docRef.current.querySelector(`[data-block-index="${docFocus}"]`);
-    if (!el) return;
-    el.focus();
-    // İmleci sona koy: yeni blok boş, dönüştürülen blokta metin korunuyor.
-    const sel = window.getSelection?.();
-    if (sel && el.childNodes.length) { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
-    setDocFocus(null);
-  }, [docFocus, docState]);
+
 
   // ── Karttan yeni not ────────────────────────────────────────────────────
   // Kullanıcı isteği (15 Eylül): bağlı not yokken "not bağla" yalnızca var olan
