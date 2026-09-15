@@ -388,7 +388,7 @@ describe('bildirim metni — sözleşme dışından yazılmıyor', () => {
 // bakış tarayıcıda tutulur. Bu blok o tanımı ve depolama yokluğundaki
 // davranışı kilitliyor (client/src/rozet.js).
 describe('zil rozeti — son bakıştan beri gelen okunmamış', async () => {
-  const { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, sonBakisAnahtari } =
+  const { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, sonBakisAnahtari, panelGorunur } =
     await import('../../client/src/rozet.js');
 
   const T = (iso) => Date.parse(iso);
@@ -433,6 +433,27 @@ describe('zil rozeti — son bakıştan beri gelen okunmamış', async () => {
     assert.equal(sonBakisOku(storage, 'eray-atalay-3'), 1000);
     assert.equal(sonBakisOku(storage, 'eray-atalay'), 2000);
     assert.notEqual(sonBakisAnahtari('eray-atalay-3'), sonBakisAnahtari('eray-atalay'));
+  });
+
+  // 15 Eylül, dağıtım sonrası: zil "1", panel "hepsi okundu". Zil bütün
+  // alanları sayıyor, panel yalnızca aktif alanı gösteriyordu. Tek süzgeç.
+  test('panelGorunur: başka alanın bildirimi görünmez, alanı olmayan ve DM her yerde görünür', () => {
+    assert.equal(panelGorunur({ workspace_id: 14 }, 15, 'task_assigned'), false);
+    assert.equal(panelGorunur({ workspace_id: 15 }, 15, 'task_assigned'), true);
+    assert.equal(panelGorunur({ workspace_id: '15' }, 15, 'task_assigned'), true, 'dize/sayı farkı gizlememeli');
+    assert.equal(panelGorunur({ workspace_id: null }, 15, 'info'), true);
+    assert.equal(panelGorunur({ workspace_id: 14 }, 15, 'dm_received'), true);
+    assert.equal(panelGorunur({ workspace_id: 14 }, null, 'task_assigned'), true, 'aktif alan bilinmiyorsa süzme');
+  });
+
+  test('zil, panelin göstermeyeceği bildirimi saymaz — kusurun kendisi', () => {
+    const hepsi = [
+      { unread: true, time: '2026-09-15T12:00:00.000Z', workspace_id: 14 }, // başka alan
+      { unread: true, time: '2026-09-15T12:00:00.000Z', workspace_id: 15 },
+    ];
+    const gorunen = hepsi.filter(n => panelGorunur(n, 15, 'task_assigned'));
+    assert.equal(yeniOkunmamisSayisi(gorunen, 0), 1);
+    assert.equal(yeniOkunmamisSayisi(hepsi, 0), 2, 'süzgeçsiz sayım eski davranış — bu yüzden süzgeç şart');
   });
 
   test('depolama yoksa ya da fırlatıyorsa okuma 0 (tam sayı gösterilir), yazma fırlatmaz', () => {

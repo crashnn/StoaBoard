@@ -3,12 +3,16 @@
 import React from 'react';
 import { Icon } from './icons.jsx';
 import { Avatar } from './shell.jsx';
+import { panelGorunur } from './rozet.js';
 import { API, renderNotifText, fmtTimeAgo, fmtAbsoluteDateTime } from './data.jsx';
 
 function _parseNotifType(text) {
   try { const d = JSON.parse(text); if (d?.type) return d.type; } catch (_) {}
   return null;
 }
+
+// Zil sayacı da (app.jsx) aynı tür çözümünü kullanıyor; dışa açık.
+export function notifType(text) { return _notifType(text); }
 
 function _notifType(text) {
   const t = _parseNotifType(text);
@@ -188,10 +192,9 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
     }
   };
 
-  // Show current workspace's notifications + DM notifications always
-  const visibleItems = currentWsId
-    ? items.filter(n => !n.workspace_id || n.workspace_id === currentWsId || _notifType(n.text) === 'message')
-    : items;
+  // Aktif alanın bildirimleri + doğrudan mesajlar. Kural rozet.js'te; zil de
+  // aynı kuralla sayıyor, aksi hâlde zil dolu panel boş kalıyordu (15 Eylül).
+  const visibleItems = items.filter(n => panelGorunur(n, currentWsId, _notifType(n.text)));
   const counts = visibleItems.reduce((acc, n) => {
     const c = _notifCategory(n);
     acc[c] = (acc[c] || 0) + 1;

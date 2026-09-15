@@ -8,8 +8,8 @@ import { API, renderNotifText, htmlCoz } from './data.jsx';
 import { Avatar, Sidebar, Topbar, ToastContainer } from './shell.jsx';
 import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
-import { NotifPanel, NotifPrefRow } from './notifications.jsx';
-import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz } from './rozet.js';
+import { NotifPanel, NotifPrefRow, notifType } from './notifications.jsx';
+import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, panelGorunur } from './rozet.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
 import { TweaksPanel } from './tweaks.jsx';
@@ -392,7 +392,9 @@ function App() {
       if (!window.DATA.NOTIFICATIONS) window.DATA.NOTIFICATIONS = [];
       if (!window.DATA.NOTIFICATIONS.some(n => n.id === notif.id)) {
         window.DATA.NOTIFICATIONS.unshift(notif);
-        setNotifCount(c => c + 1);
+        // Panelde görünmeyecek bildirim (başka alan) zili de doldurmasın —
+        // aynı süzgeç, rozet.js.
+        if (panelGorunur(notif, window.__CURRENT_WS_ID__, notifType(notif.text))) setNotifCount(c => c + 1);
         const twks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
         const myStatus = window.__MY_STATUS__ || 'online';
         if (myStatus !== 'dnd' && twks.soundEnabled !== false) _playDing();
@@ -641,8 +643,12 @@ function App() {
     window.__CURRENT_WS_ID__  = data.workspace?.id || null;
     setCurrentWsId(data.workspace?.id || null);
 
+    // Zil yalnızca panelin göstereceği bildirimleri sayar (panelGorunur):
+    // başka alandan gelen okunmamış bildirim zili doldurup panelde
+    // görünmüyordu, kullanıcı hiç okuyamıyordu (15 Eylül).
+    const wsId = data.workspace?.id || null;
     setNotifCount(yeniOkunmamisSayisi(
-      data.notifications || [],
+      (data.notifications || []).filter(n => panelGorunur(n, wsId, notifType(n.text))),
       sonBakisOku(localStorage, data.user?.id),
     ));
     if (typeof data.notes_count === 'number') setNotesCount(data.notes_count);

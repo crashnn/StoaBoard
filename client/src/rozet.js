@@ -19,6 +19,29 @@
 // Bedeli açık: başka cihazda rozet ilk kez tam sayıyla gelir. Kabul edildi;
 // aksi bir sütun ve elle şema göçü isterdi (CLAUDE.md, tuzaklar).
 
+/**
+ * Panelin gösterdiği bildirim kümesi — zil de AYNI kümeyi saymalı.
+ *
+ * KUSUR (15 Eylül 2026, dağıtım sonrası): zil "1" diyor, panel "hepsi
+ * okundu" diyordu. Zil açılışta kullanıcının bütün bildirimlerini sayıyor,
+ * panel ise yalnızca aktif alanınkileri gösteriyordu (`notifications.jsx`,
+ * eski `visibleItems`). Başka alandan gelen okunmamış bildirim zili
+ * dolduruyor ama hiçbir yerde görünmüyordu; okumanın yolu yoktu. Aynı
+ * kümeyi iki yerde iki ayrı koşulla tanımlamak bu deponun tekrar eden
+ * kusur sınıfı; süzgeç buraya alındı, iki taraf da buradan geçiyor.
+ *
+ * Kural panelin eski kuralı: alan bilgisi olmayan bildirimler her yerde,
+ * aktif alanınkiler ve doğrudan mesajlar görünür. Kimlikler metin olarak
+ * karşılaştırılıyor: sunucu sayı, tarayıcı durumu yer yer dize taşıyor.
+ * `tur` çağıranın çözdüğü bildirim türü (`notifType`); saf kalsın diye
+ * burada çözülmüyor.
+ */
+export function panelGorunur(n, wsId, tur) {
+  if (!wsId) return true;
+  if (!n || !n.workspace_id) return true;
+  return String(n.workspace_id) === String(wsId) || tur === 'message' || tur === 'dm_received';
+}
+
 /** Bir kullanıcı için tarayıcıdaki "son bakış" anahtarı. Kullanıcıya göre
  *  ayrılıyor: aynı tarayıcıda iki hesap birbirinin rozetini sıfırlamasın
  *  (15 Eylül'de demo hazırlığında iki hesap aynı Chrome'daydı). */
