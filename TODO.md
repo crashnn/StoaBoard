@@ -412,7 +412,9 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       istenmeyen bildirim ve kimlik avı metni hâlâ mümkün. GUVENLIK.md §4'ün
       2. ve 3. soruları bu uçta cevapsız. Ucun istemcide tek çağrısı
       `API.createNotification`; gerçekten gerekli mi, o da sorulmalı.
-- [ ] **Giriş ekranındaki istatistikler uydurma.** `auth.jsx:673` "1.200+ aktif
+- [x] **Giriş ekranındaki istatistikler uydurma.** *(Kapandı 15 Eylül 2026:
+      karar (a), sayılar gitti; yerine gerçek ürün olguları — TR/EN, MCP,
+      15 sn, 6 aylık rapor aralığı. Değerler de sözlükte, iki dilde.)* `auth.jsx:673` "1.200+ aktif
       takım" ve "38k+ görev tamamlandı", `auth.jsx:1293` "6k+ takım", "%98
       memnuniyet", "15m+ görev" diyor. Veritabanında 11 çalışma alanı ve ana
       projede 15 görev var. Bunlar pazarlama metni ve öyle olduğu sürece bir

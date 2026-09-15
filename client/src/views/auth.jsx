@@ -136,13 +136,15 @@ const AUTH_I18N = {
     ws_bp_title: 'Çalışma Alanın hazır mı?',
     ws_bp_subtitle: 'Kendi odanı kur veya bir davet koduyla mevcut takıma katıl. Her şey burada inşa edilir.',
     ws_bp_footer: 'Güvenli · Hızlı · Ekip odaklı',
-    ws_bp_stat_teams: 'aktif takım',
-    ws_bp_stat_satisfaction: 'memnuniyet',
+    ws_bp_stat_langs: 'iki dilli arayüz',
+    ws_bp_stat_mcp: 'Claude bağlantısı',
     ws_bp_stat_setup: 'başlama süresi',
-    ws_bp_stat_tasks: 'görev tamamlandı',
-    stat_teams: 'aktif takım',
-    stat_tasks: 'görev tamamlandı',
+    ws_bp_stat_reports: 'rapor aralığı',
+    stat_langs: 'iki dilli arayüz',
+    stat_mcp: 'Claude ile sürülebilir',
     stat_setup: 'başlama süresi',
+    stat_setup_val: '15 sn',
+    ws_bp_val_reports: '6 ay',
   },
   en: {
     greet_morning: 'Good morning, welcome back to StoaBoard.',
@@ -210,9 +212,11 @@ const AUTH_I18N = {
     hero_h1_em: 'lightest',
     hero_h1_after: ' tools.',
     hero_p: "The tech world no longer tolerates heavy, clunky systems. StoaBoard was designed with startup agility at its core: 15-second setup, zero complexity, and full synchronization. Seamlessly switch between board, list, and calendar views while feeling your team's creativity, not the system's weight. The future starts here, powered by lightness.",
-    stat_teams: 'active teams',
-    stat_tasks: 'completed tasks',
+    stat_langs: 'bilingual UI',
+    stat_mcp: 'drivable by Claude',
     stat_setup: 'avg. setup',
+    stat_setup_val: '15 s',
+    ws_bp_val_reports: '6 mo',
     ws_no_network: 'No network connection.',
     ws_invite_length: 'Invite code must be 8 characters.',
     ws_tab_create: 'Create Room',
@@ -262,10 +266,10 @@ const AUTH_I18N = {
     ws_bp_title: 'Is your Workspace ready?',
     ws_bp_subtitle: 'Create your own room or join an existing team with an invite code. Everything is built here.',
     ws_bp_footer: 'Secure · Fast · Team-focused',
-    ws_bp_stat_teams: 'active teams',
-    ws_bp_stat_satisfaction: 'satisfaction',
+    ws_bp_stat_langs: 'bilingual UI',
+    ws_bp_stat_mcp: 'Claude connection',
     ws_bp_stat_setup: 'setup time',
-    ws_bp_stat_tasks: 'tasks completed',
+    ws_bp_stat_reports: 'report range',
   },
   de: {
     greet_morning: 'Guten Morgen, willkommen zurück bei StoaBoard.',
@@ -670,9 +674,13 @@ function AuthPage({ onSignIn }) {
             <h1>{t('hero_h1_before')}<em>{t('hero_h1_em')}</em>{t('hero_h1_after')}</h1>
             <p>{t('hero_p')}</p>
             <div className="stats-row">
-              <div><strong>1.200+</strong><span>{t('stat_teams')}</span></div>
-              <div><strong>38k+</strong><span>{t('stat_tasks')}</span></div>
-              <div><strong>15sn</strong><span>{t('stat_setup')}</span></div>
+              {/* Sayılar gerçek: 15 Eylül 2026'ya kadar burada "1.200+ aktif takım" ve
+                  "38k+ görev" yazıyordu — uydurmaydı (veritabanında 11 alan vardı).
+                  Karar: ürün gerçeğini söyle. TR/EN sözlük testle kilitli, MCP
+                  yüzeyi 20 araç (mcpShape.js), 15 sn kurulum bir iddia, sayım değil. */}
+              <div><strong>TR/EN</strong><span>{t('stat_langs')}</span></div>
+              <div><strong>MCP</strong><span>{t('stat_mcp')}</span></div>
+              <div><strong>{t('stat_setup_val')}</strong><span>{t('stat_setup')}</span></div>
             </div>
           </div>
         </div>
@@ -1290,7 +1298,8 @@ function WorkspaceSetupPage({ onReady, onLogout }) {
               {t('ws_bp_subtitle')}
             </div>
             <div className="ws-bp-stats" style={{ borderColor: joinActive ? 'rgba(160,200,255,0.12)' : 'rgba(255,255,255,0.08)', background: joinActive ? 'rgba(160,200,255,0.05)' : 'rgba(255,255,255,0.04)' }}>
-              {[['6k+', t('ws_bp_stat_teams')], ['98%', t('ws_bp_stat_satisfaction')], ['15sn', t('ws_bp_stat_setup')], ['15m+', t('ws_bp_stat_tasks')]].map(([v, l]) => (
+              {/* Aynı karar: "6k+ takım", "%98 memnuniyet", "15m+ görev" uydurmaydı; gerçek değerler. */}
+              {[['TR/EN', t('ws_bp_stat_langs')], ['MCP', t('ws_bp_stat_mcp')], [t('stat_setup_val'), t('ws_bp_stat_setup')], [t('ws_bp_val_reports'), t('ws_bp_stat_reports')]].map(([v, l]) => (
                 <div key={l}>
                   <strong style={{ color: joinActive ? 'rgba(200,230,255,0.9)' : 'rgba(255,255,255,0.85)' }}>{v}</strong>
                   <span style={{ color: joinActive ? 'rgba(160,200,255,0.55)' : 'rgba(255,255,255,0.35)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{l}</span>
