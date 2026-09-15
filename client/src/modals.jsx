@@ -246,12 +246,10 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates }) {
         start: startDate || null, due: due || null,
         labels, assignees,
         assignee_dates: Object.keys(cleanAd).length ? cleanAd : null,
+        // Alt görevler artık app.jsx `createTask` içinde yazılıyor ki pano
+        // kartı hemen "0/N" göstersin ve hata yutulmasın.
+        checklist: checklistItems,
       });
-      if (created?.id && checklistItems.length > 0) {
-        for (const item of checklistItems) {
-          try { await API.addSubtask(created.id, item); } catch (_) {}
-        }
-      }
       onClose();
     } catch (e) {
       window.showToast?.(window.t('app_err_create_task') + e.message, 'error');

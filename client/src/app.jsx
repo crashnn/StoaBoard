@@ -746,8 +746,25 @@ function App() {
 
   const createTask = async (formData) => {
     const projectId = window.CURRENT_PROJECT_ID || 1;
-    const created = await API.createTask(projectId, formData);
+    // Alt görevler karttan sonra tek tek yazılır (ayrı uç). Bu döngü eskiden
+    // pencerede duruyordu ve panoya haber vermiyordu: kart "0/N" sayısını
+    // F5'e kadar göstermiyordu (TODO, 13 Eylül). Hataları da yutuyordu —
+    // bu depoda sessiz başarısızlık yasak; eklenemeyen sayısı toast'la
+    // söyleniyor, eklenenler kartta hemen görünüyor.
+    const { checklist = [], ...gorev } = formData || {};
+    const created = await API.createTask(projectId, gorev);
     setTasks(prev => [created, ...prev]);
+    if (created?.id && checklist.length > 0) {
+      let eklenen = 0;
+      for (const item of checklist) {
+        try { await API.addSubtask(created.id, item); eklenen += 1; } catch (_) { /* aşağıda sayılıyor */ }
+      }
+      if (eklenen > 0) {
+        setTasks(prev => prev.map(t => String(t.id) === String(created.id) ? { ...t, subtasks: `0/${eklenen}`, progress: 0 } : t));
+      }
+      const eksik = checklist.length - eklenen;
+      if (eksik > 0) window.showToast?.(`${eksik} ${window.t?.('app_err_subtasks_partial') || 'alt görev eklenemedi'}`, 'error');
+    }
     return created;
   };
 

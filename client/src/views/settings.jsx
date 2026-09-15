@@ -1321,12 +1321,16 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                         <div style={{ fontSize:11, fontWeight:600, color:'var(--ink-muted)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>{_t('set_prj_name','Ad')}</div>
                         <input
                           id={`prj-name-${p.id}`}
-                          className="input"
                           value={editName}
                           maxLength={120}
                           onChange={e => setEditingProject(ep => ({ ...ep, name: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') saveProjectIcon(p.id, editIcon, editColor, editName); }}
-                          style={{ width:'100%', fontSize:13 }}
+                          onKeyDown={e => { if (e.key === 'Enter') saveProjectIcon(p.id, editIcon, editColor, editName); if (e.key === 'Escape') setEditingProject(null); }}
+                          // Aynı ekrandaki rol/etiket adı kutusuyla aynı stil; tema değişkenleri
+                          // üzerinden gittiği için koyu/açık tema kendiliğinden doğru. 15 Eylül'de
+                          // olmayan bir sınıf verilmişti, kutu tarayıcı varsayılanıyla bembeyaz kaldı.
+                          style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:7, border:'1px solid var(--line)', background:'var(--bg-raised)', color:'var(--ink)', fontSize:13, outline:'none' }}
+                          onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = 'var(--line)'; }}
                         />
                       </div>
                       <div>

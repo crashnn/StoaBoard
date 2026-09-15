@@ -562,7 +562,7 @@ window.APP_I18N = {
     app_join_rejected:'Takıma katılım isteğiniz reddedildi.',
     app_link_copied:'Katılım linki kopyalandı!',
     app_err_load:'Veriler yüklenemedi: ', app_err_switch:'Çalışma alanı değiştirilemedi: ',
-    app_err_create_task:'Görev oluşturulamadı: ', app_err_create_project:'Proje oluşturulamadı: ',
+    app_err_create_task:'Görev oluşturulamadı: ', app_err_subtasks_partial:'alt görev eklenemedi', app_err_create_project:'Proje oluşturulamadı: ',
     app_err_load2:'Veri yüklenemedi: ',
     // Dashboard
     dash_greeting_morning:'Günaydın', dash_greeting_day:'İyi günler',
@@ -1405,7 +1405,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     app_join_rejected:'Your join request was rejected.',
     app_link_copied:'Join link copied!',
     app_err_load:'Could not load data: ', app_err_switch:'Could not switch workspace: ',
-    app_err_create_task:'Could not create task: ', app_err_create_project:'Could not create project: ',
+    app_err_create_task:'Could not create task: ', app_err_subtasks_partial:'subtask(s) could not be added', app_err_create_project:'Could not create project: ',
     app_err_load2:'Could not load data: ',
     // Dashboard
     dash_greeting_morning:'Good morning', dash_greeting_day:'Good afternoon',

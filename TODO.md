@@ -641,10 +641,11 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       düştü. Kural önerisi: yeni bir hata kodu, tanımı gereği eski istemciye
       dönüyorsa (uyumsuzluk reddi), `message` `reqLang(req)` ile kurulur —
       `X-Stoa-Lang` başlığını eski paket de gönderiyor.
-- [ ] **Kart açma penceresi alt görevleri ekledikten sonra kartı tazelemiyor.**
-      *(13 Eylül 2026.)* Pencere kartı açıp alt görevleri tek tek ekliyor
-      (`modals.jsx`), ama panodaki kart "0/N" sayısını sayfa yenilenene kadar
-      göstermiyor. Tek kaynağa inişten önce de böyleydi.
+- [x] **Kart açma penceresi alt görevleri ekledikten sonra kartı tazelemiyor.**
+      *(13 Eylül 2026. Kapandı 15 Eylül.)* Pencere kartı açıp alt görevleri
+      tek tek ekliyordu ve panoya haber vermiyordu; hataları da yutuyordu.
+      Döngü `app.jsx` `createTask`a taşındı: eklenenler kartta hemen "0/N",
+      eklenemeyen sayısı toast'la söyleniyor.
 - [x] **`dil.test.js` ve `yetki.test.js` tarayıcıları yorumları silmiyor.**
       *(Kapandı 12 Eylül 2026 — DEVIR 0-L.)* Sorun maddede yazandan genişti:
       "yorum nedir" sorusunun depoda **üç ayrı cevabı** vardı ve üçü de farklı
