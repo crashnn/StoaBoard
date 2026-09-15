@@ -1206,6 +1206,16 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       [CLAUDE.md](CLAUDE.md) dil bölümü.
 
 ### Tasarım kararı bekleyenler
+- [ ] **Kart gövdesi ne kadar zengin olsun — Notion kıyası** *(15 Eylül
+      2026)*. Notion'un görev sayfası üç katman: içerik (blok düzenleyici),
+      şema (özel alan, ilişki), iş birliği. Karar verildi: **içerik katmanı
+      alınır, şema katmanı alınmaz** (özel alan zaten kapsam dışı). Kart
+      formu ve tam ekran ikisi de kalır; ölçüt okunabilirlik. Altyapı yerde:
+      `task.doc` blok listesi, altı türün çizicisi var, yalnızca `p`
+      düzenlenebiliyor. Faz 1: `/` menüsü + altı tür + Enter/Backspace akışı,
+      hepsi React metni (HTML yok). Faz 2: satır içi biçim, ayrı eleğiyle.
+      **Önce cevaplanacak (toplantı):** Notion'da gerçekten hangi bloklar
+      kullanılıyor; kapsam ona göre.
 - [ ] **Bildirimler baştan ele alınacak.** Toplantıda mesaj gönderildi, karşı
       tarafta toast çıkmadı. İki sebebi vardı: biri kırık koddu (düzeltildi),
       diğeri tasarım boşluğu ve **hâlâ açık** — görev atama, bahsetme ve yorum

@@ -47,6 +47,13 @@ Kesilecekler, bu sırayla:
    atlanır.
 3. **Güvenlik tablosu okunmaz, gösterilir.** "Beş satır, hepsi kapandı."
 
+**Odaya sorulacak yedinci soru (15 Eylül'de eklendi):** *"Notion'da görev
+sayfasında gerçekten ne kullanıyorsunuz — uyarı kutusu, başlık, tablo, kod,
+toggle, gömme?"* Cevap "kart gövdesi: blok düzenleyici" işinin kapsamını
+belirliyor (demo panosunda backlog kartı). Duruş: içerik katmanı alınır,
+şema katmanı (özel alan, ilişki, veritabanı görünümü) bilinçli alınmaz;
+kart formu ve tam ekran ikisi de kalır.
+
 **Kesilmeyecek iki şey:**
 
 - **Birinci tur tablosu.** Odadakilerin kendi söyledikleri o tabloda. Kısaltmak
