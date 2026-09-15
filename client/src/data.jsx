@@ -771,7 +771,7 @@ window.APP_I18N = {
     drawer_checklist:'Yapılacaklar', drawer_saving:'kaydediliyor…',
     drawer_err_checklist:'Checklist kaydedilemedi: ', drawer_err_save:'Kaydedilemedi: ',
     drawer_file_uploaded:'yüklendi',
-    drawer_link_note:'Not bağla', drawer_note_search_ph:'Not ara…',
+    drawer_new_note:'Yeni not', drawer_link_note:'Not bağla', drawer_note_search_ph:'Not ara…',
     drawer_note_linked:'Not bağlandı.', drawer_no_linkable_notes:'Bağlanacak not yok.',
     // Modal aliases
     modal_new_task:'Yeni görev', modal_new_task_sub:'Atama, etiket ve son tarihi sonradan da düzenleyebilirsin.',
@@ -1615,7 +1615,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     drawer_checklist:'To Do', drawer_saving:'saving…',
     drawer_err_checklist:'Could not save checklist: ', drawer_err_save:'Could not save: ',
     drawer_file_uploaded:'uploaded',
-    drawer_link_note:'Link note', drawer_note_search_ph:'Search notes…',
+    drawer_new_note:'New note', drawer_link_note:'Link note', drawer_note_search_ph:'Search notes…',
     drawer_note_linked:'Note linked.', drawer_no_linkable_notes:'No notes to link.',
     // Modal aliases
     modal_new_task:'New task', modal_new_task_sub:'You can edit the assignee, labels and due date later.',

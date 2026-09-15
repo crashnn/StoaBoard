@@ -46,6 +46,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   const [noteLinkOpen, setNoteLinkOpen] = useDrawerState(false);
   const [allNotes, setAllNotes]         = useDrawerState(null); // null = not loaded yet
   const [noteSearch, setNoteSearch]     = useDrawerState('');
+  const [creatingNote, setCreatingNote] = useDrawerState(false);
   const noteLinkRef                     = useDrawerRef(null);
   const [dueVal, setDueVal]             = useDrawerState('');
   const [startVal, setStartVal]         = useDrawerState('');
@@ -281,6 +282,30 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       return true;
     }
     catch (e) { window.showToast?.((window.t?.('drawer_err_save') || 'Kaydedilemedi: ') + e.message, 'error'); return false; }
+  };
+
+  // ── Karttan yeni not ────────────────────────────────────────────────────
+  // Kullanıcı isteği (15 Eylül): bağlı not yokken "not bağla" yalnızca var olan
+  // notu arıyor; asıl ihtiyaç kartın içinden yeni bir not açıp bağlamak.
+  // Not kartın başlığıyla açılır, karta bağlanır ve Notlar görünümünde açık
+  // gelir; içerik orada yazılır. Görünürlük `workspace`: kartın bağlı notu
+  // kartı görebilen herkes tarafından okunabilmeli, `private` olsaydı ekip
+  // arkadaşı kartı açıp boş bir "bağlı not" görürdü. Kullanıcı notun içinden
+  // kısabilir.
+  const handleNewNote = async () => {
+    if (creatingNote) return;
+    setCreatingNote(true);
+    try {
+      const note = await API.createNote({ title: task.title, visibility: 'workspace' });
+      await API.linkNoteTask(note.id, task.id);
+      onClose && onClose();
+      if (window.__SWITCH_VIEW__) window.__SWITCH_VIEW__('notes');
+      setTimeout(() => { window.__NOTES_OPEN__ && window.__NOTES_OPEN__(note.id); }, 30);
+    } catch (e) {
+      window.showToast?.((window.t?.('drawer_err_save') || 'Kaydedilemedi: ') + e.message, 'error');
+    } finally {
+      setCreatingNote(false);
+    }
   };
 
   // ── Delete own comment ──────────────────────────────────────────────────
@@ -624,6 +649,11 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
           <h3 className="drw-h3" style={{ margin: 0, flex: 1 }}>
             {window.t('drawer_linked_notes')} <span style={{ color: 'var(--ink-muted)', fontSize: 13, fontFamily: 'var(--font-ui)' }}>· {linkedNotes.length}</span>
           </h3>
+          {canManageTasks && (
+            <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 9px' }} onClick={handleNewNote} disabled={creatingNote}>
+              <Icon name="note" size={11} /> {creatingNote ? (window.t?.('drawer_saving') || 'kaydediliyor…') : (window.t?.('drawer_new_note') || 'Yeni not')}
+            </button>
+          )}
           {canManageTasks && (
             <div style={{ position: 'relative' }} ref={noteLinkRef}>
               <button
