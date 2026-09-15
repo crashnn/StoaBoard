@@ -57,6 +57,32 @@ apiRouter.get('/health', asyncHandler(async (_req, res) => {
   res.json({ ok: true, users: userCount });
 }));
 
+// ─── GET /public/stats — giriş ekranındaki gerçek sayılar ──────────────────
+//
+// 15 Eylül 2026'ya kadar giriş ekranı "1.200+ aktif takım", "38k+ görev"
+// yazıyordu; uydurmaydı. Karar: gerçek sayı. Bu uç herkese açık (giriş
+// ekranı oturumsuz) ve BİLEREK yalnızca üç toplam döndürüyor: takım sayısı,
+// silinmemiş görev sayısı, tamamlanmış görev sayısı. Ad, kimlik, alan
+// bilgisi yok; "platform ne kadar büyük" bilgisi anonim ziyaretçiye açılıyor
+// ve bu kabul edilen bedel — sayının kendisi pazarlama. Sonuç 10 dakika
+// bellekte tutuluyor: giriş sayfasının her açılışı üç COUNT koşturmasın,
+// oran sınırlayıcı olmadan bir uç veritabanına vurmasın.
+const STATS_ONBELLEK_MS = 10 * 60 * 1000;
+let statsOnbellek = { zaman: 0, veri: null };
+apiRouter.get('/public/stats', asyncHandler(async (_req, res) => {
+  const simdi = Date.now();
+  if (!statsOnbellek.veri || simdi - statsOnbellek.zaman > STATS_ONBELLEK_MS) {
+    const [workspaces, tasks, completed] = await Promise.all([
+      prisma.workspace.count(),
+      prisma.task.count({ where: { deletedAt: null } }),
+      prisma.task.count({ where: { deletedAt: null, completedAt: { not: null } } }),
+    ]);
+    statsOnbellek = { zaman: simdi, veri: { workspaces, tasks, completed } };
+  }
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json(statsOnbellek.veri);
+}));
+
 // ─── Yardımcı: oturum sahibi user + last_seen güncelle ─────────────────────
 //
 // Python _current_user her çağrıda last_seen'i tazeliyordu. Aynı davranış.

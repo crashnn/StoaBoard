@@ -40,6 +40,10 @@ const INDEX = path.join(SRC, 'index.js');
 const ACIK_UCLAR = new Map([
   ['api.js GET /ping',              'sağlık kontrolü — Railway ayakta mı diye buraya bakıyor'],
   ['api.js GET /health',            'sağlık kontrolü — aynı gerekçe'],
+  // 15 Eylül 2026: giriş ekranındaki uydurma sayıların yerine gerçek toplamlar.
+  // Yalnızca üç sayı (takım, görev, tamamlanan), ad/kimlik yok, 10 dk önbellek.
+  // Platform büyüklüğünün anonim ziyaretçiye açılması bilinçli bedel.
+  ['api.js GET /public/stats',      'giriş ekranı oturumsuz; yalnızca üç toplam sayı, kimlik yok, önbellekli'],
   ['auth.js POST /login',           'giriş yapmamış kullanıcı çağırır; kimliğin kendisi burada kuruluyor'],
   ['auth.js POST /register',        'kayıt — henüz kullanıcı yok'],
   ['auth.js POST /logout',          'oturumu yıkar; oturumu olmayanın çağırması zararsız'],
