@@ -533,8 +533,8 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       )}
 
       {/* ── Checklist ── */}
-      <div className="comments-section" style={{ marginBottom: 18 }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '-0.005em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className={`comments-section drw-sec${checklist.length ? '' : ' drw-sec--empty'}`}>
+        <h3 className="drw-h3">
           {window.t?.('drawer_checklist') || 'Yapılacaklar'}
           {checklist.length > 0 && (
             <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontFamily: 'var(--font-ui)', fontWeight: 400 }}>
@@ -619,9 +619,9 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       </div>
 
       {/* ── Linked notes ── */}
-      <div className="comments-section" style={{ marginBottom: 18 }}>
+      <div className={`comments-section drw-sec${linkedNotes.length ? '' : ' drw-sec--empty'}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '-0.005em', margin: 0, flex: 1 }}>
+          <h3 className="drw-h3" style={{ margin: 0, flex: 1 }}>
             {window.t('drawer_linked_notes')} <span style={{ color: 'var(--ink-muted)', fontSize: 13, fontFamily: 'var(--font-ui)' }}>· {linkedNotes.length}</span>
           </h3>
           {canManageTasks && (
@@ -683,7 +683,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
         {loadingLinkedNotes ? (
           <div style={{ fontSize: 12, color: 'var(--ink-faint)', padding: '8px 0' }}>{window.t('drawer_loading')}</div>
         ) : linkedNotes.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: 'var(--ink-faint)', padding: '8px 0' }}>{window.t('drawer_no_linked_notes')}</div>
+          <div className="drw-empty" style={{ fontSize: 12.5, color: 'var(--ink-faint)', padding: '8px 0' }}>{window.t('drawer_no_linked_notes')}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {linkedNotes.map(n => {
@@ -707,9 +707,9 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       </div>
 
       {/* Attachments */}
-      <div className="comments-section" style={{ marginBottom: 18 }}>
+      <div className={`comments-section drw-sec${attachments.length ? '' : ' drw-sec--empty'}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '-0.005em', margin: 0, flex: 1 }}>
+          <h3 className="drw-h3" style={{ margin: 0, flex: 1 }}>
             {window.t?.('drawer_attachments') || 'Dosyalar'}
             {attachments.length > 0 && <span style={{ color: 'var(--ink-muted)', fontSize: 13, fontFamily: 'var(--font-ui)', marginLeft: 6 }}>· {attachments.length}</span>}
           </h3>
@@ -826,8 +826,8 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       {task?.id && <WorkLogSection taskId={task.id} />}
 
       {/* Comments */}
-      <div className="comments-section">
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '-0.005em', marginBottom: 6 }}>
+      <div className="comments-section drw-sec">
+        <h3 className="drw-h3">
           {window.t('drawer_comments')} <span style={{ color: 'var(--ink-muted)', fontSize: 13, fontFamily: 'var(--font-ui)' }}>· {comments.length}</span>
         </h3>
         {comments.map((c, i) => {
@@ -1006,7 +1006,10 @@ function DrawerDocBlock({ block, onUpdate }) {
   // SIRAYLA eşleştiriyordu (kimliksiz maddede `subsDetail[i]`), yani iki liste
   // farklı uzunluktayken yanlış kutuyu işaretli gösteriyordu.
   switch (block.kind) {
-    case 'h2':    return <h2>{block._i18n ? (window.t?.(block._i18n) || block.text) : block.text}</h2>;
+    // `_i18n` taşıyan başlık üretilmiş bölüm etiketi ("Açıklama"); kullanıcının
+    // kendi başlığı değil. Küçük gri etiket olarak çizilir (data-role), aksi
+    // hâlde kart başlığıyla yarışıyordu (15 Eylül, Notion kıyası).
+    case 'h2':    return <h2 data-role={block._i18n ? 'section' : undefined}>{block._i18n ? (window.t?.(block._i18n) || block.text) : block.text}</h2>;
     case 'h3':    return <h3>{block._i18n ? (window.t?.(block._i18n) || block.text) : block.text}</h3>;
     case 'p':     return (
       <div style={{ position: 'relative' }}>

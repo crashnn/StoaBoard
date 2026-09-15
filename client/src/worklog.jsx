@@ -80,8 +80,8 @@ function WorkLogSection({ taskId }) {
   };
 
   return (
-    <div className="worklog-section">
-      <h3 className="worklog-title">
+    <div className={`worklog-section drw-sec${(!logs.length && !open && !loading) ? ' drw-sec--empty' : ''}`}>
+      <h3 className="worklog-title drw-h3">
         {T('wl_title', 'Harcanan süre')}
         {totalLabel && <span className="worklog-total">· {totalLabel}</span>}
       </h3>

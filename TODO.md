@@ -1146,8 +1146,11 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       olduğu yerde yanıp söner, odak kaybında kaydedilir. Blok zaten
       `contentEditable`. **Yapıldı (15 Eylül):** kutu ve düğmeler kalktı,
       odak kaybında kaydediyor, Escape vazgeçiyor, başarılı kayıtta kısa
-      "Kaydedildi" işareti. Kalan üçlü (boş bölümleri katla, iki sütun,
-      başlık hiyerarşisi) hâlâ açık.
+      "Kaydedildi" işareti. **Üçlü de yapıldı (15 Eylül):** boş bölümler tek
+      satıra iniyor (`drw-sec--empty`), özellikler iki sütun (`props-grid`
+      `order` kuralları — yeni özellik satırı eklenirse güncellenmeli),
+      "Açıklama" küçük gri etiket (`data-role="section"`), bölüm başlıkları
+      14.5px. Sürükle-bırak alanı boş bölümde gizli; dosya "+ Ekle" ile.
       **Ürün kararı:** paragraf içi biçim (kalın/liste/kod). Blok belge
       yapısı hazır (`h2`/`h3`/`p`) ama açıklama kullanıcı girdisi;
       bildirim metnindeki saklı XSS dersi burada da geçerli, kaçışsız HTML
