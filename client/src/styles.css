@@ -1155,7 +1155,13 @@ input, textarea, select, [contenteditable="true"] {
   padding: 18px 20px 4px;
   display: flex;
   gap: 14px;
-  align-items: flex-start;
+  /* Kolonlar tam boy (15 Eylül). `flex-start` iken her kolon içeriği kadar
+     uzuyordu: 13 kartlı kolon dibe kadar inip içinde kaydırıyor, boş kolonlar
+     başlık boyunda kalıyor, kolon ayraçları da kolon boyunda olduğu için
+     altlar hizasız görünüyordu — "bir şeyler ters" hissi buydu. Tam boyda
+     ayraçlar ve altlar bir hizada; dolu kolon kendi payına sığmazsa yine
+     kendi içinde kayar (aşağıda ince, üstüne gelince görünen çubuk). */
+  align-items: stretch;
   background: var(--bg);
 }
 
@@ -1350,9 +1356,14 @@ input, textarea, select, [contenteditable="true"] {
 }
 
 .col-body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: visible;
+  /* Kolon içi kaydırma çubuğu: ince, yalnızca üstüne gelince görünür.
+     Varsayılan 10px koyu çubuk kartların yanında ağır duruyordu. */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
   padding: var(--card-gap);
   padding-top: 4px;
   display: flex;
@@ -1360,6 +1371,10 @@ input, textarea, select, [contenteditable="true"] {
   gap: var(--card-gap);
   min-height: 100px;
 }
+.col-body:hover { scrollbar-color: var(--ink-dim) transparent; }
+.col-body::-webkit-scrollbar { width: 6px; }
+.col-body::-webkit-scrollbar-thumb { background: transparent; border: none; border-radius: 6px; }
+.col-body:hover::-webkit-scrollbar-thumb { background: var(--ink-dim); }
 .col-body[data-drag-over="true"] {
   background: var(--accent-softer);
   outline: 1.5px dashed var(--accent);
