@@ -596,7 +596,7 @@ window.APP_I18N = {
     // Commands
     cmd_nav:'Navigasyon', cmd_home:'Ana Sayfa', cmd_board:'Pano (Kanban)',
     cmd_list:'Liste görünümü', cmd_calendar:'Takvim', cmd_chat:'Sohbet',
-    cmd_notes:'Notlar', cmd_settings:'Ayarlar', cmd_actions:'Aksiyonlar',
+    cmd_notes:'Notlar', cmd_reports:'Raporlar', cmd_trash:'Çöp Kutusu', cmd_settings:'Ayarlar', cmd_actions:'Aksiyonlar',
     cmd_new_task:'Yeni görev', cmd_new_note:'Yeni not', cmd_open_notifs:'Bildirimleri aç',
     cmd_open_chat:'Sohbeti aç', cmd_new_project:'Yeni proje', cmd_view:'Görünüm',
     cmd_toggle_theme:'Temayı değiştir', cmd_toggle_sidebar:'Kenar çubuğunu daralt',
@@ -1440,7 +1440,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     // Commands
     cmd_nav:'Navigation', cmd_home:'Home', cmd_board:'Board (Kanban)',
     cmd_list:'List view', cmd_calendar:'Calendar', cmd_chat:'Chat',
-    cmd_notes:'Notes', cmd_settings:'Settings', cmd_actions:'Actions',
+    cmd_notes:'Notes', cmd_reports:'Reports', cmd_trash:'Trash', cmd_settings:'Settings', cmd_actions:'Actions',
     cmd_new_task:'New task', cmd_new_note:'New note', cmd_open_notifs:'Open notifications',
     cmd_open_chat:'Open chat', cmd_new_project:'New project', cmd_view:'View',
     cmd_toggle_theme:'Toggle theme', cmd_toggle_sidebar:'Collapse sidebar',

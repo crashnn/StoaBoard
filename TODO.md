@@ -1147,6 +1147,18 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
+- [ ] **Raporda başka projenin kartına tıklayınca hiçbir şey olmuyor**
+      *(15 Eylül 2026)*. Kişi raporu artık bütün projeleri birleştiriyor;
+      satıra tıklama kartı **aktif projenin** yüklü listesinde arıyor
+      (`__APP_TASKS__`), bulamayınca sessizce vazgeçiyor — sessiz
+      başarısızlık. Çözüm: `__OPEN_TASK_BY_ID__` kartı bulamazsa önce
+      `GET /tasks/:id` ile çekip çekmeceyi o veriyle açsın (proje değiştirmek
+      şart değil), bulamazsa toast. Aynı sorun akış ve dönem raporlarında da.
+- [ ] **Komut paletinde `cmd_*` anahtarları dinamik üretiliyor**, dil testi
+      göremiyor: `cmd_reports` ve `cmd_trash` sözlükte yoktu, ekranda anahtar
+      adı çıktı (15 Eylül, eklendi). Kalıcı çözüm: paletteki komut listesi
+      anahtarlarını sabit bir diziden okuyup testte o diziyi sözlükle
+      karşılaştırmak.
 - [x] **Kendi yorumunu silme düğmesi yoktu** *(15 Eylül 2026; aynı gün
       kapandı)*. `DELETE /api/comments/:id` (yalnızca sahibi) ve
       `API.deleteComment` baştan beri vardı, çekmecede düğme yoktu. Bozuk
