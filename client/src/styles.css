@@ -2923,7 +2923,16 @@ input, textarea, select, [contenteditable="true"] {
   white-space: nowrap;
 }
 .custom-dropdown-menu {
-  position: fixed;
+  /* Sarmalayıcıya (.custom-dropdown, position: relative) göre, düğmenin
+     hemen altına. Eskiden `position: fixed` idi ama top/left verilmiyordu:
+     kutu "akıştaki yerine" konuyordu, o yer de align-items: center olan
+     flex satırın ORTASI — 110px'lik menü 34px'lik satıra ortalanıp yarısı
+     yukarı taşıyordu, "yukarı açılıyor" gibi görünüyordu (15 Eylül, atanan
+     menüsü). Konumunu kendisi ölçüp veren modal (modals.jsx) satır içi
+     fixed kullanmaya devam ediyor; satır içi stil bu kuralı ezer. */
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -2935,11 +2944,18 @@ input, textarea, select, [contenteditable="true"] {
 }
 .custom-dropdown-item {
   width: 100%;
+  /* Flex: satırdaki avatar+ad ile sağdaki tik aynı hizada dursun. Önceden
+     blok içinde satır içi öğelerdi; ad kutusu flex olduğu için tik bir alt
+     satıra düşüyordu ("tik kaymış", 15 Eylül). */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
   border: none;
   background: transparent;
   color: var(--ink);
   text-align: left;
-  padding: 12px 14px;
+  padding: 10px 14px;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s var(--ease);
