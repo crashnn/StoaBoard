@@ -378,3 +378,68 @@ describe('bildirim metni — sözleşme dışından yazılmıyor', () => {
     }
   });
 });
+
+// ─── Zil rozeti: "son bakıştan beri gelen okunmamış" ─────────────────────────
+//
+// KUSUR (10 Eylül 2026, karar 15 Eylül): paneli açan/kapatan beş yol rozeti
+// yalnızca yerel React durumunda sıfırlıyordu; sunucudaki `read` alanı
+// değişmediği için sonraki girişte rozet geri geliyordu. Karar (c): rozet
+// okunmamış sayısı değil, son bakıştan beri gelen okunmamış sayısıdır; son
+// bakış tarayıcıda tutulur. Bu blok o tanımı ve depolama yokluğundaki
+// davranışı kilitliyor (client/src/rozet.js).
+describe('zil rozeti — son bakıştan beri gelen okunmamış', async () => {
+  const { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, sonBakisAnahtari } =
+    await import('../../client/src/rozet.js');
+
+  const T = (iso) => Date.parse(iso);
+  const bildirimler = [
+    { id: '1', unread: true,  time: '2026-09-10T10:00:00.000Z' }, // eski, okunmamış
+    { id: '2', unread: true,  time: '2026-09-15T09:00:00.000Z' }, // yeni, okunmamış
+    { id: '3', unread: false, time: '2026-09-15T09:30:00.000Z' }, // yeni ama okunmuş
+    { id: '4', unread: true,  time: '' },                          // zamanı yok
+  ];
+
+  test('hiç bakılmamışsa (0) okunmamışların tamamı sayılır — eski davranış korunur', () => {
+    assert.equal(yeniOkunmamisSayisi(bildirimler, 0), 3);
+    assert.equal(yeniOkunmamisSayisi(bildirimler, undefined), 3);
+    assert.equal(yeniOkunmamisSayisi(bildirimler, 'bozuk'), 3);
+  });
+
+  test('son bakıştan önce gelen okunmamış rozeti DOLDURMAZ — kusurun kendisi', () => {
+    // 12 Eylül'de bakıldı: 10 Eylül'ün bildirimi okunmadı ama artık yeni değil.
+    const sayi = yeniOkunmamisSayisi(bildirimler, T('2026-09-12T00:00:00.000Z'));
+    assert.equal(sayi, 2, 'yalnızca #2 (yeni okunmamış) ve #4 (zamanı yok) sayılmalı');
+  });
+
+  test('okunmuş bildirim yeni olsa da sayılmaz', () => {
+    assert.equal(yeniOkunmamisSayisi(bildirimler, T('2026-09-15T09:15:00.000Z')), 1);
+  });
+
+  test('zamanı olmayan/çözülemeyen bildirim yeni sayılır — yokluk gizlemez', () => {
+    assert.equal(yeniOkunmamisSayisi([{ unread: true, time: 'tarih değil' }], T('2026-09-15T00:00:00.000Z')), 1);
+    assert.equal(yeniOkunmamisSayisi([{ unread: true }], T('2026-09-15T00:00:00.000Z')), 1);
+  });
+
+  test('boş/eksik liste 0 döner', () => {
+    assert.equal(yeniOkunmamisSayisi([], 5), 0);
+    assert.equal(yeniOkunmamisSayisi(null, 5), 0);
+  });
+
+  test('son bakış kullanıcıya göre ayrı anahtarda tutulur ve gidip gelir', () => {
+    const depo = new Map();
+    const storage = { getItem: (k) => depo.get(k) ?? null, setItem: (k, v) => depo.set(k, v) };
+    sonBakisYaz(storage, 'eray-atalay-3', 1000);
+    sonBakisYaz(storage, 'eray-atalay', 2000);
+    assert.equal(sonBakisOku(storage, 'eray-atalay-3'), 1000);
+    assert.equal(sonBakisOku(storage, 'eray-atalay'), 2000);
+    assert.notEqual(sonBakisAnahtari('eray-atalay-3'), sonBakisAnahtari('eray-atalay'));
+  });
+
+  test('depolama yoksa ya da fırlatıyorsa okuma 0 (tam sayı gösterilir), yazma fırlatmaz', () => {
+    assert.equal(sonBakisOku(undefined, 'x'), 0);
+    assert.equal(sonBakisOku({ getItem: () => 'bozuk' }, 'x'), 0);
+    const patlayan = { getItem: () => { throw new Error('gizli pencere'); }, setItem: () => { throw new Error('gizli pencere'); } };
+    assert.equal(sonBakisOku(patlayan, 'x'), 0);
+    assert.doesNotThrow(() => sonBakisYaz(patlayan, 'x', 1));
+  });
+});

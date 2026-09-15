@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Icon } from './icons.jsx';
+import { Avatar } from './shell.jsx';
 import { API, renderNotifText, fmtTimeAgo, fmtAbsoluteDateTime } from './data.jsx';
 
 function _parseNotifType(text) {
@@ -255,6 +256,15 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
           )}
           {filtered.map(n => {
             const type = n.type || _notifType(n.text);
+            // Bildirimi kimin tetiklediği (`sender_slug`) sunucudan zaten
+            // geliyordu ama panel yalnızca tür simgesi çiziyordu; "beni kim
+            // atadı" sorusu satırdan okunamıyordu (15 Eylül, demo provası).
+            // Üye listesi aktif alana ait: gönderen orada yoksa (alandan
+            // çıkarılmış ya da başka alanın bildirimi) simge olduğu gibi kalır,
+            // boş kutu çizilmez.
+            const sender = n.sender_slug
+              ? (window.DATA?.MEMBERS || []).find(m => m.id === n.sender_slug)
+              : null;
             return (
               <div
                 key={n.id}
@@ -263,9 +273,13 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
                 onClick={() => handleNotifClick(n)}
                 style={{ cursor: (n.task_id || n.sender_slug || n.chat_channel || ['dm_received','message','mention','task_assigned','comment_added'].includes(n.type || _notifType(n.text))) ? 'pointer' : 'default' }}
               >
-                <div className="notif-icon-badge">
-                  <Icon name={_notifIcon(type)} size={13} />
-                </div>
+                {sender ? (
+                  <Avatar member={sender} size="md" />
+                ) : (
+                  <div className="notif-icon-badge">
+                    <Icon name={_notifIcon(type)} size={13} />
+                  </div>
+                )}
                 <div className="notif-body">
                   <div className="notif-text" dangerouslySetInnerHTML={{ __html: renderNotifText(n.text) }} />
                   <div className="notif-time" title={fmtAbsoluteDateTime(n.time) || ''}>{fmtTimeAgo(n.time)}</div>

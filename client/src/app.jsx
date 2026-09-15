@@ -9,6 +9,7 @@ import { Avatar, Sidebar, Topbar, ToastContainer } from './shell.jsx';
 import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
 import { NotifPanel, NotifPrefRow } from './notifications.jsx';
+import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz } from './rozet.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
 import { TweaksPanel } from './tweaks.jsx';
@@ -119,6 +120,14 @@ function App() {
   const pendingGTimer  = useRef(null);
   const [myStatusState, setMyStatusState] = useS('online');
   const [notifCount, setNotifCount]       = useS(0);
+  // Rozet "son bakıştan beri gelen okunmamış" sayar (rozet.js). Paneli
+  // açan/kapatan her yol buradan geçer: yerel sayaç sıfırlanır VE bakış anı
+  // tarayıcıya yazılır. Önceden beş ayrı `setNotifCount(0)` vardı, hiçbiri
+  // kalıcı bir şey yazmıyordu; sonraki girişte rozet geri geliyordu.
+  const rozetBakildi = () => {
+    sonBakisYaz(localStorage, window.CURRENT_USER?.id);
+    setNotifCount(0);
+  };
   const [notesCount, setNotesCount]       = useS(0);
   const [currentWsId, setCurrentWsId]   = useS(() => window.DATA?.WORKSPACE?.id || null);
 
@@ -632,8 +641,10 @@ function App() {
     window.__CURRENT_WS_ID__  = data.workspace?.id || null;
     setCurrentWsId(data.workspace?.id || null);
 
-    const unread = (data.notifications || []).filter(n => n.unread).length;
-    setNotifCount(unread);
+    setNotifCount(yeniOkunmamisSayisi(
+      data.notifications || [],
+      sonBakisOku(localStorage, data.user?.id),
+    ));
     if (typeof data.notes_count === 'number') setNotesCount(data.notes_count);
 
     // Background-prefetch notes so palette + sidebar badge stay in sync without opening the page
@@ -853,7 +864,7 @@ function App() {
   window.__OPEN_CHAT__ = openChat;
   window.__APP_TASKS__ = tasks;
   window.__SWITCH_VIEW__ = setView;
-  window.__NOTIF_BADGE_RESET__ = () => setNotifCount(0);
+  window.__NOTIF_BADGE_RESET__ = rozetBakildi;
   window.__OPEN_TASK_BY_ID__ = async (taskId) => {
     if (!taskId) return;
     // Fast path: task is in the current project's list
@@ -1107,13 +1118,13 @@ function App() {
         notifCount={notifCount}
         notesCount={notesCount}
         trashCount={trashTasks.length + trashNotes.length}
-        onOpenNotifs={() => { if (view !== 'notifications') setPreNotifView(view); setView('notifications'); setNotifCount(0); }}
+        onOpenNotifs={() => { if (view !== 'notifications') setPreNotifView(view); setView('notifications'); rozetBakildi(); }}
       />
       <div className="main" key={_appLang}>
         <Topbar
           view={view} onView={setView}
           openCmd={() => setCmdOpen(true)}
-          openNotifs={() => { setNotifOpen(o => !o); setNotifCount(0); setChatOpen(false); }}
+          openNotifs={() => { setNotifOpen(o => !o); rozetBakildi(); setChatOpen(false); }}
           openModal={() => openModal('todo')}
           activeCrumb={crumb}
           onChatOpen={() => openChat()}
@@ -1238,10 +1249,10 @@ function App() {
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onAction={handleCmd} />
       <NotifPanel
         open={notifOpen}
-        onClose={() => { setNotifOpen(false); setNotifCount(0); }}
+        onClose={() => { setNotifOpen(false); rozetBakildi(); }}
         socket={socket}
-        onOpenTask={(task) => { setNotifOpen(false); setNotifCount(0); setDrawerTask(task); }}
-        onOpenChat={(slug, msgId, channelSlug) => { setNotifOpen(false); setNotifCount(0); openChat(slug, msgId, channelSlug); }}
+        onOpenTask={(task) => { setNotifOpen(false); rozetBakildi(); setDrawerTask(task); }}
+        onOpenChat={(slug, msgId, channelSlug) => { setNotifOpen(false); rozetBakildi(); openChat(slug, msgId, channelSlug); }}
         currentWsId={currentWsId}
         tweaks={tweaks}
         setTweak={setTweak}

@@ -138,3 +138,31 @@ olabilir. Kullanıcıya sorulmadan açılmamalı.
 
 > Toast listesindeki seçim (`EKRANI_KESENLER`, `app.jsx`) bir **başlangıç
 > varsayımı**, karar değil. S1 cevaplandığında oradan güncellenmeli.
+
+---
+
+## Zil rozeti: "son bakıştan beri gelen" (15 Eylül 2026)
+
+**Kusur:** paneli açan/kapatan beş yol rozeti yalnızca yerel React durumunda
+sıfırlıyordu (`setNotifCount(0)`); sunucudaki `read` alanına hiç dokunulmuyordu.
+Sonraki girişte açılış `unread` sayısını okuyor, günler önce bakılmış bildirim
+rozeti yeniden dolduruyordu. Sunucu uçları (`read-all`, `:id/read`) doğruydu,
+sorun hiç çağrılmamalarıydı.
+
+**Karar (c), Outlook benzetmesiyle:** posta gelir, önemsizse açmazsın; önemliyse
+tıklarsın, seni ilgili yere götürür ve okundu olur. Rozet artık okunmamış
+sayısı değil, **son bakıştan beri gelen okunmamış** sayısıdır. Okundu işaretini
+kullanıcı verir: bildirime tıklamak zaten sunucuya yazıyordu, "hepsini okundu
+işaretle" duruyor. "Son bakış" anı tarayıcıda (`localStorage`,
+`stoa.notifSonBakis.<slug>`); kullanıcıya göre ayrı, çünkü demo hazırlığında
+iki hesap aynı Chrome'daydı.
+
+**Niçin sunucuda değil:** bir sütun ve elle şema göçü isterdi (CLAUDE.md,
+tuzaklar). Bedeli: başka cihazda rozet ilk kez tam sayıyla gelir; kabul edildi.
+Depolama yoksa ya da fırlatıyorsa (gizli pencere) okuma 0 döner, yani rozet tam
+sayı gösterir: yokluk hâli gizleyerek değil göstererek hata yapıyor.
+
+**Yerleri:** saf çekirdek `client/src/rozet.js`; `app.jsx`'te beş sıfırlama
+noktası tek `rozetBakildi()` yardımcısına bağlandı; test `bildirim.test.js`
+son bloğu (mutasyonla doğrulandı: eşik yok sayılınca 2 test kırılıyor).
+
