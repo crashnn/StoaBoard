@@ -1144,8 +1144,10 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       **Düzenleme hissi** (15 Eylül, Notion kıyası 2): açıklamaya tıklayınca
       kutu, kenarlık ve Kaydet/İptal düğmeleri çıkıyor; Notion'da imleç
       olduğu yerde yanıp söner, odak kaybında kaydedilir. Blok zaten
-      `contentEditable`; iş kutuyu ve düğmeleri kaldırıp odak kaybında
-      kaydetmek (sessiz olmasın: küçük "kaydedildi" işareti).
+      `contentEditable`. **Yapıldı (15 Eylül):** kutu ve düğmeler kalktı,
+      odak kaybında kaydediyor, Escape vazgeçiyor, başarılı kayıtta kısa
+      "Kaydedildi" işareti. Kalan üçlü (boş bölümleri katla, iki sütun,
+      başlık hiyerarşisi) hâlâ açık.
       **Ürün kararı:** paragraf içi biçim (kalın/liste/kod). Blok belge
       yapısı hazır (`h2`/`h3`/`p`) ama açıklama kullanıcı girdisi;
       bildirim metnindeki saklı XSS dersi burada da geçerli, kaçışsız HTML

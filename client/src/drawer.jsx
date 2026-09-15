@@ -278,8 +278,9 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
     try {
       const updated = await API.updateTask(task.id, { doc: newDoc });
       onTaskUpdate && onTaskUpdate({ id: task.id, ...updated });
+      return true;
     }
-    catch (e) { window.showToast?.((window.t?.('drawer_err_save') || 'Kaydedilemedi: ') + e.message, 'error'); }
+    catch (e) { window.showToast?.((window.t?.('drawer_err_save') || 'Kaydedilemedi: ') + e.message, 'error'); return false; }
   };
 
   // ── Delete own comment ──────────────────────────────────────────────────
@@ -982,9 +983,23 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
 // ── Doc block renderer ──────────────────────────────────────────────────────
 
 function DrawerDocBlock({ block, onUpdate }) {
-  const [pEditing, setPEditing] = useDrawerState(false);
   const [pDirty, setPDirty] = useDrawerState(false);
+  const [pSaved, setPSaved] = useDrawerState(false);
   const pRef = useDrawerRef(null);
+
+  // Paragraf yerinde düzenlenir, Notion gibi: tıklayınca kutu, kenarlık ya da
+  // Kaydet/İptal düğmesi çıkmaz; imleç olduğu yerde yanıp söner. Kayıt odak
+  // kaybında (zaten öyleydi), Escape vazgeçer. 15 Eylül'de kullanıcı kutunun
+  // göz yorduğunu söyledi; kaldırıldı. Sessiz olmasın diye başarılı kayıtta
+  // kısa bir "Kaydedildi" işareti yanıp sönüyor — bu depoda sessiz başarı da
+  // sessiz başarısızlık kadar şüpheli.
+  const commitParagraph = async (el) => {
+    const t = el.textContent?.trim() ?? '';
+    if (!pDirty || t === block.text) { setPDirty(false); return; }
+    setPDirty(false);
+    const ok = await onUpdate(t);
+    if (ok) { setPSaved(true); setTimeout(() => setPSaved(false), 1400); }
+  };
 
   // `checklist` bloğu burada çizilmiyor: yapılacaklar alt görevlerden geliyor
   // ve kendi bölümünde duruyor. Eski çizim işaret durumunu alt görevlerle
@@ -995,51 +1010,25 @@ function DrawerDocBlock({ block, onUpdate }) {
     case 'h3':    return <h3>{block._i18n ? (window.t?.(block._i18n) || block.text) : block.text}</h3>;
     case 'p':     return (
       <div style={{ position: 'relative' }}>
-        {pEditing && onUpdate && (
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginBottom: 6 }}>
-            <button
-              className="btn btn-primary"
-              style={{ fontSize: 11, padding: '3px 10px' }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                const t = pRef.current?.textContent?.trim() || '';
-                if (t !== block.text) onUpdate(t);
-                setPEditing(false); setPDirty(false);
-                if (pRef.current) { pRef.current.style.background = ''; pRef.current.style.boxShadow = ''; }
-              }}
-            >
-              {window.t?.('set_lbl_save') || 'Kaydet'}
-            </button>
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: 11, padding: '3px 8px' }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                if (pRef.current) { pRef.current.textContent = block.text; pRef.current.style.background = ''; pRef.current.style.boxShadow = ''; }
-                setPEditing(false); setPDirty(false);
-              }}
-            >
-              {window.t?.('set_lbl_cancel') || 'İptal'}
-            </button>
-          </div>
-        )}
         <p ref={pRef} contentEditable={!!onUpdate} suppressContentEditableWarning
           data-editable={!!onUpdate}
           onInput={onUpdate ? () => setPDirty(true) : undefined}
-          onFocus={onUpdate ? (e) => {
-            setPEditing(true);
-            e.currentTarget.style.background = 'var(--bg-subtle)';
-            e.currentTarget.style.boxShadow = '0 0 0 1px var(--accent)';
+          onBlur={onUpdate ? (e) => commitParagraph(e.currentTarget) : undefined}
+          onKeyDown={onUpdate ? (e) => {
+            if (e.key === 'Escape') {
+              // Vazgeç: metni geri al, odağı bırak; blur artık kirli değil, yazmaz.
+              e.currentTarget.textContent = block.text;
+              setPDirty(false);
+              e.currentTarget.blur();
+            }
           } : undefined}
-          onBlur={onUpdate ? (e) => {
-            e.currentTarget.style.background = '';
-            e.currentTarget.style.boxShadow = '';
-            const t = e.currentTarget.textContent?.trim();
-            if (pDirty && t !== block.text) onUpdate(t);
-            setPEditing(false); setPDirty(false);
-          } : undefined}
-          style={onUpdate ? { outline: 'none', borderRadius: 4, padding: '2px 4px', margin: '-2px -4px', cursor: 'text' } : {}}
+          style={onUpdate ? { outline: 'none', cursor: 'text' } : {}}
         >{block.text}</p>
+        {pSaved && (
+          <span aria-live="polite" style={{ position: 'absolute', right: 0, top: -18, fontSize: 11, color: 'var(--ink-muted)', fontFamily: 'var(--font-ui)' }}>
+            {window.t?.('notes_saved') || 'Kaydedildi'}
+          </span>
+        )}
       </div>
     );
     case 'ul':    return <ul>{(block.items || []).map((it, i) => <li key={i}>{it}</li>)}</ul>;
