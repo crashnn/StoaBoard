@@ -26,6 +26,14 @@ set -e
 kok=$(git rev-parse --show-toplevel)
 cd "$kok"
 
+# İZ: her koşu .git/pre-push.log'a yazılır (takipsiz, .git içinde). Terminal
+# dışından push edince (VS Code "Sync Changes") kancanın çıktısı görünmüyor ve
+# "koştu mu?" sorusu tahmine kalıyordu (15 Eylül 2026). Doğrulama:
+#     tail -3 .git/pre-push.log
+iz="$kok/.git/pre-push.log"
+echo "$(date '+%Y-%m-%d %H:%M:%S') basladi  $(git rev-parse --short HEAD)" >> "$iz"
+trap 'rc=$?; if [ $rc -ne 0 ]; then echo "$(date "+%Y-%m-%d %H:%M:%S") KIRMIZI (cikis $rc)" >> "$iz"; fi' EXIT
+
 # npm bulunamazsa sessizce geçme. Sessiz başarısızlık bu depoda üç kusurun
 # kök sebebiydi; koruma çalışmıyorsa bunu söylemeli, korumuş gibi yapmamalı.
 if ! command -v npm >/dev/null 2>&1; then
@@ -44,3 +52,4 @@ echo "pre-push: on yuz derlemesi"
 npm --prefix client run build
 
 echo "pre-push: tamam"
+echo "$(date '+%Y-%m-%d %H:%M:%S') tamam    $(git rev-parse --short HEAD)" >> "$iz"
