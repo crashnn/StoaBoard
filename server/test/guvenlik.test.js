@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { csvCell, toCsv, CSV_BOM } from '../src/lib/csv.js';
+import { csvCell, toCsv, csvBuffer, CSV_BOM } from '../src/lib/csv.js';
 import { _bearerToken } from '../src/lib/mcpAuth.js';
 import {
   ALL_PERMISSIONS,
@@ -99,9 +99,29 @@ describe('toCsv', () => {
     assert.ok(out.startsWith(CSV_BOM), 'BOM eksik');
   });
 
-  test('sep=; yönergesiyle başlar — Excel yerelden bağımsız ayracı tanısın', () => {
+  // 15 Eylül 2026: biçim UTF-8 + `sep=;` + noktalı virgülden UTF-16LE + sekmeye
+  // geçti. Excel `sep=` satırını görünce UTF-8 BOM'u yok sayıp dosyayı ANSI
+  // okuyordu (Türkçe karakterler bozuk); `sep=` olmadan ise ayraç Windows bölge
+  // ayarına bağlıydı (TR `;`, ABD `,`). UTF-16LE'yi Excel her bölgede aynı
+  // açıyor. Bu test eski `sep=` satırının geri gelmesini engelliyor.
+  test('sekmeyle ayrılır, sep= yönergesi YOK — Excel BOM ile sep= birlikteyken BOM\'u yok sayıyor', () => {
     const out = toCsv(['a', 'b'], [['1', '2']]);
-    assert.equal(out, `${CSV_BOM}sep=;\r\na;b\r\n1;2`);
+    assert.equal(out, `${CSV_BOM}a\tb\r\n1\t2`);
+    assert.ok(!/sep=/.test(out), 'sep= yönergesi geri gelmiş');
+  });
+
+  test('csvBuffer UTF-16LE: ilk iki bayt FF FE, gövde iki baytlı, Türkçe karakter korunur', () => {
+    const buf = csvBuffer(['Başlık'], [['taşındı']]);
+    assert.equal(buf[0], 0xff);
+    assert.equal(buf[1], 0xfe);
+    const metin = buf.toString('utf16le');
+    assert.equal(metin, `${CSV_BOM}Başlık\r\ntaşındı`);
+    // UTF-8 diye okunsaydı bozulurdu — mojibake'nin kendisi test ediliyor
+    assert.ok(!buf.toString('utf8').includes('taşındı'));
+  });
+
+  test('sekme içeren hücre tırnaklanır — ayraç artık sekme', () => {
+    assert.equal(csvCell('a\tb'), '"a\tb"');
   });
 
   test('başlık satırı da korumadan geçer', () => {

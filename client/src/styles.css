@@ -9524,10 +9524,49 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .panel, .report-stat {
     border: 1px solid #bbb !important;
     background: #fff !important;
+  }
+  /* Küçük kutu bölünmesin; bölüm (.panel) bölünebilsin. `break-inside: avoid`
+     bölüme de uygulanınca bir sayfaya sığmayan rapor bölümü önce yeni sayfaya
+     atılıyor, sonra yine de bölünüyordu: ilk sayfa başlıktan ibaret kalıyordu
+     (kişi raporu ve denetim kaydı PDF'leri, 15 Eylül). Satır düzeyinde
+     korunuyor, aşağıda. */
+  .report-stat { break-inside: avoid; }
+  .panel { break-inside: auto !important; }
+
+  /* Yazdırırken tablo TABLO kalır. Kart görünümü 768px mobil kuralından
+     geliyor (yukarıda "List view as cards"): Chrome yazdırırken sayfayı A4
+     genişliğinde (~690px) dizdiği için o kural yazdırmada da tetikleniyordu.
+     Sonucu: her satır yuvarlak köşeli bir kart, başlık satırı gizli, ilk
+     hücre onay kutusu sanılıp 18px'lik sütuna sıkışıyor ve metni ikinci
+     hücrenin üstüne biniyordu ("Card created" ile zaman damgası üst üste,
+     denetim kaydı PDF'i). Mobil kural `display` ve `grid` veriyor; burada
+     hepsi tablo değerlerine geri alınıyor, `!important` o kural daha özgül
+     seçicilerle (.panel .list-table tr) de yazdığı için. */
+  .list-table { display: table !important; width: 100%; border-collapse: collapse; }
+  .list-table thead { display: table-header-group !important; }
+  .list-table tbody { display: table-row-group !important; }
+  .list-table tr {
+    display: table-row !important;
+    cursor: default !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
     break-inside: avoid;
   }
-  .list-table tr { cursor: default !important; }
-  .list-table th { color: #000 !important; }
+  .list-table th, .list-table td {
+    display: table-cell !important;
+    padding: 5px 8px !important;
+    border-bottom: 1px solid #ddd !important;
+    font-size: 11px !important;
+    color: #000 !important;
+    vertical-align: top;
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+  .list-table th { font-weight: 600; text-align: left; border-bottom: 1px solid #999 !important; }
+  .list-table td.title { font-weight: 500 !important; }
   .report-bar-fill { background: #666 !important; }
   a[href]::after { content: ""; }
   @page { margin: 14mm; }

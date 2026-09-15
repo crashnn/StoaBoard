@@ -18,7 +18,7 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { memberForWorkspace, hasPermission } from '../lib/workspace.js';
 import { recordAudit, AUDIT, auditToDict } from '../lib/audit.js';
-import { toCsv } from '../lib/csv.js';
+import { csvBuffer, CSV_CONTENT_TYPE } from '../lib/csv.js';
 import {
   personReport,
   periodReport,
@@ -306,9 +306,11 @@ async function resolveScope(req, res) {
 // ─── CSV ────────────────────────────────────────────────────────────────────
 
 function sendCsv(res, filename, headers, rows) {
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  // UTF-16LE + sekme; gerekçesi lib/csv.js başında. Buffer gönderiliyor ki
+  // Express metni UTF-8'e çevirip BOM'u anlamsızlaştırmasın.
+  res.setHeader('Content-Type', CSV_CONTENT_TYPE);
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send(toCsv(headers, rows));
+  res.send(csvBuffer(headers, rows));
 }
 
 /**

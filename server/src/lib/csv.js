@@ -3,19 +3,45 @@
 // Kendi modülünde duruyor çünkü burada bir güvenlik kuralı yaşıyor ve o kuralın
 // veritabanı olmadan test edilebilmesi gerekiyor.
 
-/** Excel'in Türkçe yerel ayarı virgülle ayrılmış dosyayı tek sütuna yığıyor. */
-export const CSV_SEPARATOR = ';';
+/**
+ * Ayraç SEKME, kodlama UTF-16LE — Excel'in "Unicode metin" biçimi.
+ *
+ * TARİHÇE (15 Eylül 2026'da değişti). Önceki biçim UTF-8 BOM + `sep=;`
+ * yönergesi + noktalı virgüldü ve iki tuzağı vardı:
+ *
+ * 1. Excel, dosya `sep=` ile başlayınca eski içe aktarma yoluna geçiyor ve
+ *    UTF-8 BOM'u YOK SAYIYOR: sütunlar doğru ayrılıyor, Türkçe karakterler
+ *    "baÄŸlayÄ±cÄ±" oluyor. Demo provasında akış raporunda görüldü.
+ * 2. `sep=` olmadan ayraç Windows BÖLGE ayarına bağlı (Office dilinden
+ *    bağımsız): Türkiye bölgesi `;`, ABD bölgesi `,`. Aynı ofiste ikisi de
+ *    var; hangisini seçersek öbür makinede her satır tek sütuna yığılıyor.
+ *
+ * UTF-16LE BOM'lu dosyayı Excel her bölgede aynı okuyor: kodlamayı BOM'dan
+ * alıyor ve ayraç olarak sekmeyi kullanıyor; `sep=` gerekmiyor. Uzantı
+ * `.csv` kalıyor. Bedeli: Excel dışı araçlar dosyayı `utf-16` diye açmalı
+ * (pandas: `encoding='utf-16'`); hedef kitle Excel açan yöneticiler.
+ *
+ * Metin düzeyinde `CSV_BOM` U+FEFF'tir; `csvBuffer` bütün metni UTF-16LE'ye
+ * çevirdiğinde bu karakter dosyanın başında `FF FE` bayt çiftine dönüşür —
+ * yani UTF-16LE BOM'un ta kendisi. Ayrı bir bayt eklenmez.
+ */
+export const CSV_SEPARATOR = '\t';
 
-/** Excel UTF-8'i BOM olmadan yanlış okuyor, Türkçe karakterler bozuluyor. */
+/** Metin BOM'u (U+FEFF); UTF-16LE'ye çevrilince `FF FE`. */
 export const CSV_BOM = '﻿';
+
+/** HTTP yanıtı için içerik türü — charset BOM'la tutarlı olmalı. */
+export const CSV_CONTENT_TYPE = 'text/csv; charset=utf-16';
 
 /**
  * Bir hücreyi CSV için güvenli hâle getir.
  *
  * İki ayrı iş yapıyor ve ikisi karıştırılmamalı:
  *
- * 1. Ayraç kaçışı — tırnak, noktalı virgül, satır sonu içeren değerler
- *    tırnak içine alınır. Bu bir biçim gereği.
+ * 1. Ayraç kaçışı — tırnak, sekme, noktalı virgül, satır sonu içeren
+ *    değerler tırnak içine alınır. Noktalı virgül artık ayraç değil ama
+ *    tırnaklanmaya devam ediyor: zararsız, eski testleri ve eski dosyaları
+ *    okuyan araçları bozmuyor.
  *
  * 2. Formül koruması — bu bir GÜVENLİK gereği. Excel, '=' '+' '-' '@' (ve
  *    sekme/CR) ile başlayan hücreyi formül sayıp çalıştırıyor ve tırnak içine
@@ -33,24 +59,28 @@ export function csvCell(v) {
   const s = v === null || v === undefined ? '' : String(v);
   const guarded = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
 
-  return /[";\n\r]/.test(guarded)
+  return /[";\t\n\r]/.test(guarded)
     ? `"${guarded.replace(/"/g, '""')}"`
     : guarded;
 }
 
 /**
- * Başlık satırı ve satırlardan CSV gövdesi üret.
+ * Başlık satırı ve satırlardan CSV METNİ üret (henüz kodlanmamış).
  * Başa BOM konur, satırlar CRLF ile ayrılır (Excel beklentisi).
- *
- * İlk satır 'sep=;' yönergesi: Excel bu satırı yerel ayarından bağımsız okur ve
- * ayracı ona göre seçer. Onsuz, yerel ayarı virgül olan Excel (örn. İngilizce
- * kurulum) noktalı virgülü tanımıyor ve tüm satırı tek sütuna yığıyordu —
- * Türkçe Excel ise noktalı virgül beklediği için ters durum yaşanıyordu. Bu
- * yönerge ikisini de doğru açar. Bedeli: Excel dışı araçlar (bazı sürümlerde
- * Google Sheets) bu satırı düz bir hücre olarak gösterebilir; hedef Excel.
+ * `sep=` yönergesi bilerek YOK — Excel onu görünce BOM'u yok sayıyordu;
+ * gerekçe dosyanın başında.
  */
 export function toCsv(headers, rows) {
   const lines = [headers.map(csvCell).join(CSV_SEPARATOR)];
   for (const r of rows) lines.push(r.map(csvCell).join(CSV_SEPARATOR));
-  return CSV_BOM + `sep=${CSV_SEPARATOR}\r\n` + lines.join('\r\n');
+  return CSV_BOM + lines.join('\r\n');
+}
+
+/**
+ * HTTP gövdesi: `toCsv` metninin UTF-16LE baytları. İlk iki bayt `FF FE`
+ * (BOM), sonrası her karakter iki bayt. Yanıt Buffer olarak gönderilir;
+ * string gönderilseydi Express UTF-8'e çevirir, BOM anlamını yitirirdi.
+ */
+export function csvBuffer(headers, rows) {
+  return Buffer.from(toCsv(headers, rows), 'utf16le');
 }

@@ -320,7 +320,7 @@ function PersonReport({ data, onOpenTask }) {
                       {t.minutes ? formatDuration(t.minutes) : '—'}
                     </td>
                     <td style={{ fontVariantNumeric: 'tabular-nums' }}>{t.moves}</td>
-                    <td>{t.completed ? T('rep_status_done', 'Tamamlandı') : T('rep_status_ongoing', 'Devam ediyor')}</td>
+                    <td>{t.completed ? T('rep_status_done', 'Tamamlandı') : T('rep_status_ongoing', 'Açık')}</td>
                   </tr>
                 ))}
               </tbody>
