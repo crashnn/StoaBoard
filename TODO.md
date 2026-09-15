@@ -1048,6 +1048,19 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       kalma. Silinmeli; şu an sadece karışıklık yaratıyor.
 
 ### Öncelikli
+- [ ] **Rapor çıktısı: kurumsal şablon biçimi** *(15 Eylül 2026, kullanıcının
+      Claude Design ile yaptığı "Kurumsal Raporlama Şablonu" PDF'i; ev işi)*.
+      Şablon finans/İK içerikli; alınan şey bölümler değil biçim. Bugün
+      yapılabilir dörtlü: üst bilgi bloğuna "kaynak" satırı · her tablonun
+      altına hesaplama dipnotu ("Süre = iş günlüğü; Hareket = kolon geçişi;
+      Tamamlandı = bitiş kolonuna geçiş") · kişi raporuna sayı kutuları
+      (süre, hareket, tamamlanan, açık) · baskı tipografisi (serif başlık,
+      küçük büyük harf etiket, gri dipnot). Sonraki tur: **kolon bazlı
+      darboğaz tablosu** (geçiş kayıtlarından kolon başına ortalama bekleme,
+      isteğe bağlı hedef gün, aşan kolon işaretli) + funnel çubukları ·
+      dönem raporuna önceki dönem karşılaştırması · sayılardan üretilen tek
+      cümlelik yönetici özeti. Bilinçli alınmayanlar: hedef ağırlığı,
+      yetkinlik, devamsızlık, bütçe — İK/ERP verisi, kapsam dışı listesine.
 - [ ] **Uç testleri — kapsamlamanın DOĞRULUĞU test edilmiyor.** 3 Eylül'de
       `yetki.test.js` eklendi ve iki değişmezi kilitledi: her uç `requireAuth`
       taşıyor (113 uçtan 9'u gerekçeli açık listede), ve hiçbir soket
