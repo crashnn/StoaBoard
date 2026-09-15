@@ -8580,6 +8580,9 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   transition: opacity 0.1s, background 0.1s;
 }
 .drawer-check-row:hover .drawer-check-del { opacity: 1; }
+/* Yorum silme aynı düğme; satırın üstüne gelince görünür, başlığın sağına yaslı. */
+.comment-del { margin-left: auto; }
+.comment-row:hover .comment-del { opacity: 1; }
 .drawer-check-del:hover { background: var(--bg-raised); color: var(--status-rose); }
 .drawer-check-add {
   display: flex; gap: 6px; align-items: center; margin-top: 6px;

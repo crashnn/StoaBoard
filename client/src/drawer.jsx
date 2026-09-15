@@ -282,6 +282,22 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
     catch (e) { window.showToast?.((window.t?.('drawer_err_save') || 'Kaydedilemedi: ') + e.message, 'error'); }
   };
 
+  // ── Delete own comment ──────────────────────────────────────────────────
+  // Uç (`DELETE /api/comments/:id`, yalnızca kendi yorumu) ve API sarmalayıcısı
+  // baştan beri vardı; arayüzde düğmesi yoktu, yani kimse kendi yorumunu
+  // silemiyordu. 15 Eylül'de fark edildi: bozuk kodlamayla yazılmış bir yorum
+  // demo kartında kaldı ve tarayıcıdan kaldırmanın yolu yoktu. Sunucu zaten
+  // sahiplik kontrolü yapıyor; düğme yalnızca kendi yorumunda görünüyor.
+  const handleCommentDelete = async (commentId) => {
+    try {
+      await API.deleteComment(commentId);
+      setDetail(d => ({ ...(d || {}), comments_list: (d?.comments_list || []).filter(c => String(c.id) !== String(commentId)) }));
+      onTaskUpdate({ id: task.id, comments: Math.max(0, (task.comments || 1) - 1) });
+    } catch (e) {
+      window.showToast?.(window.t('drawer_err_comment') + e.message, 'error');
+    }
+  };
+
   // ── Submit comment ──────────────────────────────────────────────────────
   const handleCommentSubmit = async () => {
     const text = newComment.trim();
@@ -822,6 +838,11 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
                 <div className="comment-head">
                   <span className="comment-name">{m?.name || c.author}</span>
                   <span className="comment-time">{fmtTimeAgo(c.time)}</span>
+                  {c.author === window.CURRENT_USER?.id && (
+                    <button className="drawer-check-del comment-del" onClick={() => handleCommentDelete(c.id)} title={window.t?.('drawer_comment_delete') || 'Yorumu sil'}>
+                      <Icon name="x" size={11} />
+                    </button>
+                  )}
                 </div>
                 <div className="comment-text">
                   {c.text.split(/(@[\w\-çğışöüÇĞİŞÖÜ]+)/g).map((part, pi) => {
