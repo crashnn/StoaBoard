@@ -1252,7 +1252,7 @@ function App() {
             )}
           </>
         )}
-        {view === 'settings' && <Lazy><SettingsView tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={handleWsLogoChange} onMembersChange={setMembers} /></Lazy>}
+        {view === 'settings' && <Lazy><SettingsView key={currentWsId || "ws"} tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={handleWsLogoChange} onMembersChange={setMembers} /></Lazy>}
         </ErrorBoundary>
       </div>
 
