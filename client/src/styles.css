@@ -9570,6 +9570,19 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   }
   .list-table th { font-weight: 600; text-align: left; border-bottom: 1px solid #999 !important; }
   .list-table td.title { font-weight: 500 !important; }
+
+  /* Kaydırma çubuğu kâğıda basılmaz. Denetim kaydı PDF'inde panelin sağında
+     10px'lik siyah, yuvarlak uçlu bir şerit çıkıyordu (15 Eylül): koyu temanın
+     scrollbar başparmağı (`::-webkit-scrollbar-thumb`, kenarlığı `--bg`).
+     Hangi kabın kaydırdığından bağımsız olarak çubuk gizleniyor, olası
+     kaplar da yükseklik sınırından kurtarılıyor ki içerik sayfalara aksın. */
+  ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
+  * { scrollbar-width: none !important; }
+  .report-view, .report-body, .panel, .panel-body {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
   .report-bar-fill { background: #666 !important; }
   a[href]::after { content: ""; }
   @page { margin: 14mm; }
