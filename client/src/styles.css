@@ -3022,6 +3022,55 @@ input, textarea, select, [contenteditable="true"] {
   margin: 10px 0;
   line-height: 1.6;
 }
+/* ── Blok düzenleyici (Notion-lite faz 1, 15 Eylül 2026) ─────────────── */
+.doc-block { position: relative; }
+/* Boş düzenlenebilir blok: yer tutucu, gri; ilk yazışta kaybolur. */
+.doc-content [data-editable="true"]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.doc-content [data-editable="true"]:focus { outline: none; }
+.doc-callout {
+  margin: 10px 0 12px;
+  padding: 10px 14px 10px 40px;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--accent) 10%, var(--bg-raised));
+  border: 1px solid color-mix(in oklch, var(--accent) 30%, var(--line));
+  color: var(--ink);
+  position: relative;
+  line-height: 1.55;
+}
+.doc-callout::before {
+  content: "!";
+  position: absolute; left: 14px; top: 9px;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 12px;
+  background: var(--accent); color: var(--accent-ink, #fff);
+}
+.doc-content pre[data-editable="true"] { white-space: pre-wrap; }
+.doc-saved {
+  position: absolute; right: 0; top: -18px;
+  font-size: 11px; color: var(--ink-muted); font-family: var(--font-ui);
+}
+.doc-slash-menu {
+  position: absolute; left: 0; top: 100%; z-index: 20;
+  min-width: 180px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  display: flex; flex-direction: column;
+}
+.doc-slash-item {
+  border: none; background: transparent; color: var(--ink);
+  text-align: left; padding: 7px 10px; border-radius: 6px;
+  font-size: 13px; cursor: pointer; font-family: var(--font-ui);
+}
+.doc-slash-item:hover, .doc-slash-item.active { background: var(--bg-subtle); }
+
 .doc-content blockquote {
   margin: 12px 0;
   padding: 4px 14px;

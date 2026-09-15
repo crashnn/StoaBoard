@@ -1220,8 +1220,17 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       `task.doc` blok listesi, altı türün çizicisi var, yalnızca `p`
       düzenlenebiliyor. Faz 1: `/` menüsü + altı tür + Enter/Backspace akışı,
       hepsi React metni (HTML yok). Faz 2: satır içi biçim, ayrı eleğiyle.
+      **Faz 1 yapıldı (15 Eylül akşamı):** tek metinli bloklar yerinde
+      düzenleniyor (başlık, alt başlık, paragraf, alıntı, kod, uyarı kutusu);
+      Enter yeni paragraf, boş blokta Backspace siler, boş blokta `/` tür
+      menüsü, ↑/↓ bloklar arası. Sunucu tür ve boyut denetliyor
+      (`lib/doc.js`, `err_doc_invalid`); açıklama senkronuna alıntı ve uyarı
+      kutusu girdi, kod girmiyor. Liste (`ul`) yalnızca çiziliyor,
+      düzenleyicisi faz 2. Tarayıcıda denenecek; `key={i}` ile blok
+      bileşenleri indeksle eşleşiyor, yapısal değişiklikten önce metin
+      kaydediliyor.
       **Önce cevaplanacak (toplantı):** Notion'da gerçekten hangi bloklar
-      kullanılıyor; kapsam ona göre.
+      kullanılıyor; faz 2 kapsamı ona göre.
 - [ ] **Bildirimler baştan ele alınacak.** Toplantıda mesaj gönderildi, karşı
       tarafta toast çıkmadı. İki sebebi vardı: biri kırık koddu (düzeltildi),
       diğeri tasarım boşluğu ve **hâlâ açık** — görev atama, bahsetme ve yorum

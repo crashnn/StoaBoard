@@ -303,3 +303,53 @@ describe('alt görevin tek kaynağı — tarama', () => {
     assert.deepEqual(kacak, [], 'İstemci ilerlemeyi kendisi hesaplayıp gönderiyor');
   });
 });
+
+// ─── Kart gövdesi denetimi (lib/doc.js) ──────────────────────────────────────
+//
+// 15 Eylül 2026: çekmece blok düzenleyiciye dönüştü. Sunucu o güne kadar
+// `doc`u olduğu gibi saklıyordu; artık tür ve boyut denetliyor. Bu blok
+// sınırı kilitliyor: bilinmeyen tür girmez, kabul edilen türler çıkmaz,
+// açıklama senkronu düzyazıyı alır, kodu almaz.
+describe('kart gövdesi — docDenetle ve docDuzMetin', async () => {
+  const { docDenetle, docDuzMetin, DOC_TURLERI, DOC_METIN_SINIRI, DOC_BLOK_SINIRI } =
+    await import('../src/lib/doc.js');
+
+  test('kabul edilen türler geçer, null geçer (gövdeyi kaldır)', () => {
+    for (const kind of DOC_TURLERI) {
+      const blok = kind === 'ul' ? { kind, items: ['a'] } : { kind, text: 'x' };
+      assert.equal(docDenetle([blok]).ok, true, kind);
+    }
+    assert.equal(docDenetle(null).ok, true);
+    assert.equal(docDenetle([]).ok, true);
+  });
+
+  test('bilinmeyen tür, dizi olmayan gövde, nesne olmayan blok reddedilir', () => {
+    assert.equal(docDenetle([{ kind: 'iframe', text: 'x' }]).ok, false);
+    assert.equal(docDenetle([{ kind: 'checklist', items: [] }]).ok, false, 'checklist burada da tür olarak yok');
+    assert.equal(docDenetle('metin').ok, false);
+    assert.equal(docDenetle([null]).ok, false);
+    assert.equal(docDenetle([{ text: 'türsüz' }]).ok, false);
+  });
+
+  test('metin ve blok sayısı sınırları', () => {
+    assert.equal(docDenetle([{ kind: 'p', text: 'a'.repeat(DOC_METIN_SINIRI) }]).ok, true);
+    assert.equal(docDenetle([{ kind: 'p', text: 'a'.repeat(DOC_METIN_SINIRI + 1) }]).ok, false);
+    assert.equal(docDenetle([{ kind: 'p', text: 5 }]).ok, false, 'metin dize olmalı');
+    assert.equal(docDenetle(Array.from({ length: DOC_BLOK_SINIRI + 1 }, () => ({ kind: 'p', text: '' }))).ok, false);
+    assert.equal(docDenetle([{ kind: 'ul', items: 'a,b' }]).ok, false, 'liste maddeleri dizi olmalı');
+  });
+
+  test('düz metin: düzyazı girer, kod girmez, 1000 karakterde kırpılır', () => {
+    const doc = [
+      { kind: 'h2', text: 'Açıklama' },
+      { kind: 'p', text: 'Birinci' },
+      { kind: 'pre', text: 'const gizli = 1;' },
+      { kind: 'quote', text: 'Alıntı' },
+      { kind: 'callout', text: 'Uyarı' },
+      { kind: 'ul', items: ['madde', ''] },
+    ];
+    assert.equal(docDuzMetin(doc), 'Açıklama Birinci Alıntı Uyarı madde');
+    assert.equal(docDuzMetin([{ kind: 'p', text: 'x'.repeat(1500) }]).length, 1000);
+    assert.equal(docDuzMetin(null), '');
+  });
+});

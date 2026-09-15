@@ -68,7 +68,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
     if (!open || !task) { setDetail(null); setStatusOpen(false); return; }
     setLoadingDetail(true);
     API.getTaskDetail(task.id)
-      .then(d => { setDetail(d); setDocState(d?.doc || null); setLoadingDetail(false); })
+      .then(d => { setDetail(d); setDocState(d?.doc || null); docLatest.current = null; setLoadingDetail(false); })
       .catch(() => { setDetail(null); setDocState(null); setLoadingDetail(false); });
   }, [open, task?.id]);
 
@@ -273,8 +273,19 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   const doc        = _patchDocI18n(_kontrolListesiz(docState || detail?.doc || _basicDoc(task)));
   const comments   = detail?.comments_list || [];
 
-  const saveDocBlock = async (index, newText) => {
-    const newDoc = doc.map((b, i) => i === index ? { ...b, text: newText } : b);
+  // ── Blok belge (Notion-lite, faz 1 — 15 Eylül 2026) ─────────────────────
+  // Gövde blok listesi; her yapısal değişiklik (ekle, sil, tür değiştir)
+  // hemen kaydedilir, metin değişikliği odak kaybında (DrawerDocBlock).
+  // `_i18n` yalnızca üretilmiş "Açıklama" başlığının işareti; kullanıcı o
+  // bloğa yazarsa artık onun metni olur, işaret düşer.
+  // Yapısal işlemler (ekle/sil/dönüştür) render'daki `doc` kapanışını değil,
+  // en son kaydedilen belgeyi okur. Enter akışı önce metni kaydedip sonra
+  // blok ekliyor; kapanış eski metni taşıdığı için ekleme az önce
+  // kaydedileni ezerdi (kod okumasında bulundu, 15 Eylül).
+  const docLatest = useDrawerRef(null);
+  const sonDoc = () => docLatest.current || doc;
+  const saveDoc = async (newDoc) => {
+    docLatest.current = newDoc;
     setDocState(newDoc);
     try {
       const updated = await API.updateTask(task.id, { doc: newDoc });
@@ -283,6 +294,41 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
     }
     catch (e) { window.showToast?.((window.t?.('drawer_err_save') || 'Kaydedilemedi: ') + e.message, 'error'); return false; }
   };
+  const saveDocBlock = (index, newText) =>
+    saveDoc(sonDoc().map((b, i) => i === index ? { kind: b.kind, text: newText } : b));
+
+  // Enter: bu bloğun ardına boş paragraf, odak oraya.
+  const insertBlockAfter = (index) => {
+    const d = sonDoc();
+    const newDoc = [...d.slice(0, index + 1), { kind: 'p', text: '' }, ...d.slice(index + 1)];
+    setDocFocus(index + 1);
+    return saveDoc(newDoc);
+  };
+  // Boş blokta Backspace: bloğu kaldır, odak bir öncekine. Tek blok kalmışsa
+  // kaldırılmaz — gövde hiç boş kalmasın, kullanıcı nereye yazacağını görsün.
+  const removeBlock = (index) => {
+    const d = sonDoc();
+    if (d.length <= 1) return false;
+    setDocFocus(Math.max(0, index - 1));
+    return saveDoc(d.filter((_, i) => i !== index));
+  };
+  // "/" menüsü: türü değiştir, metni koru.
+  const convertBlock = (index, kind) => {
+    setDocFocus(index);
+    return saveDoc(sonDoc().map((b, i) => i === index ? { kind, text: b.text || '' } : b));
+  };
+  const [docFocus, setDocFocus] = useDrawerState(null);
+  const docRef = useDrawerRef(null);
+  useDrawerEffect(() => {
+    if (docFocus === null || !docRef.current) return;
+    const el = docRef.current.querySelector(`[data-block-index="${docFocus}"]`);
+    if (!el) return;
+    el.focus();
+    // İmleci sona koy: yeni blok boş, dönüştürülen blokta metin korunuyor.
+    const sel = window.getSelection?.();
+    if (sel && el.childNodes.length) { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+    setDocFocus(null);
+  }, [docFocus, docState]);
 
   // ── Karttan yeni not ────────────────────────────────────────────────────
   // Kullanıcı isteği (15 Eylül): bağlı not yokken "not bağla" yalnızca var olan
@@ -549,10 +595,14 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       {loadingDetail ? (
         <div style={{ padding: '24px 0', color: 'var(--ink-muted)', fontSize: 13 }}>{window.t('drawer_loading')}</div>
       ) : (
-        <div className="doc-content">
+        <div className="doc-content" ref={docRef}>
           {doc.map((b, i) => (
-            <DrawerDocBlock key={i} block={b}
-              onUpdate={canManageTasks ? (newText) => saveDocBlock(i, newText) : undefined} />
+            <DrawerDocBlock key={i} index={i} block={b}
+              onUpdate={canManageTasks ? (newText) => saveDocBlock(i, newText) : undefined}
+              onEnter={canManageTasks ? () => insertBlockAfter(i) : undefined}
+              onRemove={canManageTasks ? () => removeBlock(i) : undefined}
+              onConvert={canManageTasks ? (kind) => convertBlock(i, kind) : undefined}
+              onMove={canManageTasks ? (dir) => setDocFocus(Math.min(doc.length - 1, Math.max(0, i + dir))) : undefined} />
           ))}
         </div>
       )}
@@ -1010,65 +1060,130 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   );
 }
 
-// ── Doc block renderer ──────────────────────────────────────────────────────
+// ── Doc block renderer / editor ─────────────────────────────────────────────
+//
+// Notion-lite, faz 1 (15 Eylül 2026). Tek metinli bloklar (başlık, alt
+// başlık, paragraf, alıntı, kod, uyarı kutusu) yerinde düzenlenir:
+// contentEditable, kutu yok, düğme yok, kayıt odak kaybında, Escape vazgeçer.
+//   Enter            → ardına yeni paragraf (kod bloğunda satır sonu)
+//   Backspace (boş)  → bloğu kaldır, odak öncekine
+//   "/" (boş blokta) → tür menüsü
+//   ↑ / ↓ (kenarda)  → önceki / sonraki blok
+// Liste (`ul`) bu fazda yalnızca çizilir; düzenleyicisi faz 2. Metin her
+// zaman React metni olarak çizilir, HTML asla — güvenlik sınırı sunucuda
+// değil burada (lib/doc.js başındaki not).
 
-function DrawerDocBlock({ block, onUpdate }) {
-  const [pDirty, setPDirty] = useDrawerState(false);
-  const [pSaved, setPSaved] = useDrawerState(false);
-  const pRef = useDrawerRef(null);
+const DOC_MENU = [
+  { kind: 'p',       k: 'doc_kind_p',       fb: 'Paragraf' },
+  { kind: 'h2',      k: 'doc_kind_h2',      fb: 'Başlık' },
+  { kind: 'h3',      k: 'doc_kind_h3',      fb: 'Alt başlık' },
+  { kind: 'quote',   k: 'doc_kind_quote',   fb: 'Alıntı' },
+  { kind: 'pre',     k: 'doc_kind_pre',     fb: 'Kod' },
+  { kind: 'callout', k: 'doc_kind_callout', fb: 'Uyarı kutusu' },
+];
+const DOC_TAG = { h1: 'h2', h2: 'h2', h3: 'h3', p: 'p', quote: 'blockquote', pre: 'pre', callout: 'div' };
 
-  // Paragraf yerinde düzenlenir, Notion gibi: tıklayınca kutu, kenarlık ya da
-  // Kaydet/İptal düğmesi çıkmaz; imleç olduğu yerde yanıp söner. Kayıt odak
-  // kaybında (zaten öyleydi), Escape vazgeçer. 15 Eylül'de kullanıcı kutunun
-  // göz yorduğunu söyledi; kaldırıldı. Sessiz olmasın diye başarılı kayıtta
-  // kısa bir "Kaydedildi" işareti yanıp sönüyor — bu depoda sessiz başarı da
-  // sessiz başarısızlık kadar şüpheli.
-  const commitParagraph = async (el) => {
-    const t = el.textContent?.trim() ?? '';
-    if (!pDirty || t === block.text) { setPDirty(false); return; }
-    setPDirty(false);
-    const ok = await onUpdate(t);
-    if (ok) { setPSaved(true); setTimeout(() => setPSaved(false), 1400); }
+function _caretAtEdge(el) {
+  const sel = window.getSelection?.();
+  if (!sel || !sel.rangeCount) return { start: true, end: true };
+  const r = sel.getRangeAt(0);
+  const pre = r.cloneRange(); pre.selectNodeContents(el); pre.setEnd(r.startContainer, r.startOffset);
+  const post = r.cloneRange(); post.selectNodeContents(el); post.setStart(r.endContainer, r.endOffset);
+  return { start: pre.toString().length === 0, end: post.toString().length === 0 };
+}
+
+function DrawerDocBlock({ block, index, onUpdate, onEnter, onRemove, onConvert, onMove }) {
+  const [dirty, setDirty] = useDrawerState(false);
+  const [saved, setSaved] = useDrawerState(false);
+  const [menuOpen, setMenuOpen] = useDrawerState(false);
+  const [menuIdx, setMenuIdx] = useDrawerState(0);
+  const ref = useDrawerRef(null);
+
+  // Liste: yalnızca çizim (faz 2'de düzenlenir).
+  if (block.kind === 'ul') return <ul>{(block.items || []).map((it, i) => <li key={i}>{it}</li>)}</ul>;
+  if (block.kind === 'checklist') return null;
+
+  const Tag = DOC_TAG[block.kind] || 'p';
+  const text = block._i18n ? (window.t?.(block._i18n) || block.text) : (block.text || '');
+  const editable = !!onUpdate;
+
+  const commit = async (el) => {
+    const t = el.textContent ?? '';
+    const t2 = block.kind === 'pre' ? t.replace(/\s+$/, '') : t.trim();
+    if (!dirty || t2 === (block.text || '')) { setDirty(false); return; }
+    setDirty(false);
+    const ok = await onUpdate(t2);
+    if (ok) { setSaved(true); setTimeout(() => setSaved(false), 1400); }
   };
 
-  // `checklist` bloğu burada çizilmiyor: yapılacaklar alt görevlerden geliyor
-  // ve kendi bölümünde duruyor. Eski çizim işaret durumunu alt görevlerle
-  // SIRAYLA eşleştiriyordu (kimliksiz maddede `subsDetail[i]`), yani iki liste
-  // farklı uzunluktayken yanlış kutuyu işaretli gösteriyordu.
-  switch (block.kind) {
-    // `_i18n` taşıyan başlık üretilmiş bölüm etiketi ("Açıklama"); kullanıcının
-    // kendi başlığı değil. Küçük gri etiket olarak çizilir (data-role), aksi
-    // hâlde kart başlığıyla yarışıyordu (15 Eylül, Notion kıyası).
-    case 'h2':    return <h2 data-role={block._i18n ? 'section' : undefined}>{block._i18n ? (window.t?.(block._i18n) || block.text) : block.text}</h2>;
-    case 'h3':    return <h3>{block._i18n ? (window.t?.(block._i18n) || block.text) : block.text}</h3>;
-    case 'p':     return (
-      <div style={{ position: 'relative' }}>
-        <p ref={pRef} contentEditable={!!onUpdate} suppressContentEditableWarning
-          data-editable={!!onUpdate}
-          onInput={onUpdate ? () => setPDirty(true) : undefined}
-          onBlur={onUpdate ? (e) => commitParagraph(e.currentTarget) : undefined}
-          onKeyDown={onUpdate ? (e) => {
-            if (e.key === 'Escape') {
-              // Vazgeç: metni geri al, odağı bırak; blur artık kirli değil, yazmaz.
-              e.currentTarget.textContent = block.text;
-              setPDirty(false);
-              e.currentTarget.blur();
-            }
-          } : undefined}
-          style={onUpdate ? { outline: 'none', cursor: 'text' } : {}}
-        >{block.text}</p>
-        {pSaved && (
-          <span aria-live="polite" style={{ position: 'absolute', right: 0, top: -18, fontSize: 11, color: 'var(--ink-muted)', fontFamily: 'var(--font-ui)' }}>
-            {window.t?.('notes_saved') || 'Kaydedildi'}
-          </span>
-        )}
-      </div>
-    );
-    case 'ul':    return <ul>{(block.items || []).map((it, i) => <li key={i}>{it}</li>)}</ul>;
-    case 'pre':   return <pre>{block.text}</pre>;
-    case 'quote': return <blockquote>{block.text}</blockquote>;
-    default: return null;
-  }
+  const onKeyDown = (e) => {
+    const el = e.currentTarget;
+    const empty = (el.textContent || '').trim() === '';
+    if (menuOpen) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMenuIdx(i => (i + 1) % DOC_MENU.length); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setMenuIdx(i => (i - 1 + DOC_MENU.length) % DOC_MENU.length); return; }
+      if (e.key === 'Enter')     { e.preventDefault(); setMenuOpen(false); onConvert?.(DOC_MENU[menuIdx].kind); return; }
+      if (e.key === 'Escape')    { e.preventDefault(); setMenuOpen(false); return; }
+      // Menü açıkken yazılan her şey menüyü kapatır; "/" karakteri bloğa girmemişti.
+      setMenuOpen(false);
+    }
+    if (e.key === '/' && empty && onConvert) { e.preventDefault(); setMenuIdx(0); setMenuOpen(true); return; }
+    if (e.key === 'Escape') {
+      el.textContent = block.text || '';
+      setDirty(false);
+      el.blur();
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey && block.kind !== 'pre' && onEnter) {
+      e.preventDefault();
+      // Önce bu bloğun metni kaydedilsin, sonra yeni blok açılsın; iki ayrı
+      // PATCH ama sıralı — aksi hâlde ikinci kayıt ilkinin metnini ezerdi.
+      Promise.resolve(commit(el)).then(() => onEnter());
+      return;
+    }
+    if (e.key === 'Backspace' && empty && onRemove) { e.preventDefault(); onRemove(); return; }
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && onMove && block.kind !== 'pre') {
+      const edge = _caretAtEdge(el);
+      if (e.key === 'ArrowUp' && edge.start)  { e.preventDefault(); commit(el); onMove(-1); }
+      if (e.key === 'ArrowDown' && edge.end)  { e.preventDefault(); commit(el); onMove(1); }
+    }
+  };
+
+  const props = editable ? {
+    contentEditable: true,
+    suppressContentEditableWarning: true,
+    'data-editable': true,
+    'data-block-index': index,
+    'data-placeholder': window.t?.('doc_placeholder') || "Yazmaya başla, tür için “/”",
+    onInput: () => setDirty(true),
+    onBlur: (e) => commit(e.currentTarget),
+    onKeyDown,
+    style: { outline: 'none', cursor: 'text' },
+  } : { 'data-block-index': index };
+
+  return (
+    <div className="doc-block" style={{ position: 'relative' }}>
+      <Tag
+        className={block.kind === 'callout' ? 'doc-callout' : undefined}
+        data-role={block._i18n ? 'section' : undefined}
+        {...props}
+      >{text}</Tag>
+      {saved && (
+        <span aria-live="polite" className="doc-saved">{window.t?.('notes_saved') || 'Kaydedildi'}</span>
+      )}
+      {menuOpen && (
+        <div className="doc-slash-menu" role="listbox">
+          {DOC_MENU.map((m, i) => (
+            <button key={m.kind} type="button" role="option" aria-selected={i === menuIdx}
+              className={`doc-slash-item${i === menuIdx ? ' active' : ''}`}
+              onMouseDown={(e) => { e.preventDefault(); setMenuOpen(false); onConvert?.(m.kind); }}>
+              {window.t?.(m.k) || m.fb}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Kontrol listesi bloklarını ayıklar. Saklı doc'lardaki bloklar (ve önlerindeki

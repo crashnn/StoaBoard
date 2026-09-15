@@ -39,6 +39,7 @@ import { reqLang } from '../lib/lang.js';
 import { atananlariDenetle, atamaSluglari } from '../lib/assignees.js';
 import { bahsedilenleriCoz } from '../lib/mentions.js';
 import { docKontrolListesiVarMi, ilerlemeHesapla } from '../lib/checklist.js';
+import { docDenetle, docDuzMetin } from '../lib/doc.js';
 
 export const projectTasksRouter = Router({ mergeParams: true }); // /projects/:projectId/tasks
 export const tasksRouter = Router();         // /tasks/:taskId
@@ -354,13 +355,16 @@ tasksRouter.patch(
           message: 'Yapılacaklar artık alt görev olarak saklanıyor; sayfayı yenileyip yeniden deneyin',
         });
       }
+      // Tür ve boyut denetimi (lib/doc.js): çekmece 15 Eylül'den beri blok
+      // üretiyor; bilinmeyen tür ya da şişirilmiş gövde veritabanına girmesin.
+      const denetim = docDenetle(data.doc);
+      if (!denetim.ok) {
+        return res.status(400).json({ error: 'err_doc_invalid', message: `Kart gövdesi geçersiz: ${denetim.sebep}` });
+      }
       if (Array.isArray(data.doc)) {
         updates.doc = data.doc;
-        // description'ı doc'taki text bloklarından senkronize et
-        const textParts = data.doc
-          .filter((b) => ['p', 'h1', 'h2', 'h3'].includes(b?.kind) && b?.text)
-          .map((b) => b.text);
-        updates.description = textParts.join(' ').slice(0, 1000);
+        // description'ı doc'taki düzyazı bloklarından senkronize et (lib/doc.js)
+        updates.description = docDuzMetin(data.doc);
       } else {
         updates.doc = null;
       }

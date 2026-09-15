@@ -43,6 +43,7 @@ const BEKLENEN_DISARIDAN = new Set([
   'getComputedStyle', 'matchMedia', 'scrollTo', 'open', 'print', 'focus',
   'alert', 'confirm', 'prompt', 'crypto', 'Notification', 'top', 'self', 'parent',
   'AudioContext', 'webkitAudioContext', 'URL', 'Blob', 'FormData', 'fetch',
+  'getSelection',     // blok düzenleyici imleç konumu (drawer.jsx, 15 Eylül); tarayıcı yerleşiği
   // üçüncü taraf
   'google',            // Google Sign-In betiği (index.html)
   // sunucudan gömülen, opsiyonel
