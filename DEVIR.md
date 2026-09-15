@@ -5,12 +5,83 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 13 Eylül 2026 öğleden sonra, **ev makinesinde** (5432 açık).
+**Son güncelleme:** 15 Eylül 2026 akşamüstü, **ofis makinesinde** (5432 kapalı).
 
-> **MCP 0.6.0** (13 Eylül akşam, 0-V): `available_tools`, yetim atanan
-> işareti, `created_at`, anahtar izi. MCP'de asıl kalan iş: **kişinin kendi
-> anahtarını alabilmesi**. Aynı gün önce 0.5.0 Cowork'te doğrulandı, 0.5.1
-> iki yüzey kusurunu kapattı (0-T) ve alt görev tek kaynağa indi (0-U).
+> **Toplantı yarın: 16 Eylül 13:30–14:30, Teams ekran paylaşımı.** Yeni Claude
+> hesabı, yeni demo alanı, 20+ commit'lik bir düzeltme günü (0-W). Sabah
+> yapılacak tek iş: sunum sayfasının sayılarını yenileyip yayımlamak, 11:00'e
+> kadar. Demo rehberi [TOPLANTI-2-PLAN.md](TOPLANTI-2-PLAN.md), hesap geçişi
+> [HESAP-GECISI.md](HESAP-GECISI.md).
+
+---
+
+## 0-W. 15 Eylül — toplantı öncesi gün: hesap geçişi, demo panosu, 20 düzeltme
+
+Sabah Claude Code yeni hesaba geçti (eski hesabın haftalık limiti bitti);
+bağlayıcı yeniden kuruldu, Railway'deki MCP slug'ı `eray-atalay-3`e alındı
+(ayrıntı HESAP-GECISI.md). Gün boyu kullanıcı canlıda denedi, ben düzelttim;
+her bulgu bir commit. Testler 485 → **500**, hepsi geçiyor.
+
+### Demo düzeni
+
+- Alan **"StoaBoard Toplantı - BDH Netaş"** (id 15), iki proje: **Ana Proje**
+  (ileri backlog: altı karar kartı, gecikmiş iki gerçek iş, hazırlık kartı)
+  ve **"1 Eylül → 16 Eylül"** (13 retrospektif kart, hepsi Tamamlandı, gerçek
+  kapanış tarihleriyle). Hepsini MCP yazdı; denetim kaydında görünüyor.
+- Üyeler: `eray-atalay-3` (owner, MCP anahtarı buna bağlı) ve `eray-atalay`
+  (eski hesap, Düzenleyici). Reddetme adımı için üye olmayan **üçüncü hesap**
+  gerekli — kullanıcıda.
+- MCP dört demo adımı canlıda doğrulandı (okuma, atama+yorum, red, iz). Bir
+  kez 502 (proxy–sunucu arası geçici), plana "kırılırsa" maddesi.
+- Sunum sayfası yeni hesaptan yayımlandı, kaynağı depoda
+  (`TOPLANTI-2-SUNUM.html`); sayılar sabah yenilenecek.
+
+### Kapananlar (commit sırasıyla)
+
+- Bildirim rozeti "son bakıştan beri gelen" (karar (c), Outlook); zil ve panel
+  aynı kümeyi sayıyor (`panelGorunur`); satırda kimin yaptığı; sekme sayıları
+  yalnızca okunmamış.
+- Raporlar: PDF'te tablo tablo (768px mobil kuralı yazdırmada tetikleniyordu),
+  scrollbar basılmıyor, CSV **UTF-16LE + sekme** (`sep=` Excel'e BOM'u yok
+  saydırıyordu), "Açık/Open" etiketi, proje sütunu + proje süzgeci.
+- Çekmece: kendi yorumunu silme, karttan "Yeni not", açıklama yerinde
+  düzenleme (kutu/düğme yok), boş bölümler katlanır, özellikler iki sütun,
+  "Açıklama" küçük etiket, açılır menüler düğmenin altına (fixed'ten
+  absolute'a), **blok düzenleyici faz 1** (`/` menüsü, altı tür, `lib/doc.js`
+  sunucu denetimi).
+- Ayarlar: projeyi yeniden adlandırma; alan değişince görünüm yenileniyor.
+- Pano: kolonlar tam boy, ince kaydırma çubuğu; yeni kartın alt görevleri
+  hemen görünüyor.
+- Giriş ekranı: uydurma sayılar gitti, gerçek toplamlar
+  (`GET /api/public/stats`, herkese açık, üç sayı, 10 dk önbellek).
+- Kanca: her koşusunu `.git/pre-push.log`a yazıyor (VS Code Sync'ten de).
+
+### Bugün benden çıkan iki canlı hata — ders
+
+İkisi de derleme ve 500 testten geçti, canlıda patladı: kanca sırası
+(erken dönüşten sonra `useRef`, `9843983`) ve tanımsız değişken (alt
+bileşende `project`, `5af4e75`). İkisini de yalnızca lint yakalardı
+(`react-hooks/rules-of-hooks`, `no-undef`). **Lint kurulumu toplantı
+sonrası ilk iş** — TODO "hemen yapılabilir", dört kural, kancaya bağlanır.
+
+### Açık kalanlar
+
+- Kullanıcıda: süre girişi 3-4 karta, üçüncü hesap, yedek ekran kaydı, tool
+  permissions kararı, `rapor-ornek.pdf`i ilgili karta ekleme.
+- Kodda: bildirim `userId` süzgecini kilitleyen tarama testi; MCP
+  `add_attachment` (0.7.0 adayı); rapor çıktısı kurumsal şablon biçimi ve
+  kolon bazlı darboğaz tablosu (kullanıcının Claude Design şablonundan;
+  ev işi); Notion-lite faz 2 (liste düzenleme, satır içi biçim) — kapsamı
+  toplantıdaki "hangi blokları kullanıyorsunuz" cevabı belirler.
+
+### Yarın sabah, sırayla
+
+1. `git fetch && git status` (ev makinesinden gelen varsa).
+2. Sunum sayfası: commit/satır sayılarını git'ten al, `TOPLANTI-2-SUNUM.html`
+   ve artifact'ı yenile (URL sabit: HESAP-GECISI.md'de).
+3. claude.ai'de **yeni sohbet**, `whoami` → 0.6.0.
+4. Tarayıcıda F5, dil Türkçe, bildirim sesi kısık, Eray-2'de bildirim paneli
+   açılmasın (Mayıs mesajları görünür).
 
 ---
 

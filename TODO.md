@@ -1026,6 +1026,13 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       merdiveni: belge → test → **lint**. Yalnızca iki kural yeter
       (`rules-of-hooks`, `exhaustive-deps` uyarı olarak); pre-push kancasına
       ve CI'a eklenir. Depo içi ama kurulum 5 dakika.
+      **Aynı gün ikinci kez haklı çıktı:** `5af4e75`, alt bileşende tanımsız
+      `project` (`no-undef` yakalardı). Plan: ESLint + `eslint-plugin-react-hooks`,
+      dört kural — `no-undef` ve `rules-of-hooks` **hata**, `no-unused-vars` ve
+      `exhaustive-deps` **uyarı** (mevcut kodda 20-50 bulgu beklenir; hata
+      seviyesindekiler temizlenir, uyarılar görünür kalır). `npm run lint`
+      kancada testlerin önüne (~3 sn), CI'a aynı satır. Sunucuya `no-undef`
+      + `no-unused-vars` yeter. Toplantı sonrası ilk iş.
 - [ ] **GitHub faturalandırma kilidi (crashnn hesabı).** CI kuruldu ama hiç
       çalışamıyor: "The job was not started because your account is locked due
       to a billing issue". İşler başlamıyor, yani kırmızı da değil, sessiz.
