@@ -1238,6 +1238,16 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       kaydediliyor.
       **Önce cevaplanacak (toplantı):** Notion'da gerçekten hangi bloklar
       kullanılıyor; faz 2 kapsamı ona göre.
+- [ ] **Bildirim güveni — kullanıcı "oradaki her şeyden şüphe duyuyorum" dedi
+      (15 Eylül 2026).** Gözlem: eski hesapla (`eray-atalay`) girince
+      Mayıs'taki DM'ler bu alanda görünüyor. Sızıntı DEĞİL: bildirimler
+      kullanıcının kendi kayıtları, iki liste ucu da `userId` ile süzüyor
+      (notifications.js, api.js bootstrap). Ama iki şey açık: (1) "Cross-team
+      DMs: always come through" anahtarı DM'yi alandan bağımsız gösteriyor —
+      ürün kararı, konuşulmalı; (2) `userId` süzgeci yalnızca kodda duruyor,
+      testle kilitli değil. Kaynak tarayan bir test (`yorumsuzKaynak`)
+      bildirim `findMany` çağrılarının hepsinde `userId: user.id` olduğunu
+      doğrulamalı; süzgeç düşerse test kırmızı olsun.
 - [ ] **Bildirimler baştan ele alınacak.** Toplantıda mesaj gönderildi, karşı
       tarafta toast çıkmadı. İki sebebi vardı: biri kırık koddu (düzeltildi),
       diğeri tasarım boşluğu ve **hâlâ açık** — görev atama, bahsetme ve yorum
