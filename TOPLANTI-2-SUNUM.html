@@ -283,7 +283,7 @@
     color: var(--ink-2);
     margin-top: 7px;
     line-height: 1.35;
-    max-width: 15ch;
+    max-width: 24ch;
   }
 
   /* ── faz şeridi ───────────────────────────────────────────── */
@@ -585,8 +585,8 @@
 
   <header class="masthead">
     <div class="eyebrow">BDH Netaş · İkinci tanıtım toplantısı</div>
-    <h1>StoaBoard — ikinci tur</h1>
-    <p class="deck">1 Eylül toplantısından bugüne: ne eklendi, hangi kararlar masaya geliyor, devirde ne kırılır.</p>
+    <h1>StoaBoard: ikinci tur</h1>
+    <p class="deck">1 Eylül’de konuştuklarımızdan bugüne: neler ekledik, hangi kararları birlikte vermemiz gerekiyor, ben ayrılınca nelere dikkat etmek lazım.</p>
     <div class="meta">
       <span><b>16 Eylül 2026</b></span>
       <span>Canlı: <b>stoaboard.com</b></span>
@@ -613,7 +613,7 @@
     </div>
     <div class="fig">
       <div class="n">13</div>
-      <div class="l">kapatılan güvenlik kusuru<br>iki turda</div>
+      <div class="l">kapatılan güvenlik açığı<br>iki turda</div>
     </div>
     <div class="fig">
       <div class="n">20</div>
@@ -628,7 +628,7 @@
   <section class="part">
     <div class="part-head">
       <div class="part-num">01</div>
-      <h2>Toplantı öncesi ve sonrası</h2>
+      <h2>Toplantıdan bu yana neler oldu</h2>
       <div class="clock">~20 dk</div>
     </div>
 
@@ -636,21 +636,21 @@
       <div class="phase">
         <div class="when">1–3 EYLÜL</div>
         <div class="count">52 commit</div>
-        <div class="what">Toplantı geri bildirimlerinin karşılığı: raporlama, iş akışı kuralı, güvenlik turu, ilk testler, dil turu</div>
+        <div class="what">Toplantıda söylediklerinizin karşılığı: raporlama, iş akışı kuralı, güvenlik taraması, ilk testler, dil düzeltmeleri</div>
       </div>
       <div class="phase gap">
         <div class="when">4–8 EYLÜL</div>
         <div class="count">ara</div>
-        <div class="what">Kod yazılmadı; proje bazlı erişim tasarımı düşünüldü</div>
+        <div class="what">Kod yazmadım; proje bazlı erişimin nasıl olacağını düşündüm</div>
       </div>
       <div class="phase">
         <div class="when">9–16 EYLÜL</div>
         <div class="count">96 commit</div>
-        <div class="what">MCP yüzeyi sıfırdan 0.6.0’a; arada gösterge paneli, erişilebilirlik ve bildirim düzeltmeleri; son iki gün rapor çıktıları ve demo provası</div>
+        <div class="what">MCP sıfırdan 0.6.0’a çıktı. Arada gösterge paneli, erişilebilirlik ve bildirim düzeltmeleri. Son iki gün rapor çıktıları ve demo provası.</div>
       </div>
     </div>
 
-    <h3 class="sub">Uygulama neyi kazandı</h3>
+    <h3 class="sub">Uygulamaya neler eklendi</h3>
 
     <div class="table-scroll">
       <table class="ba">
@@ -665,68 +665,68 @@
           <tr>
             <td>Raporlama</td>
             <td class="before none">Yok</td>
-            <td class="after"><span class="newdot"></span><b>Üç rapor:</b> kişi, dönem, akış · son 6 ay dahil aralık ön ayarları · Excel’in her bölgede doğru açtığı CSV · yazdırma sayfası</td>
+            <td class="after"><span class="newdot"></span><b>Üç rapor:</b> kişi, dönem, akış. Hazır tarih aralıkları (son 6 ay dahil), Excel’de her bilgisayarda düzgün açılan CSV, yazdırılabilir sayfa</td>
           </tr>
           <tr>
             <td>Rapor verisi</td>
-            <td class="before none">Yok — geçmiş geri doldurulamaz</td>
-            <td class="after"><span class="newdot"></span>Kart geçiş kayıtları · süre kayıtları · “ne zaman tamamlandı” alanı</td>
+            <td class="before none">Yok. Geçmiş geriye dönük doldurulamıyor</td>
+            <td class="after"><span class="newdot"></span>Kartın kolon geçişleri, süre kayıtları ve “ne zaman tamamlandı” bilgisi tutuluyor</td>
           </tr>
           <tr>
             <td>Süre kaydı</td>
             <td class="before none">Yok</td>
-            <td class="after"><span class="newdot"></span>Manuel giriş: <code>90</code> · <code>1:30</code> · <code>1s 30d</code>. Otomatik sayaç <b>bilinçli yok</b></td>
+            <td class="after"><span class="newdot"></span>Elle giriş: <code>90</code>, <code>1:30</code> ya da <code>1s 30d</code>. Otomatik sayaç <b>bilerek yok</b></td>
           </tr>
           <tr>
             <td>İş akışı</td>
             <td class="before">Kolonlar serbest, her kart her yere</td>
-            <td class="after"><span class="newdot"></span>Kolon geçiş kuralı: izin verilmeyen taşımada kart geri döner, sebep görünür</td>
+            <td class="after"><span class="newdot"></span>Kolon geçiş kuralı var: izin verilmeyen taşımada kart geri dönüyor ve sebebi görünüyor</td>
           </tr>
           <tr>
             <td>Bildirim</td>
-            <td class="before">Zil rozeti, uygulama içi</td>
-            <td class="after"><span class="newdot"></span>Atama ve bahsetme <b>e-postası</b> (varsayılan kapalı) · 13 sessiz yutulan hata açığa çıktı · rozet artık “son bakıştan beri gelen”, bildirimde kimin yaptığı görünüyor</td>
+            <td class="before">Sadece zil rozeti, uygulama içinde</td>
+            <td class="after"><span class="newdot"></span>Atama ve bahsetme için <b>e-posta</b> (varsayılan kapalı). Sessizce yutulan 13 hata ortaya çıktı. Rozet artık “son baktığından beri gelenleri” sayıyor, bildirimde kimin yaptığı görünüyor</td>
           </tr>
           <tr>
             <td>Denetim kaydı</td>
             <td class="before none">Yok</td>
-            <td class="after"><span class="newdot"></span>Kim, ne zaman, hangi raporu, kaç satır dışa aktardı · üye çıkarma · rol değişikliği · toplu silme</td>
+            <td class="after"><span class="newdot"></span>Kim, ne zaman, hangi raporu, kaç satır dışa aktardı. Üye çıkarma, rol değişikliği ve toplu silme de kaydediliyor</td>
           </tr>
           <tr>
             <td>Güvenlik</td>
-            <td class="before">Denetlenmemiş</td>
-            <td class="after"><span class="newdot"></span><b>13 kusur kapatıldı</b> · her yeni özellik on soruluk elekten geçiyor, cevaplar commit mesajında</td>
+            <td class="before">Hiç bakılmamıştı</td>
+            <td class="after"><span class="newdot"></span><b>13 açık kapatıldı.</b> Her yeni özellik on soruluk bir kontrol listesinden geçiyor, cevaplar commit mesajına yazılıyor</td>
           </tr>
           <tr>
             <td>Otomatik test</td>
-            <td class="before none">Hiç yok</td>
-            <td class="after"><span class="newdot"></span><b>500 test</b>, 84 süit, ~22 sn · veritabanı gerektirmiyor</td>
+            <td class="before none">Hiç yoktu</td>
+            <td class="after"><span class="newdot"></span><b>500 test</b>, 84 grup, yaklaşık 22 saniye. Veritabanı gerektirmiyor</td>
           </tr>
           <tr>
             <td>Push koruması</td>
             <td class="before none">Yok</td>
-            <td class="after"><span class="newdot"></span><code>pre-push</code> kancası test ve derlemeyi koşuyor · CI dosyası hazır, hesap kilitli</td>
+            <td class="after"><span class="newdot"></span>Push’tan önce testler ve derleme kendiliğinden koşuyor, kırmızıysa push gitmiyor. CI dosyası hazır ama hesap kilitli</td>
           </tr>
           <tr>
             <td>Dil</td>
-            <td class="before">TR/EN — ama İngilizce arayüzde 58 metin Türkçe kalıyordu</td>
-            <td class="after"><span class="newdot"></span>TR/EN tam: <b>1.209 anahtar</b> · tarama testi kilitliyor, yeni kaçak giremiyor</td>
+            <td class="before">TR/EN vardı ama İngilizce arayüzde 58 metin Türkçe kalıyordu</td>
+            <td class="after"><span class="newdot"></span>TR/EN tam: <b>1.209 metin</b>. Bir test bunu koruyor, yeni bir kaçak giremiyor</td>
           </tr>
           <tr>
             <td>Yapay zekâ erişimi</td>
             <td class="before none">Yok</td>
-            <td class="after"><span class="newdot"></span><b>MCP 0.6.0</b> · 20 araç (10 okuma, 10 yazma) · uygulamanın kendi izin kapısından geçiyor</td>
+            <td class="after"><span class="newdot"></span><b>MCP 0.6.0</b>: 20 araç (10 okuma, 10 yazma). Uygulamanın kendi izin kontrolünden geçiyor</td>
           </tr>
           <tr>
             <td>Ön yüz</td>
             <td class="before">Tek parça 787 KB paket</td>
-            <td class="after"><span class="newdot"></span>Kod bölme + altı görünüm tembel yükleniyor · bir bölüm çökse uygulama ayakta kalıyor</td>
+            <td class="after"><span class="newdot"></span>Kod parçalara bölündü, altı ekran gerektiğinde yükleniyor. Bir ekran çökse uygulama ayakta kalıyor</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <h3 class="sub">Toplantı notu → karşılığı</h3>
+    <h3 class="sub">Sizin notlarınız ve karşılıkları</h3>
 
     <div class="table-scroll">
       <table>
@@ -736,44 +736,44 @@
         <tbody>
           <tr>
             <td>“Raporlama 6 ayda bir” · “kim ne kadar süre harcadı” · “Furkan Bey hangi işlerde çalışmış”</td>
-            <td>Üç rapor + veri altyapısı. Vurgulanacak ayrım: <b>geçiş süresi</b> ile <b>harcanan emek</b> ayrı şeyler — bir iş üç haftada bitip altı saat emek almış olabilir.</td>
+            <td>Üç rapor ve altındaki veri altyapısı. Önemli bir ayrım: <b>geçen süre</b> ile <b>harcanan emek</b> ayrı şeyler. Bir iş üç haftada bitmiş ama sadece altı saat emek almış olabilir.</td>
             <td><span class="pill ok">Yapıldı</span></td>
           </tr>
           <tr>
             <td>“Log girişi, manuel giriş, work log developer”</td>
-            <td>Süre girişi çekmecede. Otomatik sayaç yapılmadı: sekmenin açık kaldığı süreyi ölçer, çalışılanı değil.</td>
+            <td>Süre girişi kartın içinde. Otomatik sayaç yapmadık: o, sekmenin açık kaldığı süreyi ölçer, çalışılan süreyi değil.</td>
             <td><span class="pill ok">Yapıldı</span></td>
           </tr>
           <tr>
             <td>“Development workflow oluşturma”</td>
-            <td>Gösterilen Jira ekranının asıl mesajı durum sayısı değil, <i>“buradan şuraya geçilebilir”</i> satırıydı. Geçiş kuralı eklendi; kural tanımlanmayan kolonlarda kısıt yok.</td>
+            <td>Gösterdiğiniz Jira ekranında asıl önemli olan durum sayısı değil, <i>“buradan şuraya geçilebilir”</i> kuralıydı. O kural eklendi. Kural tanımlanmayan kolonlarda kısıt yok.</td>
             <td><span class="pill ok">Yapıldı</span></td>
           </tr>
           <tr>
             <td>“Teknik tarafta sistem açıkları”</td>
-            <td>Turun en çok mesai alan parçası. Birinci turda sekiz kusur.</td>
+            <td>En çok zaman alan iş bu oldu. İlk turda sekiz açık kapandı.</td>
             <td><span class="pill ok">Yapıldı</span></td>
           </tr>
           <tr>
             <td>“SAP kullanımı, mail”</td>
-            <td>Mail yapıldı. <b>SAP kapsam dışı</b> — entegrasyon değil giriş bileti meselesi; gerçek şartname olmadan yapılacak iş değil.</td>
+            <td>Mail yapıldı. <b>SAP kapsam dışı.</b> Bu bir entegrasyon işi değil, giriş bileti meselesi; elimizde gerçek bir şartname olmadan yapılamaz.</td>
             <td><span class="pill open">Yarısı</span></td>
           </tr>
           <tr>
             <td>“Jira daha kompleks”</td>
-            <td>Yapılacak iş değil, konumlandırma teyidi — ve lehimize.</td>
+            <td>Yapılacak bir iş değil, konumumuzun teyidi. Ve bu bizim lehimize.</td>
             <td><span class="pill ok">Teyit</span></td>
           </tr>
           <tr>
             <td>Mesaj gönderildi, karşı tarafta bildirim çıkmadı</td>
-            <td>İki sebebi vardı: biri kırık koddu, düzeltildi. Diğeri tasarım boşluğu — 3. bölümde karar sorusu olarak duruyor.</td>
+            <td>İki sebebi vardı. Biri kırık koddu, düzeltildi. Diğeri bir tasarım boşluğu; 3. bölümde karar sorusu olarak duruyor.</td>
             <td><span class="pill open">Yarısı</span></td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <h3 class="sub">MCP — beş günde on sürüm</h3>
+    <h3 class="sub">MCP: beş günde on sürüm</h3>
 
     <div class="ladder-scroll">
       <div class="ladder">
@@ -783,7 +783,7 @@
         </div>
         <div class="rung key">
           <div class="v">0.3.0</div><div class="d">11 Eylül</div>
-          <div class="w">Okuma yüzeyi kapandı; alan dışı kayıt reddediliyor</div>
+          <div class="w">Okuma araçları tamam; başka alandaki kayıt reddediliyor</div>
         </div>
         <div class="rung key">
           <div class="v">0.4 – 0.5</div><div class="d">11–13 Eylül</div>
@@ -791,20 +791,20 @@
         </div>
         <div class="rung key">
           <div class="v">0.6.0</div><div class="d">13 Eylül</div>
-          <div class="w">Yetim atanan işareti, araç listesi, anahtar izi</div>
+          <div class="w">Üye olmayan atanan uyarısı, araç listesi, anahtar izi</div>
         </div>
       </div>
     </div>
 
     <div class="tools">
       <div class="tool-col">
-        <span class="eyebrow">Okuma — 10 araç</span>
+        <span class="eyebrow">Okuma: 10 araç</span>
         <div class="tool-list">
           <span class="tool">whoami</span><span class="tool">list_workspaces</span><span class="tool">list_members</span><span class="tool">list_projects</span><span class="tool">list_columns</span><span class="tool">list_tasks</span><span class="tool">search_tasks</span><span class="tool">get_task</span><span class="tool">list_notes</span><span class="tool">get_note</span>
         </div>
       </div>
       <div class="tool-col">
-        <span class="eyebrow">Yazma — 10 araç</span>
+        <span class="eyebrow">Yazma: 10 araç</span>
         <div class="tool-list">
           <span class="tool w">create_task</span><span class="tool w">update_task</span><span class="tool w">move_task</span><span class="tool w">add_comment</span><span class="tool w">delete_task</span><span class="tool w">restore_task</span><span class="tool w">add_subtask</span><span class="tool w">update_subtask</span><span class="tool w">delete_subtask</span><span class="tool w">set_active_workspace</span>
         </div>
@@ -812,38 +812,38 @@
     </div>
 
     <div class="pull">
-      MCP ayrı bir arka kapı değil: aynı izin kapısından geçiyor, aynı denetim kaydını yazıyor, aynı bildirimleri üretiyor.
-      <span class="attr">“Claude’a sor, panonu sürsün” — Trello, Asana ve Notion’da düzgün karşılığı yok</span>
+      MCP ayrı bir arka kapı değil. Aynı izin kontrolünden geçiyor, aynı denetim kaydını yazıyor, aynı bildirimleri gönderiyor.
+      <span class="attr">“Claude’a söyle, panoyu o yönetsin.” Trello, Asana ve Notion’da bunun düzgün bir karşılığı yok</span>
     </div>
 
-    <h3 class="sub">Kapatılan güvenlik kusurları — iki turda on üç</h3>
+    <h3 class="sub">Kapatılan güvenlik açıkları: iki turda on üç</h3>
 
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th style="width:8%">Tur</th><th style="width:27%">Kusur</th><th>Neyi mümkün kılıyordu</th></tr>
+          <tr><th style="width:8%">Tur</th><th style="width:27%">Açık</th><th>Ne olabilirdi</th></tr>
         </thead>
         <tbody>
           <tr><td>1</td><td>CSV formül enjeksiyonu</td><td>Bir üye kart başlığını formüle çevirip <b>raporu açan yöneticinin makinesinde</b> veri sızdırabilirdi</td></tr>
           <tr><td>1</td><td>İç hata mesajı sızıntısı</td><td>Veritabanı sunucusunun adresi kayıt ekranından, <b>giriş yapmadan</b> görülebiliyordu</td></tr>
-          <tr><td>1</td><td>Hayalet kanallar</td><td>Kanal satırı bulunamayınca üyelik kontrolü tamamen atlanıyordu — dört yerde</td></tr>
-          <tr><td>1</td><td>Hayalet izin</td><td>Arayüz “üye davet et” iznini sunuyor, sunucu kontrol etmiyordu: yönetici verdiğini sandığı yetkiyi vermiyordu</td></tr>
+          <tr><td>1</td><td>Hayalet kanallar</td><td>Kanal bulunamayınca üyelik kontrolü tamamen atlanıyordu, hem de dört yerde</td></tr>
+          <tr><td>1</td><td>Hayalet izin</td><td>Arayüzde “üye davet et” izni vardı ama sunucu kontrol etmiyordu. Yönetici verdiğini sandığı yetkiyi aslında vermiyordu</td></tr>
           <tr><td>1</td><td>Eksik izin</td><td>Sunucuda uygulanan bir izin arayüzde listelenmediği için hiçbir role verilemiyordu</td></tr>
-          <tr><td>1</td><td>Oturumlar düşmüyordu</td><td>Hesabı ele geçirilen kullanıcı parolasını değiştirse bile <b>saldırganın oturumu yaşıyordu</b></td></tr>
-          <tr><td>1</td><td>Kullanıcı varlığı oracle’ı</td><td>Yanıt farkı, platformdaki tüm hesaplar için “bu kullanıcı var mı” bilgisini veriyordu</td></tr>
-          <tr><td>1</td><td>Parola alt sınırı tutarsız</td><td>Profil 6, kayıt 8 istiyordu; kural profilden dolaşılabiliyordu</td></tr>
-          <tr><td>2</td><td>Atama üyelik kapısı yoktu</td><td>Alanın üyesi olmayan birine görev atanabiliyordu; rapor sessizce yanlış çıkıyordu</td></tr>
+          <tr><td>1</td><td>Oturumlar düşmüyordu</td><td>Hesabı çalınan kullanıcı parolasını değiştirse bile <b>saldırganın oturumu açık kalıyordu</b></td></tr>
+          <tr><td>1</td><td>“Bu kullanıcı var mı” sızıntısı</td><td>Yanıtlardaki küçük bir fark, herhangi bir e-postanın sistemde kayıtlı olup olmadığını ele veriyordu</td></tr>
+          <tr><td>1</td><td>Parola alt sınırı tutarsız</td><td>Kayıt ekranı 8 karakter istiyordu, profil 6. Kural profilden dolaşılabiliyordu</td></tr>
+          <tr><td>2</td><td>Atama üyelik kapısı yoktu</td><td>Alanın üyesi olmayan birine görev atanabiliyordu; raporlar sessizce yanlış çıkıyordu</td></tr>
           <tr><td>2</td><td>Bildirim metninde saklı XSS</td><td>Kart başlığına yerleştirilen kod, bildirimi <b>okuyan</b> kişinin tarayıcısında çalışabiliyordu</td></tr>
-          <tr><td>2</td><td>Bildirim ucunda üyelik kapısı</td><td>Uç üyelik sormuyordu; düzeltilirken ikinci bir kâhin kusuru daha çıktı</td></tr>
+          <tr><td>2</td><td>Bildirim ucunda üyelik kapısı</td><td>Bildirim servisi üyelik sormuyordu. Düzeltirken benzer ikinci bir sızıntı daha çıktı</td></tr>
           <tr><td>2</td><td>Yorumda bahsetme kapsamı</td><td>Kart yorumundaki bahsetme, alanın üyesi olmayanlara da bildirim gönderiyordu</td></tr>
-          <tr><td>2</td><td><code>/.well-known/*</code> 200 dönüyordu</td><td>Tek sayfa yedeği standart keşif yolunu HTML ile cevaplıyor, dış istemciler yanlış yola sapıyordu</td></tr>
+          <tr><td>2</td><td><code>/.well-known/*</code> 200 dönüyordu</td><td>Dış sistemlerin “burada ne var” diye sorduğu adres HTML dönüyor, istemciler yanlış yola sapıyordu</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="note-box">
       <span class="eyebrow">Ortak nokta</span>
-      <p style="margin-bottom:0">On üçünün hiçbiri kullanıcıdan gelmedi — hepsi <b>aranarak</b> bulundu. Turun çıkış varsayımı: <i>aranmadan bir açık bulunduysa, arayınca daha fazlası çıkar.</i> İki turda da çıktı.</p>
+      <p style="margin-bottom:0">On üçünün hiçbiri kullanıcıdan gelmedi, hepsini <b>arayarak</b> bulduk. Varsayımımız şuydu: <i>aramadan bir açık bulduysak, arayınca daha fazlası çıkar.</i> İki turda da çıktı.</p>
     </div>
   </section>
 
@@ -851,31 +851,31 @@
   <section class="part">
     <div class="part-head">
       <div class="part-num">02</div>
-      <h2>Nasıl çalışıldı</h2>
+      <h2>Nasıl çalıştım</h2>
       <div class="clock">~5 dk</div>
     </div>
 
-    <h3 class="sub">Kuralı belgeye değil, doğrulayana yaz</h3>
+    <h3 class="sub">Kuralı belgeye yazmak yetmiyor</h3>
 
     <div class="read">
-      <p>Dil kuralı proje belgesinde net biçimde yazılıydı ve yine de <b>31 yerde ihlal edildi</b> — kuralı uygulamaya çalışan biri tarafından. Yazılı kural çalışmıyor; kalıcı olması için yukarı taşınır: <b>belge → gözden geçirme → test → CI → lint → tasarımen imkânsız.</b> Dil, yetki ve bildirim sözleşmeleri bugün teste bağlı. En üst basamak somut: deploy’da şemayı ezen komut için “çalıştırmayın” denmedi, <b>çağrı silindi</b>; oturum tablosunu düşürme uyarısına “hayır deyin” denmedi, <b>uyarının çıkması engellendi</b>.</p>
+      <p>Dil kuralı proje belgesinde açıkça yazılıydı ve yine de <b>31 yerde ihlal edildi</b>, hem de kurala uymaya çalışan biri tarafından. Yazılı kural tek başına çalışmıyor. Kalıcı olsun istiyorsan yukarı taşıman gerekiyor: <b>belge, gözden geçirme, test, CI, lint, en sonunda da tasarımla imkânsız kılmak.</b> Dil, yetki ve bildirim kuralları bugün teste bağlı. En üst basamağa iki örnek: deploy sırasında şemayı ezen komut için “bunu çalıştırmayın” demedik, <b>çağrıyı sildik</b>. Oturum tablosunu silme uyarısı için “uyarıya hayır deyin” demedik, <b>uyarının çıkmasını engelledik</b>.</p>
     </div>
 
-    <h3 class="sub">Test yazmak yetmiyor — kırıldığını görmek gerekiyor</h3>
+    <h3 class="sub">Test yazmak yetmiyor, kırıldığını da görmek gerekiyor</h3>
     <div class="read">
-      <p>Test yazıldıktan sonra korunan satır <b>kasten bozulur</b> ve testin kırmızıya döndüğü görülür. Son turda 11 mutasyon koşuldu:</p>
+      <p>Testi yazdıktan sonra koruduğu satırı <b>bilerek bozuyoruz</b> ve testin gerçekten kırmızıya döndüğüne bakıyoruz. Son turda bunu 11 kez yaptık:</p>
     </div>
 
     <div class="note-box">
-      <span class="eyebrow">11 mutasyon · ilk turda üç sorun</span>
-      <p><b>İkisi kaçtı</b> — test aranan adı dosyada düz metin arıyordu, ama o ad aracın <i>açıklama cümlesinde</i> de geçiyordu. Kod silinse bile test yeşil kalıyordu.</p>
-      <p><b>Biri yanlış yeri korudu</b> — aynı satır dosyada iki kez geçiyordu; test “yakalandı” diyordu ama başka bir işlevi koruyordu.</p>
-      <p><b>Biri hiç korunmuyordu</b> — sunucunun açılış uyarısını hiçbir test tutmuyordu.</p>
-      <p style="margin-bottom:0">Düzeltildi: <b>on birin on biri, doğru yerde yakalanıyor.</b> Bu üç bulgu olmasaydı “500 test geçiyor” cümlesi yine kurulacaktı — ama üç yerde anlamsız.</p>
+      <span class="eyebrow">11 deneme, üç sorun çıktı</span>
+      <p><b>İkisi kaçtı.</b> Test aradığı adı dosyada düz metin olarak arıyordu, ama o ad aracın <i>açıklama cümlesinde</i> de geçiyordu. Kodu silsen bile test yeşil kalıyordu.</p>
+      <p><b>Biri yanlış yeri koruyordu.</b> Aynı satır dosyada iki kez geçiyordu; test “yakaladım” diyordu ama aslında başka bir işlevi koruyordu.</p>
+      <p><b>Biri hiç korunmuyordu.</b> Sunucunun açılış uyarısını hiçbir test kontrol etmiyordu.</p>
+      <p style="margin-bottom:0">Üçü de düzeltildi: <b>on birin on biri doğru yerde yakalanıyor.</b> Bu üç bulgu olmasaydı “500 test geçiyor” yine diyecektik, ama üç yerde bu cümle boş olacaktı.</p>
     </div>
 
     <div class="read">
-      <p><b>Sessiz başarısızlık yasak.</b> Üç kusurun kök sebebi aynıydı: koşul sağlanmayınca kodun sessizce çıkması. Kural: bir koşulun yokluk hâli ya <b>reddeder</b> ya <b>gürültü çıkarır</b>. On üç yutulan hata bu kuralla açığa çıktı; bu sabah rapor ekranında bir tane daha.</p>
+      <p><b>Sessiz hata yasak.</b> Üç açığın kök sebebi aynıydı: bir şart sağlanmayınca kod sessizce vazgeçiyordu, kimse fark etmiyordu. Kural basit: bir şey eksikse kod ya <b>reddeder</b> ya <b>ses çıkarır</b>. Yutulan on üç hata bu kuralla ortaya çıktı; bu sabah rapor ekranında bir tane daha.</p>
     </div>
   </section>
 
@@ -883,12 +883,12 @@
   <section class="part">
     <div class="part-head">
       <div class="part-num">03</div>
-      <h2>Masaya gelen kararlar</h2>
-      <div class="clock">~12 dk · tartışma</div>
+      <h2>Birlikte vermemiz gereken kararlar</h2>
+      <div class="clock">~12 dk, tartışma</div>
     </div>
 
     <div class="read">
-      <p>Yapılacak iş listesi değil — <b>cevabı bu odada olan sorular.</b> Kod tarafı hazır ya da hazırlanabilir; eksik olan karar.</p>
+      <p>Bu bir iş listesi değil, <b>cevabı bu odada olan sorular.</b> Kod tarafı hazır ya da hazırlanabilir; eksik olan karar.</p>
     </div>
 
     <div class="decisions">
@@ -896,50 +896,50 @@
       <div class="dec">
         <div class="idx">01</div>
         <h4>Proje bazlı üyelik <span class="pill risk">En büyük açık</span></h4>
-        <div class="body">Bir üye alandaki <b>her şeyi</b> görüyor; “okuma izni” diye bir kavram yok. Aynı zamanda <b>satışın ön koşulu</b>: paket/kademe demek alan başına sınır demek, o sınırların yaşadığı katman burası.</div>
-        <div class="ask"><b>Soru:</b> kurumsalda beklenen ayrım hangisi — proje bazlı görünürlük mü, rol bazlı alan kısıtı yeterli mi?</div>
+        <div class="body">Bir üye alandaki <b>her şeyi</b> görüyor; “sadece okuma” diye bir izin yok. Bu aynı zamanda <b>satışın ön koşulu</b>: paket ya da kademe demek alan başına sınır demek, o sınırlar da bu katmanda yaşıyor.</div>
+        <div class="ask"><b>Soru:</b> Kurumsalda beklenen hangisi: proje bazlı görünürlük mü, yoksa rol bazlı kısıt yeterli mi?</div>
       </div>
 
       <div class="dec">
         <div class="idx">02</div>
         <h4>MCP anahtarının kendi kendine alınması <span class="pill risk">Devir riski</span></h4>
-        <div class="body">Her yeni kişi için Railway’de ortam değişkeni <b>elle</b> düzenleniyor. Sistemin en değerli farkı tek kişinin erişimine bağlı.</div>
-        <div class="ask"><b>Soru:</b> staj bitince Railway ve Neon erişimi kimde olacak? Bu cevaplanmadan diğer her şey teorik.</div>
+        <div class="body">Her yeni kişi için sunucudaki ayar <b>elle</b> düzenleniyor. Sistemin en değerli özelliği tek bir kişinin erişimine bağlı.</div>
+        <div class="ask"><b>Soru:</b> Staj bitince Railway ve Neon erişimi kimde olacak? Bu cevaplanmadan gerisi teoride kalıyor.</div>
       </div>
 
       <div class="dec">
         <div class="idx">03</div>
         <h4>Dönem dondurma <span class="pill open">1 Eylül’den devreden</span></h4>
-        <div class="body">Kapanmış dönemin raporu her açılışta yeniden hesaplanıyor. Aynı dönemin sayıları altı ay sonra değişebilir; yönetime iki kez farklı rakam gitmesi raporlamaya güveni tek seferde bitirir.</div>
-        <div class="ask"><b>Soru:</b> dönemi kim mühürler, ve mühürden sonra düzeltme gelirse ne olur?</div>
+        <div class="body">Kapanmış bir dönemin raporu her açılışta yeniden hesaplanıyor. Yani aynı dönemin sayıları altı ay sonra değişebilir. Yönetime iki kez farklı rakam giderse raporlara güven bir anda biter.</div>
+        <div class="ask"><b>Soru:</b> Dönemi kim kapatır? Kapandıktan sonra bir düzeltme gelirse ne olur?</div>
       </div>
 
       <div class="dec">
         <div class="idx">04</div>
         <h4>Süreyi kim girer <span class="pill open">1 Eylül’den devreden</span></h4>
-        <div class="body">Süre girişi çalışıyor ama zorunluluk ve hatırlatma bilinçli konmadı — tartışmalı bir konu ve masadakilerin deneyimi bizimkinden fazla.</div>
-        <div class="ask"><b>Soru:</b> geliştirici mi girer, yönetici mi? Girilmezse ne olur — uyarı, engel, yoksa hiçbir şey?</div>
+        <div class="body">Süre girişi çalışıyor ama zorunluluk ve hatırlatma bilerek konmadı. Tartışmalı bir konu ve bu masadakilerin deneyimi bizimkinden fazla.</div>
+        <div class="ask"><b>Soru:</b> Süreyi geliştirici mi girer, yönetici mi? Girilmezse ne olur: uyarı mı, engel mi, hiçbir şey mi?</div>
       </div>
 
       <div class="dec">
         <div class="idx">05</div>
         <h4>Hangi bildirim ekranı kesmeli</h4>
-        <div class="body">Görev atama, bahsetme ve yorum bildirimleri <b>hiç toast üretmiyor</b> — yalnızca zil rozeti ve ses. Kurumsalda en kritik bildirim en sessiz olanı. Mobil push açılmadan cevaplanmalı.</div>
-        <div class="ask"><b>Soru:</b> bir kullanıcının ekranını bölmeye hangi olay hak kazanır?</div>
+        <div class="body">Görev atama, bahsetme ve yorum bildirimleri ekranda <b>hiç uyarı göstermiyor</b>, sadece zil rozeti ve ses. Yani en önemli bildirimler en sessiz olanlar. Mobil bildirime geçmeden önce bunun cevabı lazım.</div>
+        <div class="ask"><b>Soru:</b> Hangi olay kullanıcının ekranını bölmeyi hak ediyor?</div>
       </div>
 
       <div class="dec">
         <div class="idx">06</div>
         <h4>Ve asıl soru: bunu kim kullanacak <span class="pill risk">Cevapsız</span></h4>
-        <div class="body">Gerçek veriye bakıldığında: pano <b>Mayıs’tan beri güncellenmemiş</b>, dört kartın açıklaması birebir aynı, çalışma alanlarının adları <code>asdasd</code> ve <code>ghghhg</code>. Ürün iyi kurulmuş — <b>eksik olan kod değil.</b></div>
-        <div class="ask"><b>Soru:</b> bir ekip iki hafta bunu gerçekten kullanabilir mi? O iki hafta, hangi özelliğin eksik olduğunu bu listeden daha iyi söyler.</div>
+        <div class="body">Gerçek veriye baktığımızda: pano <b>Mayıs’tan beri güncellenmemiş</b>, dört kartın açıklaması birebir aynı, çalışma alanlarının adları <code>asdasd</code> ve <code>ghghhg</code>. Ürün iyi kurulmuş; <b>eksik olan kod değil.</b></div>
+        <div class="ask"><b>Soru:</b> Bir ekip iki hafta boyunca bunu gerçekten kullanabilir mi? O iki hafta, neyin eksik olduğunu bu listeden daha iyi söyler.</div>
       </div>
 
     </div>
 
-    <h3 class="sub">Bilinçli olarak yapılmayanlar</h3>
+    <h3 class="sub">Bilerek yapmadıklarımız</h3>
     <div class="read">
-      <p>Eksik değil, <b>seçim</b>. Ortak gerekçe: hepsi Jira’yı ağır yapan katman; StoaBoard’un tek gerçek üstünlüğü sadelik.</p>
+      <p>Bunlar eksik değil, <b>tercih</b>. Ortak sebebi şu: hepsi Jira’yı ağırlaştıran katman, StoaBoard’un asıl gücü ise sadelik.</p>
     </div>
     <div class="oos">
       <span>Jira’nın iş akışı motoru</span>
@@ -963,7 +963,7 @@
     </div>
 
     <div class="read">
-      <p>“Neler yaptım” değil, <b>“ben gidince ne kırılır”</b> sorusunun cevabı.</p>
+      <p>Burada “neler yaptım” değil, <b>“ben gidince ne kırılır”</b> sorusunun cevabı var.</p>
     </div>
 
     <div class="table-scroll">
@@ -973,23 +973,23 @@
         </thead>
         <tbody>
           <tr>
-            <td>Üretim erişimi — Railway, Neon, MCP anahtarı</td>
-            <td>Üretim bağlantısı yalnızca Railway ortam değişkenlerinde, hiçbir geliştirici makinesinde durmuyor; MCP anahtarları da orada, elle dağıtılıyor. Doğru karar — ama erişim devredilmeli. Devredilmezse MCP yeni kişiye açılamaz.</td>
+            <td>Üretim erişimi: Railway, Neon, MCP anahtarı</td>
+            <td>Üretim bağlantısı sadece Railway’de duruyor, hiçbir geliştirici bilgisayarında yok; MCP anahtarları da orada ve elle dağıtılıyor. Doğru karar, ama erişimin devredilmesi gerekiyor. Devredilmezse MCP yeni kimseye açılamaz.</td>
             <td><span class="pill risk">Yüksek</span></td>
           </tr>
           <tr>
             <td>CI kapısı</td>
-            <td>GitHub Actions dosyası yerinde ama <b>çalışmıyor</b> — hesabın faturalandırması kilitli. Bugün koruyan şey her makinedeki <code>pre-push</code> kancası. Kilit açılınca dosya değişiklik gerekmeden çalışacak.</td>
+            <td>GitHub Actions dosyası yerinde ama <b>çalışmıyor</b>, çünkü hesabın faturalandırması kilitli. Bugün koruyan şey her bilgisayardaki <code>pre-push</code> kancası. Kilit açılınca dosya olduğu gibi çalışacak.</td>
             <td><span class="pill open">Orta</span></td>
           </tr>
           <tr>
             <td>Veritabanı şeması</td>
-            <td>Deploy’da kendiliğinden gitmiyor, bilinçli ve elle uygulanıyor. Ama göç geçmişi sürümlü değil.</td>
+            <td>Deploy’da kendiliğinden gitmiyor, bilerek ve elle uygulanıyor. Ama değişiklik geçmişi sürümlenmiyor.</td>
             <td><span class="pill open">Orta</span></td>
           </tr>
           <tr>
             <td>Bilgi / bağlam</td>
-            <td>Dokuz belge, her kararın gerekçesiyle. Giriş noktası <code>DEVIR.md</code> ve <code>TODO.md</code>; commit mesajları uzun ve gerekçeli.</td>
+            <td>Dokuz belge var, her kararın sebebiyle birlikte. Başlangıç noktası <code>DEVIR.md</code> ve <code>TODO.md</code>; commit mesajları da uzun ve gerekçeli.</td>
             <td><span class="pill ok">Düşük</span></td>
           </tr>
         </tbody>
@@ -997,20 +997,20 @@
     </div>
 
     <div class="pull">
-      Devredilen şey kod değil, kararların gerekçesi. Kod zaten okunabilir; okunamayan şey <i>neden böyle yapıldığıdır</i>.
+      Devredilen şey kod değil, kararların sebebi. Kod zaten okunabiliyor; okunamayan şey <i>neden böyle yapıldığı</i>.
     </div>
 
     <div class="note-box">
-      <span class="eyebrow">Devralan biri ilk gün</span>
-      <p style="margin-bottom:0">Tek komut makineyi hazırlıyor: <code>git config core.hooksPath .githooks</code>. Yapılmazsa push öncesi test ve derleme kapısı çalışmaz — bugün koruyan tek şey o. Ardından <code>DEVIR.md</code>’nin en üst bölümü “şu an gerçekte ne doğru” diyor; belgeler çelişirse o dosyaya ve <code>git log</code>’a güvenilir.</p>
+      <span class="eyebrow">Devralan kişi ilk gün ne yapar</span>
+      <p style="margin-bottom:0">Tek komut bilgisayarı hazırlıyor: <code>git config core.hooksPath .githooks</code>. Bu yapılmazsa push öncesi test ve derleme kontrolü çalışmaz, bugün koruyan tek şey o. Sonra <code>DEVIR.md</code>’nin en üst bölümü “şu an gerçekte ne doğru” diye anlatıyor. Belgeler birbiriyle çelişirse o dosyaya ve <code>git log</code>’a güvenin.</p>
     </div>
   </section>
 
   <div class="colophon">
     <span>StoaBoard · ikinci tur · 16 Eylül 2026</span>
-    <span>500 test · 84 süit · 0 hata</span>
+    <span>500 test, 84 grup, 0 hata</span>
     <span>MCP yüzeyi 0.6.0</span>
-    <span>TR/EN tam çeviri: 1.209 anahtar</span>
+    <span>TR/EN tam çeviri: 1.209 metin</span>
   </div>
 
 </div>
