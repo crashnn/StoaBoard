@@ -32,6 +32,7 @@ import {
   meTasksRouter,
   taskLinkedNotesRouter,
 } from './routes/notes.js';
+import { tasinmaRouter } from './routes/tasinma.js';
 import {
   taskAttachmentsRouter,
   attachmentsRouter,
@@ -140,6 +141,8 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   // Daha spesifik path'ler önce mount edilmeli (Express ilk eşleşen handler'a düşer).
   app.use('/api/workspaces/me/tasks', meTasksRouter);
+  // Taşınma (dışa/içe aktarma). workspacesRouter'dan ÖNCE: eşleşmeyen yol oraya düşer.
+  app.use('/api/workspaces/me', tasinmaRouter);
   app.use('/api/workspaces', workspacesRouter);
   app.use('/api/projects/:projectId/tasks', projectTasksRouter);
   app.use('/api/projects', projectsRouter);

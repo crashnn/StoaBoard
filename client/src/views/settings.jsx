@@ -1114,6 +1114,20 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                 </button>
               </div>
             </div>
+            {/* Taşınma: alanın tamamı tek JSON. Düz bağlantı, CSV indirmeyle
+                aynı kalıp; oturum çerezi yeterli. Sunucu manage_workspace
+                istiyor ve denetim kaydına yazıyor (routes/tasinma.js). */}
+            <div className="field" style={{ borderTop: '1px solid var(--line)', marginTop: 16, paddingTop: 16 }}>
+              <label>{_t('set_ws_export_title','Dışa aktar')}</label>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ flex: 1, minWidth: 200, fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
+                  {_t('set_ws_export_desc','Projeler, kolonlar, kartlar, alt görevler ve yorumlar tek JSON dosyasında. Ekler ve süre kayıtları dahil değil. İndirme denetim kaydına yazılır.')}
+                </span>
+                <a className="btn btn-ghost" style={{ fontSize: 12, flexShrink: 0, textDecoration: 'none' }} href="/api/workspaces/me/export" download>
+                  <Icon name="download" size={12} /> {_t('set_ws_export_btn','JSON indir')}
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}

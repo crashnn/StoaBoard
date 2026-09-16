@@ -70,6 +70,7 @@ const ACTION_LABEL = {
   'member.role_changed': ['rep_act_role_changed', 'Üye rolü değişti'],
   'invite.code_viewed': ['rep_act_invite_viewed', 'Davet kodu görüntülendi'],
   'workspace.trash_emptied': ['rep_act_trash_emptied', 'Çöp kutusu boşaltıldı'],
+  'workspace.export': ['rep_act_ws_export', 'Çalışma alanı dışa aktarıldı'],
   // Claude'un MCP üzerinden yaptığı yazmalar (0.4.0); satırdaki kişi, anahtarın sahibi.
   'mcp.task_created': ['rep_act_mcp_created', 'Kart açıldı — MCP'],
   'mcp.task_updated': ['rep_act_mcp_updated', 'Kart düzenlendi — MCP'],

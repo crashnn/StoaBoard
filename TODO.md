@@ -61,7 +61,13 @@ Doğru itiraz. MCP yolu kart kart yazar: yüz kartlık bir pano yüz araç
 **Kapsam kararı:** Bu iş "Jira'yı ağırlaştıran katman"dan değil; tam
 tersi, sadeliğin ön koşulu: taşınması kolay olmayan araç denenmez.
 
-- [ ] Dışa aktar JSON + denetim kaydı
+- [x] Dışa aktar JSON + denetim kaydı — **yapıldı 16 Eylül**:
+      `GET /api/workspaces/me/export` (`routes/tasinma.js`, ince), paketleyici
+      saf (`lib/tasinma.js`, 12 test). Ayarlar → Çalışma Alanı → "JSON indir".
+      Plandan bir sapma: **e-posta dosyada yok** (GUVENLIK §5, dosya elden
+      ele dolaşır); eşleme slug + adla. Kapsam dışı olanlar dosyada
+      `not_included` olarak yazılı. Canlıda indirme + denetim kaydı satırı
+      doğrulanacak.
 - [ ] İçe aktar: kendi JSON
 - [ ] İçe aktar: Trello JSON
 - [ ] İçe aktar: genel CSV, sütun eşleme
