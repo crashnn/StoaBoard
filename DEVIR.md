@@ -5,13 +5,81 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 15 Eylül 2026 akşamüstü, **ofis makinesinde** (5432 kapalı).
+**Son güncelleme:** 16 Eylül 2026 sabahı, **ofis makinesinde** (5432 kapalı).
+En taze bölüm **0-X**.
 
 > **Toplantı yarın: 16 Eylül 13:30–14:30, Teams ekran paylaşımı.** Yeni Claude
 > hesabı, yeni demo alanı, 20+ commit'lik bir düzeltme günü (0-W). Sabah
 > yapılacak tek iş: sunum sayfasının sayılarını yenileyip yayımlamak, 11:00'e
 > kadar. Demo rehberi [TOPLANTI-2-PLAN.md](TOPLANTI-2-PLAN.md), hesap geçişi
 > [HESAP-GECISI.md](HESAP-GECISI.md).
+
+---
+
+## 0-X. 16 Eylül sabahı — rapor işi kapandı, bağlayıcı kuruldu
+
+**Son güncelleme bu bölüm.** Oturum yeniden başlatılacağı için not bırakıldı;
+aşağıdaki "yeniden başlatınca" listesi ilk okunacak yer.
+
+### Yapılanlar (commit `5900a02`)
+
+- **Rapordaki satıra tıklayınca kart açılıyor.** 15 Eylül'ün açık kusuru:
+  kişi raporu bütün projeleri birleştirdiğinden satırdaki kart çoğu zaman
+  aktif projede değildi ve tıklama **sessizce** hiçbir şey yapmıyordu.
+  Raporun kendi açma kopyası ile bildirimlerinki tek fonksiyonda birleşti:
+  `openTaskById(taskId, returnView)` (`app.jsx`). Rapordan açılan kart
+  kapanınca rapora dönüyor.
+- **TODO'daki plandan sapıldı, gerekçesi önemli.** Orada "proje değiştirmek
+  şart değil" yazıyordu. Değil, ama tehlikeli: kolonlar projeye ait ve
+  çekmece `DATA.COLUMNS`u aktif projeden okuyor — proje değiştirmeden açılan
+  kartın "taşı" menüsü **başka projenin** kolonlarını sunar, seçilirse kart
+  yanlış kolona yazılır. Bu yüzden proje değiştiriliyor. Asıl çözüm (kolon
+  listesini görev ayrıntısıyla taşımak) TODO'ya ayrı madde olarak yazıldı.
+- **İki sessiz başarısızlık daha kapandı:** boş gövdeli görev yanıtı ve
+  `switchProject`in yalnızca `console.error` yazan catch'i; ikisi de toast.
+- **Kurumsal şablon biçimi — dörtlü tamam:** künyede kaynak satırı, her
+  tablonun altında hesaplama dipnotu (`ReportFoot`), kişi raporunda dört sayı
+  kutusu, baskı tipografisi (`@media print`: serif başlık, küçük büyük harf
+  etiket ve sütun adı, gri dipnot). On yeni dil anahtarı, tr ve en.
+- **500 test geçiyor, ön yüz derlemesi temiz.** Depo `main` üzerinde,
+  `5900a02` henüz **push edilmedi** (kanca push'ta testleri yeniden koşar).
+
+### Bağlayıcı bu makinede kuruldu — yeniden başlatma gerekiyor
+
+Claude Code oturumuna StoaBoard MCP sunucusu eklendi:
+
+- Nereye: `~/.claude.json` → `projects["c:/…/StoaBoard"].mcpServers.stoaboard`
+  (**local kapsam** — depoya girmiyor, `.mcp.json` oluşturulmadı).
+- Ne: `type: http`, `url: https://www.stoaboard.com/mcp`,
+  `headers: { "x-auth-token": <anahtar> }`.
+- Anahtar `server/.env`'deki `STOA_MCP_TOKENS` çiftinin **iki nokta sonrası**
+  kısmı; slug `eray-atalay-3`, anahtar izi `9BG0yJx_`. Ekrana basılmadı.
+- Canlı uç curl ile doğrulandı: `initialize` → **HTTP 200**,
+  `serverInfo.name: stoaboard`, `version: 0.6.0`.
+- Yedek: yazmadan önce `~/.claude.json` kopyası oturum scratchpad'ine alındı.
+
+### Yeniden başlatınca, sırayla
+
+1. `/mcp` → `stoaboard` listede görünmeli. Hemen görünmezse bir iki dakika
+   bekle (15 Eylül'de de öyle olmuştu).
+2. `whoami` çağırt: aktif alan ve `available_tools` gelmeli (MCP 0.6.0).
+3. `git push` (kanca testleri ve derlemeyi yeniden koşar) — `5900a02` bekliyor.
+4. **Sunumu sıkıştırma** — kullanıcının istediği, henüz başlanmadı. Kaynak
+   `TOPLANTI-2-SUNUM.html`, artifact URL'i TOPLANTI-2-PLAN.md'nin başında,
+   güncellenirken aynı URL'e yayımlanır (önce `read`, sonra publish).
+5. Sunum sayılarını yenile (0-W'nin sabah listesindeki 2. madde, hâlâ açık).
+   Bugünkü değerler: **toplam commit 208**, 1 Eylül'den beri **145**,
+   **500 test**, MCP **0.6.0**, **20 araç**.
+6. Toplantı **13:30–14:30**. Demo öncesi kontrol listesi 0-W'nin sonunda:
+   tarayıcıda F5, dil Türkçe, bildirim sesi kısık, Eray-2'de bildirim paneli
+   açılmasın.
+
+### Açık kalanlar (değişmedi)
+
+Kullanıcıda: süre girişi 3-4 karta, üçüncü hesap, yedek ekran kaydı, tool
+permissions kararı, `rapor-ornek.pdf`i ilgili karta ekleme. Kodda: bildirim
+`userId` süzgeci tarama testi, MCP `add_attachment`, kolon bazlı darboğaz
+tablosu, Notion-lite faz 2, **lint kurulumu** (toplantı sonrası ilk iş).
 
 ---
 
