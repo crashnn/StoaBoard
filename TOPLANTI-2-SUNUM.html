@@ -586,7 +586,7 @@
   <header class="masthead">
     <div class="eyebrow">BDH Netaş · İkinci tanıtım toplantısı</div>
     <h1>StoaBoard: ikinci tur</h1>
-    <p class="deck">1 Eylül’de konuştuklarımızdan bugüne: neler ekledik, hangi kararları birlikte vermemiz gerekiyor, ben ayrılınca nelere dikkat etmek lazım.</p>
+    <p class="deck">1 Eylül’de konuştuklarımızdan bugüne: neler ekledik, hangi konularda sizin görüşünüz lazım, proje bundan sonra nasıl büyüyecek.</p>
     <div class="meta">
       <span><b>16 Eylül 2026</b></span>
       <span>Canlı: <b>stoaboard.com</b></span>
@@ -902,9 +902,9 @@
 
       <div class="dec">
         <div class="idx">02</div>
-        <h4>MCP anahtarının kendi kendine alınması <span class="pill risk">Devir riski</span></h4>
-        <div class="body">Her yeni kişi için sunucudaki ayar <b>elle</b> düzenleniyor. Sistemin en değerli özelliği tek bir kişinin erişimine bağlı.</div>
-        <div class="ask"><b>Soru:</b> Staj bitince Railway ve Neon erişimi kimde olacak? Bu cevaplanmadan gerisi teoride kalıyor.</div>
+        <h4>Yeni bir kişi Claude’u nasıl bağlar? <span class="pill open">Ürün sorusu</span></h4>
+        <div class="body">Bugün her yeni kişi için sunucudaki ayarı ben <b>elle</b> düzenliyorum. Sistemin en değerli özelliği, kurulumu en zahmetli olan özellik.</div>
+        <div class="ask"><b>Soru:</b> Anahtarı kullanıcı kendi ayarlarından mı alsın, yoksa yönetici mi versin? Kim iptal edebilsin?</div>
       </div>
 
       <div class="dec">
@@ -958,33 +958,33 @@
   <section class="part">
     <div class="part-head">
       <div class="part-num">04</div>
-      <h2>Devir</h2>
+      <h2>Sürdürülebilirlik</h2>
       <div class="clock">~4 dk</div>
     </div>
 
     <div class="read">
-      <p>Burada “neler yaptım” değil, <b>“ben gidince ne kırılır”</b> sorusunun cevabı var.</p>
+      <p>Bu proje bugün büyük ölçüde tek kişiye bağlı. Bunu saklamak yerine listeledim: <b>nerede bağlı, ne yapılırsa bağlı olmaktan çıkar.</b></p>
     </div>
 
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th style="width:24%">Bağımlılık</th><th>Bugünkü durum</th><th style="width:14%">Risk</th></tr>
+          <tr><th style="width:24%">Konu</th><th>Bugünkü durum ve çıkış yolu</th><th style="width:14%">Risk</th></tr>
         </thead>
         <tbody>
           <tr>
             <td>Üretim erişimi: Railway, Neon, MCP anahtarı</td>
-            <td>Üretim bağlantısı sadece Railway’de duruyor, hiçbir geliştirici bilgisayarında yok; MCP anahtarları da orada ve elle dağıtılıyor. Doğru karar, ama erişimin devredilmesi gerekiyor. Devredilmezse MCP yeni kimseye açılamaz.</td>
+            <td>Üretim bağlantısı sadece Railway’de duruyor, hiçbir geliştirici bilgisayarında yok; MCP anahtarları da orada ve elle dağıtılıyor. Doğru karar; ekip büyüdüğünde erişim paylaşılmalı ve MCP anahtarı kendi kendine alınabilir olmalı (karar 02).</td>
             <td><span class="pill risk">Yüksek</span></td>
           </tr>
           <tr>
             <td>CI kapısı</td>
-            <td>GitHub Actions dosyası yerinde ama <b>çalışmıyor</b>, çünkü hesabın faturalandırması kilitli. Bugün koruyan şey her bilgisayardaki <code>pre-push</code> kancası. Kilit açılınca dosya olduğu gibi çalışacak.</td>
+            <td>GitHub Actions dosyası yerinde ama <b>çalışmıyor</b>, çünkü hesabın faturalandırması kilitli. Bugün koruyan şey her bilgisayardaki <code>pre-push</code> kancası. Kilit açılınca dosya olduğu gibi çalışacak; o zamana kadar yeni katılan herkes kancayı kurmalı.</td>
             <td><span class="pill open">Orta</span></td>
           </tr>
           <tr>
             <td>Veritabanı şeması</td>
-            <td>Deploy’da kendiliğinden gitmiyor, bilerek ve elle uygulanıyor. Ama değişiklik geçmişi sürümlenmiyor.</td>
+            <td>Deploy’da kendiliğinden gitmiyor, bilerek ve elle uygulanıyor. Ama değişiklik geçmişi sürümlenmiyor; sıradaki adım göç dosyalarına geçmek.</td>
             <td><span class="pill open">Orta</span></td>
           </tr>
           <tr>
@@ -997,11 +997,11 @@
     </div>
 
     <div class="pull">
-      Devredilen şey kod değil, kararların sebebi. Kod zaten okunabiliyor; okunamayan şey <i>neden böyle yapıldığı</i>.
+      Bir projeye yeni birini katan şey kod değil, kararların sebebi. Kod zaten okunabiliyor; okunamayan şey <i>neden böyle yapıldığı</i>.
     </div>
 
     <div class="note-box">
-      <span class="eyebrow">Devralan kişi ilk gün ne yapar</span>
+      <span class="eyebrow">Projeye yeni biri katılırsa ilk gün</span>
       <p style="margin-bottom:0">Tek komut bilgisayarı hazırlıyor: <code>git config core.hooksPath .githooks</code>. Bu yapılmazsa push öncesi test ve derleme kontrolü çalışmaz, bugün koruyan tek şey o. Sonra <code>DEVIR.md</code>’nin en üst bölümü “şu an gerçekte ne doğru” diye anlatıyor. Belgeler birbiriyle çelişirse o dosyaya ve <code>git log</code>’a güvenin.</p>
     </div>
   </section>

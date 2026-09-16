@@ -26,7 +26,7 @@ kurulacağı ve oda darsa neyin kesileceği.
 | 28-32 | **Güvenlik + testler** | Kusur tablosu | "İki turda on üç kusur, hiçbiri kullanıcıdan gelmedi. 1 Eylül'de hiç testimiz yoktu, bugün 500 var." |
 | 32-37 | **Yöntem (Bölüm 2)** | Tek paragraf kural + mutasyon kutusu | "Asıl anlatmak istediğim kısım bu." |
 | 37-48 | **Kararlar (Bölüm 3)** | Karar kartları | "Altı soru var, cevapları sizde. Ben kod tarafını hazırlayabilirim, kararı veremem." |
-| 48-52 | **Devir (Bölüm 4)** | Devir tablosu, dört satır | "Ben gidince ne kırılır sorusunun dürüst cevabı." |
+| 48-52 | **Sürdürülebilirlik (Bölüm 4)** | Dört satırlık tablo | "Proje bugün nerede tek kişiye bağlı, ne yapılırsa çıkar." Ayrılma iması yok: proje kullanıcının kendi projesi, staj bitince de sürüyor; oda kurucuyu değerlendiriyor, devralmıyor (16 Eylül). |
 | 52-60 | **Soru** | — | Kalan sekiz dakika odaya. 16 Eylül sabahı sayfa bu yüzden sıkıştırıldı: MCP merdiveni 9 → 4 basamak, yöntem bölümü yarıya, devir tablosu 6 → 4 satır. |
 
 *Sayfadaki bölüm başlıklarında yazan süreler demoyu içermiyor; demo Bölüm 1'in
