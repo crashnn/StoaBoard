@@ -209,7 +209,7 @@ chatUploadRouter.post(
     const origName = req.file.originalname || '';
     if (!origName) return res.status(400).json({ error: 'err_invalid_file', message: 'Geçersiz dosya' });
     if (req.file.size > 50 * 1024 * 1024) {
-      return res.status(400).json({ error: 'err_file_too_large', message: "Dosya 50 MB'dan büyük olamaz" });
+      return res.status(400).json({ error: 'err_chat_file_too_large', message: "Dosya 50 MB'dan büyük olamaz" });
     }
 
     const ext = origName.includes('.')

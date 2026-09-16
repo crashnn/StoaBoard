@@ -78,6 +78,27 @@ describe('dil sözlüğü — tr ve en aynı anahtarları taşımalı', () => {
     );
   });
 
+  // 16 Eylül 2026: aynı anahtar bir sözlüğe iki kez yazıldı (err_file_too_large,
+  // 20 MB ve 50 MB için). JavaScript sonrakini sessizce üstüne yazar; derleme
+  // yalnızca uyarır, kanca uyarıyı durdurmaz. Kullanıcı 20 MB sınırında
+  // "50 MB" mesajı görürdü. Sözlük Set'e çevrilince tekrar kaybolduğu için
+  // bu test satırları sayıyor.
+  test('bir sözlükte aynı anahtar iki kez yok', () => {
+    const L = dataSrc.split(/\r?\n/);
+    for (const lang of ['tr', 'en']) {
+      const bas = L.findIndex((l) => new RegExp(`^  ${lang}: \\{`).test(l));
+      let son = bas + 1;
+      while (son < L.length && !/^ {2}\},/.test(L[son])) son += 1;
+      const sayac = new Map();
+      for (const satir of L.slice(bas + 1, son)) {
+        const temiz = satir.replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g, "''");
+        for (const m of temiz.matchAll(/\b([a-z][a-z0-9_]*)\s*:/g)) sayac.set(m[1], (sayac.get(m[1]) || 0) + 1);
+      }
+      const tekrar = [...sayac].filter(([, n]) => n > 1).map(([k, n]) => `${lang}.${k} ×${n}`);
+      assert.deepEqual(tekrar, [], 'Aynı anahtar bir sözlükte birden çok kez yazılmış; sonraki öncekini sessizce eziyor.');
+    }
+  });
+
   test('sözlük boş değil', () => {
     // Ayrıştırıcı bozulursa iki küme de boş çıkar ve üstteki iki test sessizce
     // geçerdi. Bu testin tek işi bunu engellemek.
