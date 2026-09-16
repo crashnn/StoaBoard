@@ -12,6 +12,72 @@ Canlı: [stoaboard.com](https://www.stoaboard.com) · Railway + Neon PostgreSQL,
 
 ---
 
+## 📝 İkinci toplantı notları — 16 Eylül 2026
+
+24 dakika, iki katılımcı. Ürün beğenildi, öneriler geldi, iletişim açık
+kaldı (LinkedIn). Birinci turun notları [TOPLANTI-KARSILIGI.md](TOPLANTI-KARSILIGI.md)'de
+kapatıldı; bu bölüm ikinci turun notlarını aynı kalıpla tutuyor: not, ne
+kastedildiği, karşılığı, durum. Üçüncü toplantıya bu liste kapanmış olarak
+gidilir.
+
+### 1. Görevleri dışa / içe aktarma — başka platformdan gelmek, başka platforma gitmek
+
+**Not:** "Export-Import Tasks başka bir platforma." İki yön soruldu: Trello,
+Jira ya da Notion'daki bir alan StoaBoard'a taşınabilir mi; StoaBoard'daki
+alan dışarı çıkarılabilir mi.
+
+**Toplantıda verilen cevap:** MCP yoluyla teknik olarak mümkün; dış platform
+da MCP konuşuyorsa Claude iki taraf arasında köprü olur. Karşılık: *"Teknik
+kısma hâkim olmayan biri için basit, elle bir dışa/içe aktar olsa iyi olur."*
+Doğru itiraz. MCP yolu kart kart yazar: yüz kartlık bir pano yüz araç
+çağrısı, yüz denetim satırı, ve bir sohbet penceresi. Taşınma bir ürün
+özelliği olmalı, bir hüner değil.
+
+**Karşılığı (yapılacak):**
+- **Dışa aktar (Ayarlar → Çalışma alanı):** tek JSON dosyası; projeler,
+  kolonlar, kartlar (açıklama, etiket, öncelik, tarihler, alt görevler,
+  yorumlar), atananlar ad ve e-postayla. Kişi bazlı CSV zaten var (raporlar);
+  bu, alanın tamamı. Ekler bilerek ilk sürümde yok (boyut; ayrı bir madde).
+- **İçe aktar:** önce kendi JSON'umuz (yedek/geri yükleme aynı kapıdan
+  geçer), sonra Trello'nun JSON dışa aktarımı (herkese açık, belgeli biçim),
+  sonra genel CSV (sütun eşleme ekranıyla: başlık, kolon, atanan, tarih).
+  Jira bilerek sonda: dışa aktarımı XML/CSV ve alan yapısı kuruluma göre
+  değişiyor; gerçek bir Jira dosyası olmadan yazılmaz.
+- Eşleşmeyen kullanıcı için kural: kart atanmadan gelir, dosyada adı
+  yorum olarak düşülür; sessizce yanlış kişiye atanmaz.
+- Kolon eşleme: dış kolon adı bizde yoksa yeni kolon açılır; "bitti"
+  kolonu içe aktaranın seçimiyle işaretlenir, tahmin edilmez (raporlar
+  buna dayanıyor).
+
+**Güvenlik eleği (GUVENLIK.md §4, şimdiden cevaplanması gerekenler):**
+- Dışa aktarma bir veri çıkış kapısıdır: yalnızca `manage_workspace`,
+  denetim kaydına `workspace.export` satırı (rapor dışa aktarımıyla aynı
+  kalıp: kim, ne zaman, kaç kart, IP).
+- İçe aktarma bir giriş kapısıdır: dosya boyutu sınırı, kart gövdesi
+  `lib/doc.js` denetiminden geçer (HTML/betik taşımaz), kart sayısı sınırı,
+  hata olursa **ya hepsi ya hiçbiri** (yarım pano bırakma).
+- CSV'de formül enjeksiyonu kuralı (1 Eylül) dışa aktarımda da geçerli.
+
+**Kapsam kararı:** Bu iş "Jira'yı ağırlaştıran katman"dan değil; tam
+tersi, sadeliğin ön koşulu: taşınması kolay olmayan araç denenmez.
+
+- [ ] Dışa aktar JSON + denetim kaydı
+- [ ] İçe aktar: kendi JSON
+- [ ] İçe aktar: Trello JSON
+- [ ] İçe aktar: genel CSV, sütun eşleme
+- [ ] Ekler (ayrı madde, boyut kararı gerek)
+
+### 2. "Zaten var" önerileri
+
+Öteki öneriler var olan özelliklerdi; gösterildi, kapandı. Kayda değer
+tarafı şu: özellik var ama 24 dakikalık bir turda görünmedi. Bu bir
+keşfedilebilirlik sinyali, kod işi değil. Hangi özelliklerin sorulduğu
+yazılırsa (aşağıya), üçüncü turda demo sırası ona göre kurulur.
+
+- [ ] Sorulan özellikler: *(kullanıcı hatırladıkça buraya)*
+
+---
+
 ## ✅ Güvenlik turu — 1 Eylül 2026
 
 Raporlama turunun hemen ardından, dal üzerinde yapılan güvenlik denetimi ve

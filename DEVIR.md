@@ -6,13 +6,34 @@ Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
 **Son güncelleme:** 16 Eylül 2026 sabahı, **ofis makinesinde** (5432 kapalı).
-En taze bölüm **0-X**.
+En taze bölüm **0-Y**.
 
 > **Toplantı BUGÜN: 16 Eylül 13:30–14:30, Teams ekran paylaşımı.** Yeni Claude
 > hesabı, yeni demo alanı, 20+ commit'lik bir düzeltme günü (0-W). Sabah
 > yapılacak tek iş: sunum sayfasının sayılarını yenileyip yayımlamak, 11:00'e
 > kadar. Demo rehberi [TOPLANTI-2-PLAN.md](TOPLANTI-2-PLAN.md), hesap geçişi
 > [HESAP-GECISI.md](HESAP-GECISI.md).
+
+---
+
+## 0-Y. 16 Eylül öğleden sonra — toplantı yapıldı
+
+24 dakika, iki katılımcı. Ürün beğenildi, iletişim açık kaldı (LinkedIn).
+Sunum karıştı, demoda konu dağıldı; sonuç yine de beklenen çıktıydı.
+Kayda değer tek öneri **görevleri dışa/içe aktarma** (başka platformdan
+taşınma); TODO'nun başında yeni bölüm, güvenlik eleği cevaplarıyla.
+Öteki öneriler var olan özelliklerdi: keşfedilebilirlik notu aynı bölümde.
+
+Sabahki sunum turunda üç şey değişti ve hepsi commit'te: sayılar
+yenilendi ve sayfa sıkıştırıldı (`9e5b0bd`), dil sadeleşti ve em dash
+kalktı (`7a0eeb2`), "Devir" bölümü "Sürdürülebilirlik" oldu (`e8726c7`).
+Sonuncusunun gerekçesi önemli: proje kullanıcının kendi projesi, kurucusu
+o, staj bitince de sürüyor; "gidince ne kırılır" çerçevesi olmayan bir
+ayrılığı ilan ediyordu. Bu bilgi hafızaya da yazıldı.
+
+**Toplantı sonrası ilk iş (0-W'de söz verilen):** lint kurulumu.
+`react-hooks/rules-of-hooks` ve `no-undef` 15 Eylül'ün iki canlı hatasını
+derlemeden önce yakalardı. Kancaya bağlanır.
 
 ---
 
