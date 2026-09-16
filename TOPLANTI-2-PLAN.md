@@ -4,8 +4,8 @@
 **Amaç sırası:** ne yapıldı → nasıl çalışıldı → karar soruları → devir.
 **Sunum sayfası:** https://claude.ai/artifact/UDvf3wAgHpTGKf9m1X2fzx
 (15 Eylül'de yeni Claude hesabından yayımlandı; kaynağı depoda
-`TOPLANTI-2-SUNUM.html`, sayılar 15 Eylül itibarıyla — commit sonrası
-yeniden hesaplanıp yayımlanır.)
+`TOPLANTI-2-SUNUM.html`. Sayılar 16 Eylül sabahı yenilendi ve sayfa
+sıkıştırıldı — aynı URL'e yeniden yayımlandı.)
 
 Bu dosya sunum sayfasının ikizi değil. Sayfa **karşı tarafın gördüğü** şey;
 bu dosya **elde tutulan** şey: hangi dakikada ne söyleneceği, demo nasıl
@@ -21,12 +21,13 @@ kurulacağı ve oda darsa neyin kesileceği.
 | 3-6 | **Faz şeridi** | Üçlü şerit | "Toplantı, sonra üç gün, sonra bir ara, sonra MCP. Sıra bu — önce sizin dedikleriniz." |
 | 6-12 | **Öncesi/sonrası tablosu** | Ana tablo | "Sol sütun 1 Eylül'de elimizde olan, sağ sütun bugün. On iki satır." |
 | 12-16 | **Toplantı notu → karşılığı** | İkinci tablo | "Şimdi tek tek sizin notlarınız. Yarım kalan ikisini de söyleyeceğim." |
-| 16-19 | **MCP** | Sürüm merdiveni + araç ızgarası | "Beş günde on sürüm. Yirmi araç: onu okuyor, onu yazıyor." |
-| 19-29 | **CANLI DEMO** | Bölünmüş ekran: StoaBoard + Claude | Aşağıdaki senaryo |
-| 29-33 | **Güvenlik + testler** | Kusur tablosu | "İki turda on üç kusur, hiçbiri kullanıcıdan gelmedi. 1 Eylül'de hiç testimiz yoktu, bugün 485 var." |
-| 33-41 | **Yöntem (Bölüm 2)** | Kural merdiveni + mutasyon kutusu | "Asıl anlatmak istediğim kısım bu." |
-| 41-52 | **Kararlar (Bölüm 3)** | Karar kartları | "Altı soru var, cevapları sizde. Ben kod tarafını hazırlayabilirim, kararı veremem." |
-| 52-58 | **Devir (Bölüm 4)** | Devir tablosu | "Ben gidince ne kırılır sorusunun dürüst cevabı." |
+| 16-18 | **MCP** | Dört basamaklı merdiven + araç ızgarası | "Beş günde on sürüm. Yirmi araç: onu okuyor, onu yazıyor." |
+| 18-28 | **CANLI DEMO** | Bölünmüş ekran: StoaBoard + Claude | Aşağıdaki senaryo |
+| 28-32 | **Güvenlik + testler** | Kusur tablosu | "İki turda on üç kusur, hiçbiri kullanıcıdan gelmedi. 1 Eylül'de hiç testimiz yoktu, bugün 500 var." |
+| 32-37 | **Yöntem (Bölüm 2)** | Tek paragraf kural + mutasyon kutusu | "Asıl anlatmak istediğim kısım bu." |
+| 37-48 | **Kararlar (Bölüm 3)** | Karar kartları | "Altı soru var, cevapları sizde. Ben kod tarafını hazırlayabilirim, kararı veremem." |
+| 48-52 | **Devir (Bölüm 4)** | Devir tablosu, dört satır | "Ben gidince ne kırılır sorusunun dürüst cevabı." |
+| 52-60 | **Soru** | — | Kalan sekiz dakika odaya. 16 Eylül sabahı sayfa bu yüzden sıkıştırıldı: MCP merdiveni 9 → 4 basamak, yöntem bölümü yarıya, devir tablosu 6 → 4 satır. |
 
 *Sayfadaki bölüm başlıklarında yazan süreler demoyu içermiyor; demo Bölüm 1'in
 içinden 10 dakika alıyor.*
@@ -137,7 +138,7 @@ miyim' olur. Cevap: kayıtlı."*
 
 **5. Testler — "nasıl emin oluyoruz"** *(1 dk)*
 
-Terminalde `cd server && npm test`. 485 test, ~22 saniye, veritabanı yok.
+Terminalde `cd server && npm test`. 500 test, ~22 saniye, veritabanı yok.
 Söylenecek: *"Bu ofis ağında da koşuyor, veritabanına erişim gerektirmiyor."*
 
 ### Demo kırılırsa
@@ -159,7 +160,7 @@ Söylenecek: *"Bu ofis ağında da koşuyor, veritabanına erişim gerektirmiyor
 
 ## 3 · Anlatırken dikkat
 
-**Sayıyı gerekçesiyle söyle.** "485 test" tek başına bir övünme; "485 test ve
+**Sayıyı gerekçesiyle söyle.** "500 test" tek başına bir övünme; "500 test ve
 üçü geçen hafta testin kendisinin yanlış olduğunu buldu" bir yöntem anlatır.
 Odadaki profesyoneller birinciyi her gün duyuyor.
 
@@ -204,7 +205,7 @@ kapanış toplantısı yapabilir miyiz diye soracaktım.
   kuralı, e-posta bildirimi ve bir güvenlik turu. Sonra ayrı bir adım olarak
   panonun bir yapay zekâ istemcisi tarafından sürülebilmesini ekledim — kısa
   bir canlı demo göstermek isterim. Bu süreçte on üç güvenlik kusuru kapandı
-  ve depoda hiç yokken 485 otomatik test oluştu.
+  ve depoda hiç yokken 500 otomatik test oluştu.
 - **Size sormam gereken altı karar.** Bunlar kod değil ürün kararları: proje
   bazlı erişim ayrımı, süre girişini kimin yapacağı, dönem kapanışının nasıl
   mühürleneceği gibi. Cevapları sizin deneyiminizde, bende değil.

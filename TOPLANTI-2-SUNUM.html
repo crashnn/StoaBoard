@@ -600,15 +600,15 @@
 <div class="wrap">
   <div class="figures">
     <div class="fig">
-      <div class="n">115</div>
+      <div class="n">148</div>
       <div class="l">commit · 1 Eylül’den beri</div>
     </div>
     <div class="fig">
-      <div class="n">+20.193<small> / −924</small></div>
-      <div class="l">satır · 92 dosya</div>
+      <div class="n">+22.831<small> / −1.066</small></div>
+      <div class="l">satır · 96 dosya</div>
     </div>
     <div class="fig">
-      <div class="n">494</div>
+      <div class="n">500</div>
       <div class="l">otomatik test · hepsi geçiyor<br>1 Eylül’de hiç yoktu</div>
     </div>
     <div class="fig">
@@ -644,9 +644,9 @@
         <div class="what">Kod yazılmadı; proje bazlı erişim tasarımı düşünüldü</div>
       </div>
       <div class="phase">
-        <div class="when">9–15 EYLÜL</div>
-        <div class="count">63 commit</div>
-        <div class="what">MCP yüzeyi sıfırdan 0.6.0’a; arada gösterge paneli, erişilebilirlik ve bildirim düzeltmeleri; son gün rapor çıktıları ve demo provası</div>
+        <div class="when">9–16 EYLÜL</div>
+        <div class="count">96 commit</div>
+        <div class="what">MCP yüzeyi sıfırdan 0.6.0’a; arada gösterge paneli, erişilebilirlik ve bildirim düzeltmeleri; son iki gün rapor çıktıları ve demo provası</div>
       </div>
     </div>
 
@@ -700,7 +700,7 @@
           <tr>
             <td>Otomatik test</td>
             <td class="before none">Hiç yok</td>
-            <td class="after"><span class="newdot"></span><b>494 test</b>, 83 süit, ~22 sn · veritabanı gerektirmiyor</td>
+            <td class="after"><span class="newdot"></span><b>500 test</b>, 84 süit, ~22 sn · veritabanı gerektirmiyor</td>
           </tr>
           <tr>
             <td>Push koruması</td>
@@ -710,7 +710,7 @@
           <tr>
             <td>Dil</td>
             <td class="before">TR/EN — ama İngilizce arayüzde 58 metin Türkçe kalıyordu</td>
-            <td class="after"><span class="newdot"></span>TR/EN tam: <b>1.154 anahtar</b> · tarama testi kilitliyor, yeni kaçak giremiyor</td>
+            <td class="after"><span class="newdot"></span>TR/EN tam: <b>1.209 anahtar</b> · tarama testi kilitliyor, yeni kaçak giremiyor</td>
           </tr>
           <tr>
             <td>Yapay zekâ erişimi</td>
@@ -781,33 +781,13 @@
           <div class="v">0.1.0</div><div class="d">9 Eylül</div>
           <div class="w">İlk bağlantı, kimlik</div>
         </div>
-        <div class="rung">
-          <div class="v">0.2.x</div><div class="d">9–10 Eylül</div>
-          <div class="w">Okuma araçları, anahtar dağıtımı</div>
-        </div>
         <div class="rung key">
           <div class="v">0.3.0</div><div class="d">11 Eylül</div>
-          <div class="w">Okuma yüzeyi kapandı</div>
-        </div>
-        <div class="rung">
-          <div class="v">0.3.1</div><div class="d">11 Eylül</div>
-          <div class="w">Alan dışı kayıt reddediliyor</div>
+          <div class="w">Okuma yüzeyi kapandı; alan dışı kayıt reddediliyor</div>
         </div>
         <div class="rung key">
-          <div class="v">0.4.0</div><div class="d">11 Eylül</div>
-          <div class="w">İlk yazma: aç, güncelle, taşı</div>
-        </div>
-        <div class="rung">
-          <div class="v">0.4.1</div><div class="d">12 Eylül</div>
-          <div class="w">Yorum ekleme</div>
-        </div>
-        <div class="rung key">
-          <div class="v">0.5.0</div><div class="d">13 Eylül</div>
-          <div class="w">Yazma tamam: silme, alt görev, etiket</div>
-        </div>
-        <div class="rung">
-          <div class="v">0.5.1–.2</div><div class="d">13 Eylül</div>
-          <div class="w">Alt görev tek kaynağa indi</div>
+          <div class="v">0.4 – 0.5</div><div class="d">11–13 Eylül</div>
+          <div class="w">Yazma: aç, güncelle, taşı, yorum, sil, alt görev</div>
         </div>
         <div class="rung key">
           <div class="v">0.6.0</div><div class="d">13 Eylül</div>
@@ -872,25 +852,13 @@
     <div class="part-head">
       <div class="part-num">02</div>
       <h2>Nasıl çalışıldı</h2>
-      <div class="clock">~10 dk</div>
+      <div class="clock">~5 dk</div>
     </div>
 
     <h3 class="sub">Kuralı belgeye değil, doğrulayana yaz</h3>
-    <div class="read">
-      <p>Dil kuralı proje belgesinde net biçimde yazılıydı ve yine de <b>31 yerde ihlal edildi</b> — kuralı uygulamaya çalışan biri tarafından. Yazılı kural çalışmıyor; kalıcı olması için şu merdivende yukarı taşınması gerekiyor.</p>
-    </div>
-
-    <div class="rule-ladder">
-      <div class="step"><span class="rank">1</span><span class="name">Belgeye yaz</span><span class="note">En ucuz, en zayıf — 31 ihlal buradan çıktı</span></div>
-      <div class="step"><span class="rank">2</span><span class="name">Gözden geçirme listesine koy</span><span class="note">İnsan hatırlarsa çalışır</span></div>
-      <div class="step reached"><span class="rank">3</span><span class="name">Teste bağla</span><span class="note">Dil, yetki ve bildirim sözleşmeleri burada kilitli</span></div>
-      <div class="step"><span class="rank">4</span><span class="name">CI kapısına koy</span><span class="note">Dosya hazır, hesap kilitli — bugün koruyan şey <code>pre-push</code> kancası</span></div>
-      <div class="step"><span class="rank">5</span><span class="name">Lint / tip sistemine ver</span><span class="note">Yazarken engeller</span></div>
-      <div class="step reached"><span class="rank">6</span><span class="name">Tasarımen imkânsız kıl</span><span class="note">Deponun en olgun iki hamlesi burada</span></div>
-    </div>
 
     <div class="read">
-      <p>Altıncı basamak somut olarak: veritabanı şemasını deploy’da ezen tehlikeli komut için “bunu çalıştırmayın” diye kural yazılmadı — <b>çağrı silindi</b>. Oturum tablosunu düşürme uyarısı için “uyarıya hayır deyin” denmedi — <b>uyarının çıkması engellendi</b>.</p>
+      <p>Dil kuralı proje belgesinde net biçimde yazılıydı ve yine de <b>31 yerde ihlal edildi</b> — kuralı uygulamaya çalışan biri tarafından. Yazılı kural çalışmıyor; kalıcı olması için yukarı taşınır: <b>belge → gözden geçirme → test → CI → lint → tasarımen imkânsız.</b> Dil, yetki ve bildirim sözleşmeleri bugün teste bağlı. En üst basamak somut: deploy’da şemayı ezen komut için “çalıştırmayın” denmedi, <b>çağrı silindi</b>; oturum tablosunu düşürme uyarısına “hayır deyin” denmedi, <b>uyarının çıkması engellendi</b>.</p>
     </div>
 
     <h3 class="sub">Test yazmak yetmiyor — kırıldığını görmek gerekiyor</h3>
@@ -903,12 +871,11 @@
       <p><b>İkisi kaçtı</b> — test aranan adı dosyada düz metin arıyordu, ama o ad aracın <i>açıklama cümlesinde</i> de geçiyordu. Kod silinse bile test yeşil kalıyordu.</p>
       <p><b>Biri yanlış yeri korudu</b> — aynı satır dosyada iki kez geçiyordu; test “yakalandı” diyordu ama başka bir işlevi koruyordu.</p>
       <p><b>Biri hiç korunmuyordu</b> — sunucunun açılış uyarısını hiçbir test tutmuyordu.</p>
-      <p style="margin-bottom:0">Düzeltildi: <b>on birin on biri, doğru yerde yakalanıyor.</b> Bu üç bulgu olmasaydı “494 test geçiyor” cümlesi yine kurulacaktı — ama üç yerde anlamsız.</p>
+      <p style="margin-bottom:0">Düzeltildi: <b>on birin on biri, doğru yerde yakalanıyor.</b> Bu üç bulgu olmasaydı “500 test geçiyor” cümlesi yine kurulacaktı — ama üç yerde anlamsız.</p>
     </div>
 
-    <h3 class="sub">Sessiz başarısızlık yasak</h3>
     <div class="read">
-      <p>Üç ayrı kusurun kök sebebi aynıydı: koşul sağlanmayınca kodun <i>sessizce çıkması</i>. Bildirim gitmiyordu, kimse fark etmiyordu. Kural: bir koşulun yokluk hâli ya <b>reddetmeli</b> ya <b>gürültü çıkarmalı</b>. On üç yutulan hata bu kuralla açığa çıktı.</p>
+      <p><b>Sessiz başarısızlık yasak.</b> Üç kusurun kök sebebi aynıydı: koşul sağlanmayınca kodun sessizce çıkması. Kural: bir koşulun yokluk hâli ya <b>reddeder</b> ya <b>gürültü çıkarır</b>. On üç yutulan hata bu kuralla açığa çıktı; bu sabah rapor ekranında bir tane daha.</p>
     </div>
   </section>
 
@@ -992,7 +959,7 @@
     <div class="part-head">
       <div class="part-num">04</div>
       <h2>Devir</h2>
-      <div class="clock">~6 dk</div>
+      <div class="clock">~4 dk</div>
     </div>
 
     <div class="read">
@@ -1006,13 +973,8 @@
         </thead>
         <tbody>
           <tr>
-            <td>Railway ve Neon erişimi</td>
-            <td>Üretim bağlantısı yalnızca Railway ortam değişkenlerinde, hiçbir geliştirici makinesinde durmuyor. Doğru karar — ama erişim devredilmeli.</td>
-            <td><span class="pill risk">Yüksek</span></td>
-          </tr>
-          <tr>
-            <td>MCP anahtarı dağıtımı</td>
-            <td>Elle, Railway üzerinden. Kendi kendine anahtar üretme yapılmadan MCP yeni kişiye açılamaz.</td>
+            <td>Üretim erişimi — Railway, Neon, MCP anahtarı</td>
+            <td>Üretim bağlantısı yalnızca Railway ortam değişkenlerinde, hiçbir geliştirici makinesinde durmuyor; MCP anahtarları da orada, elle dağıtılıyor. Doğru karar — ama erişim devredilmeli. Devredilmezse MCP yeni kişiye açılamaz.</td>
             <td><span class="pill risk">Yüksek</span></td>
           </tr>
           <tr>
@@ -1023,11 +985,6 @@
           <tr>
             <td>Veritabanı şeması</td>
             <td>Deploy’da kendiliğinden gitmiyor, bilinçli ve elle uygulanıyor. Ama göç geçmişi sürümlü değil.</td>
-            <td><span class="pill open">Orta</span></td>
-          </tr>
-          <tr>
-            <td>Dosya depolama</td>
-            <td>Dosyalar veritabanında saklanıyor; ölçeklenmez. S3/R2’ye taşınmalı — iki dosyalık yerelleştirilmiş değişiklik.</td>
             <td><span class="pill open">Orta</span></td>
           </tr>
           <tr>
@@ -1051,9 +1008,9 @@
 
   <div class="colophon">
     <span>StoaBoard · ikinci tur · 16 Eylül 2026</span>
-    <span>494 test · 83 süit · 0 hata</span>
+    <span>500 test · 84 süit · 0 hata</span>
     <span>MCP yüzeyi 0.6.0</span>
-    <span>TR/EN tam çeviri: 1.154 anahtar</span>
+    <span>TR/EN tam çeviri: 1.209 anahtar</span>
   </div>
 
 </div>
