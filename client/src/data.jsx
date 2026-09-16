@@ -332,6 +332,8 @@ const API = {
 
   // Invite code
   transferOwnership: (toSlug) => apiFetch('/api/workspaces/me/transfer-ownership', { method: 'POST', body: { to_slug: toSlug } }),
+  // Kod önyüklemede gelmiyor; her çekiş sunucuda denetim kaydına yazılıyor.
+  getInviteCode:    () => apiFetch('/api/workspaces/me/invite-code'),
   regenInviteCode:  () => apiFetch('/api/workspaces/me/regen-code',  { method: 'POST' }),
   deleteInviteCode: () => apiFetch('/api/workspaces/me/invite-code', { method: 'DELETE' }),
 

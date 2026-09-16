@@ -666,7 +666,39 @@ workspacesRouter.post(
       where: { id: member.workspaceId },
       data: { inviteCode: newCode },
     });
+    // Yenileyen kişi yeni kodu görüyor; bu da bir görüntüleme.
+    recordAudit(req, { workspaceId: member.workspaceId, user, action: AUDIT.INVITE_CODE_VIEWED, detail: { via: 'regen' } });
     res.json({ invite_code: ws.inviteCode });
+  }),
+);
+
+// ── GET /workspaces/me/invite-code ────────────────────────────────────────
+//
+// Davet kodunu görüntülemek denetim kaydına yazılır (2 Eylül turundan kalan
+// parça, 16 Eylül'de kapandı). Önyükleme artık kodu taşımıyor; arayüz üst
+// çubukta "göster"e basınca ve ayarlarda davet bölümü açılınca buraya gelir.
+// İzin önyüklemedeki kuralın aynısı: sahip, alan yöneticisi ya da üye davet
+// edebilen. Kod yoksa kayıt yazılmaz; görülecek bir şey yok.
+
+workspacesRouter.get(
+  '/me/invite-code',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = await loadUser(req);
+    const member = await currentMember(user);
+    if (!member) return res.status(403).json({ error: 'err_member_not_found', message: 'Üye bulunamadı' });
+    const izinli = member.role === 'owner'
+      || hasPermission(member, 'manage_workspace')
+      || hasPermission(member, 'invite_members');
+    if (!izinli) return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz işlem' });
+
+    const ws = await prisma.workspace.findUnique({ where: { id: member.workspaceId }, select: { inviteCode: true } });
+    const code = ws?.inviteCode ?? null;
+    if (code) {
+      // Kayda kodun kendisi yazılmaz (lib/audit.js kuralı); görüldüğü yeter.
+      recordAudit(req, { workspaceId: member.workspaceId, user, action: AUDIT.INVITE_CODE_VIEWED });
+    }
+    res.json({ invite_code: code });
   }),
 );
 

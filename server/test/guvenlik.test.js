@@ -318,7 +318,7 @@ describe('denetim kaydı — yönetim eylemleri bağlı', () => {
   // Satır sonundan bağımsız olsun diye CRLF → LF normalize edilir.
   const wsSrc = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'workspaces.js'));
 
-  for (const action of ['MEMBER_REMOVED', 'MEMBER_ROLE_CHANGED', 'WORKSPACE_TRASH_EMPTIED']) {
+  for (const action of ['MEMBER_REMOVED', 'MEMBER_ROLE_CHANGED', 'WORKSPACE_TRASH_EMPTIED', 'INVITE_CODE_VIEWED']) {
     test(`${action} denetim kaydına yazılıyor`, () => {
       assert.ok(
         wsSrc.includes(`AUDIT.${action}`),
@@ -326,6 +326,34 @@ describe('denetim kaydı — yönetim eylemleri bağlı', () => {
       );
     });
   }
+});
+
+// ─── Davet kodu görüntüleme ─────────────────────────────────────────────────
+//
+// Kusur (2 Eylül'den kalan, 16 Eylül 2026'da kapandı): davet kodu önyükleme
+// yanıtında geliyordu, yani her sayfa açılışında sessizce alınıyor ve kimin
+// ne zaman gördüğü yazılamıyordu. Kod artık yalnızca kendi ucundan çekiliyor
+// ve o uç denetim kaydına yazıyor. Bu test iki şeyi kilitliyor: önyükleme
+// kodun kendisini bir daha taşımasın, uç kaydı yazsın.
+
+describe('davet kodu — önyüklemede yok, görüntüleme kayıtlı', () => {
+  const apiSrc = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'api.js'));
+  const wsSrc2 = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'workspaces.js'));
+
+  test('önyükleme yanıtı invite_code değerini taşımıyor', () => {
+    assert.ok(!/invite_code\s*=\s*ws\.inviteCode/.test(apiSrc), 'önyükleme kodun kendisini döndürüyor');
+    assert.ok(/has_invite_code\s*=\s*Boolean\(ws\.inviteCode\)/.test(apiSrc), 'önyükleme kodun varlığını bile söylemiyor');
+  });
+
+  test("GET /me/invite-code var, requireAuth taşıyor ve INVITE_CODE_VIEWED yazıyor", () => {
+    const i = wsSrc2.indexOf("'/me/invite-code'");
+    assert.ok(i >= 0, 'uç yok');
+    // İlk (GET) kayıt: kayıt başlığından handler sonuna kadar olan pencere.
+    const pencere = wsSrc2.slice(i, i + 1400);
+    assert.ok(/requireAuth/.test(pencere), 'requireAuth yok');
+    assert.ok(/AUDIT\.INVITE_CODE_VIEWED/.test(pencere), 'görüntüleme denetim kaydına yazılmıyor');
+    assert.ok(/invite_members/.test(pencere), 'izin kapısı önyüklemedekiyle aynı değil');
+  });
 });
 
 // ─── Bahsetme bildirimi kapsamı ─────────────────────────────────────────────

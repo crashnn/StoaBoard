@@ -519,7 +519,19 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
   const [avatarBusy, setAvatarBusy]   = React.useState(false);
   const avatarInputRef = React.useRef(null);
 
-  const [inviteCode, setInviteCode]   = React.useState(ws.invite_code || null);
+  // Kod önyüklemede yok, yalnızca var olup olmadığı geliyor (has_invite_code).
+  // Bölüm sahibe açıldığında bir kez çekiliyor; o çekiş denetim kaydına düşüyor.
+  const [hasInviteCode, setHasInviteCode] = React.useState(Boolean(ws.has_invite_code));
+  const [inviteCode, setInviteCode]   = React.useState(null);
+  React.useEffect(() => {
+    if (!isOwner || !hasInviteCode || inviteCode) return;
+    let iptal = false;
+    API.getInviteCode()
+      .then((r) => { if (!iptal) setInviteCode(r.invite_code || null); })
+      .catch((e) => { if (!iptal) window.showToast?.(e.message, 'error'); });
+    return () => { iptal = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwner, hasInviteCode]);
   const [codeLoading, setCodeLoading] = React.useState(false);
   const [codeCopied, setCodeCopied]   = React.useState(false);
   const [confirmRegen, setConfirmRegen]   = React.useState(false);
@@ -690,7 +702,8 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
     try {
       const res = await API.regenInviteCode();
       setInviteCode(res.invite_code);
-      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, invite_code: res.invite_code };
+      setHasInviteCode(true);
+      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, has_invite_code: true };
     } catch (e) { window.showToast?.(e.message, 'error'); }
     finally { setCodeLoading(false); }
   };
@@ -701,7 +714,8 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
     try {
       await API.deleteInviteCode();
       setInviteCode(null);
-      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, invite_code: null };
+      setHasInviteCode(false);
+      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, has_invite_code: false };
     } catch (e) { window.showToast?.(e.message, 'error'); }
     finally { setCodeLoading(false); }
   };
@@ -711,7 +725,8 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
     try {
       const res = await API.regenInviteCode();
       setInviteCode(res.invite_code);
-      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, invite_code: res.invite_code };
+      setHasInviteCode(true);
+      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, has_invite_code: true };
     } catch (e) { window.showToast?.(e.message, 'error'); }
     finally { setCodeLoading(false); }
   };
@@ -1200,7 +1215,9 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
             <p className="desc">{_t('set_inv_desc','Bu kodu paylaşarak takıma üye ekleyin.')}</p>
           </div>
           <div className="settings-card settings-panel">
-            {inviteCode ? (
+            {hasInviteCode && !inviteCode ? (
+              <div style={{ fontSize:13, color:'var(--ink-muted)', padding:'12px 14px' }}>…</div>
+            ) : inviteCode ? (
               <>
                 <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', background:'var(--bg-raised)', border:'1px solid var(--line)', borderRadius:10, marginBottom:12, flexWrap:'wrap' }}>
                   <span style={{ fontFamily:'var(--font-mono)', fontSize:'clamp(16px,4vw,22px)', letterSpacing:'0.15em', fontWeight:600, color:'var(--ink)', flex:1, minWidth:0, wordBreak:'break-all' }}>

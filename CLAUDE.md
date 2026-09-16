@@ -346,8 +346,9 @@ Ortak gerekçe: bunlar Jira'yı ağır yapan katman. StoaBoard'un iddiası sadel
 2. **Dönem dondurma.** Kapanmış dönemin raporu mühürlensin, yeniden
    hesaplanmasın.
 3. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.
-4. **Denetim kaydının kapsamı.** Üye çıkarma, rol değişikliği ve toplu çöp
-   boşaltma yazılıyor *(2 Eylül)*. Kalan: davet kodu görüntüleme (ayrı uç gerek).
+4. **Denetim kaydının kapsamı.** Üye çıkarma, rol değişikliği, toplu çöp
+   boşaltma *(2 Eylül)*, davet kodu görüntüleme, dışa/içe aktarma *(16 Eylül)*
+   yazılıyor. Kapsam şimdilik tam.
 5. **Uç testleri.** Saf mantık test ediliyor, yetkilendirme akışları hâlâ elle.
 
 Karar bekleyen tasarım soruları (kod değil, ürün kararı): süreyi kim girer ·

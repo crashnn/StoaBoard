@@ -460,13 +460,30 @@ function NavItem({ icon, label, sub, badge, badgeUnread, active, onClick }) {
 function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onChatOpen, notifCount, canManageTasks, onMobileMenuToggle }) {
   const [showCode, setShowCode] = useState(false);
   const [copied, setCopied] = useState(false);
-  const inviteCode = DATA.WORKSPACE?.invite_code || null;
+  // Kod önyüklemede yok; "göster" ya da "kopyala" basılınca sunucudan çekilir
+  // ve o çekiş denetim kaydına düşer. Gizliyken sekiz nokta: kod 8 karakter.
+  const hasInviteCode = Boolean(DATA.WORKSPACE?.has_invite_code);
+  const [inviteCode, setInviteCode] = useState(null);
 
-  const handleCopyCode = () => {
-    if (!inviteCode) return;
-    navigator.clipboard.writeText(inviteCode).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const koduGetir = async () => {
+    if (inviteCode) return inviteCode;
+    const r = await API.getInviteCode();
+    setInviteCode(r.invite_code || null);
+    return r.invite_code || null;
+  };
+  const handleToggleCode = async () => {
+    if (showCode) { setShowCode(false); return; }
+    try { await koduGetir(); setShowCode(true); }
+    catch (e) { window.showToast?.(e.message, 'error'); }
+  };
+  const handleCopyCode = async () => {
+    try {
+      const code = await koduGetir();
+      if (!code) return;
+      navigator.clipboard.writeText(code).catch(() => {});
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) { window.showToast?.(e.message, 'error'); }
   };
 
   return (
@@ -487,10 +504,10 @@ function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onC
             <button data-active={view==='calendar'}  onClick={() => onView('calendar')}> <Icon name="calendar" size={13} /> {window.t?.('nav_calendar') || 'Takvim'}</button>
           </div>
         )}
-        {inviteCode && (
-          <div className="topbar-invite" title="Davet kodu">
-            <span className="topbar-invite-code">{showCode ? inviteCode : '•'.repeat(inviteCode.length)}</span>
-            <button className="icon-btn topbar-invite-eye" onClick={() => setShowCode(v => !v)} title={showCode ? (window.t?.('shell_hide') || 'Gizle') : (window.t?.('shell_show') || 'Göster')}>
+        {hasInviteCode && (
+          <div className="topbar-invite" title={window.t?.('app_invite_code') || 'Davet Kodu'}>
+            <span className="topbar-invite-code">{showCode && inviteCode ? inviteCode : '•'.repeat(8)}</span>
+            <button className="icon-btn topbar-invite-eye" onClick={handleToggleCode} title={showCode ? (window.t?.('shell_hide') || 'Gizle') : (window.t?.('shell_show') || 'Göster')}>
               <Icon name={showCode ? 'eyeOff' : 'eye'} size={13} />
             </button>
             <button className="icon-btn topbar-invite-eye" onClick={handleCopyCode} title={copied ? (window.t?.('shell_copied') || 'Kopyalandı!') : (window.t?.('shell_copy') || 'Kopyala')}>

@@ -1261,6 +1261,15 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
+- [ ] **Kart "Devam Ediyor"a alınınca başlangıç tarihi bugün olsun**
+      *(16 Eylül 2026, kullanıcı notu)*. Bugün başlangıç tarihi elle giriliyor
+      ve çoğu kartta boş kalıyor; boş başlangıç akış raporunda "açılış" ile
+      karışıyor. Kural: kart ilk kez çalışma kolonuna (bitiş olmayan, backlog
+      ve yapılacak olmayan; ya da kolon `is_start` işareti) geçince
+      `startDate` boşsa bugün yazılır. İleri tarih isteyen kullanıcı elle
+      değiştirir; sistem yalnızca boş olanı doldurur, dolu olana dokunmaz.
+      Hangi kolonun "başlama" sayılacağı karar ister: en basit yorum, ilk
+      kolondan (backlog/todo) çıkış. MCP `move_task` de aynı yoldan geçmeli.
 - [ ] **`stoaboard.com` (www'siz) Railway'e gitmiyor** *(16 Eylül 2026, "failed
       to fetch" şikâyetiyle bulundu)*. Apex A kaydı `85.159.66.93` — alan adı
       sağlayıcının yönlendirme sunucusu (nginx/ASP.NET); HTTP'de `302 /`

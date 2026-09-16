@@ -203,12 +203,18 @@ apiRouter.get(
     // olan görebilir. Bu izin arayüzde sunuluyordu ama sunucuda hiçbir yerde
     // kontrol edilmiyordu — yani yönetici birine verdiğini sandığı yetkiyi
     // aslında vermiyordu. Kodu yenilemek hâlâ ayrı ve daha dar bir yetki.
+    //
+    // Kodun KENDİSİ önyüklemede yok (16 Eylül 2026): her sayfa açılışında
+    // gelseydi "kim ne zaman gördü" yazılamazdı. Burada yalnızca var olup
+    // olmadığı söyleniyor; kod `GET /workspaces/me/invite-code` ile çekiliyor
+    // ve o çağrı denetim kaydına düşüyor. Davet kodu alana giriş biletidir;
+    // kimin gördüğü, üye çıkarma kadar önemli.
     if (
       isOwner ||
       hasPermission(member, 'manage_workspace') ||
       hasPermission(member, 'invite_members')
     ) {
-      wsDict.invite_code = ws.inviteCode;
+      wsDict.has_invite_code = Boolean(ws.inviteCode);
     }
     wsDict.can_create_channel = canCreateChannel;
 
