@@ -1252,6 +1252,14 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
+- [ ] **`stoaboard.com` (www'siz) Railway'e gitmiyor** *(16 Eylül 2026, "failed
+      to fetch" şikâyetiyle bulundu)*. Apex A kaydı `85.159.66.93` — alan adı
+      sağlayıcının yönlendirme sunucusu (nginx/ASP.NET); HTTP'de `302 /`
+      döngüsü, **HTTPS'te zaman aşımı**. `www` doğru: CNAME →
+      `53vg2j8t.up.railway.app`. www'siz giren herkes siteye ulaşamıyor.
+      Çözüm kodda değil: Railway → Domains'e `stoaboard.com` ekle, DNS'i
+      Railway'in dediğine çevir, eski A kaydını kaldır. Ardından sunucuda
+      apex → www 301 (tek kanonik adres); o kısım kod, testli, küçük.
 - [x] **Tamamlandı kolonuna doğrudan açılan kartta `completed_at` boş
       kalıyor** *(16 Eylül 2026, MCP ile kapanmış işleri panoya taşırken; aynı gün kapandı)*.
       `create_task` ile `done` kolonuna açılan kartta `completed_at: null`,
