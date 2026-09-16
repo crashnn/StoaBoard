@@ -1232,8 +1232,8 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
-- [ ] **Tamamlandı kolonuna doğrudan açılan kartta `completed_at` boş
-      kalıyor** *(16 Eylül 2026, MCP ile kapanmış işleri panoya taşırken)*.
+- [x] **Tamamlandı kolonuna doğrudan açılan kartta `completed_at` boş
+      kalıyor** *(16 Eylül 2026, MCP ile kapanmış işleri panoya taşırken; aynı gün kapandı)*.
       `create_task` ile `done` kolonuna açılan kartta `completed_at: null`,
       `progress` 100 ama geçiş kaydı yok. Raporlar "tamamlandı = bitiş
       kolonuna geçiş" dediği için bu kartlar dönem raporunda görünmez, akış
@@ -1245,6 +1245,11 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       → 16 Eylül" projesi böyle kuruldu; **o kartların `completed_at`i
       kontrol edilmeli**, 13 kart raporda görünmüyor olabilir). Bugün dört
       kart bir ileri bir geri taşınarak dolanıldı. Kart panoda.
+      **Yapıldı:** kural saf yardımcıya alındı (`lib/reporting.js`
+      `yeniKartTamamlanma`), kart açma ucu onu kullanıyor, dört testle
+      kilitli (`raporlama.test.js`). Geçiş kaydı zaten yazılıyordu; eksik
+      yalnızca damgaydı. 13 retrospektif kart kontrol edildi: hepsi önce
+      açılıp sonra taşınmış, damgaları dolu; etkilenmemişler.
 - [x] **Notlar: son yazan, ötekinin değişikliğini görmüyor** *(16 Eylül
       2026, iki hesapla denendi; aynı gün kapandı)*. A yazar, B görür; sonra B yazar, A görmez,
       F5 gerekir. Tersi de aynı. Sebep [notes.jsx](client/src/views/notes.jsx)

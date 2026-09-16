@@ -34,7 +34,7 @@ import {
   recalcTaskProgress,
 } from '../lib/projects.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
-import { recordTransition } from '../lib/reporting.js';
+import { recordTransition, yeniKartTamamlanma } from '../lib/reporting.js';
 import { reqLang } from '../lib/lang.js';
 import { atananlariDenetle, atamaSluglari } from '../lib/assignees.js';
 import { bahsedilenleriCoz } from '../lib/mentions.js';
@@ -222,6 +222,8 @@ projectTasksRouter.post(
           priority: data.priority || 'mid',
           // Yeni kartın alt görevi yok; bitmiş kolona açılıyorsa 100.
           progress: ilerlemeHesapla({ altlar: [], kolonBitti: col?.isDone === true }),
+          // Bitiş kolonunda doğan kart o an tamamlanmıştır; raporlar buna bakıyor.
+          completedAt: yeniKartTamamlanma(col),
           dueDate: parseDate(data.due),
           startDate: parseDate(data.start),
           assigneeDates: data.assignee_dates || null,

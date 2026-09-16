@@ -37,6 +37,22 @@ export async function recordTransition(client, { task, project, user, fromCol, t
   });
 }
 
+/**
+ * Yeni açılan kartın tamamlanma zamanı. Bitiş kolonunda doğan kart o an
+ * tamamlanmıştır; başka kolonda doğan kartın tamamlanma zamanı yoktur.
+ *
+ * Niçin ayrı bir kural: 16 Eylül 2026'da MCP ile Tamamlandı kolonuna açılan
+ * kartlarda `completedAt` boş kaldı. Geçiş kaydı (null → bitiş) yazılıyor,
+ * ilerleme 100 oluyordu; ama dönem raporu "tamamlanan"ı `completedAt`
+ * aralığından, "açık kalan"ı `completedAt: null`dan sayıyor. Kart panoda
+ * bitmiş görünürken raporda AÇIK sayılıyordu. Retrospektif kart açmak meşru
+ * bir kullanım (demo panosundaki "1 Eylül → 16 Eylül" projesi böyle
+ * kuruldu), o yüzden reddetmek değil doğru damgalamak gerekiyor.
+ */
+export function yeniKartTamamlanma(col, now = new Date()) {
+  return col?.isDone === true ? now : null;
+}
+
 // ─── Ortak yardımcılar ──────────────────────────────────────────────────────
 
 /** 'YYYY-MM-DD' → gün başı Date. Geçersizse null. */

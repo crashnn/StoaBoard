@@ -17,6 +17,7 @@ import {
   resolveRange,
   formatMinutes,
   formatDurationLong,
+  yeniKartTamamlanma,
 } from '../src/lib/reporting.js';
 
 // ─── parseDuration ──────────────────────────────────────────────────────────
@@ -205,6 +206,36 @@ describe('formatDurationLong — belirgin süre (TR/EN)', () => {
 // Ada göre tahmin bu kusuru kapatmaz: tasarım şablonunun bitiş kolonu
 // 'delivery'. Bu yüzden işaret şablon verisinde açıkça duruyor ve test de
 // açıkça orada arıyor — yeni bir şablon eklendiğinde unutulursa burada patlar.
+// ─── yeniKartTamamlanma ─────────────────────────────────────────────────────
+//
+// Koruduğu kusur (16 Eylül 2026): Tamamlandı kolonuna doğrudan açılan kartta
+// completedAt boş kalıyordu. Panoda bitmiş, ilerlemesi 100; ama dönem raporu
+// "tamamlanan"ı completedAt aralığından sayıp "açık kalan"ı completedAt: null
+// ile bulduğu için kart raporda AÇIK görünüyordu. Kural: bitiş kolonunda
+// doğan kart o an tamamlanmıştır.
+
+describe('yeniKartTamamlanma — bitiş kolonunda doğan kart o an tamamlanmıştır', () => {
+  const simdi = new Date('2026-09-16T12:00:00Z');
+
+  test('bitiş kolonu → tamamlanma zamanı verilen an', () => {
+    assert.equal(yeniKartTamamlanma({ isDone: true }, simdi), simdi);
+  });
+
+  test('sıradan kolon → tamamlanma yok', () => {
+    assert.equal(yeniKartTamamlanma({ isDone: false }, simdi), null);
+  });
+
+  test('kolon yok (pano kolonsuz) → tamamlanma yok', () => {
+    assert.equal(yeniKartTamamlanma(null, simdi), null);
+    assert.equal(yeniKartTamamlanma(undefined, simdi), null);
+  });
+
+  test('isDone truthy ama true değilse sayılmaz — sütun boolean, gevşek eşitlik tuzak', () => {
+    assert.equal(yeniKartTamamlanma({ isDone: 1 }, simdi), null);
+    assert.equal(yeniKartTamamlanma({ isDone: 'true' }, simdi), null);
+  });
+});
+
 describe('Çalışma alanı şablonları — bitiş kolonu işareti', () => {
   for (const [ad, tmpl] of Object.entries(TEMPLATES)) {
     test(`${ad} şablonunda tam olarak bir bitiş kolonu var`, () => {
