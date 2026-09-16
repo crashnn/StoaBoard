@@ -54,7 +54,9 @@ const ACIK_UCLAR = new Map([
   // app.js'teki uç, tarama oraya da bakmaya başlayınca görünür oldu. SPA kökü:
   // giriş yapmamış kullanıcı da giriş ekranını alabilmeli, yoksa uygulama hiç
   // açılmaz. Kararın kendisi yeni değil; yalnızca artık görünür.
-  ['app.js GET /',                  'SPA kökü — index.html servis ediyor, oturum açmamış kullanıcı giriş ekranını almalı'],
+  ['app.js GET /',                  'kök — oturum varsa SPA, yoksa vitrin (statik HTML); ikisi de herkese açık sayfa'],
+  // 16 Eylül 2026: vitrin gelince giriş ekranı kendi adresine taşındı.
+  ['app.js GET /giris',             'giriş ekranı (SPA) — tanımı gereği oturumsuz açılır'],
 ]);
 
 /** routes/ altındaki ve app.js içindeki tüm uç kayıtlarını çıkarır. */

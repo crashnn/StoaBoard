@@ -496,7 +496,9 @@ function AuthPage({ onSignIn }) {
   const joinInviteCode = React.useMemo(() => {
     try { return new URLSearchParams(window.location.search).get('join') || ''; } catch { return ''; }
   }, []);
-  const [mode, setMode] = useAuthState(joinInviteCode ? 'signup' : 'signin');
+  // Vitrindeki "Ücretsiz başla" /giris?kayit=1'e gelir; kayıt sekmesi açık gelsin.
+  const kayitIstendi = (() => { try { return new URLSearchParams(window.location.search).get('kayit') === '1'; } catch { return false; } })();
+  const [mode, setMode] = useAuthState(joinInviteCode || kayitIstendi ? 'signup' : 'signin');
   const [error, setError] = useAuthState('');
   const [busy, setBusy] = useAuthState(false);
   const [form, setForm] = useAuthState({ name: '', email: '', password: '' });

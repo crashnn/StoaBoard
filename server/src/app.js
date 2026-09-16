@@ -188,8 +188,28 @@ export function createApp() {
     },
   }));
 
-  // --- Root: index.html'i servis et (Flask'taki render_template karşılığı) ---
-  app.get('/', (_req, res) => {
+  // --- Vitrin: misafir önce ürünü görsün (16 Eylül 2026) ---
+  //
+  // O güne kadar `/` herkese SPA'yı, yani giriş ekranını veriyordu. Todoist
+  // gibi araçlar misafire önce ürünü anlatıyor; giriş ve kayıt üst çubukta.
+  // Kural: oturum varsa pano (SPA), yoksa vitrin. İki istisna SPA'ya gider:
+  //   - `?join=KOD`: davet linki giriş ekranına düşmeli, vitrine değil.
+  //   - vitrin dosyası yoksa: sessizce boş sayfa yerine SPA + açılışta uyarı.
+  // Giriş ekranının kendi adresi artık `/giris` (istemci de oraya yazıyor);
+  // vitrindeki düğmeler `/giris` ve `/giris?kayit=1`.
+  const vitrinPath = path.join(config.staticDir, 'vitrin', 'index.html');
+  const vitrinHtml = fs.existsSync(vitrinPath) ? fs.readFileSync(vitrinPath, 'utf8') : null;
+  if (!vitrinHtml) console.warn('[vitrin] static/vitrin/index.html yok; misafir SPA giriş ekranını alacak.');
+
+  app.get('/', (req, res) => {
+    const oturumVar = Boolean(req.session?.userId);
+    const davet = typeof req.query.join === 'string' && req.query.join.length > 0;
+    if (oturumVar || davet || !vitrinHtml) return res.type('html').send(indexHtml);
+    res.type('html').send(vitrinHtml);
+  });
+
+  // Giriş ekranı: SPA. Oturum varsa da SPA gelir, istemci panoya geçer.
+  app.get('/giris', (_req, res) => {
     res.type('html').send(indexHtml);
   });
 

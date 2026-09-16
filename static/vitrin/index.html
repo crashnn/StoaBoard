@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StoaBoard — takımlar için sade proje panosu</title>
+<meta name="description" content="Kartlar, raporlar ve yapay zekâ ile konuşarak yönetim; hepsi tek yerde, hepsi sade.">
+<link rel="icon" href="/static/StoaBoard_symbol.png">
+<link rel="stylesheet" href="/static/vitrin/vitrin.css">
+</head>
+<body>
+<!--
+  YER TUTUCU. Asıl şablon Claude Design'dan geliyor (VITRIN-BRIEF.md);
+  gelince bu dosya ve vitrin.css onunla değişir. Buradaki bağlantılar ve
+  sayı bandı sözleşmesi korunmalı: /giris, /giris?kayit=1, /api/public/stats.
+-->
+<header class="ust">
+  <a class="logo" href="/"><img src="/static/StoaBoard_symbol.png" alt="" width="24" height="24"><span>Stoa<em>Board</em></span></a>
+  <nav>
+    <a href="/giris">Giriş</a>
+    <a class="dolgulu" href="/giris?kayit=1">Ücretsiz başla</a>
+  </nav>
+</header>
+
+<main>
+  <section class="kahraman">
+    <h1>Panonu sür, yapay zekâya söyle.</h1>
+    <p>Kartlar, raporlar ve konuşarak yönetim; hepsi tek yerde, hepsi sade.</p>
+    <div class="dugmeler">
+      <a class="dolgulu" href="/giris?kayit=1">Ücretsiz başla</a>
+      <a class="cizgili" href="/giris">Giriş yap</a>
+    </div>
+  </section>
+
+  <section class="sayilar" aria-label="Gerçek sayılar">
+    <div><b data-stat="workspaces">—</b><span>çalışma alanı</span></div>
+    <div><b data-stat="tasks">—</b><span>kart</span></div>
+    <div><b data-stat="completed">—</b><span>tamamlanan iş</span></div>
+  </section>
+
+  <section class="kutular">
+    <article><h2>Yapay zekâ ile konuş</h2><p>Panoyu sohbetle sür: kart aç, ata, taşı, yorum yaz. Her işlem kayıtlı.</p></article>
+    <article><h2>Kim ne kadar çalıştı</h2><p>Kişi, dönem ve akış raporları. Excel'e ve PDF'e çıkar.</p></article>
+    <article><h2>Güvenli ve izlenebilir</h2><p>Her dışa aktarma ve her yapay zekâ yazması denetim kaydında.</p></article>
+  </section>
+</main>
+
+<footer>
+  <span>© StoaBoard</span>
+</footer>
+
+<script>
+  // Sayı bandı: gerçek toplamlar, sunucu 10 dk önbellekliyor. Uydurma sayı yok;
+  // gelmezse tire kalır.
+  fetch('/api/public/stats').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+    if (!d) return;
+    document.querySelectorAll('[data-stat]').forEach(function (el) {
+      var v = d[el.getAttribute('data-stat')];
+      if (typeof v === 'number') el.textContent = v.toLocaleString('tr-TR');
+    });
+  }).catch(function () {});
+</script>
+</body>
+</html>

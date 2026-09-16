@@ -176,12 +176,14 @@ function App() {
         window.history.pushState({}, '', `/${view}`);
       }
     } else if (view === 'auth') {
-      if (window.location.pathname !== '/') {
-        window.history.pushState({}, '', '/');
+      // Giriş ekranının adresi /giris: kök artık misafire vitrini veriyor
+      // (app.js). Sorgu korunuyor ki ?join=KOD ve ?kayit=1 kaybolmasın.
+      if (window.location.pathname !== '/giris') {
+        window.history.pushState({}, '', `/giris${window.location.search}`);
       }
     } else {
       localStorage.setItem('stoa.view', view);
-      if (window.location.pathname === '/gizlilik-sartlari' || window.location.pathname === '/hizmet-sartlari') {
+      if (['/gizlilik-sartlari', '/hizmet-sartlari', '/giris'].includes(window.location.pathname)) {
         window.history.pushState({}, '', '/');
       }
     }

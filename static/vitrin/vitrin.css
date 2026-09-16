@@ -1,0 +1,29 @@
+/* Yer tutucu stil; asıl tasarım Claude Design'dan gelince değişir. */
+:root { --lacivert: #1a4a70; --lacivert-koyu: #10314b; --zemin: #f2f5f8; --yuzey: #fff; --cizgi: #d2dbe4; --murekkep: #101f2c; --soluk: #66788a; }
+@media (prefers-color-scheme: dark) {
+  :root { --lacivert: #5f9fce; --lacivert-koyu: #cfe2f0; --zemin: #0c141c; --yuzey: #131f2a; --cizgi: #2a3a49; --murekkep: #e2eaf1; --soluk: #7b8fa1; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 17px/1.6 'Segoe UI', system-ui, sans-serif; background: var(--zemin); color: var(--murekkep); }
+a { color: inherit; text-decoration: none; }
+.ust { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; max-width: 1080px; margin: 0 auto; }
+.logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; color: var(--lacivert-koyu); }
+.logo em { font-style: normal; color: var(--soluk); font-weight: 400; }
+nav { display: flex; gap: 14px; align-items: center; }
+.dolgulu { background: var(--lacivert); color: #fff; padding: 9px 16px; border-radius: 8px; font-weight: 600; }
+.cizgili { border: 1px solid var(--cizgi); padding: 9px 16px; border-radius: 8px; }
+main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+.kahraman { padding: 56px 0 32px; max-width: 60ch; }
+.kahraman h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.08; margin: 0 0 12px; color: var(--lacivert-koyu); }
+.kahraman p { color: var(--soluk); font-size: 19px; margin: 0 0 22px; }
+.dugmeler { display: flex; gap: 10px; flex-wrap: wrap; }
+.sayilar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--cizgi); border: 1px solid var(--cizgi); margin: 24px 0; }
+.sayilar div { background: var(--yuzey); padding: 18px 20px; }
+.sayilar b { display: block; font-size: 28px; color: var(--lacivert); }
+.sayilar span { font-size: 13px; color: var(--soluk); }
+.kutular { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
+.kutular article { background: var(--yuzey); border: 1px solid var(--cizgi); border-radius: 10px; padding: 20px; }
+.kutular h2 { font-size: 18px; margin: 0 0 8px; }
+.kutular p { margin: 0; color: var(--soluk); font-size: 15px; }
+footer { max-width: 1080px; margin: 40px auto; padding: 0 24px; color: var(--soluk); font-size: 13px; }
+@media (max-width: 640px) { .sayilar, .kutular { grid-template-columns: 1fr; } }
