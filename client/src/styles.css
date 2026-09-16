@@ -9628,6 +9628,10 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
     margin: 0 !important;
   }
   .report-view { gap: 12px; }
+  /* Ekran başlığı ("Raporlar / Veriyi kim dışarı çıkardı") kâğıda basılmaz:
+     künye zaten alan adını ve rapor türünü taşıyor, üstünde bir de uygulama
+     ekranının başlığı ekran artığı gibi duruyordu (16 Eylül, ilk PDF). */
+  .report-head { display: none !important; }
   .print-only { display: block !important; }
   .report-stamp {
     font-size: 12px;

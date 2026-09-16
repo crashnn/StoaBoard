@@ -205,8 +205,15 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
           <span>{T('rep_stamp_by', 'Oluşturan')}: {window.CURRENT_USER?.name || '—'}</span>
           {/* Kaynak satırı: kurumsal raporda sayının nereden geldiği künyede
               yazar — rapor elden ele dolaşırken "bu veri nereden?" sorusu
-              tabloya değil künyeye sorulur. */}
-          <span>{T('rep_stamp_source', 'Kaynak')}: {T('rep_stamp_source_val', 'StoaBoard — kolon geçiş kaydı ve süre kaydı')}</span>
+              tabloya değil künyeye sorulur. Denetim kaydının kaynağı farklı:
+              ilk çıktıda dört rapora aynı metin basıldı ve denetim kaydı
+              PDF'inde "kolon geçiş kaydı" yazdı (16 Eylül). */}
+          <span>
+            {T('rep_stamp_source', 'Kaynak')}:{' '}
+            {kind === 'audit'
+              ? T('rep_stamp_source_audit', 'StoaBoard — denetim kaydı')
+              : T('rep_stamp_source_val', 'StoaBoard — kolon geçiş kaydı ve süre kaydı')}
+          </span>
         </div>
         <div className="report-stamp-conf">
           {T('rep_stamp_conf', 'Gizli — yalnızca yetkili kişiler içindir')} · stoaboard.com
