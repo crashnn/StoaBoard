@@ -38,17 +38,40 @@ Toplantıdan sonra aynı gün. Testler **500 → 534**, hepsi geçiyor.
 - MCP'den pano güncellendi: bugün 7 kart kapandı, 5 açıldı; MCP ile
   bitiş kolonuna açılan kartların `completed_at` boşluğu böyle bulundu.
 
+### Akşam eki: vitrin
+
+İkinci dış göz (bir abi) siteyi beğendi; "free todo" araması Todoist'i
+gösterince fark edildi: misafir bizde doğrudan giriş ekranına düşüyor.
+Karar: vitrin sayfası, şablon Claude Design'dan (kullanıcı Opus 5 Max aldı,
+brief ve ekran görüntüleriyle verdi), biz düz HTML/CSS alırız. Brief
+[VITRIN-BRIEF.md](VITRIN-BRIEF.md). **Tesisat yapıldı** (`6c9b60a`): `/`
+oturum varsa pano yoksa vitrin, `?join=` giriş ekranına, giriş ekranı
+`/giris`, kayıt `/giris?kayit=1`, sayı bandı `/api/public/stats`; yer
+tutucu sayfa `static/vitrin/`. Yerelde sahte veritabanıyla denendi.
+
+**Ekran görüntüsü meselesi:** Claude Design gerçek panoyu vitrine koydu;
+kart başlıkları yol haritası ve güvenlik işleri, gerçek ad ve fotoğraf.
+Kullanılmayacak. **Yarın:** jenerik demo alanı ("Atlas Yazılım" gibi) ve
+proje arayüzden açılır, kartları MCP yazar (14 kart, beş kolon, atamalı);
+iki hesap geçici olarak "Ayşe Kaya" / "Mehmet Can", harf avatarı (yapay
+zekâ yüzü bilerek yok). Görüntü alınır, adlar geri çevrilir. Panoda kart
+"Vitrin sayfası", 1/5.
+
+Bu sabah bulunan `stoaboard.com` (www'siz) apex sorunu Railway + DNS
+panelinde çözülecek; kod değil (TODO).
+
 ### Kaldığı yer / yeniden başlayınca
 
 1. `git fetch && git status`; ofis makinesinde push bekleyen commit
-   olabilir (kullanıcı hak sınırı yüzünden kapattı, 16 Eylül ~17:00).
+   olabilir (16 Eylül akşamı).
 2. Deploy sonrası canlıda: (a) içe aktarma — indirilen JSON'u aynı alana
    yükle, "(2)" ekli üç proje ve 40 kart gelmeli, denetim kaydı satırı;
    bozuk dosya "proje 1 › kart N" deyip hiçbir şey açmamalı. (b) notlar iki
    hesapla: A yazar B görür, B yazar A görür, A yazarken B kaydederse A'da
    şerit. (c) Raporlarda "Çalışma alanı dışa aktarıldı / içe aktarıldı".
-3. Sıradaki iş: Trello JSON içe aktarma (biçimi herkese açık) ya da lint
-   uyarı temizliği; ikisi de panoda.
+3. Sıradaki iş: vitrin için demo alanı ve ekran görüntüsü (yukarıda), sonra
+   Claude Design şablonunu yerine koymak; ardından anahtar (a) ya da Trello
+   JSON. Hepsi panoda.
 
 Kullanıcı hakkında hafızaya yazıldı: StoaBoard kendi projesi, kurucusu,
 staj bitince de sürüyor; belgelerde "devir/ayrılma" iması kurulmaz.
