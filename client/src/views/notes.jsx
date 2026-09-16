@@ -78,6 +78,20 @@ function _mdInline(text) {
   return out;
 }
 
+// Ardışık satırları satır sonu koruyarak birleştirir. CommonMark'ta tek satır
+// sonu boşluktur ve önceki hâl (`buf.join(' ')`) o kurala uyuyordu; ama not
+// uygulamasında kimse öyle beklemiyor: alt alta yazılan üç satır önizlemede
+// yan yana tek cümle çıkıyordu (16 Eylül 2026). GitHub yorumları ve Notion
+// gibi: Enter = yeni satır. Boş satır hâlâ paragraf ayırıyor.
+function _mdSoftLines(buf) {
+  const out = [];
+  buf.forEach((l, idx) => {
+    if (idx) out.push(<br key={`br${idx}`} />);
+    out.push(<React.Fragment key={`l${idx}`}>{_mdInline(l)}</React.Fragment>);
+  });
+  return out;
+}
+
 function MarkdownRender({ body }) {
   if (!body || !body.trim()) {
     return <div className="md-empty">{window.t?.('notes_empty') || 'Bu not henüz boş. Yazmaya başla veya editöre geç.'}</div>;
@@ -112,7 +126,7 @@ function MarkdownRender({ body }) {
         buf.push(lines[i].replace(/^>\s?/, ''));
         i++;
       }
-      out.push(<blockquote key={k++} className="md-quote">{_mdInline(buf.join(' '))}</blockquote>);
+      out.push(<blockquote key={k++} className="md-quote">{_mdSoftLines(buf)}</blockquote>);
       continue;
     }
     if (/^\s*[-*+]\s+/.test(line)) {
@@ -155,7 +169,7 @@ function MarkdownRender({ body }) {
       buf.push(lines[i]);
       i++;
     }
-    out.push(<p key={k++} className="md-p">{_mdInline(buf.join(' '))}</p>);
+    out.push(<p key={k++} className="md-p">{_mdSoftLines(buf)}</p>);
   }
   return <div className="md-body">{out}</div>;
 }
@@ -580,7 +594,10 @@ function NoteDetail({ note, members, tasks, workspaceTasks, currentUserId, isOwn
   // Gövde listede gelmediği için sonradan (GET /api/notes/:id ile) düşüyor.
   // Kullanıcı henüz yazmaya başlamadıysa editöre aktar.
   useNE(() => {
-    if (typeof note.body === 'string' && body === '') setBody(note.body);
+    if (typeof note.body === 'string' && body === '') {
+      setBody(note.body);
+      appliedRef.current = { title: note.title || '', body: note.body };
+    }
   }, [note.id, note.body]);
   const [savedAt, setSavedAt] = useNS(fmtTimeAgo(note.updated_at));
   const [saving, setSaving] = useNS(false);
@@ -595,23 +612,59 @@ function NoteDetail({ note, members, tasks, workspaceTasks, currentUserId, isOwn
   const menuRef  = useNR(null);
   const collabRef = useNR(null);
   const lastIncomingUpdateRef = useNR(note.updated_at || '');
+  // Sunucudan en son UYGULANAN başlık ve gövde: yükleme, kayıt ya da gelen
+  // güncelleme. "Kaydedilmemiş yerel değişiklik var mı" sorusu buna göre
+  // cevaplanıyor, `note.title/body`ye göre değil. Fark önemli: `note.body`
+  // başkasının güncellemesiyle de değişir; o zaman yerel metin "kirli" sanılıp
+  // alandan çıkınca ESKİ metin sunucuya yazılıyor ve ötekinin değişikliği
+  // siliniyordu (16 Eylül 2026, iki hesapla).
+  const appliedRef = useNR({ title: note.title || '', body: note.body || '' });
+  // Yerel değişiklik varken gelen güncelleme: sessizce ezilmez, burada bekler
+  // ve kullanıcı seçer (aşağıdaki şerit). Null ise bekleyen yok.
+  const [remotePending, setRemotePending] = useNS(null);
 
-  // Sync from incoming socket-pushed update if our local edits aren't newer
+  // Gelen güncellemeyi (socket → onPatch → note prop) editöre aktar.
+  //
+  // Eski kural "metin alanı odaklıysa ezme" idi ve iki yönden yanlıştı:
+  // ref'i erken dönüşten ÖNCE ilerlettiği için güncelleme ertelenmiyor,
+  // düşürülüyordu (odak çıkınca da gelmiyordu, F5 gerekiyordu); ve odak
+  // tek başına "yazıyor" demek değil, imleç alanda dururken hiç yazmamış
+  // olabilirsin. Yeni ölçüt yerel değişiklik: yoksa hemen uygula, odak olsa
+  // da; varsa ref'i İLERLETME ve bekleyen olarak tut. Kullanıcı geri
+  // silerse ya da seçim yaparsa aynı etki yeniden dener.
   useNE(() => {
     if (note.updated_at && note.updated_at !== lastIncomingUpdateRef.current) {
-      lastIncomingUpdateRef.current = note.updated_at;
-      setTitle(prev => (prev === (note.title || '') ? prev : note.title || ''));
-      // Don't clobber actively typed body — only sync if textarea isn't focused
-      if (document.activeElement?.classList?.contains('md-textarea')) return;
-      setBody(note.body || '');
+      const localDirty = title !== appliedRef.current.title || body !== appliedRef.current.body;
+      if (localDirty) {
+        setRemotePending({ title: note.title || '', body: note.body || '', updated_at: note.updated_at });
+      } else {
+        lastIncomingUpdateRef.current = note.updated_at;
+        setTitle(note.title || '');
+        setBody(note.body || '');
+        appliedRef.current = { title: note.title || '', body: note.body || '' };
+        setRemotePending(null);
+      }
     }
     setSavedAt(fmtTimeAgo(note.updated_at));
-  }, [note.id, note.updated_at, note.title, note.body]);
+  }, [note.id, note.updated_at, note.title, note.body, title, body]);
 
   useNE(() => {
     setTitle(note.title || '');
     setBody(note.body || '');
+    appliedRef.current = { title: note.title || '', body: note.body || '' };
+    lastIncomingUpdateRef.current = note.updated_at || '';
+    setRemotePending(null);
   }, [note.id]);
+
+  // Bekleyen uzak sürümü al: yerel değişiklik atılır, bilerek ve tıklayarak.
+  const takeRemote = () => {
+    if (!remotePending) return;
+    setTitle(remotePending.title);
+    setBody(remotePending.body);
+    appliedRef.current = { title: remotePending.title, body: remotePending.body };
+    lastIncomingUpdateRef.current = remotePending.updated_at;
+    setRemotePending(null);
+  };
 
   useNE(() => {
     if (!menuOpen) return;
@@ -634,6 +687,14 @@ function NoteDetail({ note, members, tasks, workspaceTasks, currentUserId, isOwn
       const updated = await API.updateNote(note.id, fields);
       onPatch(updated);
       setSavedAt(fmtTimeAgo(updated.updated_at));
+      // Kaydedilen artık "uygulanan"; kendi kaydımızın socket yankısı da
+      // (aynı updated_at) yeniden uygulanmasın.
+      appliedRef.current = {
+        title: typeof fields.title === 'string' ? fields.title : appliedRef.current.title,
+        body: typeof fields.body === 'string' ? fields.body : appliedRef.current.body,
+      };
+      if (updated.updated_at) lastIncomingUpdateRef.current = updated.updated_at;
+      setRemotePending(null);
     } catch (e) {
       setError(e.message || window.t?.('drawer_err_save') || 'Kaydedilemedi');
     } finally {
@@ -641,16 +702,18 @@ function NoteDetail({ note, members, tasks, workspaceTasks, currentUserId, isOwn
     }
   }, [note.id, onPatch, canEdit]);
 
-  const isDirty = title !== (note.title || '') || body !== (note.body || '');
+  const isDirty = title !== appliedRef.current.title || body !== appliedRef.current.body;
 
   // Gövde henüz sunucudan gelmediyse (liste ucu gövdesiz döndürüyor) kaydetme —
   // aksi halde boş editör içeriği gerçek notun üstüne yazılır.
   const bodyLoaded = typeof note.body === 'string';
 
   // Auto-save only on blur (when user leaves the field), not on every keystroke
+  // Bekleyen uzak sürüm varken alandan çıkmak kaydetmez: sessiz "son yazan
+  // kazanır" tam da ötekinin metnini silen yoldu. Şeritteki düğme seçtirir.
   const handleBodyBlur = useNCB(() => {
-    if (canEdit && isDirty && bodyLoaded) doSave({ title, body });
-  }, [canEdit, isDirty, bodyLoaded, title, body, doSave]);
+    if (canEdit && isDirty && bodyLoaded && !remotePending) doSave({ title, body });
+  }, [canEdit, isDirty, bodyLoaded, remotePending, title, body, doSave]);
 
   // Keyboard: ⌘+S = save now, ⌘+Enter = publish, Esc = back
   useNE(() => {
@@ -877,6 +940,18 @@ function NoteDetail({ note, members, tasks, workspaceTasks, currentUserId, isOwn
           )}
         </div>
       </div>
+
+      {remotePending && (
+        <div className="note-conflict" role="status">
+          <span>{window.t?.('notes_remote_changed') || 'Bu notu başka biri değiştirdi. Sizin yazdıklarınız henüz kaydedilmedi.'}</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={takeRemote}>
+            {window.t?.('notes_remote_take') || 'Onun sürümünü al'}
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => doSave({ title, body })}>
+            {window.t?.('notes_remote_keep') || 'Benimkini kaydet'}
+          </button>
+        </div>
+      )}
 
       <div
         className="note-detail-body"

@@ -8452,6 +8452,22 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   min-height: 0;
   background: var(--bg);
 }
+/* Notlarda çakışma şeridi: başkası değiştirdi, sende kaydedilmemiş metin var. */
+.note-conflict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-lg);
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink);
+}
+.note-conflict span { flex: 1; min-width: 200px; }
+
 .note-detail-head {
   display: flex;
   align-items: center;

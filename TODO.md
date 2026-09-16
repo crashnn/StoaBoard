@@ -1232,8 +1232,8 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
-- [ ] **Notlar: son yazan, ötekinin değişikliğini görmüyor** *(16 Eylül
-      2026, iki hesapla denendi)*. A yazar, B görür; sonra B yazar, A görmez,
+- [x] **Notlar: son yazan, ötekinin değişikliğini görmüyor** *(16 Eylül
+      2026, iki hesapla denendi; aynı gün kapandı)*. A yazar, B görür; sonra B yazar, A görmez,
       F5 gerekir. Tersi de aynı. Sebep [notes.jsx](client/src/views/notes.jsx)
       `NoteDetail` eşitleme etkisi: gelen `note_updated` için önce
       `lastIncomingUpdateRef` yeni `updated_at`a **ilerletiliyor**, sonra
@@ -1245,7 +1245,16 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       olsa da uygula; varsa ref'i ilerletme, "başkası değiştirdi" uyarısı
       göster ve odak çıkınca uygula. Gerçek eş zamanlı yazma (CRDT) kapsam
       dışı; bu, sıralı yazmanın doğru çalışması.
-- [ ] **Notlar: önizlemede satır sonları kayboluyor** *(16 Eylül 2026)*.
+      **Kapatılırken daha kötüsü görüldü:** `isDirty` yerel metni `note.body`
+      ile kıyaslıyordu; uzak güncelleme gelince `note.body` değişiyor, yerel
+      "kirli" sayılıyor ve son yazan alandan çıkınca **eski metnini sunucuya
+      yazıyordu**, ötekinin değişikliği siliniyordu. Yani "görmüyor" değil,
+      veri kaybı. Çözüm: sunucudan en son *uygulanan* başlık/gövde ayrı
+      izleniyor (`appliedRef`); kirlilik ona göre. Yerel değişiklik yoksa
+      gelen güncelleme odak olsa da hemen uygulanıyor; varsa ref
+      ilerletilmiyor, şerit çıkıyor ("Onun sürümünü al" / "Benimkini
+      kaydet") ve alandan çıkmak kaydetmiyor. Sessiz "son yazan kazanır" yok.
+- [x] **Notlar: önizlemede satır sonları kayboluyor** *(16 Eylül 2026; aynı gün kapandı)*.
       Düzenlerken alt alta yazılan satırlar önizlemede yan yana tek paragraf.
       Sebep `notes.jsx` paragraf üreticisi: ardışık satırlar `buf.join(' ')`
       ile birleşiyor. Bu CommonMark'ın kuralı (tek satır sonu = boşluk) ama
@@ -1253,6 +1262,8 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       satır sonunu satır sonu olarak basıyor. Çözüm: `join(' ')` yerine
       satırlar arasına `<br>`; alıntı bloğundaki `buf.join(' ')` için de
       aynı karar. Tek satır, ama ürün kararı: "tek Enter = yeni satır".
+      **Karar verildi ve yapıldı:** `_mdSoftLines`, paragraf ve alıntıda
+      satırlar arasına `<br>`. Boş satır hâlâ paragraf ayırıyor.
 - [x] **Raporda başka projenin kartına tıklayınca hiçbir şey olmuyor**
       *(15 Eylül 2026; kapandı 16 Eylül)*. Kişi raporu bütün projeleri
       birleştiriyor; satıra tıklama kartı **aktif projenin** yüklü listesinde
