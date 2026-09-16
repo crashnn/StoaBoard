@@ -1189,7 +1189,10 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       dönem raporuna önceki dönem karşılaştırması · sayılardan üretilen tek
       cümlelik yönetici özeti. Bilinçli alınmayanlar: hedef ağırlığı,
       yetkinlik, devamsızlık, bütçe — İK/ERP verisi, kapsam dışı listesine.
-- [ ] **Uç testleri — kapsamlamanın DOĞRULUĞU test edilmiyor.** 3 Eylül'de
+- [ ] **Uç testleri — kapsamlamanın DOĞRULUĞU test edilmiyor.** *(16 Eylül:
+      ara adım yapıldı — yazan her uçta kapı taraması, `yetki.test.js`;
+      "hiç kapı yok" sınıfını yakalıyor, doğruluğu değil. Panoda dört alt
+      görev, 1/4.)* 3 Eylül'de
       `yetki.test.js` eklendi ve iki değişmezi kilitledi: her uç `requireAuth`
       taşıyor (113 uçtan 9'u gerekçeli açık listede), ve hiçbir soket
       işleyicisi kimliği olay gövdesinden okumuyor. Bu, "kimlik doğrulaması
@@ -1261,6 +1264,20 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
+- [ ] **Sohbete dosya yükleme kapısız ve sınırsız** *(16 Eylül 2026, yazan
+      uçlarda kapı taraması yazılırken)*. `POST /api/chat/upload` yalnızca
+      oturum istiyor; dosya hiçbir kanala/alana bağlı değil, 50 MB'a kadar,
+      tekrar sınırı yok, veritabanına yazılıyor. Yetki açığı değil (kimsenin
+      verisi okunmuyor) ama kaynak istismarı: bir hesap depoyu doldurabilir.
+      Çözüm: yüklemeyi kanal/DM bağlamına bağla (üyelik kapısı), kullanıcı
+      başına günlük hacim sınırı, hız sınırı. `yetki.test.js` KAPISIZ_UCLAR'da
+      gerekçesiyle duruyor.
+- [ ] **Çift tırnaklı `error` alanı dil taramasından kaçıyor** *(16 Eylül
+      2026)*. `attachments.js` sohbet yüklemesinde `error: "Dosya 50 MB'dan
+      büyük olamaz"` — düz Türkçe metin `error` alanında, ama `dil.test.js`
+      yalnızca tek tırnaklı `error: '...'` arıyor. Metin koda çevrilmeli
+      (`err_file_too_large`, tr+en) ve tarama çift tırnağı da görmeli; bu tam
+      "kaynak tarayan test kör noktası" sınıfı (CLAUDE.md).
 - [ ] **Kart "Devam Ediyor"a alınınca başlangıç tarihi bugün olsun**
       *(16 Eylül 2026, kullanıcı notu)*. Bugün başlangıç tarihi elle giriliyor
       ve çoğu kartta boş kalıyor; boş başlangıç akış raporunda "açılış" ile

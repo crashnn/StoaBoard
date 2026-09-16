@@ -321,3 +321,76 @@ describe('soket — kimlik olay gövdesinden okunamaz', () => {
 // Yanlış pozitif üreten test, testsizlikten kötüdür: 46 kez kurt masalı
 // okuyan bir teste kimse bakmaz ve gerçek bulgu araya karışır. Bu yüzden
 // burada yalnızca kesin doğrulanabilen iki değişmez kilitlendi.
+
+// ─── Yazan uçlarda izin kapısı ───────────────────────────────────────────────
+//
+// requireAuth "kim olduğunu biliyorum" der; "bunu yapmaya hakkı var mı" demez.
+// 15 Eylül'de kapanan "atama üyelik kapısı yoktu" kusuru tam bu sınıftı: uç
+// oturum istiyordu, üyelik sormuyordu. Bu tarama yazan her ucun (POST/PATCH/
+// PUT/DELETE) gövdesinde bir kapı arıyor: izin, üyelik, kayıt sahipliği ya da
+// "kendi kaydı" kapsamı. Kapının DOĞRU izni istediğini ölçmüyor (o, akış
+// testinin işi; panoda "Uç testleri" kartı); "hiç kapı yok" sınıfını yakalıyor.
+//
+// Kapısız kalması gereken uçlar aşağıda gerekçesiyle. Liste bayatlamasın diye
+// hayalet kayıt (listede var, kodda yok) da hata.
+
+const KAPI = new RegExp([
+  // izin ve üyelik
+  'hasPermission\\(', 'hasAnyPermission\\(', 'requireWorkspacePermission\\(', 'requireWorkspaceAccess\\(',
+  'memberForWorkspace\\(', 'currentMember\\(', 'usersShareWorkspace\\(', "role === 'owner'", 'isOwner',
+  // kayıt yükleyip erişim denetleyen yardımcılar (dosya başına bir tane)
+  'loadTaskWithAccess\\(', 'loadProjectWithAccess\\(', 'requireTaskAccess\\(', 'loadTaskAccess\\(',
+  'resolveScope\\(', 'resolveWorkspaceId\\(', 'userChannelRole\\(',
+  // MCP: anahtar + yazma kapısı
+  'requireMcpToken', 'yazmaKapisi\\(', 'aktifProje\\(',
+  // kendi kaydı: sorgu kullanıcıyla daraltılmış ya da yol /me
+  'userId: (?:uid|user\\.id)', 'userId === user\\.id', '\\.userId !== user\\.id', "'/users/me", "'/me/",
+].join('|'));
+
+const KAPISIZ_UCLAR = new Map([
+  ['auth.js POST /login',           'kimlik burada kuruluyor'],
+  ['auth.js POST /register',        'kimlik burada kuruluyor'],
+  ['auth.js POST /logout',          'oturumu yıkar'],
+  ['auth.js POST /forgot-password', 'giriş yapmadan kullanılır'],
+  ['auth.js POST /reset-password',  'aynı akış, kod ile doğrulanır'],
+  // 16 Eylül 2026'da bu tarama yazılırken görüldü: sohbete dosya yükleme
+  // yalnızca oturum istiyor; dosya hiçbir kanala ya da alana bağlı değil ve
+  // 50 MB'a kadar sınırsız tekrar yüklenebiliyor. Bir yetki açığı değil
+  // (kimsenin verisine erişilmiyor) ama kaynak istismarı yolu. TODO'da.
+  ['attachments.js POST /',         'sohbet yüklemesi; dosya kimseye bağlı değil, kapı yok — kaynak sınırı TODO'],
+]);
+
+describe('yetkilendirme — yazan her uçta izin kapısı', () => {
+  function yazanUclar() {
+    const sonuc = [];
+    for (const ad of fs.readdirSync(ROUTES).sort().filter((x) => x.endsWith('.js'))) {
+      const src = yorumsuzDosya(path.join(ROUTES, ad));
+      const hepsi = [...src.matchAll(/(\w*[Rr]outer)\.(get|post|patch|put|delete)\(/g)];
+      hepsi.forEach((m, i) => {
+        if (m[2] === 'get') return;
+        // Gövde: bu kayıttan bir sonraki kayda kadar. Komşuya taşma yok.
+        const son = i + 1 < hepsi.length ? hepsi[i + 1].index : src.length;
+        const govde = src.slice(m.index, son);
+        const yol = (/['"`]([^'"`]*)['"`]/.exec(govde) || [])[1] || '?';
+        sonuc.push({ anahtar: `${ad} ${m[2].toUpperCase()} ${yol}`, kapili: KAPI.test(govde) });
+      });
+    }
+    return sonuc;
+  }
+
+  test('listede olmayan hiçbir yazan uç kapısız değil', () => {
+    const kapisiz = yazanUclar().filter((u) => !u.kapili && !KAPISIZ_UCLAR.has(u.anahtar)).map((u) => u.anahtar);
+    assert.deepEqual(kapisiz, [], 'Bu uçlar oturum istiyor ama izin/üyelik/sahiplik sormuyor. Kapı ekle ya da KAPISIZ_UCLAR\'a gerekçesiyle yaz.');
+  });
+
+  test('KAPISIZ_UCLAR listesinde hayalet kayıt yok', () => {
+    const var_ = new Set(yazanUclar().map((u) => u.anahtar));
+    const hayalet = [...KAPISIZ_UCLAR.keys()].filter((k) => !var_.has(k));
+    assert.deepEqual(hayalet, [], 'Listedeki uç kodda yok; listeyi temizle.');
+  });
+
+  test('listedeki uçlar gerçekten kapısız (liste bayatlamasın)', () => {
+    const kapili = yazanUclar().filter((u) => u.kapili && KAPISIZ_UCLAR.has(u.anahtar)).map((u) => u.anahtar);
+    assert.deepEqual(kapili, [], 'Bu uç artık kapı taşıyor; listeden çıkar.');
+  });
+});
