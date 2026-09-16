@@ -1232,6 +1232,27 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
+- [ ] **Notlar: son yazan, ötekinin değişikliğini görmüyor** *(16 Eylül
+      2026, iki hesapla denendi)*. A yazar, B görür; sonra B yazar, A görmez,
+      F5 gerekir. Tersi de aynı. Sebep [notes.jsx](client/src/views/notes.jsx)
+      `NoteDetail` eşitleme etkisi: gelen `note_updated` için önce
+      `lastIncomingUpdateRef` yeni `updated_at`a **ilerletiliyor**, sonra
+      "metin alanı odaklıysa gövdeyi ezme" diye erken dönülüyor. Son yazanın
+      imleci hâlâ alanda olduğu için güncelleme atlanıyor; ref ilerlediği
+      için odak çıkınca da bir daha uygulanmıyor. Yani güncelleme
+      **ertelenmiyor, düşürülüyor**; sessiz başarısızlık sınıfı. Çözüm:
+      kaydedilmemiş yerel değişiklik yoksa (`body === sonKaydedilen`) odak
+      olsa da uygula; varsa ref'i ilerletme, "başkası değiştirdi" uyarısı
+      göster ve odak çıkınca uygula. Gerçek eş zamanlı yazma (CRDT) kapsam
+      dışı; bu, sıralı yazmanın doğru çalışması.
+- [ ] **Notlar: önizlemede satır sonları kayboluyor** *(16 Eylül 2026)*.
+      Düzenlerken alt alta yazılan satırlar önizlemede yan yana tek paragraf.
+      Sebep `notes.jsx` paragraf üreticisi: ardışık satırlar `buf.join(' ')`
+      ile birleşiyor. Bu CommonMark'ın kuralı (tek satır sonu = boşluk) ama
+      not uygulamasında kimse öyle beklemiyor; GitHub yorumları ve Notion
+      satır sonunu satır sonu olarak basıyor. Çözüm: `join(' ')` yerine
+      satırlar arasına `<br>`; alıntı bloğundaki `buf.join(' ')` için de
+      aynı karar. Tek satır, ama ürün kararı: "tek Enter = yeni satır".
 - [x] **Raporda başka projenin kartına tıklayınca hiçbir şey olmuyor**
       *(15 Eylül 2026; kapandı 16 Eylül)*. Kişi raporu bütün projeleri
       birleştiriyor; satıra tıklama kartı **aktif projenin** yüklü listesinde
