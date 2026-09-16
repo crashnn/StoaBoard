@@ -14,11 +14,13 @@
 //     devam" dalı yok.
 //  5. Yanıt: iç kimlik yok, e-posta yok, parola özeti yok (lib/tasinma.js
 //     başındaki kurallar; guvenlik.test.js dosyayı e-posta için tarıyor).
-//  6. Girdi: yok.
+//  6. Girdi: yalnızca ?format=json|csv|md; tanınmayan değer JSON'a düşer
+//     (reddetmek yerine varsayılana dönmek burada güvenli: üç biçim de aynı
+//     veriyi taşıyor, yanlış biçim yanlış veri demek değil).
 //  7. Veri dışarı çıkıyor: EVET. Denetim kaydına workspace.export, sayılarla
-//     (rapor dışa aktarımıyla aynı kalıp: kim, ne zaman, kaç kart, IP).
-//     Biçim JSON; Excel formül yüzeyi yok. Content-Disposition'daki dosya
-//     adı süzülüyor.
+//     ve biçimle (rapor dışa aktarımıyla aynı kalıp: kim, ne zaman, kaç kart,
+//     IP). CSV, Excel formül korumasından geçiyor (lib/csv.js csvCell).
+//     Content-Disposition'daki dosya adı süzülüyor.
 //  8. Hata mesajı: iki kod, ikisi de sözlükte; iç ayrıntı yok.
 //  9. Silme: çöp kutusu dosyaya girmiyor; denetim kaydı ilişkisiz tabloda.
 // 10. Test: paketleyici saf (tasinma.test.js); yetkisiz senaryo yetki
@@ -31,7 +33,9 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { currentMember, hasPermission } from '../lib/workspace.js';
 import { recordAudit, AUDIT } from '../lib/audit.js';
-import { alanPaketi, paketOzeti, paketDosyaAdi } from '../lib/tasinma.js';
+import { reqLang } from '../lib/lang.js';
+import { csvBuffer, CSV_CONTENT_TYPE } from '../lib/csv.js';
+import { alanPaketi, paketOzeti, paketDosyaAdi, paketCsv, paketMarkdown } from '../lib/tasinma.js';
 
 export const tasinmaRouter = Router();
 
@@ -84,17 +88,29 @@ tasinmaRouter.get(
     const now = new Date();
     const paket = alanPaketi({ workspace, exportedBy: user, members, projects, tasks, now });
     const ozet = paketOzeti(paket);
+    const format = ['json', 'csv', 'md'].includes(req.query.format) ? req.query.format : 'json';
+    const lang = reqLang(req);
 
     // Kayda içerik değil sayı yazılır (lib/audit.js başındaki kural).
     recordAudit(req, {
       workspaceId,
       user,
       action: AUDIT.WORKSPACE_EXPORT,
-      detail: ozet,
+      detail: { ...ozet, format },
     });
 
+    res.setHeader('Content-Disposition', `attachment; filename="${paketDosyaAdi(workspace.slug, now, format)}"`);
+    if (format === 'csv') {
+      // UTF-16LE + sekme; gerekçesi lib/csv.js başında.
+      const { headers, rows } = paketCsv(paket, lang);
+      res.setHeader('Content-Type', CSV_CONTENT_TYPE);
+      return res.send(csvBuffer(headers, rows));
+    }
+    if (format === 'md') {
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      return res.send(paketMarkdown(paket, lang));
+    }
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${paketDosyaAdi(workspace.slug, now)}"`);
     res.send(JSON.stringify(paket, null, 2));
   }),
 );

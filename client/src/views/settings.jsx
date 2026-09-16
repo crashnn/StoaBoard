@@ -1123,9 +1123,19 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                 <span style={{ flex: 1, minWidth: 200, fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
                   {_t('set_ws_export_desc','Projeler, kolonlar, kartlar, alt görevler ve yorumlar tek JSON dosyasında. Ekler ve süre kayıtları dahil değil. İndirme denetim kaydına yazılır.')}
                 </span>
-                <a className="btn btn-ghost" style={{ fontSize: 12, flexShrink: 0, textDecoration: 'none' }} href="/api/workspaces/me/export" download>
-                  <Icon name="download" size={12} /> {_t('set_ws_export_btn','JSON indir')}
-                </a>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
+                  {/* Üç biçim aynı uçtan, aynı paketten. JSON taşınma için (geri
+                      alınabilir), CSV Excel'de bakmak için, Markdown okumak için. */}
+                  <a className="btn btn-ghost" style={{ fontSize: 12, textDecoration: 'none' }} href="/api/workspaces/me/export" download title={_t('set_ws_export_json_title','Taşınma ve yedek için; geri yüklenebilir')}>
+                    <Icon name="download" size={12} /> JSON
+                  </a>
+                  <a className="btn btn-ghost" style={{ fontSize: 12, textDecoration: 'none' }} href={`/api/workspaces/me/export?format=csv&lang=${(localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr'}`} download title={_t('set_ws_export_csv_title','Excel için; kart başına bir satır')}>
+                    <Icon name="download" size={12} /> CSV
+                  </a>
+                  <a className="btn btn-ghost" style={{ fontSize: 12, textDecoration: 'none' }} href={`/api/workspaces/me/export?format=md&lang=${(localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr'}`} download title={_t('set_ws_export_md_title','Okunabilir belge; Notion gibi')}>
+                    <Icon name="download" size={12} /> Markdown
+                  </a>
+                </div>
               </div>
             </div>
           </div>

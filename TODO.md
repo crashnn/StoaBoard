@@ -67,7 +67,11 @@ tersi, sadeliğin ön koşulu: taşınması kolay olmayan araç denenmez.
       Plandan bir sapma: **e-posta dosyada yok** (GUVENLIK §5, dosya elden
       ele dolaşır); eşleme slug + adla. Kapsam dışı olanlar dosyada
       `not_included` olarak yazılı. Canlıda indirme + denetim kaydı satırı
-      doğrulanacak.
+      doğrulanacak. **Aynı gün iki biçim daha:** `?format=csv` (Excel,
+      kart başına satır, formül koruması) ve `?format=md` (okunabilir belge,
+      Notion'un dışa aktarımı gibi); ikisi de JSON paketinden türetiliyor,
+      ayrı sorgu yok. Ayrıştırmada JSON kaynak, öbür ikisi bakmak/okumak
+      için; geri alınamazlar, bilerek.
 - [ ] İçe aktar: kendi JSON
 - [ ] İçe aktar: Trello JSON
 - [ ] İçe aktar: genel CSV, sütun eşleme

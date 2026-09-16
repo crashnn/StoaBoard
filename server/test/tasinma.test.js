@@ -9,7 +9,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { alanPaketi, paketOzeti, paketDosyaAdi, TASINMA_BICIM, TASINMA_SURUM } from '../src/lib/tasinma.js';
+import { alanPaketi, paketOzeti, paketDosyaAdi, paketCsv, paketMarkdown, TASINMA_BICIM, TASINMA_SURUM } from '../src/lib/tasinma.js';
+import { toCsv } from '../src/lib/csv.js';
 
 const now = new Date('2026-09-16T12:00:00Z');
 
@@ -168,5 +169,84 @@ describe('paketDosyaAdi — Content-Disposition güvenli', () => {
   test('tırnak, satır sonu ve noktalı virgül süzülür; boş slug yedeğe düşer', () => {
     assert.equal(paketDosyaAdi('a"b;\r\nc', now), 'stoaboard_abc_2026-09-16.json');
     assert.equal(paketDosyaAdi('', now), 'stoaboard_stoaboard_2026-09-16.json');
+  });
+});
+
+// ─── CSV ve Markdown: aynı paketten ─────────────────────────────────────────
+//
+// İki biçim de JSON paketinden türetiliyor; veritabanına ikinci bir sorgu
+// yok. Testler bu yüzden paketten başlıyor: pakette olan CSV'de de olmalı.
+
+describe('paketCsv — kart başına bir satır', () => {
+  test('başlıklar dilde, satır sayısı kart sayısı, kolon adı dilde', () => {
+    const p = alanPaketi(ornek());
+    const tr = paketCsv(p, 'tr');
+    assert.equal(tr.headers[0], 'Proje');
+    assert.equal(tr.headers[2], 'Başlık');
+    assert.equal(tr.rows.length, 2);
+    const bitti = tr.rows.find((r) => r[2] === 'Bitti');
+    assert.equal(bitti[1], 'Tamamlandı'); // title_tr
+    assert.equal(bitti[3], 'yüksek');
+    assert.equal(bitti[4], 'ayse, ali');
+    assert.equal(bitti[5], 'bug');
+    assert.equal(bitti[7], '2026-09-10');
+    assert.equal(bitti[8], '2026-09-10');
+    assert.equal(bitti[10], '1/2');
+    assert.equal(bitti[11], 2);
+    const en = paketCsv(p, 'en');
+    assert.equal(en.headers[0], 'Project');
+    assert.equal(en.rows.find((r) => r[2] === 'Bitti')[1], 'Done');
+    assert.equal(en.rows.find((r) => r[2] === 'Bitti')[3], 'high');
+  });
+
+  // Kart başlığı kullanıcı girdisi; Excel formülü olarak başlarsa dosyayı
+  // açan yöneticinin makinesinde çalışır (1 Eylül'ün CSV kusuru). Paketleyici
+  // kaçışlamıyor, csvCell kaçışlıyor; bu test ikisinin birlikte çalıştığını
+  // gösteriyor.
+  test('formül gibi başlayan başlık, toCsv ile geçince korunuyor', () => {
+    const o = ornek();
+    o.tasks[1].title = '=HYPERLINK("http://kotu")';
+    const { headers, rows } = paketCsv(alanPaketi(o), 'tr');
+    const metin = toCsv(headers, rows);
+    assert.ok(metin.includes("'=HYPERLINK"), 'formül koruması uygulanmadı');
+    assert.ok(!/\t=HYPERLINK/.test(metin), 'çıplak formül hücresi var');
+  });
+});
+
+describe('paketMarkdown — okunabilir belge', () => {
+  test('alan → proje → kolon başlıkları; bitiş kolonundaki kart işaretli', () => {
+    const md = paketMarkdown(alanPaketi(ornek()), 'tr');
+    assert.ok(md.startsWith('# Deneme\n'));
+    assert.ok(md.includes('## Ana\n'));
+    assert.ok(md.includes('### Backlog (0)'));
+    assert.ok(md.includes('### Yapılacak (1)'));
+    assert.ok(md.includes('### Tamamlandı (1)'));
+    assert.ok(md.includes('- [x] **Bitti** · yüksek · @ayse, @ali · #bug · bitiş 2026-09-10'));
+    assert.ok(md.includes('- [ ] **Açık**'));
+    assert.ok(md.includes('  - [ ] birinci\n  - [x] ikinci'));
+    assert.ok(md.includes('  > @ali (2026-09-01): önce'));
+    assert.ok(md.includes('Bu kolonda kart yok.'));
+    assert.ok(md.trimEnd().endsWith('_Dosyada olmayanlar: attachments, work_logs, transitions, notes, chat, trash_'));
+  });
+
+  test('İngilizce: kolon adı title, öncelik ve etiketler İngilizce', () => {
+    const md = paketMarkdown(alanPaketi(ornek()), 'en');
+    assert.ok(md.includes('### Done (1)'));
+    assert.ok(md.includes('**Bitti** · high ·'));
+    assert.ok(md.includes('_Exported: 2026-09-16 · StoaBoard · by @ali_'));
+  });
+
+  test("çöpteki kart ve e-posta Markdown'da da yok", () => {
+    const md = paketMarkdown(alanPaketi(ornek()), 'tr');
+    assert.ok(!md.includes('Çöpte'));
+    assert.ok(!md.includes('@ornek.com'));
+  });
+});
+
+describe('paketDosyaAdi — uzantı', () => {
+  test('csv ve md; tanınmayan uzantı json', () => {
+    assert.equal(paketDosyaAdi('deneme', now, 'csv'), 'stoaboard_deneme_2026-09-16.csv');
+    assert.equal(paketDosyaAdi('deneme', now, 'md'), 'stoaboard_deneme_2026-09-16.md');
+    assert.equal(paketDosyaAdi('deneme', now, 'exe'), 'stoaboard_deneme_2026-09-16.json');
   });
 });
