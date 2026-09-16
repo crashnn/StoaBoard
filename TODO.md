@@ -1272,8 +1272,9 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Çözüm: yüklemeyi kanal/DM bağlamına bağla (üyelik kapısı), kullanıcı
       başına günlük hacim sınırı, hız sınırı. `yetki.test.js` KAPISIZ_UCLAR'da
       gerekçesiyle duruyor.
-- [ ] **Çift tırnaklı `error` alanı dil taramasından kaçıyor** *(16 Eylül
-      2026)*. `attachments.js` sohbet yüklemesinde `error: "Dosya 50 MB'dan
+- [x] **Çift tırnaklı `error` alanı dil taramasından kaçıyor** *(16 Eylül
+      2026; aynı gün kapandı: tarama üç tırnağı da görüyor, üç kaçak koda
+      çevrildi, mutasyonla doğrulandı)*. `attachments.js` sohbet yüklemesinde `error: "Dosya 50 MB'dan
       büyük olamaz"` — düz Türkçe metin `error` alanında, ama `dil.test.js`
       yalnızca tek tırnaklı `error: '...'` arıyor. Metin koda çevrilmeli
       (`err_file_too_large`, tr+en) ve tarama çift tırnağı da görmeli; bu tam

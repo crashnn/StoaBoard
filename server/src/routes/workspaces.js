@@ -1137,7 +1137,7 @@ workspacesRouter.post(
       return res.status(400).json({ error: 'err_images_only', message: 'Sadece resim dosyaları yüklenebilir' });
     }
     if (req.file.size > 5 * 1024 * 1024) {
-      return res.status(400).json({ error: "Logo 5 MB'dan büyük olamaz" });
+      return res.status(400).json({ error: 'err_logo_too_large', message: "Logo 5 MB'dan büyük olamaz" });
     }
 
     const stored = await storeFile(req.file, 'logo');

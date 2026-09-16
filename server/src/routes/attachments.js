@@ -105,7 +105,7 @@ taskAttachmentsRouter.post(
     }
     const mime = req.file.mimetype || 'application/octet-stream';
     if (!ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p))) {
-      return res.status(415).json({ error: `Desteklenmeyen dosya türü: ${mime}` });
+      return res.status(415).json({ error: 'err_unsupported_file_type', message: `Desteklenmeyen dosya türü: ${mime}` });
     }
 
     const stored = await storeFile(req.file, 'attachment');
@@ -209,7 +209,7 @@ chatUploadRouter.post(
     const origName = req.file.originalname || '';
     if (!origName) return res.status(400).json({ error: 'err_invalid_file', message: 'Geçersiz dosya' });
     if (req.file.size > 50 * 1024 * 1024) {
-      return res.status(400).json({ error: "Dosya 50 MB'dan büyük olamaz" });
+      return res.status(400).json({ error: 'err_file_too_large', message: "Dosya 50 MB'dan büyük olamaz" });
     }
 
     const ext = origName.includes('.')

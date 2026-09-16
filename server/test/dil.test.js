@@ -362,7 +362,10 @@ describe('sunucu hata mesajları — koda bağlı ve çevrili olmalı', () => {
     const bulgular = [];
     for (const ad of HATA_DOSYALARI) {
       const src = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', ad));
-      for (const m of src.matchAll(/\berror:\s*'([^']+)'/g)) {
+      // Üç tırnak da: 16 Eylül'de çift tırnaklı ve ters tırnaklı üç `error`
+      // alanı düz Türkçe taşıyordu ve yalnızca tek tırnağa bakan tarama
+      // hepsini kaçırdı — kaynak tarayan test kör noktası (CLAUDE.md).
+      for (const m of src.matchAll(/\berror:\s*['"`]([^'"`]+)['"`]/g)) {
         if (TURKCE.test(m[1]) || /\s/.test(m[1])) bulgular.push(`${ad}  error: '${m[1]}'`);
       }
     }
@@ -385,7 +388,7 @@ describe('sunucu hata mesajları — koda bağlı ve çevrili olmalı', () => {
     const eksik = [];
     for (const ad of HATA_DOSYALARI) {
       const src = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', ad));
-      for (const m of src.matchAll(/\berror:\s*'(err_[a-z0-9_]+)'/g)) {
+      for (const m of src.matchAll(/\berror:\s*['"`](err_[a-z0-9_]+)['"`]/g)) {
         if (DINAMIK_MESAJLI.has(m[1])) continue;
         if (!tr.has(m[1])) eksik.push(`${m[1]} (tr)`);
         if (!en.has(m[1])) eksik.push(`${m[1]} (en)`);
