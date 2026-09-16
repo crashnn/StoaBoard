@@ -1232,6 +1232,19 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
+- [ ] **Tamamlandı kolonuna doğrudan açılan kartta `completed_at` boş
+      kalıyor** *(16 Eylül 2026, MCP ile kapanmış işleri panoya taşırken)*.
+      `create_task` ile `done` kolonuna açılan kartta `completed_at: null`,
+      `progress` 100 ama geçiş kaydı yok. Raporlar "tamamlandı = bitiş
+      kolonuna geçiş" dediği için bu kartlar dönem raporunda görünmez, akış
+      raporunda sayılmaz. Arayüzden Tamamlandı kolonuna yeni kart açmak da
+      muhtemelen aynı yol (`POST /projects/:id/tasks`, `col` verilince).
+      Beklenen: kart bitiş kolonunda doğuyorsa `completed_at = created_at`
+      ve bir geçiş kaydı (null → done); ya da bitiş kolonuna doğrudan açma
+      reddedilsin. İlki daha doğru: retrospektif kart açmak meşru ("1 Eylül
+      → 16 Eylül" projesi böyle kuruldu; **o kartların `completed_at`i
+      kontrol edilmeli**, 13 kart raporda görünmüyor olabilir). Bugün dört
+      kart bir ileri bir geri taşınarak dolanıldı. Kart panoda.
 - [x] **Notlar: son yazan, ötekinin değişikliğini görmüyor** *(16 Eylül
       2026, iki hesapla denendi; aynı gün kapandı)*. A yazar, B görür; sonra B yazar, A görmez,
       F5 gerekir. Tersi de aynı. Sebep [notes.jsx](client/src/views/notes.jsx)
