@@ -5,14 +5,53 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 16 Eylül 2026 sabahı, **ofis makinesinde** (5432 kapalı).
-En taze bölüm **0-Y**.
+**Son güncelleme:** 16 Eylül 2026 akşamüstü, **ofis makinesinde** (5432 kapalı).
+En taze bölüm **0-Z**.
 
 > **Toplantı BUGÜN: 16 Eylül 13:30–14:30, Teams ekran paylaşımı.** Yeni Claude
 > hesabı, yeni demo alanı, 20+ commit'lik bir düzeltme günü (0-W). Sabah
 > yapılacak tek iş: sunum sayfasının sayılarını yenileyip yayımlamak, 11:00'e
 > kadar. Demo rehberi [TOPLANTI-2-PLAN.md](TOPLANTI-2-PLAN.md), hesap geçişi
 > [HESAP-GECISI.md](HESAP-GECISI.md).
+
+---
+
+## 0-Z. 16 Eylül akşamüstü — toplantı sonrası tur: lint, notlar, taşınma
+
+Toplantıdan sonra aynı gün. Testler **500 → 534**, hepsi geçiyor.
+
+- **Lint** (`774ade4`): dört kural istemcide, iki sunucuda; kancada ve CI'da
+  testlerin önünde. Mutasyonla doğrulandı: 15 Eylül'ün iki canlı hatası
+  yakalanıyor. 55 uyarı bilerek duruyor (TODO, `TR_X` tabloları tuzağı).
+- **Notlar** (`abb9d92`): son yazan ötekinin değişikliğini görmüyordu ve
+  alandan çıkınca ESKİ metnini kaydedip ötekini siliyordu. Uygulanan gövde
+  ayrı izleniyor (`appliedRef`); çakışmada şerit, sessiz ezme yok. Önizlemede
+  tek Enter = yeni satır. **Canlıda iki hesapla doğrulanmadı henüz.**
+- **completedAt** (`72a114d`): bitiş kolonuna doğrudan açılan kart artık
+  o an tamamlanmış; `yeniKartTamamlanma`, dört test. Panoda İncelemede.
+- **Taşınma** (`b95be6c`, `5ce776f`, `d4547d4`): toplantının tek somut
+  isteği. Dışa aktar JSON/CSV/Markdown, tek paketten; içe aktar kendi JSON
+  (doğrulamalı, tek transaction, yeni proje açar, üye eşleme). Kullanıcı üç
+  dışa aktarımı canlıda indirdi ve baktı; gerçek dosya doğrulamadan geçti.
+  **İçe aktarma canlıda henüz denenmedi.** Kalan: Trello JSON, genel CSV,
+  ekler. Pano kartı 2/5.
+- MCP'den pano güncellendi: bugün 7 kart kapandı, 5 açıldı; MCP ile
+  bitiş kolonuna açılan kartların `completed_at` boşluğu böyle bulundu.
+
+### Kaldığı yer / yeniden başlayınca
+
+1. `git fetch && git status`; ofis makinesinde push bekleyen commit
+   olabilir (kullanıcı hak sınırı yüzünden kapattı, 16 Eylül ~17:00).
+2. Deploy sonrası canlıda: (a) içe aktarma — indirilen JSON'u aynı alana
+   yükle, "(2)" ekli üç proje ve 40 kart gelmeli, denetim kaydı satırı;
+   bozuk dosya "proje 1 › kart N" deyip hiçbir şey açmamalı. (b) notlar iki
+   hesapla: A yazar B görür, B yazar A görür, A yazarken B kaydederse A'da
+   şerit. (c) Raporlarda "Çalışma alanı dışa aktarıldı / içe aktarıldı".
+3. Sıradaki iş: Trello JSON içe aktarma (biçimi herkese açık) ya da lint
+   uyarı temizliği; ikisi de panoda.
+
+Kullanıcı hakkında hafızaya yazıldı: StoaBoard kendi projesi, kurucusu,
+staj bitince de sürüyor; belgelerde "devir/ayrılma" iması kurulmaz.
 
 ---
 

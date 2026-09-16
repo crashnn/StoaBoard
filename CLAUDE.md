@@ -87,7 +87,7 @@ Akşam **MCP 0.6.0** (DEVIR 0-V): `whoami`de `available_tools`, kartlarda
 `assignees_not_members` ve `created_at`, açılışta anahtar izi. MCP'de asıl
 kalan iş kişinin kendi anahtarını alabilmesi.
 
-Test sayısı **485**, hepsi geçiyor. Ayrıntılı durum için **her zaman
+Test sayısı **534**, hepsi geçiyor. Ayrıntılı durum için **her zaman
 [DEVIR.md](DEVIR.md)** — bu blok bayatlamaya yatkın, oradaki 0-* bölümleri
 tarihli ve daha güvenilir.
 
