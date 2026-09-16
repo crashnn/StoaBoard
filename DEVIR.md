@@ -8,7 +8,7 @@ güven, düzyazıya değil.
 **Son güncelleme:** 16 Eylül 2026 sabahı, **ofis makinesinde** (5432 kapalı).
 En taze bölüm **0-X**.
 
-> **Toplantı yarın: 16 Eylül 13:30–14:30, Teams ekran paylaşımı.** Yeni Claude
+> **Toplantı BUGÜN: 16 Eylül 13:30–14:30, Teams ekran paylaşımı.** Yeni Claude
 > hesabı, yeni demo alanı, 20+ commit'lik bir düzeltme günü (0-W). Sabah
 > yapılacak tek iş: sunum sayfasının sayılarını yenileyip yayımlamak, 11:00'e
 > kadar. Demo rehberi [TOPLANTI-2-PLAN.md](TOPLANTI-2-PLAN.md), hesap geçişi
