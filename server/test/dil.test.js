@@ -377,7 +377,7 @@ describe('sunucu hata mesajları — koda bağlı ve çevrili olmalı', () => {
   // değerler gömülüyor (kolon adları gibi), o yüzden sabit bir karşılığı
   // olamaz. Bunlarda cümle sunucuda, isteğin dilinde kuruluyor ve apiFetch
   // sözlükte karşılık bulamayınca o message'a düşüyor.
-  const DINAMIK_MESAJLI = new Set(['err_transition_not_allowed']);
+  const DINAMIK_MESAJLI = new Set(['err_transition_not_allowed', 'err_import_invalid']);
 
   test('her hata kodunun iki sözlükte de karşılığı var', () => {
     const tr = sozlukAnahtarlari('tr');

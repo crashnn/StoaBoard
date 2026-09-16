@@ -9,7 +9,11 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { alanPaketi, paketOzeti, paketDosyaAdi, paketCsv, paketMarkdown, TASINMA_BICIM, TASINMA_SURUM } from '../src/lib/tasinma.js';
+import {
+  alanPaketi, paketOzeti, paketDosyaAdi, paketCsv, paketMarkdown,
+  paketiDogrula, dogrulamaMesaji, benzersizProjeAdi, ICE_SINIR,
+  TASINMA_BICIM, TASINMA_SURUM,
+} from '../src/lib/tasinma.js';
 import { toCsv } from '../src/lib/csv.js';
 
 const now = new Date('2026-09-16T12:00:00Z');
@@ -46,7 +50,7 @@ function ornek() {
       labelLinks: [{ label: { id: 7, slug: 'bug' } }],
     },
     {
-      id: 101, projectId: 23, columnId: 118, title: 'Açık', description: null, doc: { blocks: [] }, priority: null,
+      id: 101, projectId: 23, columnId: 118, title: 'Açık', description: null, doc: [{ kind: 'p', text: 'merhaba' }], priority: null,
       dueDate: null, startDate: null, assigneeDates: null, position: 1,
       createdAt: new Date('2026-09-05T00:00:00Z'), completedAt: null, deletedAt: null,
       creator: null, subtasks: [], comments: [], assignees: [], labelLinks: [],
@@ -142,8 +146,17 @@ describe('alanPaketi — biçim ve kapsam', () => {
     assert.equal(t.description, '');
     assert.equal(t.priority, 'mid');
     assert.equal(t.created_by, null);
-    assert.deepEqual(t.doc, { blocks: [] });
+    assert.deepEqual(t.doc, [{ kind: 'p', text: 'merhaba' }]);
     assert.equal(t.completed_at, null);
+  });
+
+  // Eski bir kayıtta doc dizi değilse dosyaya girmez: içe aktarma katı,
+  // gidiş-dönüş bozulmasın.
+  test('dizi olmayan doc dışa aktarımda null olur', () => {
+    const o = ornek();
+    o.tasks[1].doc = { blocks: [] };
+    const t = alanPaketi(o).projects[0].tasks.find((x) => x.title === 'Açık');
+    assert.equal(t.doc, null);
   });
 
   // Kapsam dışı olanlar dosyada ADIYLA yazılı: içe aktarma "kayıp" değil
@@ -248,5 +261,134 @@ describe('paketDosyaAdi — uzantı', () => {
     assert.equal(paketDosyaAdi('deneme', now, 'csv'), 'stoaboard_deneme_2026-09-16.csv');
     assert.equal(paketDosyaAdi('deneme', now, 'md'), 'stoaboard_deneme_2026-09-16.md');
     assert.equal(paketDosyaAdi('deneme', now, 'exe'), 'stoaboard_deneme_2026-09-16.json');
+  });
+});
+
+// ─── İçe aktarma doğrulaması ────────────────────────────────────────────────
+//
+// Kural: bozuk dosya tek satır yazılmadan reddedilir ve hata NEREDE olduğunu
+// söyler. Gidiş-dönüş testi en önemlisi: kendi dışa aktardığımız paket kendi
+// doğrulamamızdan geçmiyorsa iki taraf birbirinden kopmuş demektir.
+
+const kopya = (o) => JSON.parse(JSON.stringify(o));
+
+describe('paketiDogrula — gidiş-dönüş', () => {
+  test('dışa aktarılan paket olduğu gibi kabul edilir ve sayılar tutar', () => {
+    const p = kopya(alanPaketi(ornek()));
+    const d = paketiDogrula(p);
+    assert.equal(d.ok, true, JSON.stringify(d));
+    assert.deepEqual(d.ozet, { projects: 1, tasks: 2, subtasks: 2, comments: 2 });
+  });
+
+  test('isteğe bağlı alanlar yokken de geçer (en küçük dosya)', () => {
+    const d = paketiDogrula({ format: TASINMA_BICIM, version: TASINMA_SURUM, projects: [{ name: 'A' }] });
+    assert.equal(d.ok, true);
+    assert.deepEqual(d.ozet, { projects: 1, tasks: 0, subtasks: 0, comments: 0 });
+  });
+});
+
+describe('paketiDogrula — reddedilenler, yeriyle', () => {
+  const temel = () => kopya(alanPaketi(ornek()));
+
+  test('nesne değil / biçim / sürüm', () => {
+    assert.equal(paketiDogrula(null).kod, 'shape');
+    assert.equal(paketiDogrula([]).kod, 'shape');
+    assert.equal(paketiDogrula({ format: 'trello', version: 1, projects: [] }).kod, 'format');
+    assert.equal(paketiDogrula({ format: TASINMA_BICIM, version: 2, projects: [] }).kod, 'version');
+    assert.equal(paketiDogrula({ format: TASINMA_BICIM, version: 1, projects: [] }).sebep, 'projects boş');
+  });
+
+  test('bilinmeyen kolon ve etiket referansı yerini söyler', () => {
+    const p = temel();
+    p.projects[0].tasks[1].column = 'yok';
+    let d = paketiDogrula(p);
+    assert.equal(d.ok, false);
+    assert.equal(d.yer, 'proje 1 › kart 2');
+    assert.match(d.sebep, /bilinmeyen kolon: yok/);
+    const q = temel();
+    q.projects[0].tasks[0].labels = ['hayalet'];
+    d = paketiDogrula(q);
+    assert.match(d.sebep, /bilinmeyen etiket: hayalet/);
+  });
+
+  test('kolon slug tekrarı, geçersiz slug, allowed_next bilinmeyen kolon', () => {
+    const p = temel();
+    p.projects[0].columns.push({ slug: 'todo', title: 'Tekrar' });
+    assert.match(paketiDogrula(p).sebep, /slug tekrar: todo/);
+    const q = temel();
+    q.projects[0].columns[0].slug = 'Büyük Harf';
+    assert.match(paketiDogrula(q).sebep, /slug geçersiz/);
+    const r = temel();
+    r.projects[0].columns[0].allowed_next = ['uzay'];
+    assert.match(paketiDogrula(r).sebep, /allowed_next bilinmeyen kolon: uzay/);
+  });
+
+  // Alt görevin tek kaynağı tablo (13 Eylül, DEVIR 0-U). Kart açma ucu doc
+  // içindeki kontrol listesini reddediyor; içe aktarma arka kapı olmasın.
+  test('doc içinde kontrol listesi reddedilir; bozuk doc da', () => {
+    const p = temel();
+    p.projects[0].tasks[0].doc = [{ kind: 'checklist', items: [] }];
+    assert.match(paketiDogrula(p).sebep, /kontrol listesi/);
+    const q = temel();
+    q.projects[0].tasks[0].doc = [{ kind: 'script', text: 'x' }];
+    assert.match(paketiDogrula(q).sebep, /doc: blok 0: bilinmeyen tür/);
+  });
+
+  test('tarih biçimi, öncelik, başlık uzunluğu', () => {
+    const p = temel();
+    p.projects[0].tasks[0].due = '10.09.2026';
+    assert.match(paketiDogrula(p).sebep, /due YYYY-MM-DD/);
+    const q = temel();
+    q.projects[0].tasks[0].priority = 'urgent';
+    assert.match(paketiDogrula(q).sebep, /öncelik high\/mid\/low/);
+    const r = temel();
+    r.projects[0].tasks[0].title = 'x'.repeat(ICE_SINIR.title + 1);
+    assert.match(paketiDogrula(r).sebep, /başlık boş ya da çok uzun/);
+    const t = temel();
+    t.projects[0].tasks[1].comments[0].created_at = 'dün'; // kart 2 = 'Bitti', yorumlu olan
+    assert.match(paketiDogrula(t).sebep, /created_at tarih değil/);
+    assert.equal(paketiDogrula(t).yer, 'proje 1 › kart 2 › yorum 1');
+  });
+
+  test('sınırlar: kart toplamı, proje sayısı, alt görev', () => {
+    const p = temel();
+    const kart = p.projects[0].tasks[0];
+    p.projects[0].tasks = Array.from({ length: ICE_SINIR.tasks + 1 }, () => kopya(kart));
+    const d = paketiDogrula(p);
+    assert.equal(d.kod, 'limit');
+    assert.match(d.sebep, /en fazla 5000 kart/);
+    const q = temel();
+    q.projects = Array.from({ length: ICE_SINIR.projects + 1 }, () => kopya(q.projects[0]));
+    assert.equal(paketiDogrula(q).kod, 'limit');
+    const r = temel();
+    r.projects[0].tasks[0].subtasks = Array.from({ length: ICE_SINIR.subtasks + 1 }, () => ({ title: 'a' }));
+    assert.match(paketiDogrula(r).sebep, /en fazla 100 alt görev/);
+  });
+
+  // Dizi beklenen yere nesne (GUVENLIK §4 soru 6).
+  test('dizi beklenen yere nesne gelirse reddedilir', () => {
+    const p = temel();
+    p.projects[0].tasks[0].subtasks = { title: 'x' };
+    assert.match(paketiDogrula(p).sebep, /subtasks dizi olmalı/);
+    const q = temel();
+    q.projects[0].tasks[0].assignees = 'ali';
+    assert.match(paketiDogrula(q).sebep, /assignees slug dizisi/);
+  });
+});
+
+describe('dogrulamaMesaji — iki dil, yer ve sebep içinde', () => {
+  test('tr ve en', () => {
+    const h = { ok: false, kod: 'shape', yer: 'proje 1 › kart 2', sebep: 'başlık boş' };
+    assert.equal(dogrulamaMesaji(h, 'tr'), 'Dosya bozuk (proje 1 › kart 2: başlık boş)');
+    assert.equal(dogrulamaMesaji(h, 'en'), 'File is malformed (proje 1 › kart 2: başlık boş)');
+    assert.match(dogrulamaMesaji({ kod: 'format', yer: 'dosya', sebep: 'x' }, 'en'), /not a StoaBoard export/);
+  });
+});
+
+describe('benzersizProjeAdi — var olana karışma, yenisini aç', () => {
+  test('çakışmada (2), (3); büyük-küçük harf duyarsız; boşluk kırpılır', () => {
+    assert.equal(benzersizProjeAdi('Ana', new Set()), 'Ana');
+    assert.equal(benzersizProjeAdi('Ana', new Set(['ana'])), 'Ana (2)');
+    assert.equal(benzersizProjeAdi('  Ana ', new Set(['Ana', 'Ana (2)'])), 'Ana (3)');
   });
 });

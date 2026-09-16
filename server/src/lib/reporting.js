@@ -19,7 +19,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * Görev başlığı, kullanıcı adı ve kolon başlıkları o anki hâliyle kopyalanır;
  * kayıt sonradan silinen görev/kullanıcı için de okunabilir kalsın diye.
  */
-export async function recordTransition(client, { task, project, user, fromCol, toCol }) {
+export async function recordTransition(client, { task, project, user, fromCol, toCol, at = null }) {
   return client.taskTransition.create({
     data: {
       projectId: project?.id ?? task.projectId ?? null,
@@ -32,7 +32,10 @@ export async function recordTransition(client, { task, project, user, fromCol, t
       toColumnId: toCol?.id ?? null,
       toTitle: toCol ? (toCol.titleTr || toCol.title || '').slice(0, 100) : null,
       toIsDone: Boolean(toCol?.isDone),
-      at: new Date(),
+      // `at` yalnızca içe aktarmada veriliyor: taşınan kartın ilk yerleşimi
+      // dosyadaki açılış tarihine yazılır ki akış raporu "bugün açıldı"
+      // demesin. Öbür her yerde şimdi.
+      at: at instanceof Date && !Number.isNaN(at.getTime()) ? at : new Date(),
     },
   });
 }

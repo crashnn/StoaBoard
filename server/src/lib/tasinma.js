@@ -22,6 +22,9 @@
 //   yeniden kurulamaz; bu dosya panoyu taşır, geçmişi değil. Belgelenmiş.
 // - Tarihler ISO 8601 (UTC). Gün alanları YYYY-MM-DD.
 
+import { docDenetle } from './doc.js';
+import { docKontrolListesiVarMi } from './checklist.js';
+
 export const TASINMA_BICIM = 'stoaboard-workspace';
 export const TASINMA_SURUM = 1;
 
@@ -54,7 +57,9 @@ export function alanPaketi({ workspace, exportedBy, members, projects, tasks, no
     kartlar.get(t.projectId).push({
       title: t.title,
       description: t.description || '',
-      doc: t.doc ?? null,
+      // Blok gövdesi dizi; eski bir kayıtta başka şekil kaldıysa dosyaya
+      // girmesin (içe aktarma katı, gidiş-dönüş bozulmasın).
+      doc: Array.isArray(t.doc) ? t.doc : null,
       priority: t.priority || 'mid',
       column: t.columnId != null ? (kolonSlug.get(t.columnId) ?? null) : null,
       labels: (t.labelLinks || []).map((ll) => ll.label?.slug).filter(Boolean),
@@ -258,4 +263,191 @@ export function paketMarkdown(paket, lang = 'tr') {
   out.push(`_${m.not_included}: ${paket.not_included.join(', ')}_`);
   out.push('');
   return out.join('\n');
+}
+
+// ─── İçe aktarma: doğrulama (saf) ───────────────────────────────────────────
+//
+// Dosya dışarıdan geliyor: elden ele dolaşmış, elle düzenlenmiş, başka
+// sürümden gelmiş olabilir. Rota hiçbir alanı doğrudan veritabanına yazmaz;
+// önce bu denetimden geçer ve denetim İLK hatada durup nerede olduğunu
+// söyler ("proje 2 › kart 14: başlık boş"). "Ya hepsi ya hiçbiri" kuralının
+// ilk yarısı burada: bozuk dosya tek satır bile yazmadan reddedilir.
+//
+// Sınırlar, bir kişinin yanlışlıkla ya da kasten yükleyebileceği dosyanın
+// veritabanını şişirmesine karşı. Gövde sınırı (10 MB) ayrıca app.js'te.
+
+export const ICE_SINIR = {
+  projects: 50,
+  columns: 30,
+  labels: 50,
+  tasks: 5000,        // dosya toplamı
+  subtasks: 100,      // kart başına
+  comments: 200,      // kart başına
+  title: 500,
+  name: 100,
+  description: 20000,
+  comment: 5000,
+  slug: 60,
+};
+
+const SLUG = /^[a-z0-9][a-z0-9_-]{0,59}$/;
+const GUN = /^\d{4}-\d{2}-\d{2}$/;
+const ONCELIK = new Set(['high', 'mid', 'low']);
+
+const dize = (v, en) => typeof v === 'string' && v.length <= en;
+const gunMu = (v) => v === null || v === undefined || (typeof v === 'string' && GUN.test(v) && !Number.isNaN(Date.parse(v)));
+const anMi = (v) => v === null || v === undefined || (typeof v === 'string' && !Number.isNaN(Date.parse(v)));
+
+/**
+ * Dönüş: `{ ok: true, ozet }` ya da `{ ok: false, kod, yer, sebep }`.
+ *  kod: 'format' | 'version' | 'shape' | 'limit'
+ *  yer: insan için konum ("proje 2 › kart 14"), sebep: ne yanlış (Türkçe;
+ *       çeviri rotada, kullanıcıya giden metin `message`).
+ */
+export function paketiDogrula(obj) {
+  const hata = (kod, yer, sebep) => ({ ok: false, kod, yer, sebep });
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return hata('shape', 'dosya', 'JSON nesnesi değil');
+  if (obj.format !== TASINMA_BICIM) return hata('format', 'dosya', `format "${TASINMA_BICIM}" olmalı`);
+  if (obj.version !== TASINMA_SURUM) return hata('version', 'dosya', `sürüm ${TASINMA_SURUM} bekleniyor`);
+  if (!Array.isArray(obj.projects)) return hata('shape', 'dosya', 'projects dizi olmalı');
+  if (!obj.projects.length) return hata('shape', 'dosya', 'projects boş');
+  if (obj.projects.length > ICE_SINIR.projects) return hata('limit', 'dosya', `en fazla ${ICE_SINIR.projects} proje`);
+
+  let toplamKart = 0;
+  const ozet = { projects: obj.projects.length, tasks: 0, subtasks: 0, comments: 0 };
+
+  for (let pi = 0; pi < obj.projects.length; pi += 1) {
+    const p = obj.projects[pi];
+    const yerP = `proje ${pi + 1}`;
+    if (!p || typeof p !== 'object') return hata('shape', yerP, 'nesne değil');
+    if (!dize(p.name, ICE_SINIR.name) || !p.name.trim()) return hata('shape', yerP, 'ad boş ya da çok uzun');
+    if (p.color != null && !dize(p.color, 100)) return hata('shape', yerP, 'renk geçersiz');
+    if (p.icon != null && !dize(p.icon, 50)) return hata('shape', yerP, 'simge geçersiz');
+
+    const kolonlar = p.columns ?? [];
+    if (!Array.isArray(kolonlar)) return hata('shape', yerP, 'columns dizi olmalı');
+    if (kolonlar.length > ICE_SINIR.columns) return hata('limit', yerP, `en fazla ${ICE_SINIR.columns} kolon`);
+    const kolonSluglari = new Set();
+    for (let ci = 0; ci < kolonlar.length; ci += 1) {
+      const c = kolonlar[ci];
+      const yerC = `${yerP} › kolon ${ci + 1}`;
+      if (!c || typeof c !== 'object') return hata('shape', yerC, 'nesne değil');
+      if (typeof c.slug !== 'string' || !SLUG.test(c.slug)) return hata('shape', yerC, 'slug geçersiz (a-z, 0-9, -, _)');
+      if (kolonSluglari.has(c.slug)) return hata('shape', yerC, `slug tekrar: ${c.slug}`);
+      kolonSluglari.add(c.slug);
+      if (!dize(c.title, ICE_SINIR.name) || !c.title.trim()) return hata('shape', yerC, 'başlık boş ya da çok uzun');
+      if (c.title_tr != null && !dize(c.title_tr, ICE_SINIR.name)) return hata('shape', yerC, 'title_tr geçersiz');
+      if (c.color != null && !dize(c.color, 100)) return hata('shape', yerC, 'renk geçersiz');
+      if (c.is_done != null && typeof c.is_done !== 'boolean') return hata('shape', yerC, 'is_done boolean olmalı');
+      if (c.allowed_next != null) {
+        if (!Array.isArray(c.allowed_next) || c.allowed_next.some((x) => typeof x !== 'string')) return hata('shape', yerC, 'allowed_next slug dizisi olmalı');
+      }
+    }
+    for (const c of kolonlar) {
+      for (const x of c.allowed_next || []) {
+        if (!kolonSluglari.has(x)) return hata('shape', `${yerP} › kolon ${c.slug}`, `allowed_next bilinmeyen kolon: ${x}`);
+      }
+    }
+
+    const etiketler = p.labels ?? [];
+    if (!Array.isArray(etiketler)) return hata('shape', yerP, 'labels dizi olmalı');
+    if (etiketler.length > ICE_SINIR.labels) return hata('limit', yerP, `en fazla ${ICE_SINIR.labels} etiket`);
+    const etiketSluglari = new Set();
+    for (let li = 0; li < etiketler.length; li += 1) {
+      const l = etiketler[li];
+      const yerL = `${yerP} › etiket ${li + 1}`;
+      if (!l || typeof l !== 'object') return hata('shape', yerL, 'nesne değil');
+      if (typeof l.slug !== 'string' || !SLUG.test(l.slug)) return hata('shape', yerL, 'slug geçersiz');
+      if (etiketSluglari.has(l.slug)) return hata('shape', yerL, `slug tekrar: ${l.slug}`);
+      etiketSluglari.add(l.slug);
+      if (!dize(l.name_en, ICE_SINIR.name) || !l.name_en.trim()) return hata('shape', yerL, 'name_en boş ya da çok uzun');
+      if (l.name_tr != null && !dize(l.name_tr, ICE_SINIR.name)) return hata('shape', yerL, 'name_tr geçersiz');
+      if (l.color_tone != null && !dize(l.color_tone, 50)) return hata('shape', yerL, 'color_tone geçersiz');
+    }
+
+    const kartlar = p.tasks ?? [];
+    if (!Array.isArray(kartlar)) return hata('shape', yerP, 'tasks dizi olmalı');
+    toplamKart += kartlar.length;
+    if (toplamKart > ICE_SINIR.tasks) return hata('limit', yerP, `dosya toplamı en fazla ${ICE_SINIR.tasks} kart`);
+    for (let ti = 0; ti < kartlar.length; ti += 1) {
+      const t = kartlar[ti];
+      const yerT = `${yerP} › kart ${ti + 1}`;
+      if (!t || typeof t !== 'object') return hata('shape', yerT, 'nesne değil');
+      if (!dize(t.title, ICE_SINIR.title) || !t.title.trim()) return hata('shape', yerT, 'başlık boş ya da çok uzun');
+      if (t.description != null && !dize(t.description, ICE_SINIR.description)) return hata('shape', yerT, 'açıklama çok uzun ya da dize değil');
+      if (t.priority != null && !ONCELIK.has(t.priority)) return hata('shape', yerT, `öncelik high/mid/low olmalı: ${String(t.priority)}`);
+      if (t.column != null && !kolonSluglari.has(t.column)) return hata('shape', yerT, `bilinmeyen kolon: ${String(t.column)}`);
+      if (t.labels != null) {
+        if (!Array.isArray(t.labels)) return hata('shape', yerT, 'labels dizi olmalı');
+        for (const x of t.labels) if (!etiketSluglari.has(x)) return hata('shape', yerT, `bilinmeyen etiket: ${String(x)}`);
+      }
+      if (t.assignees != null && (!Array.isArray(t.assignees) || t.assignees.some((x) => typeof x !== 'string'))) return hata('shape', yerT, 'assignees slug dizisi olmalı');
+      if (!gunMu(t.due)) return hata('shape', yerT, 'due YYYY-MM-DD olmalı');
+      if (!gunMu(t.start)) return hata('shape', yerT, 'start YYYY-MM-DD olmalı');
+      if (!anMi(t.created_at)) return hata('shape', yerT, 'created_at tarih değil');
+      if (!anMi(t.completed_at)) return hata('shape', yerT, 'completed_at tarih değil');
+      if (t.created_by != null && typeof t.created_by !== 'string') return hata('shape', yerT, 'created_by dize olmalı');
+      if (t.position != null && typeof t.position !== 'number') return hata('shape', yerT, 'position sayı olmalı');
+      if (t.doc !== undefined) {
+        // Alt görevin tek kaynağı tablo (13 Eylül); doc içinde kontrol listesi
+        // kabul edilmez, kart açma ucu da reddediyor. Önce bu: docDenetle
+        // "bilinmeyen tür" der, bu mesaj nereye yazılacağını da söylüyor.
+        if (docKontrolListesiVarMi(t.doc)) return hata('shape', yerT, 'doc içinde kontrol listesi olamaz; alt görevler subtasks alanında');
+        const d = docDenetle(t.doc);
+        if (!d.ok) return hata('shape', yerT, `doc: ${d.sebep}`);
+      }
+      const altlar = t.subtasks ?? [];
+      if (!Array.isArray(altlar)) return hata('shape', yerT, 'subtasks dizi olmalı');
+      if (altlar.length > ICE_SINIR.subtasks) return hata('limit', yerT, `en fazla ${ICE_SINIR.subtasks} alt görev`);
+      for (let si = 0; si < altlar.length; si += 1) {
+        const a = altlar[si];
+        if (!a || typeof a !== 'object' || !dize(a.title, ICE_SINIR.title) || !a.title.trim()) return hata('shape', `${yerT} › alt görev ${si + 1}`, 'başlık boş ya da çok uzun');
+        if (a.done != null && typeof a.done !== 'boolean') return hata('shape', `${yerT} › alt görev ${si + 1}`, 'done boolean olmalı');
+      }
+      const yorumlar = t.comments ?? [];
+      if (!Array.isArray(yorumlar)) return hata('shape', yerT, 'comments dizi olmalı');
+      if (yorumlar.length > ICE_SINIR.comments) return hata('limit', yerT, `en fazla ${ICE_SINIR.comments} yorum`);
+      for (let yi = 0; yi < yorumlar.length; yi += 1) {
+        const y = yorumlar[yi];
+        if (!y || typeof y !== 'object' || !dize(y.text, ICE_SINIR.comment) || !y.text.trim()) return hata('shape', `${yerT} › yorum ${yi + 1}`, 'metin boş ya da çok uzun');
+        if (y.author != null && typeof y.author !== 'string') return hata('shape', `${yerT} › yorum ${yi + 1}`, 'author dize olmalı');
+        if (!anMi(y.created_at)) return hata('shape', `${yerT} › yorum ${yi + 1}`, 'created_at tarih değil');
+      }
+      ozet.tasks += 1;
+      ozet.subtasks += altlar.length;
+      ozet.comments += yorumlar.length;
+    }
+  }
+  return { ok: true, ozet };
+}
+
+/**
+ * Doğrulama hatasını kullanıcıya giden cümleye çevirir. Konum ve sebep
+ * dosyanın içindeki ada bağlı olduğu için dinamik; iki dilde kalıp burada.
+ */
+export function dogrulamaMesaji(h, lang = 'tr') {
+  const en = lang === 'en';
+  const bas = {
+    format: en ? 'This is not a StoaBoard export file' : 'Bu bir StoaBoard dışa aktarma dosyası değil',
+    version: en ? 'Unsupported file version' : 'Desteklenmeyen dosya sürümü',
+    limit: en ? 'File exceeds a limit' : 'Dosya bir sınırı aşıyor',
+    shape: en ? 'File is malformed' : 'Dosya bozuk',
+  }[h.kod] || (en ? 'File rejected' : 'Dosya reddedildi');
+  return `${bas} (${h.yer}: ${h.sebep})`;
+}
+
+/**
+ * Aynı adlı proje varsa "(2)", "(3)" ekler. İçe aktarma HER ZAMAN yeni proje
+ * açar; var olana kart karıştırmak, yanlış dosya yüklendiğinde geri
+ * alınamaz bir karmaşa demek. Yeni proje silinebilir, karışmış proje ayıklanamaz.
+ */
+export function benzersizProjeAdi(ad, mevcutAdlar) {
+  const varOlan = new Set([...mevcutAdlar].map((x) => String(x).trim().toLowerCase()));
+  const temiz = String(ad).trim();
+  if (!varOlan.has(temiz.toLowerCase())) return temiz;
+  for (let n = 2; n < 1000; n += 1) {
+    const aday = `${temiz} (${n})`.slice(0, ICE_SINIR.name);
+    if (!varOlan.has(aday.toLowerCase())) return aday;
+  }
+  return `${temiz} (${Date.now()})`.slice(0, ICE_SINIR.name);
 }

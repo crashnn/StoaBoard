@@ -72,7 +72,17 @@ tersi, sadeliğin ön koşulu: taşınması kolay olmayan araç denenmez.
       Notion'un dışa aktarımı gibi); ikisi de JSON paketinden türetiliyor,
       ayrı sorgu yok. Ayrıştırmada JSON kaynak, öbür ikisi bakmak/okumak
       için; geri alınamazlar, bilerek.
-- [ ] İçe aktar: kendi JSON
+- [x] İçe aktar: kendi JSON — **yapıldı 16 Eylül**: `POST /api/workspaces/me/import`.
+      Doğrulama saf ve ilk hatada yerini söylüyor (`paketiDogrula`, "proje 2 ›
+      kart 14: bilinmeyen kolon"); gidiş-dönüş testi dışa aktarılan paketi
+      doğrulamadan geçiriyor, gerçek dosya (3 proje, 40 kart) da geçti. Yazma
+      tek transaction (ya hepsi ya hiçbiri). Her zaman YENİ proje açar, ad
+      çakışırsa "(2)". Atananlar yalnızca alan üyeleri arasında eşlenir;
+      eşleşmeyen sessizce bağlanmaz, kart atanmadan gelir ve altına not
+      düşer. Yazar eşleşmezse içe aktaran. Açılış/tamamlanma tarihleri ve ilk
+      geçiş kaydı dosyadaki tarihle (akış raporu "bugün açıldı" demesin).
+      Denetim kaydı `workspace.import`. Ayarlar → Çalışma Alanı → "JSON yükle".
+      Uçtan uca canlıda doğrulanacak.
 - [ ] İçe aktar: Trello JSON
 - [ ] İçe aktar: genel CSV, sütun eşleme
 - [ ] Ekler (ayrı madde, boyut kararı gerek)

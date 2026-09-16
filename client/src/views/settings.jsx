@@ -470,6 +470,38 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
   const canManageMembers  = isOwner || myPerms.includes('manage_members');
   const canManageProjects = isOwner || myPerms.includes('manage_projects');
 
+  // Taşınma: içe aktarma
+  const importInputRef = React.useRef(null);
+  const [importBusy, setImportBusy] = React.useState(false);
+  const importWorkspaceFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // aynı dosya ikinci kez seçilebilsin
+    if (!file) return;
+    setImportBusy(true);
+    try {
+      let paket;
+      try { paket = JSON.parse(await file.text()); }
+      catch (_) {
+        window.showToast?.(_t('set_ws_import_bad_json','Dosya okunamadı: geçerli JSON değil'), 'error');
+        return;
+      }
+      const r = await API.importWorkspace(paket);
+      const doldur = (k, fb) => _t(k, fb)
+        .replace('{projects}', r.projects).replace('{tasks}', r.tasks)
+        .replace('{subtasks}', r.subtasks).replace('{comments}', r.comments);
+      window.showToast?.(doldur('set_ws_import_done', 'İçe aktarıldı: {projects} proje, {tasks} kart, {subtasks} alt görev, {comments} yorum.'), 'success');
+      if (r.unmatched_assignees?.length) {
+        window.showToast?.(_t('set_ws_import_unmatched','Üye olmayan atananlar: {list}').replace('{list}', r.unmatched_assignees.join(', ')), 'info');
+      }
+      // Yeni projeler önyüklemede geliyor; en kestirme ve en güvenli yol yeniden yükleme.
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      window.showToast?.(err.message, 'error');
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
   const [name, setName]   = React.useState(me.name || '');
   const [role, setRole]   = React.useState(me.role || '');
   const [email, setEmail] = React.useState('');
@@ -1136,6 +1168,21 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
                     <Icon name="download" size={12} /> Markdown
                   </a>
                 </div>
+              </div>
+            </div>
+            {/* İçe aktarma: dosya tarayıcıda okunup JSON olarak gönderiliyor;
+                sunucu doğruluyor, tek transaction'da yazıyor, sonra sayfa
+                yenileniyor ki yeni projeler kenar çubuğuna düşsün. */}
+            <div className="field" style={{ borderTop: '1px solid var(--line)', marginTop: 16, paddingTop: 16 }}>
+              <label>{_t('set_ws_import_title','İçe aktar')}</label>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ flex: 1, minWidth: 200, fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
+                  {_t('set_ws_import_desc','StoaBoard JSON dosyası. Her seferinde yeni proje açılır, var olan projelere karışmaz. Atananlar bu alanın üyeleri arasında eşlenir; eşleşmeyenler kartta not olarak düşer.')}
+                </span>
+                <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={importWorkspaceFile} />
+                <button className="btn btn-ghost" style={{ fontSize: 12, flexShrink: 0 }} disabled={importBusy} onClick={() => importInputRef.current?.click()}>
+                  <Icon name="upload" size={12} /> {importBusy ? _t('set_ws_import_busy','Yükleniyor…') : _t('set_ws_import_btn','JSON yükle')}
+                </button>
               </div>
             </div>
           </div>

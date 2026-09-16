@@ -21,6 +21,8 @@ export const AUDIT = {
   WORKSPACE_TRASH_EMPTIED: 'workspace.trash_emptied',
   // Çalışma alanının tamamı tek dosyaya çıkarıldı (taşınma). Ayrıntı yalnızca sayılar.
   WORKSPACE_EXPORT: 'workspace.export',
+  // Dosyadan yeni proje(ler) açıldı. Ayrıntı: sayılar, eşleşmeyen atanan sayısı, kaynak alan slug'ı.
+  WORKSPACE_IMPORT: 'workspace.import',
   // MCP ucuna geçersiz anahtarla yapılan deneme. Kullanıcı yok, workspace yok:
   // kayıt yalnızca IP ve tarayıcı bilgisiyle "birisi kapıyı denedi" diyor.
   MCP_AUTH_FAILED: 'mcp.auth_failed',
