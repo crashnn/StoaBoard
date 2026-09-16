@@ -761,7 +761,9 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       için kusuru hiç görememişti) ve kimlik anlamları (slug / metne
       çevrilmiş sayı / ham sayı). Yedi mutasyonun yedisi de yakalandı.
 - [ ] **MCP anahtarı kendi kendine alınabilmeli — bugün her kişi için Railway
-      elle düzenleniyor.** Bugünkü akış: anahtar üret → `STOA_MCP_TOKENS`
+      elle düzenleniyor.** *(16 Eylül: vitrin sayfasının ön koşulu oldu;
+      [VITRIN-BRIEF.md](VITRIN-BRIEF.md). Sayfa "yapay zekâ ile konuş" diyecekse
+      kayıt olan kişi bunu deneyebilmeli. Önce (a).)* Bugünkü akış: anahtar üret → `STOA_MCP_TOKENS`
       sonuna ekle → yeniden dağıt → anahtarı kişiye özel olarak ulaştır.
       İki-üç kişide katlanılır, beşte dayanılmaz, ekip değiştikçe imkânsız.
 
@@ -1163,6 +1165,13 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       kalma. Silinmeli; şu an sadece karışıklık yaratıyor.
 
 ### Öncelikli
+- [ ] **Vitrin sayfası** *(16 Eylül 2026; ikinci dış gözden sonra)*. Misafir
+      bugün doğrudan giriş ekranına düşüyor; Todoist gibi önce ürün
+      anlatılmalı, giriş ve kayıt üst çubukta. Şablonu Claude Design yapar,
+      düz HTML + CSS `static/vitrin/`, Express `/`de oturum yoksa bunu servis
+      eder. Brief ve bölüm planı [VITRIN-BRIEF.md](VITRIN-BRIEF.md). Kayıt
+      bugünkü gibi kalıyor (planlar gelince değişir). Başlıkta "Claude" değil
+      "yapay zekâ". Ön koşul: anahtar kendi kendine alınabilmeli (aşağıda).
 - [ ] **Rapor çıktısı: kurumsal şablon biçimi** *(15 Eylül 2026, kullanıcının
       Claude Design ile yaptığı "Kurumsal Raporlama Şablonu" PDF'i; ev işi)*.
       Şablon finans/İK içerikli; alınan şey bölümler değil biçim.
