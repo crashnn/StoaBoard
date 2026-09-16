@@ -42,6 +42,13 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
+# Lint testlerin ÖNÜNDE: üç saniye sürüyor ve 15 Eylül'ün iki canlı hatası
+# (erken dönüşten sonra kanca, tanımsız değişken) testten ve derlemeden
+# geçmişti; onları yalnızca bu adım yakalıyor. Uyarılar durdurmaz, hatalar durdurur.
+echo "pre-push: lint (on yuz + sunucu)"
+npm --prefix client run lint
+npm --prefix server run lint
+
 echo "pre-push: sunucu testleri"
 # DATABASE_URL bilinçli olarak sahte. Testler veritabanı istemiyor; gerçek
 # bağlantı verilirse test koşusu ağa bağımlı hale gelir ve ofiste asılı kalır.

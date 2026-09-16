@@ -82,6 +82,13 @@ jobs:
       # istemiyor; değişken tanımlanırsa CI'ın canlı veriye erişimi olur ki
       # bu hem gereksiz hem risklidir. Prisma bağlantı doğrulama hatası
       # basabilir — test sonucu değil, gürültüdür.
+      # Lint testlerin önünde: 15 Eylül 2026'nın iki canlı hatası (erken
+      # dönüşten sonra kanca, tanımsız değişken) test ve derlemeden geçmişti;
+      # onları yalnızca lint yakalıyor. Uyarılar geçer, hatalar durdurur.
+      - name: lint
+        working-directory: server
+        run: npm run lint
+
       - name: testler
         working-directory: server
         run: npm test
@@ -106,6 +113,10 @@ jobs:
       # çözülemeyen import, sözdizimi hatası. Dil testi dosyaları metin olarak
       # okuyor, çalıştırmıyor — derleme olmadan bir görünüm dosyasını bozup
       # yeşil CI görmek mümkün.
+      - name: lint
+        working-directory: client
+        run: npm run lint
+
       - name: derleme
         working-directory: client
         run: npm run build

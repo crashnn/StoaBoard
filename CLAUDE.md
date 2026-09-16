@@ -155,7 +155,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 485 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 500 test,
 veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
 "Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
 modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
@@ -164,8 +164,17 @@ alttaki `pass` / `fail` satırlarıdır.
 ```bash
 cd server && npm test        # PowerShell'de: npm.cmd test
 cd client && npm run build   # ön yüz derlemesi
+cd client && npm run lint    # ESLint: no-undef + rules-of-hooks hata, iki uyarı
+cd server && npm run lint    # ESLint: no-undef hata, no-unused-vars uyarı
 cd server && npm run mcp:tara # MCP taraması — çalışan sunucu + veritabanı ister
 ```
+
+**Lint testten önce koşar ve testin göremediğini görür.** 15 Eylül'de iki
+değişiklik 500 testten ve temiz derlemeden geçip canlıda patladı: erken
+dönüşten sonra çağrılan `useRef` ve alt bileşende tanımsız `project`. İkisini
+de yalnızca lint yakalar; 16 Eylül'de kuruldu ve mutasyonla doğrulandı.
+Yapılandırma bilerek dar: biçim kuralı yok, yalnızca çalışmayı bozan sınıflar.
+Kanca ve CI `npm run lint`i testlerin önünde koşuyor; uyarı geçer, hata durdurur.
 
 **MCP'ye dokunduysan taramayı da koş.** `npm test` MCP'yi yalnızca saf
 katmanda (`mcpShape.js`) görüyor; araçların gerçek yanıtlarını ve araçlar

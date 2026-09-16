@@ -31,9 +31,12 @@ Sonuncusunun gerekçesi önemli: proje kullanıcının kendi projesi, kurucusu
 o, staj bitince de sürüyor; "gidince ne kırılır" çerçevesi olmayan bir
 ayrılığı ilan ediyordu. Bu bilgi hafızaya da yazıldı.
 
-**Toplantı sonrası ilk iş (0-W'de söz verilen):** lint kurulumu.
-`react-hooks/rules-of-hooks` ve `no-undef` 15 Eylül'ün iki canlı hatasını
-derlemeden önce yakalardı. Kancaya bağlanır.
+**Toplantı sonrası ilk iş, yapıldı:** lint. ESLint 10, dört kural istemcide
+(`no-undef` ve `rules-of-hooks` hata; `no-unused-vars` ve `exhaustive-deps`
+uyarı), iki kural sunucuda. Mutasyonla doğrulandı: 15 Eylül'ün iki canlı
+hatası da yakalanıyor. Kancada ve CI'da testlerin önünde. İlk tarama
+0 hata / 55 uyarı; uyarı temizliği ayrı TODO maddesi (kör silme dil testi
+kalıbındaki tabloları kırar).
 
 ---
 

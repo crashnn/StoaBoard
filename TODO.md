@@ -1085,7 +1085,7 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       şey CI'ın dağıtımdan önce çalışması.
 
 ### Hemen yapılabilir — depo dışı, 5 dakikalık işler
-- [ ] **ESLint + `react-hooks/rules-of-hooks`.** *(15 Eylül 2026.)* Blok
+- [x] **ESLint + `react-hooks/rules-of-hooks`.** *(15 Eylül 2026; kuruldu 16 Eylül.)* Blok
       düzenleyicinin kancaları çekmecenin erken dönüşünün altına konunca
       canlıda kart açılınca çöktü (9843983). Kod okumasında kaçtı çünkü erken
       dönüş 100 satır yukarıdaydı; bu sınıfı yalnızca lint yakalar. Kural
@@ -1099,6 +1099,21 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       seviyesindekiler temizlenir, uyarılar görünür kalır). `npm run lint`
       kancada testlerin önüne (~3 sn), CI'a aynı satır. Sunucuya `no-undef`
       + `no-unused-vars` yeter. Toplantı sonrası ilk iş.
+      **Yapıldı (16 Eylül):** ESLint 10, düz yapılandırma (`client/eslint.config.js`,
+      `server/eslint.config.js`), tam olarak bu dört kural + sunucuda iki.
+      React eklentisi gerekmedi: ESLint 9+ JSX referanslarını kendi izliyor
+      (yalnızca JSX'te kullanılan bileşen "kullanılmıyor" çıkmıyor, doğrulandı).
+      **Mutasyonla doğrulandı:** erken dönüşten sonra `useRef` →
+      `rules-of-hooks` hatası ("after an early return?"); JSX'te tanımsız
+      `project` → `no-undef`. İkisi de 15 Eylül'ün canlı hataları. İlk tarama:
+      istemci 0 hata / 46 uyarı, sunucu 0 hata / 9 uyarı. Uyarılar bilerek
+      temizlenmedi: `TR_VAR_HOL` gibi bazıları dil testi kalıbıyla korunan
+      tablolar, kör silme kırar; ayrı tur. `npm run lint` kancada ve CI'da
+      testlerin önünde.
+- [ ] **Lint uyarılarını temizle (55).** *(16 Eylül 2026.)* Çoğu ölü import
+      ve kullanılmayan değişken; birkaçı `exhaustive-deps` ve onlar tek tek
+      düşünülmeli (eksik bağımlılık her zaman hata değil). Sıfıra inince
+      `no-unused-vars` hataya çekilir, kanca yeni ölü kodu da durdurur.
 - [ ] **GitHub faturalandırma kilidi (crashnn hesabı).** CI kuruldu ama hiç
       çalışamıyor: "The job was not started because your account is locked due
       to a billing issue". İşler başlamıyor, yani kırmızı da değil, sessiz.
