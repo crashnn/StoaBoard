@@ -203,6 +203,10 @@ function ReportsView({ onOpenTask, canManageWorkspace = false }) {
           <span>{T('rep_stamp_period', 'Dönem')}: {rangeLabel}</span>
           <span>{T('rep_stamp_created', 'Oluşturulma')}: {printedAt || new Date().toLocaleString(lang === 'en' ? 'en-GB' : 'tr-TR')}</span>
           <span>{T('rep_stamp_by', 'Oluşturan')}: {window.CURRENT_USER?.name || '—'}</span>
+          {/* Kaynak satırı: kurumsal raporda sayının nereden geldiği künyede
+              yazar — rapor elden ele dolaşırken "bu veri nereden?" sorusu
+              tabloya değil künyeye sorulur. */}
+          <span>{T('rep_stamp_source', 'Kaynak')}: {T('rep_stamp_source_val', 'StoaBoard — kolon geçiş kaydı ve süre kaydı')}</span>
         </div>
         <div className="report-stamp-conf">
           {T('rep_stamp_conf', 'Gizli — yalnızca yetkili kişiler içindir')} · stoaboard.com
@@ -308,12 +312,22 @@ function PersonReport({ data, onOpenTask, project }) {
             <div>
               <div className="panel-title">{p.name}</div>
               <div className="panel-sub">
-                {p.tasks.length} {T('rep_meta_tasks', 'görev')} · {p.moves} {T('rep_meta_moves', 'hareket')} · {p.completed} {T('rep_meta_completions', 'tamamlama')}
+                {p.tasks.length} {T('rep_meta_tasks', 'görev')}
               </div>
             </div>
-            <div className="report-total">{formatDuration(p.minutes)}</div>
           </div>
           <div className="panel-body">
+            {/* Sayı kutuları: kişi raporu tabloyla açılıyordu ve okuyan
+                toplamı kendi çıkarıyordu. Dört sayı, dönem ve akış
+                raporlarındaki kutularla aynı kalıp. Süre buraya taşındı;
+                başlığın sağındaki tek büyük sayı (report-total) kaldırıldı,
+                aynı değeri iki yerde göstermek gereksizdi. */}
+            <div className="report-stats">
+              <Stat label={T('rep_col_duration', 'Süre')} value={formatDuration(p.minutes)} />
+              <Stat label={T('rep_moves', 'Hareket')} value={p.moves} />
+              <Stat label={T('rep_stat_completed', 'Tamamlanan')} value={p.completed} />
+              <Stat label={T('rep_stat_open', 'Açık kalan')} value={Math.max(0, p.tasks.length - p.completed)} />
+            </div>
             <table className="list-table">
               <thead>
                 <tr>
@@ -341,6 +355,7 @@ function PersonReport({ data, onOpenTask, project }) {
                 ))}
               </tbody>
             </table>
+            <ReportFoot text={T('rep_foot_person', 'Süre = iş günlüğüne girilen dakikalar. Hareket = kartın kolon değiştirme sayısı. Tamamlandı = bitiş kolonuna geçiş.')} />
           </div>
         </div>
       ))}
@@ -384,6 +399,7 @@ function PeriodReport({ data, onOpenTask }) {
                 ));
               })()}
             </div>
+            <ReportFoot text={T('rep_foot_period_bars', 'Her çubuk, aralıkta o kolona yapılan geçiş sayısıdır. Aynı kart ileri geri taşındıysa birden çok kez sayılır.')} />
           </div>
         </div>
       )}
@@ -426,6 +442,7 @@ function PeriodReport({ data, onOpenTask }) {
           ) : (
             <div className="dash-empty-state">{T('rep_empty_completed', 'Bu aralıkta tamamlanan iş yok.')}</div>
           )}
+          <ReportFoot text={T('rep_foot_period_done', 'Tamamlanma = kartın bitiş kolonuna geçtiği an. Geçen gün = açılıştan tamamlanmaya takvim günü. Emek = iş günlüğü toplamı.')} />
         </div>
       </div>
     </div>
@@ -472,6 +489,7 @@ function FlowReport({ data, onOpenTask }) {
                 ))}
               </tbody>
             </table>
+            <ReportFoot text={T('rep_foot_flow_dwell', 'Bekleme = kartın o kolonda geçirdiği süre, kolon geçiş kaydından. Ölçüm = hesaba giren geçiş sayısı; ölçüm azsa ortalama oynaktır.')} />
           </div>
         </div>
       )}
@@ -506,6 +524,7 @@ function FlowReport({ data, onOpenTask }) {
           ) : (
             <div className="dash-empty-state">{T('rep_empty_completed', 'Bu aralıkta tamamlanan iş yok.')}</div>
           )}
+          <ReportFoot text={T('rep_foot_flow_slowest', 'Gün = açılıştan tamamlanmaya geçen takvim günü. Bekleme ve üzerinde çalışılan süre bu sayıda ayrışmaz.')} />
         </div>
       </div>
     </div>
@@ -559,6 +578,7 @@ function AuditReport({ data }) {
               ))}
             </tbody>
           </table>
+          <ReportFoot text={T('rep_foot_audit', 'Her satır bir denetim olayıdır; IP isteğin geldiği adrestir. Denetim kayıtları silinmez ve çöp kutusundan etkilenmez.')} />
         </div>
       </div>
     </div>
@@ -579,6 +599,14 @@ function AuditDetail({ detail }) {
 }
 
 // ─── Küçük parçalar ─────────────────────────────────────────────────────────
+
+// Tablo altı hesaplama dipnotu. Kurumsal raporda sayının nasıl hesaplandığı
+// tablonun yanında yazar; okuyan "hareket" ya da "emek" ne demek diye
+// sormak için rapordan çıkmak zorunda kalmasın. Ekranda da görünüyor —
+// yalnızca baskıya koymak, aynı soruyu ekranda cevapsız bırakırdı.
+function ReportFoot({ text }) {
+  return <p className="report-foot">{text}</p>;
+}
 
 function Stat({ label, value }) {
   return (

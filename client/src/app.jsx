@@ -833,7 +833,10 @@ function App() {
       setCurrentProject(data.current_project ? { id: data.current_project } : null);
       setView('board');
     } catch (e) {
+      // Sessiz kalmasın: başarısız geçişte ekranda eski projenin kartları
+      // durur ve kullanıcı yeni projeye geçtiğini sanır.
       console.error('switchProject failed:', e.message);
+      window.showToast?.(window.t?.('app_err_project_switch') || 'Proje açılamadı, eski proje yerinde kaldı.', 'error');
     } finally {
       if (switchAbortRef.current === projectId) {
         switchAbortRef.current = null;
@@ -888,11 +891,28 @@ function App() {
   window.__APP_TASKS__ = tasks;
   window.__SWITCH_VIEW__ = setView;
   window.__NOTIF_BADGE_RESET__ = rozetBakildi;
-  window.__OPEN_TASK_BY_ID__ = async (taskId) => {
+  // Kimliğinden kart açma — bildirimlerin ve raporların ortak yolu.
+  //
+  // Raporlar bu yola 15 Eylül'de girdi: kişi raporu bütün projeleri
+  // birleştirdiğinden satırdaki kart çoğu zaman aktif projede değil. Rapor
+  // kendi kopyasını taşıyordu ve o kopya yalnızca yerel listeye bakıp
+  // bulamayınca sessizce vazgeçiyordu — tıklama hiçbir şey yapmıyordu.
+  //
+  // `returnView` verilirse çekmece kapandığında oraya dönülür (rapordan
+  // açılan kart panoda bırakılmaz).
+  //
+  // Kart başka projedeyse proje DEĞİŞTİRİLİR. TODO'da "proje değiştirmek şart
+  // değil" yazıyordu; değil ama tehlikeli: kolonlar projeye ait ve çekmece
+  // `DATA.COLUMNS`u aktif projeden okuyor. Değiştirmeden açılan kart kolon
+  // adını ham kimlik olarak gösterir, "taşı" menüsü de BAŞKA projenin
+  // kolonlarını sunar — seçilirse kart yanlış kolona yazılır. Çekmeceye
+  // karta özel kolon listesi taşımak doğru çözüm ama daha geniş bir iş.
+  const openTaskById = async (taskId, returnView = null) => {
     if (!taskId) return;
     // Fast path: task is in the current project's list
     const local = tasks.find(x => String(x.id) === String(taskId));
     if (local) {
+      if (returnView) setTaskReturnView(returnView);
       setDrawerTask(local);
       setNotifOpen(false);
       setView('board');
@@ -901,9 +921,15 @@ function App() {
     // Slow path: fetch from backend; switch project if needed
     try {
       const detail = await API.getTaskDetail(taskId);
-      if (!detail) return;
+      // Sunucu 404'ü zaten fırlatıyor; bu dal boş gövdeye karşı. Sessiz
+      // dönmek tıklamayı yine hiçbir şey yapmaz hâle getirirdi.
+      if (!detail) {
+        window.showToast?.(window.t?.('app_err_task_missing') || 'Görev bulunamadı — silinmiş ya da erişiminiz yok.', 'error');
+        return;
+      }
       const targetProjectId = detail.project_id;
       const inCurrentProject = currentProject && String(currentProject.id) === String(targetProjectId);
+      if (returnView) setTaskReturnView(returnView);
       if (!inCurrentProject && targetProjectId) {
         await switchProject(targetProjectId);
         // After project switch, find the task again from the freshly loaded list
@@ -918,6 +944,7 @@ function App() {
       window.showToast?.((window.t?.('app_err_open_task') || 'Görev açılamadı: ') + (e.message || ''), 'error');
     }
   };
+  window.__OPEN_TASK_BY_ID__ = (taskId) => openTaskById(taskId);
 
   const handleCmd = (action) => {
     if (action === 'goto:board-list') {
@@ -1213,10 +1240,7 @@ function App() {
               <Lazy>
                 <ReportsView
                   canManageWorkspace={canManageWorkspace}
-                  onOpenTask={(id) => {
-                    const t = tasks.find((x) => String(x.id) === String(id));
-                    if (t) { setTaskReturnView('reports'); setView('board'); setDrawerTask(t); }
-                  }}
+                  onOpenTask={(id) => openTaskById(id, 'reports')}
                 />
               </Lazy>
             )}

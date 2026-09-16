@@ -1064,12 +1064,16 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
 ### Öncelikli
 - [ ] **Rapor çıktısı: kurumsal şablon biçimi** *(15 Eylül 2026, kullanıcının
       Claude Design ile yaptığı "Kurumsal Raporlama Şablonu" PDF'i; ev işi)*.
-      Şablon finans/İK içerikli; alınan şey bölümler değil biçim. Bugün
-      yapılabilir dörtlü: üst bilgi bloğuna "kaynak" satırı · her tablonun
-      altına hesaplama dipnotu ("Süre = iş günlüğü; Hareket = kolon geçişi;
-      Tamamlandı = bitiş kolonuna geçiş") · kişi raporuna sayı kutuları
-      (süre, hareket, tamamlanan, açık) · baskı tipografisi (serif başlık,
-      küçük büyük harf etiket, gri dipnot). Sonraki tur: **kolon bazlı
+      Şablon finans/İK içerikli; alınan şey bölümler değil biçim.
+      **Dörtlü yapıldı (16 Eylül):** künyede kaynak satırı · her tablonun
+      altında hesaplama dipnotu (`ReportFoot`, dört rapor da) · kişi raporunda
+      dört sayı kutusu (süre, hareket, tamamlanan, açık; başlıktaki tek büyük
+      sayı `report-total` kaldırıldı, aynı değeri iki yerde göstermek
+      gereksizdi) · baskı tipografisi (serif başlık, küçük büyük harf etiket
+      ve sütun adı, gri dipnot — yalnızca `@media print`, çünkü arayüzde yazı
+      çiftini kullanıcı seçiyor). Dipnotlar ekranda da görünüyor: yalnızca
+      kâğıda koymak aynı soruyu ekranda cevapsız bırakırdı.
+      Sonraki tur: **kolon bazlı
       darboğaz tablosu** (geçiş kayıtlarından kolon başına ortalama bekleme,
       isteğe bağlı hedef gün, aşan kolon işaretli) + funnel çubukları ·
       dönem raporuna önceki dönem karşılaştırması · sayılardan üretilen tek
@@ -1147,13 +1151,32 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
-- [ ] **Raporda başka projenin kartına tıklayınca hiçbir şey olmuyor**
-      *(15 Eylül 2026)*. Kişi raporu artık bütün projeleri birleştiriyor;
-      satıra tıklama kartı **aktif projenin** yüklü listesinde arıyor
-      (`__APP_TASKS__`), bulamayınca sessizce vazgeçiyor — sessiz
-      başarısızlık. Çözüm: `__OPEN_TASK_BY_ID__` kartı bulamazsa önce
-      `GET /tasks/:id` ile çekip çekmeceyi o veriyle açsın (proje değiştirmek
-      şart değil), bulamazsa toast. Aynı sorun akış ve dönem raporlarında da.
+- [x] **Raporda başka projenin kartına tıklayınca hiçbir şey olmuyor**
+      *(15 Eylül 2026; kapandı 16 Eylül)*. Kişi raporu bütün projeleri
+      birleştiriyor; satıra tıklama kartı **aktif projenin** yüklü listesinde
+      arıyor (`__APP_TASKS__`), bulamayınca sessizce vazgeçiyordu. Rapor kendi
+      açma kopyasını taşıyordu; bildirimlerinki (`__OPEN_TASK_BY_ID__`) zaten
+      sunucudan çekiyordu. İki kopya tek fonksiyonda birleşti
+      (`app.jsx`, `openTaskById(taskId, returnView)`), rapor `returnView`
+      veriyor — çekmece kapanınca rapora dönülüyor.
+      **Buradaki plandan sapıldı:** "proje değiştirmek şart değil" yazıyordu,
+      değil ama tehlikeli. Kolonlar projeye ait (`Project.columns`), çekmece
+      `DATA.COLUMNS`u aktif projeden okuyor: proje değiştirmeden açılan kart
+      kolon adını ham kimlik gösterir ve "taşı" menüsü **başka projenin**
+      kolonlarını sunar — seçilirse kart yanlış kolona yazılır. Bu yüzden
+      proje değiştiriliyor. Asıl çözüm çekmeceye karta özel kolon listesi
+      taşımak; ayrı iş olarak aşağıda.
+      Yol boyunca iki sessiz başarısızlık daha kapandı: boş gövdeli yanıt
+      (`if (!detail) return`) ve `switchProject`in yalnızca `console.error`
+      yazan catch'i; ikisi de artık toast veriyor.
+- [ ] **Çekmece kolonları karttan gelsin, aktif projeden değil**
+      *(16 Eylül 2026'da görüldü)*. `drawer.jsx` kolon adını ve "taşı"
+      menüsünü `DATA.COLUMNS`tan okuyor — yani aktif projeden. Başka projenin
+      kartı açılabildiği her yerde (rapor satırı, bildirim) bu yanlış liste
+      demek. Bugün proje değiştirilerek dolanıldı; doğru çözüm kolon listesini
+      görev ayrıntısıyla birlikte taşımak (`taskToDetailDict` zaten projeyi
+      biliyor). O yapılırsa rapordan kart açmak aktif projeyi değiştirmek
+      zorunda kalmaz.
 - [ ] **Komut paletinde `cmd_*` anahtarları dinamik üretiliyor**, dil testi
       göremiyor: `cmd_reports` ve `cmd_trash` sözlükte yoktu, ekranda anahtar
       adı çıktı (15 Eylül, eklendi). Kalıcı çözüm: paletteki komut listesi
