@@ -3107,6 +3107,23 @@ input, textarea, select, [contenteditable="true"] {
 }
 /* ── Blok düzenleyici (Notion-lite faz 1, 15 Eylül 2026) ─────────────── */
 .doc-block { position: relative; }
+
+/* Blok içindeki tek satır sonları korunuyor (kart #240).
+   Açıklama metni düz metin olarak saklanıyor ve içinde madde imi listeleri,
+   ayraç satırları, girintili bloklar oluyor. `normal` ile bunların hepsi tek
+   satıra akıyordu: veri yerindeydi, ekran onu düzleştiriyordu.
+   `pre-wrap`, `pre` DEĞİL: satırlar yine kabın genişliğinde sarılıyor, yalnızca
+   yazarın koyduğu satır sonları da korunuyor. `pre` olsaydı uzun satırlar
+   yatay kaydırma doğururdu.
+   `overflow-wrap` bunun eşlikçisi: `pre-wrap` normal kırılma noktalarında
+   sarıyor ama boşluksuz uzun bir dize (URL, kimlik) kabı taşırırdı.
+   contentEditable için de doğru ayar — düzenleme sırasında boşluk ve satır
+   sonu davranışı öngörülebilir hâle geliyor. */
+.doc-block p,
+.doc-block .doc-callout {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
 /* Boş düzenlenebilir blok: yer tutucu, gri; ilk yazışta kaybolur. */
 .doc-content [data-editable="true"]:empty::before {
   content: attr(data-placeholder);

@@ -7,6 +7,7 @@ import { Avatar, AvatarStack } from './shell.jsx';
 import { API, fmtTimeAgo } from './data.jsx';
 import { DatePicker } from './modals.jsx';
 import { WorkLogSection } from './worklog.jsx';
+import { paragraflaraBol } from './belge.js';
 
 // `tweaks` BİLEREK prop, global değil. Çekmece başka globalleri (DATA.COLUMNS,
 // window.t) okuyor ama `window.__TWEAKS__` bunlardan farklı: o sunucunun
@@ -1237,11 +1238,30 @@ function _patchDocI18n(blocks) {
 }
 
 // Generate basic doc from task description when no stored doc
+//
+// KUSUR (17 Eylül 2026, kullanıcı): "kartta açıklama girince çok karmaşık
+// görünüyor... karta işlenince text area olur da rastgele yazarsın, bir nizam
+// yoktur." Ölçüldü ve haklıydı: metnin YAPISI KAYITTA VARDI, ekranda yoktu.
+//
+// Açıklamanın TAMAMI tek bir `p` bloğuna giriyordu, satır sonlarıyla birlikte.
+// HTML'de `\n` boşluğa çöktüğü için başlıklar, madde imleri ve ayraçlar tek
+// bir paragrafa akıyordu — MCP ile yazılmış uzun kart açıklamaları okunamaz
+// hâldeydi. Veri hiç bozulmamıştı; kayıp yalnızca çizimdeydi.
+//
+// İki ayrı düzeltme gerekiyor ve ikisi farklı şeyi kurtarıyor:
+//   1) BURASI — boş satır PARAGRAF sınırıdır, ayrı bloklara ayrılıyor. Blok
+//      aralığı tipografiden geliyor, metne gömülü boşluktan değil.
+//   2) `styles.css`, `white-space: pre-wrap` — blok İÇİNDEKİ tek satır sonları
+//      (madde imi listeleri, ayraç satırları) korunuyor.
+// Yalnızca biri yapılırsa yarım kalır: (1)siz liste tek satıra akar, (2)siz
+// paragraflar birbirine yapışır.
 function _basicDoc(task) {
   const doc = [];
   if (task?.desc) {
     doc.push({ kind: 'h2', text: window.t?.('drawer_description') || 'Description', _i18n: 'drawer_description' });
-    doc.push({ kind: 'p', text: task.desc });
+    // Kural `belge.js`te ve saf: sunucu testi onu doğrudan içe aktarıp
+    // davranışı ölçüyor, kaynak taramak gerekmiyor.
+    for (const p of paragraflaraBol(task.desc)) doc.push({ kind: 'p', text: p });
   }
   if (!doc.length) {
     doc.push({ kind: 'p', text: window.t?.('drawer_no_description') || 'Bu kart için henüz detaylı açıklama eklenmedi.' });
