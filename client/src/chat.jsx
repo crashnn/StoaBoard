@@ -214,17 +214,18 @@ function RenderMsgText({ text, allMembers, onMentionClick }) {
       const member = allMembers.find(m => m.id === slug);
       if (member) {
         const isSelfMention = member.id === window.CURRENT_USER?.id;
+        // Çip STİLİ SATIR İÇİNDE DEĞİL, `comment-mention` sınıfında (#229).
+        // Öncesinde burada sabit `background: var(--accent); color: white`
+        // vardı ve iki kusur üretiyordu: (a) kart yorumlarındaki çiple aynı
+        // şeyin İKİNCİ bir tanımıydı, ikisi ayrı ayrı bozulabiliyordu;
+        // (b) satır içi stil CSS tarayan testlerin KÖR NOKTASI — kural
+        // tabanlı hiçbir denetim onu göremezdi. Sınıfa taşınınca ikisi de
+        // kapandı ve çip balonun rengini miras alıyor.
         return React.createElement('span', {
           key: i,
+          className: 'comment-mention',
           onClick: (e) => { e.stopPropagation(); if (!isSelfMention) onMentionClick(member); },
-          style: {
-            display: 'inline-block',
-            background: 'var(--accent)',
-            color: 'white',
-            borderRadius: 4, padding: '1px 6px',
-            fontWeight: 600, fontSize: '0.85em', cursor: isSelfMention ? 'default' : 'pointer',
-            verticalAlign: 'middle',
-          }
+          style: { cursor: isSelfMention ? 'default' : 'pointer' },
         }, `@${member.name}`);
       }
     }

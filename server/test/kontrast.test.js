@@ -370,3 +370,136 @@ describe('Giris ekrani — ortalama, icerigi erisilemez kilmamali', () => {
     }
   });
 });
+
+// ─── Balonun içi rengini balondan alır, temadan değil ───────────────────────
+//
+// KUSUR (kart #229, 17 Eylül 2026, kullanıcı canlıda bildirdi): sohbet
+// balonunun İÇİNDEKİ ögeler rengini TEMADAN alıyordu. Karşı tarafın balonunda
+// tesadüfen uyuyordu (o balon zaten tema renginde), ama KENDİ balonumuz ters:
+//
+//   açık tema: zemin `--ink` (koyu),        metin `--bg` (açık)
+//   koyu tema: zemin `--accent` (AÇIK mavi), metin `--bg` (koyu)
+//
+// İki temada zemin TERS yöne dönüyor. Temadan beslenen her öge bu yüzden
+// birinde mutlaka ters düşüyordu.
+//
+// ELLE YAZILMIŞ OVERRIDE'LAR SORUNU ÇÖZMÜYORDU, ERTELİYORDU. Beş tanesi vardı
+// ve ikisi ÖLÇÜLDÜĞÜNDE YANLIŞ ÇIKTI:
+//   - yanıt önizlemesi `white` ile karışıyordu -> koyu temada açık mavi zeminde
+//     beyazımsı metin, okunmuyordu
+//   - `md-code-inline` sabit siyahtı -> açık temada koyu balonda siyah üstüne
+//     siyah
+// Yani kural "biri fark edince yamanır" olduğu sürece, fark edilmeyen her öge
+// sessizce ters kalıyor. Kullanıcının dediği gibi: bu aile yetim kalmış.
+//
+// YAPISAL CEVAP: `currentColor`. Balon `color` tanımlıyor ve o değer zaten
+// temadan geliyor; içerideki öge onu miras alırsa hem temaya hem balona
+// kendiliğinden uyar. İki soru tek mekanizmayla kapanır.
+
+describe('sohbet balonunun içi rengini balondan alıyor', () => {
+  // Balonun İÇİNDEKİ ögeler: seçici `.chat-bubble X` ya da `.chat-msg.mine X`
+  // biçiminde bir TORUN hedefliyor. Balonun kendisi hariç — o, yüzeyin ta
+  // kendisi ve rengini temadan almalı.
+  // İkinci yol gerekiyor, çünkü tek yol yetmiyor: balonun içinde render
+  // edilen bazı sınıfların seçicisi BALONA BAĞLI DEĞİL.
+  //
+  // Mutasyon turunda ortaya çıktı: `.comment-mention` çıplak bir sınıf (hem
+  // sohbet balonunda hem kart yorumlarında kullanılıyor), yani seçicisinde
+  // "balon" geçmiyor. Yalnızca seçiciye bakan tarama onu göremiyordu ve çipi
+  // `var(--accent)` + `white` hâline geri döndüren mutasyon KAÇTI. Bir kuralın
+  // nerede uygulandığı, seçicisinden okunamıyor.
+  const BALON_ICI_SINIFLAR = [
+    'comment-mention',   // @bahsetme çipi; kart yorumlarında da kullanılıyor
+    'chat-file-attach',  // dosya eki kartı
+    'chat-bubble-text',  // medya mesajının altındaki metin
+  ];
+
+  const ICERIDE = /\.chat-(?:bubble|msg\.mine)\b[^,{]*\s+\.[\w-]+/;
+  const BUBBLE_KENDISI = /\.chat-bubble\s*(?:,|\{|$)/;
+
+  // Temaya ya da sabit bir renge bağlanmak: balonun zeminini bilmeden renk
+  // seçmek demek.
+  const TEMADAN = /(?:background|color|border(?:-color)?)\s*:[^;]*(?:var\(--(?:bg|ink|line|accent)[\w-]*\)|#[0-9a-fA-F]{3,8}\b|\bwhite\b|\bblack\b|oklch\(\s*0%)/;
+
+  function kurallar() {
+    const out = [];
+    const re = /([^{}]+)\{([^{}]*)\}/g;
+    let m;
+    while ((m = re.exec(CSS)) !== null) {
+      const secici = m[1].trim().replace(/\s+/g, ' ');
+      if (!secici || secici.startsWith('@')) continue;
+      out.push({ secici, govde: m[2] });
+    }
+    return out;
+  }
+
+  function balonIci(k) {
+    if (ICERIDE.test(k.secici) && !BUBBLE_KENDISI.test(k.secici)) return true;
+    return BALON_ICI_SINIFLAR.some((c) => new RegExp(`\\.${c}\\b`).test(k.secici));
+  }
+
+  function suclular() {
+    return kurallar()
+      .filter(balonIci)
+      .filter((k) => TEMADAN.test(k.govde))
+      .map((k) => `${k.secici} -> ${(k.govde.match(TEMADAN) || [''])[0].trim()}`);
+  }
+
+  test('balon içindeki hiçbir öge rengini temadan ya da sabitten almıyor', () => {
+    assert.deepEqual(
+      suclular(), [],
+      'Balonun içindeki bir öge rengini temadan (ya da sabit bir değerden) alıyor. '
+      + 'Kendi balonumuzun zemini İKİ TEMADA TERS YÖNE dönüyor, o yüzden temadan '
+      + 'beslenen her öge birinde mutlaka ters düşer. `currentColor` kullan: '
+      + 'balon `color` tanımlıyor ve o değer zaten temadan geliyor.',
+    );
+  });
+
+  test('tarama gerçekten balon içi kural buluyor (kör değil)', () => {
+    // İlk test "hiç eşleşme yok" hâlinde de yeşil kalırdı. Bu depoda üç tarama
+    // testi ilk hâlinde tam olarak böyleydi.
+    const iceridekiler = kurallar().filter(
+      (k) => ICERIDE.test(k.secici) && !BUBBLE_KENDISI.test(k.secici),
+    );
+    assert.ok(
+      iceridekiler.length >= 4,
+      `yalnızca ${iceridekiler.length} balon içi kural bulundu — seçici deseni bozuk`,
+    );
+  });
+
+  test('listede hayalet sınıf yok — liste bayatlamasın', () => {
+    // Ters yön: listedeki bir sınıf artık balonun içinde render edilmiyorsa
+    // listeden çıkmalı, yoksa liste bir gün gerçeği anlatmaz olur.
+    const jsx = fs.readFileSync(path.join(KOK, 'client', 'src', 'chat.jsx'), 'utf8');
+    const hayaletler = BALON_ICI_SINIFLAR.filter((c) => !jsx.includes(c));
+    assert.deepEqual(hayaletler, [], 'Bu sınıflar chat.jsx\'te yok; listeden çıkar.');
+  });
+
+  test('balonun KENDİSİ temadan besleniyor — tarama onu suçlamıyor', () => {
+    // NEGATİF DURUM, bilerek sınanıyor. Balon yüzeyin kendisi; rengini temadan
+    // ALMALI. Kural ikisini karıştırırsa düzeltilmesi yanlış olan yeri bozmaya
+    // zorlar.
+    const balon = kurallar().find((k) => k.secici === '.chat-msg.mine .chat-bubble');
+    assert.ok(balon, 'kendi balonumuzun kuralı bulunamadı');
+    assert.ok(/var\(--ink\)/.test(balon.govde), 'balon zemini temadan gelmiyor');
+    assert.ok(!suclular().some((x) => x.startsWith('.chat-msg.mine .chat-bubble ->')),
+      'tarama balonun kendisini suçluyor — kural fazla geniş');
+  });
+
+  test('sohbet mesajı SATIR İÇİ renk stili taşımıyor', () => {
+    // KÖR NOKTA, mutasyon turunda bulundu. Bahsetme çipi CSS'te değil,
+    // chat.jsx'te satır içi stildeydi:
+    //     style: { background: 'var(--accent)', color: 'white' }
+    // Yukarıdaki taramaların HİÇBİRİ onu göremezdi — hepsi styles.css okuyor.
+    // Çip sınıfa taşındı; bu test satır içi rengin geri gelmesini yasaklıyor.
+    // Yalnızca RENK yasak: cursor, display gibi dinamik stiller serbest.
+    const jsx = fs.readFileSync(path.join(KOK, 'client', 'src', 'chat.jsx'), 'utf8');
+    const suclu = [...jsx.matchAll(/style:s*{[^}]*}/g)]
+      .map((m) => m[0])
+      .filter((x) => /(?:background|borderColor|(?<!font)[cC]olor)s*:/.test(x))
+      .map((x) => x.replace(/s+/g, ' ').slice(0, 80));
+    assert.deepEqual(suclu, [],
+      'Sohbette satır içi renk stili var. CSS tarayan testler onu göremez; '
+      + 'sınıfa taşı ki balon rengini miras alsın ve denetlenebilsin.');
+  });
+});
