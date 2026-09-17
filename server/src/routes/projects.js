@@ -18,6 +18,8 @@
 
 import { Router } from 'express';
 
+import { kolonlariYayinla } from '../lib/board.js';
+
 import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
@@ -305,6 +307,7 @@ projectsRouter.post(
       return created;
     });
 
+    await kolonlariYayinla(req.app.get('io'), access.project, user.slug);
     res.status(201).json(columnToDict(col));
   }),
 );
@@ -333,6 +336,7 @@ projectsRouter.post(
         }),
       ),
     );
+    await kolonlariYayinla(req.app.get('io'), access.project, access.user.slug);
     res.json({ ok: true });
   }),
 );
@@ -391,6 +395,7 @@ columnsRouter.patch(
     const updated = Object.keys(updates).length
       ? await prisma.boardColumn.update({ where: { id: colId }, data: updates })
       : col;
+    await kolonlariYayinla(req.app.get('io'), project, user.slug);
     res.json(columnToDict(updated));
   }),
 );
@@ -428,6 +433,10 @@ columnsRouter.delete(
       prisma.boardColumn.delete({ where: { id: colId } }),
     ]);
 
+    // Silme KARTLARI DA oynatıyor (yukarıdaki `updateMany`, yetim kalmasınlar
+    // diye ilk kolona taşıyor). İstemci bu olayı alınca kolon listesini
+    // yeniliyor ve görevleri de yeniden çekiyor — tek kural, özel durum yok.
+    await kolonlariYayinla(req.app.get('io'), project, user.slug);
     res.json({ ok: true });
   }),
 );

@@ -170,6 +170,12 @@ const API = {
     apiFetch(projectId ? `/api/bootstrap?project=${projectId}` : '/api/bootstrap'),
 
   // Tasks
+  // Kolon degisikliginde panoyu tazelemek icin (kart #235). Uc zaten vardi,
+  // istemci tarafinda karsiligi yoktu: pano gorevleri yalnizca `bootstrap`ten
+  // geliyordu ve onu yeniden cagirmak bildirim sayaci dahil butun durumu
+  // sifirlardi.
+  projectTasks: (projectId) =>
+    apiFetch(`/api/projects/${projectId}/tasks`),
   createTask: (projectId, data) =>
     apiFetch(`/api/projects/${projectId}/tasks`, { method: 'POST', body: data }),
   updateTask: (id, data) =>

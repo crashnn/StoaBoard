@@ -418,6 +418,71 @@ function App() {
       setNotesCount(c => Math.max(0, c - 1));
     });
 
+    // ── Pano gerçek zamanlı (kart #235) ──────────────────────────────────
+    //
+    // 17 Eylül 2026'da ölçüldü: `routes/projects.js` ve `routes/tasks.js` tek
+    // bir soket olayı yayınlamıyordu ve istemci de hiçbir pano olayı
+    // dinlemiyordu. Kart eklemek, taşımak, kolon açmak, yorum yazmak — hiçbiri
+    // karşı tarafa canlı gitmiyordu. Sohbet gidiyordu, çünkü onun kendi soket
+    // yolu vardı. Kullanıcının cümlesi teşhisin kendisiydi: "sohbet anlık
+    // gelirken kolon, comment F5 istiyor GÖRÜNMEK için."
+    //
+    // YANKI ELEMESİ: eylemi yapanın ekranı zaten iyimser güncellendi; kendi
+    // yankısını uygulamak kart listesini iki kez oynatır ve sürüklerken
+    // titreme yaratır. Sunucu her gövdeye `actor` koyuyor.
+    //
+    // PROJE SÜZGECİ: `tasks` yalnızca AKTİF projenin kartlarını tutuyor. Başka
+    // projedeki bir kartı listeye eklemek panoyu sessizce yanlış yapardı —
+    // ekranda görünür ama hiçbir kolona ait değil.
+    const benimYankim = (actor) => actor && actor === window.CURRENT_USER?.slug;
+    const aktifProjede = (t) => String(t?.project_id) === String(window.CURRENT_PROJECT_ID);
+
+    sock.on('task_created', ({ task, actor }) => {
+      if (!task || benimYankim(actor) || !aktifProjede(task)) return;
+      // Kimlik elemesi: geri alma da bu olayı kullanıyor ve kart listede
+      // duruyor olabilir.
+      setTasks(prev => (prev.some(t => String(t.id) === String(task.id))
+        ? prev.map(t => (String(t.id) === String(task.id) ? { ...t, ...task } : t))
+        : [task, ...prev]));
+    });
+
+    sock.on('task_updated', ({ task, actor }) => {
+      if (!task || benimYankim(actor) || !aktifProjede(task)) return;
+      // Kolon değişimi de buradan geçiyor: taşıma ayrı bir uç değil.
+      setTasks(prev => prev.map(t => (String(t.id) === String(task.id) ? { ...t, ...task } : t)));
+    });
+
+    sock.on('task_deleted', ({ id, actor }) => {
+      if (!id || benimYankim(actor)) return;
+      // Proje süzgeci yok: kart bu listede değilse süzme zaten etkisiz.
+      setTasks(prev => prev.filter(t => String(t.id) !== String(id)));
+    });
+
+    sock.on('board_columns', ({ project_id, columns, actor }) => {
+      if (benimYankim(actor)) return;
+      if (String(project_id) !== String(window.CURRENT_PROJECT_ID)) return;
+      // Sunucu kolon LİSTESİNİ bütün gönderiyor; ekleme/düzenleme/silme/sıralama
+      // için ayrı birleştirme mantığı yazmak dört ayrı kusur yeri olurdu.
+      window.DATA.COLUMNS = columns || [];
+      // Kolon silmek KARTLARI DA oynatıyor (sunucu onları ilk kolona taşıyor),
+      // o yüzden görevler yeniden çekiliyor — tek kural, özel durum yok.
+      // Başarısız olursa kolonlar yine de çizilsin diye liste tazeleniyor:
+      // `DATA.COLUMNS` React durumu değil, kendi başına yeniden çizim
+      // tetiklemiyor.
+      API.projectTasks(project_id)
+        .then(rows => setTasks(rows || []))
+        .catch(() => setTasks(prev => [...prev]));
+    });
+
+    sock.on('task_comment', ({ task_id, actor }) => {
+      if (!task_id || benimYankim(actor)) return;
+      // Karttaki yorum sayacı. Açık çekmecenin kendi tazelemesi ayrı iş —
+      // burada sayaç tutarlı kalıyor ki pano F5 istemesin.
+      setTasks(prev => prev.map(t => (String(t.id) === String(task_id)
+        ? { ...t, comments: (t.comments || 0) + 1 }
+        : t)));
+    });
+
     // Real-time notifications (from DM / @mention / task assignment)
     sock.on('notification', (notif) => {
       if (!notif) return;

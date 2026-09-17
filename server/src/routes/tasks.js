@@ -21,6 +21,7 @@ import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { memberForWorkspace, hasPermission } from '../lib/workspace.js';
+import { panoYayini } from '../lib/board.js';
 import {
   taskToDict,
   taskToDetailDict,
@@ -309,7 +310,9 @@ projectTasksRouter.post(
       where: { id: created.task.id },
       include: TASK_LIST_INCLUDE,
     });
-    res.status(201).json(taskToDict(full));
+    const dict = taskToDict(full);
+    panoYayini(io, 'task_created', project.workspaceId, { task: dict }, user.slug);
+    res.status(201).json(dict);
   }),
 );
 
@@ -532,7 +535,11 @@ tasksRouter.patch(
       where: { id: taskId },
       include: TASK_LIST_INCLUDE,
     });
-    res.json(taskToDict(updated));
+    const dict = taskToDict(updated);
+    // Kolon değişimi de buradan geçiyor: taşıma ayrı bir uç değil, `col`
+    // güncellemesi. Tek olay hepsini taşıyor.
+    panoYayini(io, 'task_updated', project.workspaceId, { task: dict }, user.slug);
+    res.json(dict);
   }),
 );
 
@@ -546,6 +553,8 @@ tasksRouter.delete(
     const access = await loadTaskWithAccess(req, res, taskId, { permission: 'manage_tasks' });
     if (access.denied) return;
     await prisma.task.update({ where: { id: taskId }, data: { deletedAt: new Date() } });
+    panoYayini(req.app.get('io'), 'task_deleted', access.project.workspaceId,
+      { id: String(taskId) }, access.user.slug);
     res.json({ ok: true });
   }),
 );
@@ -570,7 +579,13 @@ tasksRouter.post(
         comments: { select: { id: true } },
       },
     });
-    res.json(taskToDict(task));
+    const dict = taskToDict(task);
+    // Geri alınan kart panoda YENİDEN BELİRİYOR, yani karşı taraf için
+    // "oluşturuldu" ile aynı işlem. Ayrı bir olay tanımlamak istemcide ikinci
+    // bir ekleme dalı doğururdu.
+    panoYayini(req.app.get('io'), 'task_created', access.project.workspaceId,
+      { task: dict }, access.user.slug);
+    res.json(dict);
   }),
 );
 
@@ -819,7 +834,10 @@ tasksRouter.post(
 
     for (const n of notifsToPush) await createAndPush(io, n);
 
-    res.status(201).json(commentToDict(comment));
+    const dict = commentToDict(comment);
+    panoYayini(io, 'task_comment', project.workspaceId,
+      { task_id: String(taskId), comment: dict }, user.slug);
+    res.status(201).json(dict);
   }),
 );
 

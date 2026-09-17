@@ -1,0 +1,203 @@
+// Pano gerçek zamanlı — kart, kolon ve yorum değişiklikleri karşı tarafa.
+//
+// KUSUR (17 Eylül 2026, kullanıcının D turu): "sohbet anlık gelirken kolon,
+// comment F5 istiyor GÖRÜNMEK için."
+//
+// Kart #235 bunu önce "bildirim gelmiyor" diye kaydetmişti ve ofis oturumu
+// `createAndPush`e `io` geçirilmiyor olabileceğini yazmıştı — ölçülmediği de
+// dürüstçe not edilmişti. Ölçüldü ve o hipotez YANLIŞ çıktı: `io` her çağrı
+// yerinde geçiyor, soket `user_<id>` odasına gerçekten katılıyor.
+//
+// Asıl eksik bambaşkaydı ve daha büyüktü: `routes/projects.js` ile
+// `routes/tasks.js` TEK BİR soket olayı yayınlamıyordu, istemci de hiçbir pano
+// olayı dinlemiyordu. Yani pano hiç gerçek zamanlı değildi. Sohbet, notlar ve
+// bildirimler öyleydi; ürünün asıl iddiası olan pano değildi.
+//
+// Kullanıcının cümlesindeki "görünmek için" teşhisin kendisiydi: eksik olan
+// bildirim değil, NESNENİN KENDİSİYDİ.
+//
+// Bu dosya iki şeyi ayrı ayrı kilitliyor, çünkü biri doğru olup öteki eksikken
+// kusur aynen sürer:
+//   1. yayın kuralının DAVRANIŞI (saf, sahte soketle ölçülüyor)
+//   2. yayın noktalarının uçlara BAĞLI olduğu (kaynakta, koruduğu bloğa bağlı)
+
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { panoYayini } from '../src/lib/board.js';
+import { yorumsuzDosya } from './yardimcilar.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SRC = path.resolve(__dirname, '..', 'src');
+const CLIENT = path.resolve(__dirname, '..', '..', 'client', 'src');
+
+/** Yayınları toplayan sahte Socket.IO sunucusu. */
+function sahteIo() {
+  const cagrilar = [];
+  return {
+    cagrilar,
+    to(oda) {
+      return { emit: (olay, govde) => cagrilar.push({ oda, olay, govde }) };
+    },
+  };
+}
+
+describe('panoYayini — alan odasına, aktörüyle birlikte', () => {
+  test('olay `ws_<id>` odasına gidiyor', () => {
+    // Oda seçimi bilinçli: soket bağlanırken bu odaya zaten katılıyor
+    // (sockets/chat.js), yani yeni bir üyelik tesisatı gerekmiyor.
+    const io = sahteIo();
+    const sonuc = panoYayini(io, 'task_created', 42, { task: { id: '7' } }, 'eray-atalay');
+    assert.equal(sonuc, true);
+    assert.equal(io.cagrilar.length, 1);
+    assert.equal(io.cagrilar[0].oda, 'ws_42');
+    assert.equal(io.cagrilar[0].olay, 'task_created');
+  });
+
+  test('aktör gövdeye ekleniyor — yankı elemesi buna bağlı', () => {
+    // İstemci kendi yaptığı işin yankısını bununla eliyor. Aktör düşerse
+    // eylemi yapanın ekranı iki kez oynar ve sürüklerken titrer.
+    const io = sahteIo();
+    panoYayini(io, 'task_updated', 1, { task: { id: '9' } }, 'eray-atalay');
+    assert.equal(io.cagrilar[0].govde.actor, 'eray-atalay');
+    assert.deepEqual(io.cagrilar[0].govde.task, { id: '9' });
+  });
+
+  test('aktör verilmezse null — alan sessizce kaybolmuyor', () => {
+    const io = sahteIo();
+    panoYayini(io, 'task_deleted', 1, { id: '3' });
+    assert.equal(io.cagrilar[0].govde.actor, null);
+  });
+
+  test('workspaceId yoksa YAYIN YOK ve false dönüyor', () => {
+    // "io yok"tan ayrı bir arıza: sunucu yayın yapabiliyor ama bu isteğin
+    // hedefi belirsiz. Sessiz geçilseydi olay hiçbir odaya gitmez ve belirti
+    // "gerçek zamanlı bazen çalışmıyor" olurdu — teşhisi en zor sınıf
+    // (CLAUDE.md, sessiz başarısızlık).
+    const io = sahteIo();
+    assert.equal(panoYayini(io, 'task_created', null, { task: {} }, 'x'), false);
+    assert.equal(panoYayini(io, 'task_created', undefined, { task: {} }, 'x'), false);
+    assert.equal(io.cagrilar.length, 0, 'hedefsiz olay yine de yayınlanmış');
+  });
+
+  test('io yoksa patlamıyor, false dönüyor', () => {
+    // Yayının gönderilememesi kullanıcının işlemini başarısız kılmamalı:
+    // kart taşındı, veritabanına yazıldı. Ama sessizce de yutulmuyor —
+    // gerekçe `lib/emit.js`in başında.
+    assert.equal(panoYayini(null, 'task_created', 1, { task: {} }, 'x'), false);
+  });
+});
+
+describe('yayın noktaları uçlara bağlı', () => {
+  const TASKS = yorumsuzDosya(path.join(SRC, 'routes', 'tasks.js'));
+  const PROJECTS = yorumsuzDosya(path.join(SRC, 'routes', 'projects.js'));
+
+  // Ölçüt her seferinde İLGİLİ BLOĞA daralıyor, dosya geneline değil: dosyada
+  // "bir yerde" `panoYayini` geçmesi, ARADIĞIMIZ ucun yayın yaptığını
+  // göstermez. Bu depoda o tuzağa bugün beş kez düşüldü (CLAUDE.md).
+  const blok = (src, bas, son) => {
+    const i = src.indexOf(bas);
+    assert.notEqual(i, -1, `blok başlangıcı bulunamadı: ${bas}`);
+    const j = src.indexOf(son, i);
+    assert.notEqual(j, -1, `blok sonu bulunamadı: ${son}`);
+    return src.slice(i, j);
+  };
+
+  test('kart oluşturma yayınlıyor', () => {
+    const b = blok(TASKS, 'projectTasksRouter.post(', 'tasksRouter.get(');
+    assert.match(b, /panoYayini\(io, 'task_created'/,
+      'yeni kart karşı tarafta F5 olmadan görünmez');
+  });
+
+  test('kart güncelleme yayınlıyor — taşıma da bu uçtan geçiyor', () => {
+    const b = blok(TASKS, 'tasksRouter.patch(', 'tasksRouter.delete(');
+    assert.match(b, /panoYayini\(io, 'task_updated'/,
+      'kolon değişimi karşı tarafa gitmiyor — kart eski kolonunda kalır');
+  });
+
+  test('kart çöpe atma yayınlıyor', () => {
+    const b = blok(TASKS, "tasksRouter.delete(\n  '/:taskId',", 'tasksRouter.post(');
+    // `[\s\S]*?` — `[^)]*` DEĞİL. İlk çağrı argümanı `req.app.get('io')` ve
+    // içinde parantez var; `[^)]*` oraya takılıp eşleşmiyor. CLAUDE.md bu
+    // tuzağı adıyla anlatıyor (iç içe parantezi geçemeyen desen) ve testi
+    // yazarken yine düştüm — mutasyon değil, testin kendisi kırılarak buldu.
+    assert.match(b, /panoYayini\([\s\S]*?'task_deleted'/,
+      'silinen kart karşı tarafta durmaya devam eder');
+  });
+
+  test('yorum ekleme yayınlıyor', () => {
+    const b = blok(TASKS, "tasksRouter.post(\n  '/:taskId/comments'", 'commentsRouter.delete(');
+    assert.match(b, /panoYayini\(io, 'task_comment'/,
+      'yorum sayacı karşı tarafta F5 istemeye devam eder');
+  });
+
+  test('kolon ekleme, güncelleme, silme ve sıralama yayınlıyor', () => {
+    // Dördü de aynı olayı (`board_columns`) gönderiyor: sunucu kolon LİSTESİNİ
+    // bütün hâlinde yolluyor, dolayısıyla istemcide tek bir uygulama dalı var.
+    // Dört ayrı birleştirme mantığı dört ayrı kusur yeri olurdu.
+    const ekle = blok(PROJECTS, "projectsRouter.post(\n  '/:projectId/columns',", 'projectsRouter.post(\n  \'/:projectId/columns/reorder\'');
+    assert.match(ekle, /kolonlariYayinla\(/, 'kolon ekleme yayınlamıyor');
+
+    const sirala = blok(PROJECTS, "'/:projectId/columns/reorder'", 'columnsRouter.patch(');
+    assert.match(sirala, /kolonlariYayinla\(/, 'kolon sıralama yayınlamıyor');
+
+    const guncelle = blok(PROJECTS, 'columnsRouter.patch(', 'columnsRouter.delete(');
+    assert.match(guncelle, /kolonlariYayinla\(/, 'kolon güncelleme yayınlamıyor');
+
+    // Blok sonu bir SONRAKİ yönlendirici bildirimi: yorum satırına çapalamak
+    // kırılgandı, yorumlar `yorumsuzDosya` ile zaten boşluğa çevriliyor.
+    const sil = blok(PROJECTS, 'columnsRouter.delete(', 'projectsRouter.get(');
+    assert.match(sil, /kolonlariYayinla\(/,
+      'kolon silme yayınlamıyor — üstelik kartları da oynatıyor');
+  });
+});
+
+describe('istemci pano olaylarını dinliyor ve kendi yankısını eliyor', () => {
+  const APP = yorumsuzDosya(path.join(CLIENT, 'app.jsx'));
+
+  test('beş olayın beşi de dinleniyor', () => {
+    for (const olay of ['task_created', 'task_updated', 'task_deleted', 'board_columns', 'task_comment']) {
+      assert.ok(APP.includes(`sock.on('${olay}'`), `${olay} dinlenmiyor`);
+    }
+  });
+
+  test('yankı elemesi var — kendi işlemi iki kez uygulanmıyor', () => {
+    // Eylemi yapanın ekranı zaten iyimser güncellendi. Kendi yankısını
+    // uygulamak kart listesini iki kez oynatır; sürükleme sırasında titreme
+    // olarak görünür.
+    assert.match(APP, /const benimYankim = \(actor\) => actor && actor === window\.CURRENT_USER\?\.slug/,
+      'yankı elemesi yok');
+    const bas = APP.indexOf("sock.on('task_created'");
+    const son = APP.indexOf("sock.on('notification'", bas);
+    const blok = APP.slice(bas, son);
+    const kullanim = (blok.match(/benimYankim\(actor\)/g) || []).length;
+    assert.equal(kullanim, 5,
+      `yankı elemesi ${kullanim} dinleyicide kullanılıyor, beşinde birden olmalı`);
+  });
+
+  test('kart olayları AKTİF projeye göre süzülüyor', () => {
+    // `tasks` yalnızca aktif projenin kartlarını tutuyor. Başka projedeki bir
+    // kartı listeye eklemek panoyu sessizce yanlış yapardı: ekranda görünür
+    // ama hiçbir kolona ait değil.
+    assert.match(APP, /const aktifProjede = \(t\) => String\(t\?\.project_id\) === String\(window\.CURRENT_PROJECT_ID\)/,
+      'proje süzgeci yok');
+    for (const olay of ['task_created', 'task_updated']) {
+      const bas = APP.indexOf(`sock.on('${olay}'`);
+      const blok = APP.slice(bas, APP.indexOf('});', bas));
+      assert.match(blok, /aktifProjede\(task\)/, `${olay} proje süzgecinden geçmiyor`);
+    }
+  });
+
+  test('kolon olayı görevleri de tazeliyor — silme kartları oynatıyor', () => {
+    // Kolon silmek sunucuda kartları ilk kolona taşıyor. Yalnızca kolon
+    // listesini güncellemek kartları yanlış kolonda gösterirdi.
+    const bas = APP.indexOf("sock.on('board_columns'");
+    const blok = APP.slice(bas, APP.indexOf("sock.on('task_comment'", bas));
+    assert.match(blok, /API\.projectTasks\(/,
+      'kolon değişiminden sonra görevler tazelenmiyor');
+    assert.match(blok, /window\.DATA\.COLUMNS = columns/,
+      'kolon listesi uygulanmıyor');
+  });
+});
