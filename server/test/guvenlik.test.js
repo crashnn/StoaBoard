@@ -1337,31 +1337,46 @@ describe('sohbet taslağı — hedefe bağlı, alanlar arası taşınmaz', () =>
   /** Taslak etkisinin gövdesi — komşu etkiye taşmadan. */
   function taslakBlogu() {
     const src = yorumsuzDosya(CHAT);
-    const bas = src.indexOf('const taslaklar');
-    assert.ok(bas !== -1, 'taslak deposu bulunamadı');
-    const etkiBas = src.indexOf('useChatE(', bas);
-    assert.ok(etkiBas !== -1, 'taslak etkisi bulunamadı');
-    const sonraki = src.indexOf('useChatE(', etkiBas + 1);
+    // Taslak etkisini ADIYLA bul. Once 'const taslaklar'dan sonraki ILK
+    // useChatE alınıyordu; kullanıcı-temizleme etkisi eklenince o çapa yanlış
+    // bloğu gösterdi ve iki test kırıldı. Ölçüt artık yalnızca taslak
+    // etkisinde geçen çağrı.
+    const bas = src.indexOf('taslakAnahtari(wsId, dmWith, activeChannel)');
+    assert.ok(bas !== -1, 'taslak etkisi bulunamadı');
+    // Sınır: bir sonraki etki. Ara bir useChatE aramak gerekmiyor, çünkü
+    // çapa zaten etkinin İÇİNDE.
+    const sonraki = src.indexOf('useChatE(', bas);
     return sonraki === -1 ? src.slice(bas) : src.slice(bas, sonraki);
   }
 
-  test('anahtar ALAN kimliğini taşıyor, yalnızca kanal adını değil', () => {
+  test('anahtar ALAN ve KULLANICI kimliğini taşıyor', () => {
     // İNCE TUZAK: "genel" kanalı HER alanda var. Taslağı yalnızca kanal
     // slug'ına göre saklamak kusuru geri getirir, üstelik daha sinsi biçimde:
     // metin bu kez "aynı adlı kanal" olduğu için taşınır.
-    const blok = taslakBlogu();
-    assert.ok(
-      /taslakAnahtari\s*=\s*\([^)]*ws/.test(blok),
-      'anahtar üreticisi alan kimliği almıyor — taslak alanlar arası taşınır',
-    );
-    assert.ok(
-      /ws\$\{/.test(blok),
-      'anahtarın içinde alan kimliği yok; yalnızca kanal adına göre saklanıyor olabilir',
-    );
-    assert.ok(
-      /:dm:/.test(blok) && /:ch:/.test(blok),
-      'DM ve kanal ayrı ad alanında değil — aynı slug ikisinde çakışabilir',
-    );
+    //
+    // KULLANICI da anahtarda olmak zorunda: depo modül kapsamında yaşıyor ve
+    // çıkış sayfayı YENİLEMİYOR (app.jsx handleLogout yalnızca durumu
+    // temizliyor). Kullanıcı taşımayan bir anahtarla, aynı tarayıcıda giriş
+    // yapan bir sonraki kişi öncekinin sohbet taslaklarını görürdü.
+    //
+    // Anahtar ÜRETİCİSİ etkinin dışında tanımlı, o yüzden ayrı okunuyor.
+    const src = yorumsuzDosya(CHAT);
+    const bas = src.indexOf('const taslakAnahtari');
+    assert.ok(bas !== -1, 'anahtar üreticisi bulunamadı');
+    const blok = src.slice(bas, src.indexOf('};', bas) + 2);
+
+    // MUTASYON BULDU: `ws${` VARLIĞINI ölçmek yetmiyordu. Alan kimliğini
+    // yalnızca DM dalından düşürmek testi kırmıyordu, çünkü kanal dalında
+    // hâlâ duruyordu. Bugün bu sınıfa üçüncü kez düştüm; ölçüt "en az bir
+    // tane" değil "her dalda" olmalı.
+    assert.equal((blok.match(/ws\$\{/g) || []).length, 2,
+      'alan kimliği iki daldan birinde yok — o dalda taslak alanlar arası taşınır');
+    assert.ok(/u\$\{/.test(blok),
+      'anahtarda kullanıcı yok — çıkıştan sonra bir sonraki kişi taslakları görür');
+    assert.ok(/CURRENT_USER/.test(blok),
+      'kullanıcı kimliği gerçek oturumdan okunmuyor olabilir');
+    assert.ok(/:dm:/.test(blok) && /:ch:/.test(blok),
+      'DM ve kanal ayrı ad alanında değil — aynı slug ikisinde çakışabilir');
   });
 
   test('etki alan, DM ve kanal değişiminin üçünü de izliyor', () => {
@@ -1386,6 +1401,23 @@ describe('sohbet taslağı — hedefe bağlı, alanlar arası taşınmaz', () =>
       /setReplyTo\(/.test(blok) && /setPendingFile\(/.test(blok),
       'ikisi kaydediliyor ama geri yüklenmiyor olabilir',
     );
+  });
+
+  test('taslak deposu MODÜL kapsamında — panel kapanınca kaybolmuyor', () => {
+    // KUSUR (kullanıcı, C turu 13. madde): depo `useChatRef` ile bileşen
+    // içindeydi. Alan değiştirip geri dönmek çalışıyordu (panel ayakta
+    // kalıyor) ama araya BAŞKA BİR GÖRÜNÜM girince (Notlar) panel unmount
+    // oluyor ve taslaklar gidiyordu.
+    //
+    // Bu testi mutasyon turu yazdırdı: depoyu bileşen içine geri almak
+    // hiçbir testi kırmıyordu, yani düzeltmeyi koruyan bir şey yoktu.
+    const src = yorumsuzDosya(CHAT);
+    assert.ok(/^const TASLAKLAR = new Map\(\);/m.test(src),
+      'taslak deposu modül kapsamında değil — panel unmount olunca kaybolur');
+    assert.ok(/const taslaklar = TASLAKLAR;/.test(src),
+      'bileşen modül deposunu kullanmıyor');
+    assert.ok(!/const taslaklar = useChatRef\(new Map/.test(src),
+      'depo bileşen içine geri alınmış');
   });
 
   test('taslak diske yazılmıyor', () => {

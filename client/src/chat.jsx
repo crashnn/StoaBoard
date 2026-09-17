@@ -6,6 +6,13 @@ import { io } from 'socket.io-client';
 import { Icon } from './icons.jsx';
 import { Avatar, AvatarStack } from './shell.jsx';
 
+// Sohbet taslakları: (alan + hedef) çifti başına metin, yanıt ve eklenmiş
+// dosya. MODÜL KAPSAMINDA, bileşen içinde değil — panel unmount olunca
+// (kullanıcı Notlar'a geçince) taslaklar kaybolmasın diye. Sayfa yenilenince
+// gidiyor; bellekte tutmak bilinçli, localStorage sohbet metnini diske
+// düşürürdü (kart #221, #229).
+const TASLAKLAR = new Map();
+
 // ── ConfirmModal — replaces all native confirm() dialogs ─────────────────
 function ConfirmModal({ open, title, message, hint, confirmText, cancelText, variant, onConfirm, onCancel }) {
   useChatE(() => {
@@ -1753,11 +1760,39 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   //
   // YANIT ve EKLENMİŞ DOSYA da taşınıyordu — ikisi de hedefe bağlı, ikisi de
   // burada. Yalnızca metni düzeltmek aynı riski başka kılıkta bırakırdı.
-  const taslaklar = useChatRef(new Map());
+  // Depo BİLEŞEN DIŞINDA (dosyanın başında). useChatRef ile bileşen içinde
+  // tutuluyordu ve panel her unmount olduğunda taslaklar gidiyordu: kullanıcı
+  // metni yazıp Notlar'a geçtiğinde panel sökülüyor, geri dönünce taslak yok.
+  // Kullanıcı canlıda buldu (C turu, 13. madde): alan değiştirip geri dönmek
+  // çalışıyordu (panel ayakta kalıyor) ama araya BAŞKA BİR GÖRÜNÜM girince
+  // kayboluyordu. Modül kapsamı sayfa ömrü boyunca yaşıyor; yenilemede gidiyor
+  // ki bu zaten istenen davranış (bellek, disk değil).
+  const taslaklar = TASLAKLAR;
   const oncekiHedef = useChatRef(null);
-  const taslakAnahtari = (ws, dm, ch) => (dm
-    ? `ws${ws || 0}:dm:${dm}`
-    : `ws${ws || 0}:ch:${ch || 'general'}`);
+  const sonKullanici = useChatRef(null);
+  // Anahtar KULLANICIYI da taşır. Depo modül kapsamında yaşıyor ve çıkış
+  // sayfayı YENİLEMİYOR (app.jsx handleLogout yalnızca durumu temizliyor):
+  // kullanıcı taşımayan bir anahtarla, aynı tarayıcıda giriş yapan bir sonraki
+  // kişi öncekinin taslaklarını görürdü. Tam da localStorage'dan kaçınırken
+  // öne sürülen gerekçe. Anahtarda taşımak yapısal: unutulamaz.
+  const taslakAnahtari = (ws, dm, ch) => {
+    const u = window.CURRENT_USER?.id || '?';
+    return dm
+      ? `u${u}:ws${ws || 0}:dm:${dm}`
+      : `u${u}:ws${ws || 0}:ch:${ch || 'general'}`;
+  };
+
+  // Kullanıcı değişince depoyu boşalt: anahtar zaten erişimi engelliyor ama
+  // metin bellekte durmasın. İkisi birlikte — biri erişimi keser, öteki veriyi
+  // siler.
+  useChatE(() => {
+    const u = window.CURRENT_USER?.id || null;
+    if (sonKullanici.current !== null && sonKullanici.current !== u) {
+      taslaklar.clear();
+      oncekiHedef.current = null;
+    }
+    sonKullanici.current = u;
+  });
 
   useChatE(() => {
     const yeni = taslakAnahtari(wsId, dmWith, activeChannel);
@@ -1895,7 +1930,6 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
     setDmWith(null);
     setMessages([]);
     setTab('general');
-    setPendingFile(null);
   }, [dmWith, members.length]);
 
   // @mention autocomplete
@@ -2409,20 +2443,21 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
       setDmWith(null);
       setMessages([]);
       setTab('general');
-      setPendingFile(null);
-      setReplyTo(null);
+      // Yanıt ve ek BURADA TEMİZLENMİYOR: hedef başına taslak etkisi onları
+      // devrediyor. Elle temizlik, etki çalışmadan ÖNCE (tıklama anında)
+      // koştuğu için kaydedilecek değeri siliyordu — kullanıcı "metin kalıyor
+      // ama cevapla kalmıyor" diye bildirdi (C turu, 17. madde).
       return false;
     }
     setDmWith(slug);
     setMessages([]);
     setTypingUsers(new Set());
-    setPendingFile(null);
-    setReplyTo(null);
+    // Yanıt ve ek taslak etkisiyle devrediliyor (yukarıdaki gerekçe).
     setTab('dm');
     markAsRead?.(`dm_${slug}`);
     return true;
   };
-  const backToGeneral = () => { setDmWith(null); setMessages([]); setPendingFile(null); setReplyTo(null); };
+  const backToGeneral = () => { setDmWith(null); setMessages([]); };
 
   const toggleReaction = (msgId, emoji) => {
     const key = String(msgId);
