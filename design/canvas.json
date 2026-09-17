@@ -1,0 +1,37 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1280, "h": 2180, "title": "Vitrin — masaüstü" },
+    { "file": "Mobil.dc.html", "x": 1440, "y": 0, "w": 390, "h": 1900, "title": "Vitrin — mobil" }
+  ],
+  "annotations": [
+    {
+      "id": "ekran-goruntusu",
+      "x": 0,
+      "y": -170,
+      "w": 600,
+      "text": "Kahramandaki 16:10 alan görünür şekilde YER TUTUCU.\nGerçek görsel demo panosundan alınacak (kart #187, alt görev 167):\njenerik alan, anonim adlar. Gerçek pano kullanılmayacak — kart\nbaşlıkları yol haritası ve güvenlik işleri."
+    },
+    {
+      "id": "linkedin",
+      "x": 660,
+      "y": -170,
+      "w": 600,
+      "text": "Alt bilgideki LinkedIn bağlantısı açık yer tutucu\n(#linkedin-adresi-eklenecek). GitHub adresi gerçek, bu değil —\nyayına almadan önce doldurulmalı."
+    },
+    {
+      "id": "sayi-bandi",
+      "x": 0,
+      "y": 1000,
+      "w": 420,
+      "text": "Sayı bandı: üç değer TİRE olarak duruyor, uydurma sayı yazılmadı.\nGerçek değerler açılışta GET /api/public/stats'ten gelecek.\nKancalar: data-stat=\"workspaces\" / \"tasks\" / \"completed\"."
+    },
+    {
+      "id": "en-surumu",
+      "x": 1440,
+      "y": -170,
+      "w": 390,
+      "text": "İngilizce sürüm aynı şablondan çıkacak.\nMetin kutuları sabit genişliğe kilitlenmedi;\nİngilizce karşılıklar Türkçeden kısa, taşma beklenmiyor."
+    }
+  ],
+  "launch": { "view": "focused", "file": "Main.dc.html" }
+}
