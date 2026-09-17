@@ -442,7 +442,19 @@ input, textarea, select, [contenteditable="true"] {
    ======================================== */
 .app {
   display: flex;
+  /* `dvh`, `vh` DEĞİL. Mobil Chrome'da `100vh` adres çubuğu GİZLİYKEN'ki
+     yüksekliği döndürür, yani çubuk görünürken bu kabuk ekrandan uzundur ve
+     belge kaydırılabilir hâle gelir. Sohbete girince açılan klavye tarayıcıyı
+     odaklanan alanı göstermeye zorluyor, üst çubuk yukarıdan çıkıyor; klavye
+     kapanınca kaydırma geri alınmıyor ve `body`de `overflow: hidden` olduğu
+     için kullanıcı geri de kaydıramıyor. Sonuç: üst çubuk sohbetten çıkıldıktan
+     sonra da, HER ekranda kayıp kalıyor (#233).
+     Kusur yalnızca gerçek cihazda görünüyordu — emülasyonda adres çubuğu ve
+     ekran klavyesi olmadığı için `100vh` görünen alana eşit ve hiçbir şey
+     kaymıyor. Kalıp zaten depoda vardı (`auth-page`, `chat-panel`); en dış
+     kabuk onu almayı kaçırmış. */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -2761,7 +2773,10 @@ input, textarea, select, [contenteditable="true"] {
   position: fixed;
   top: 0;
   right: 0;
+  /* Aynı gerekçe (yukarıda `.app`): mobilde `vh` çekmeceyi görünen alandan
+     uzun yapıp altını adres çubuğunun arkasına itiyor. */
   height: 100vh;
+  height: 100dvh;
   width: 620px;
   max-width: 96vw;
   background: var(--bg-raised);

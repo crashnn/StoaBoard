@@ -2300,8 +2300,23 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   }, [messages]);
 
   // ── Focus input ───────────────────────────────────────────────────────
+  // İSTENMEDEN odaklama yalnızca fiziksel klavyesi olan cihazlarda. Dokunmatik
+  // cihazda odaklama EKRAN KLAVYESİNİ açıyor: görünen alan aniden küçülüyor,
+  // tarayıcı düzeni kaydırıyor ve üst çubuk erişilemez hâle geliyor (#233).
+  // Kullanıcı bunu gerçek cihazda bildirdi: "sohbete gidince direkt
+  // textinputtan başlatıyor, bu da topbarın kaymasına sebep oluyor."
+  //
+  // Ölçüt `pointer: coarse`, ekran GENİŞLİĞİ değil: aranan şey "ekran klavyesi
+  // açılır mı", "pencere dar mı" değil. Dar bir masaüstü penceresinde fiziksel
+  // klavye var ve oraya odaklamak hâlâ doğru davranış.
+  //
+  // Kullanıcı EYLEMİNDEN SONRAKİ odaklamalar (yanıtla, emoji, gönder) yerinde
+  // duruyor: orada klavyenin açılması zaten beklenen sonuç.
   useChatE(() => {
-    if (open && tab !== 'media') setTimeout(() => inputRef.current?.focus(), 120);
+    const dokunmatik = window.matchMedia?.('(pointer: coarse)')?.matches;
+    if (open && tab !== 'media' && !dokunmatik) {
+      setTimeout(() => inputRef.current?.focus(), 120);
+    }
   }, [open, dmWith, tab]);
 
   // ── Send text message (HTTP POST → backend saves + broadcasts via socket) ─
