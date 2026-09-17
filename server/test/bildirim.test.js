@@ -566,3 +566,119 @@ describe('Bildirim işlemleri — sessiz başarısızlık yok (kart #193)', () =
     }
   });
 });
+
+// ── "Kesme" kararinin TEK kumesi olmali (kart #121) ───────────────────────
+//
+// KARAR (17 Eylul 2026): atama ve bahsetme kullanicinin isini keser; geri
+// kalan her sey sessiz birikir (panelde durur, zilde sayilir, ekrani kesmez).
+// Gerekce: kesme hakki "senden bir sey bekleniyor" diyen bildirime ait. Her
+// bildirim toast olursa toast degersizlesir (BILDIRIMLER.md, S1).
+//
+// NICIN TEST: kesme kararinin UC okuyucusu var ve 17 Eylul'e kadar ikisi
+// birbirinden habersizdi.
+//
+//   toast    -> app.jsx EKRANI_KESENLER      (bes tur)
+//   ses      -> app.jsx _playDing            (KAPI YOKTU -- her bildirim)
+//   e-posta  -> mailer.js emailableTypes()   (task_assigned, mention)
+//
+// Yani kolon eklendiginde ekranda bir sey gorunmuyor ama DING geliyordu:
+// kullanici sesin nereden geldigini bulamiyordu. Ayni olgunun birden cok
+// okuyucusu -- bu deponun tanidik kusur sinifi.
+//
+// Bu test ucunu birbirine kilitliyor. Belgeye "ayni tutun" yazmak yetmezdi;
+// dil kurali bu depoda net yaziliydi ve yine 31 yerde ihlal edildi (CLAUDE.md).
+describe('Bildirim kesme kümesi — tek karar, üç kanal (kart #121)', () => {
+  const KESENLER = ['mention', 'task_assigned'];
+
+  const appSrc = yorumsuzDosya(path.join(CLIENT, 'app.jsx'));
+
+  /** app.jsx icindeki EKRANI_KESENLER kumesini kaynaktan okur. */
+  const istemciKumesi = () => {
+    const m = appSrc.match(/EKRANI_KESENLER = new Set\(\[([^\]]*)\]\)/);
+    assert.ok(m, 'app.jsx icinde EKRANI_KESENLER kumesi bulunamadi');
+    return [...new Set(
+      [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]),
+    )].sort();
+  };
+
+  test('istemci kümesi yalnızca atama ve bahsetme', () => {
+    assert.deepEqual(
+      istemciKumesi(), KESENLER,
+      'Ekranı kesen türler değişmiş. Karar (kart #121) atama ve bahsetme ile '
+      + 'sınırlıydı; liste büyürse toast değersizleşir, küçülürse kullanıcı '
+      + 'kendisine verilen işi kaçırır. Değişecekse kart yorumu da güncellenmeli.',
+    );
+  });
+
+  test('e-posta varsayılanı istemci kümesiyle aynı', async () => {
+    const { emailableTypes } = await import('../src/lib/mailer.js');
+    // Varsayilani olcuyoruz; ortam degiskeni operasyon tercihi ve bilinerek
+    // degistirilebilir (NOTIFY_EMAIL_TYPES). Olculen sey VARSAYILANIN
+    // istemciyle ayrismamasi.
+    const onceki = process.env.NOTIFY_EMAIL_TYPES;
+    delete process.env.NOTIFY_EMAIL_TYPES;
+    try {
+      assert.deepEqual(
+        [...emailableTypes()].sort(), KESENLER,
+        'E-posta varsayılanı ekranı kesen kümeden ayrışmış. Postalanan şey '
+        + 'kesen şeyle aynı olmalı; aksi hâlde e-posta kutusu gürültüye '
+        + 'boğulur ve hepsi birden okunmaz olur.',
+      );
+    } finally {
+      if (onceki === undefined) delete process.env.NOTIFY_EMAIL_TYPES;
+      else process.env.NOTIFY_EMAIL_TYPES = onceki;
+    }
+  });
+
+  test('ses ve toast AYNI kapıdan geçiyor — ding kapısız olamaz', () => {
+    // Asil kusur buydu: `_playDing()` kosulsuz cagriliyordu.
+    //
+    // KAPSAM DAR VE BILINCLI: yalnizca BILDIRIM isleyicisi
+    // (`sock.on('notification')`) olculuyor. Sohbet isleyicisinin kendi
+    // ding'i var ve o bu kuralin DISINDA -- sohbetin ayri tercihleri
+    // (notifyMessages, notifyDMs, notifyGroupChat) ve ayri anlami var:
+    // bir DM "biri su an seninle konusuyor" demek, kesmesi dogru.
+    //
+    // Testin ilk yazimi `indexOf('_playDing()')` kullaniyordu ve ISLEV
+    // TANIMINI buluyordu (`function _playDing() {`) -- yani yanlis yere
+    // bakip kirmisti. Uc esleme var: tanim, bildirim cagrisi, sohbet
+    // cagrisi. Sinir bu yuzden isleyicinin kendisi.
+    const bas = appSrc.indexOf("sock.on('notification'");
+    assert.ok(bas > 0, "bildirim soket isleyicisi bulunamadi");
+    const son = appSrc.indexOf("sock.on('chat_message'", bas);
+    assert.ok(son > bas, 'sohbet isleyicisi bulunamadi — sinir belirlenemedi');
+    const isleyici = appSrc.slice(bas, son);
+
+    const cagrilar = [...isleyici.matchAll(/^.*_playDing\(\).*$/gm)]
+      .map((m) => m[0])
+      .filter((satir) => !/function\s+_playDing/.test(satir));
+
+    assert.ok(
+      cagrilar.length > 0,
+      'Bildirim işleyicisinde hiç ding çağrısı yok. Ses tümden kaldırıldıysa '
+      + 'bu test de güncellenmeli; sessizce kaybolmasın.',
+    );
+    for (const satir of cagrilar) {
+      assert.match(
+        satir, /kesiyor/,
+        'Ding çağrısı kesme kararını okumuyor: `' + satir.trim() + '`\n  '
+        + 'Ses, toast ile AYNI kümeden beslenmeli. Kapısız ding, ekranda '
+        + 'hiçbir şey görünmezken ses çıkması demek — kullanıcı sesin nereden '
+        + 'geldiğini bulamaz (kart #121).',
+      );
+    }
+  });
+
+  test('sessiz türler gerçekten kümenin dışında', () => {
+    // Kararin negatif tarafi da olculuyor. Yalnizca "iki tane var mi" demek,
+    // uctan birinin geri eklenmesini yakalamazdi.
+    const kume = istemciKumesi();
+    for (const sessiz of ['comment_added', 'join_request', 'channel_added', 'column_added']) {
+      assert.ok(
+        !kume.includes(sessiz),
+        `"${sessiz}" ekranı kesenler arasına geri eklenmiş. Karar (kart #121) `
+        + 'onu sessiz bıraktı: panelde birikiyor, zilde sayılıyor, ekranı kesmiyor.',
+      );
+    }
+  });
+});

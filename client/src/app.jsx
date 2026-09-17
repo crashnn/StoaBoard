@@ -424,32 +424,37 @@ function App() {
         if (panelGorunur(notif, window.__CURRENT_WS_ID__, notifType(notif.text))) setNotifCount(c => c + 1);
         const twks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
         const myStatus = window.__MY_STATUS__ || 'online';
-        if (myStatus !== 'dnd' && twks.soundEnabled !== false) _playDing();
 
-        // Ekranda göster. Önceden bu olay yalnızca zil sayacını artırıyordu:
-        // görev atama, bahsetme ve yorum bildirimleri hiçbir zaman görünmüyordu
-        // ve kullanıcı zili fark etmezse haberi olmuyordu. Kurumsalda en kritik
-        // bildirim en sessiz olanıydı.
-        //
-        // Hangi olayın ekranı kesmesi gerektiği açık bir tasarım sorusu
-        // (BILDIRIMLER.md, S1). Buradaki liste bir başlangıç varsayımı:
-        // yalnızca kişiye DOĞRUDAN yöneltilenler kesiyor, bilgi amaçlı olanlar
-        // (kolon eklendi gibi) yalnızca zilde kalıyor.
-        //
-        // DM ve katılma onayı/reddi bilerek dışarıda: onlar kendi soket
-        // olaylarından zaten toast üretiyor, buraya da eklenirse çift görünür.
-        const EKRANI_KESENLER = new Set([
-          'task_assigned', 'mention', 'comment_added', 'join_request', 'channel_added',
-        ]);
         let tur = null;
         try { tur = JSON.parse(notif.text || '{}')?.type || null; } catch { tur = 'mention'; }
         // JSON olmayan gövde = eski biçimdeki bahsetme bildirimi.
 
-        if (
-          myStatus !== 'dnd' &&
-          twks.notifyTasks !== false &&
-          (tur === null || EKRANI_KESENLER.has(tur))
-        ) {
+        // KARAR (17 Eylül 2026, kart #121): atama ve bahsetme kullanıcının
+        // işini keser; geri kalan her şey sessiz birikir.
+        //
+        // Gerekçe: kesme hakkı "senden bir şey bekleniyor" diyen bildirime
+        // ait. Atama ve bahsetme bu ikisi; ötekiler "bir şey oldu" diyor ve
+        // beklemeye tahammül eder. Her bildirim toast olursa toast
+        // değersizleşir (BILDIRIMLER.md, S1).
+        //
+        // Liste eskiden beş tür taşıyordu (yorum, katılma isteği, kanala
+        // eklendin de kesiyordu). Karar onu ikiye indirdi.
+        //
+        // SES DE AYNI KAPIDAN GEÇİYOR, ve bu bir düzeltme: önceden ding
+        // KAPISIZDI — her bildirim ses çıkarıyordu, toast gösterilmese bile.
+        // Yani "kesme" kararının iki okuyucusu vardı ve biri kuralı hiç
+        // uygulamıyordu. Kolon eklendiğinde ekranda bir şey görünmüyor ama
+        // ding geliyordu; kullanıcı sesin nereden geldiğini bulamıyordu.
+        // Ses ve toast tek kümeden besleniyor, ayrışamazlar.
+        const EKRANI_KESENLER = new Set(['task_assigned', 'mention']);
+
+        // `tur === null` eski biçimdeki bahsetme; kesenlerden sayılıyor.
+        const kesiyor = tur === null || EKRANI_KESENLER.has(tur);
+        const izinVar = myStatus !== 'dnd' && twks.notifyTasks !== false;
+
+        if (kesiyor && izinVar && twks.soundEnabled !== false) _playDing();
+
+        if (kesiyor && izinVar) {
           const metin = renderNotifText(notif.text);
           // Toast düz metin gösteriyor: etiketler söküldükten sonra kaçış geri
           // çözülüyor, yoksa kullanıcı `&lt;img&gt;` gibi varlık kodları görürdü.

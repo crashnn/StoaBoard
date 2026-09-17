@@ -46,18 +46,36 @@ görünmesin diye.
 
 ## 2 · Mevcut durum haritası
 
+**17 Eylül 2026 itibarıyla** (S1 karara bağlandı, kart #121):
+
 | Olay | Zil rozeti | Ses | Toast | E-posta |
 |---|:--:|:--:|:--:|:--:|
-| Görev atandı | ✅ | ✅ | ✅ | ◑ |
-| Bahsedildi (mention) | ✅ | ✅ | ✅ | ◑ |
-| Göreve yorum yapıldı | ✅ | ✅ | ✅ | ❌ |
+| **Görev atandı** | ✅ | ✅ | ✅ | ◑ |
+| **Bahsedildi (mention)** | ✅ | ✅ | ✅ | ◑ |
+| Göreve yorum yapıldı | ✅ | ❌ | ❌ | ❌ |
+| Kanala eklendin | ✅ | ❌ | ❌ | ❌ |
+| Katılma isteği geldi | ✅ | ❌ | ❌ | ❌ |
+| Katılma isteği onaylandı | ✅ | ❌ | ✅* | ❌ |
+| Katılma isteği reddedildi | ✅ | ❌ | ✅* | ❌ |
+| Kolon eklendi | ✅ | ❌ | ❌ | ❌ |
 | Direkt mesaj | ✅ | ✅ | ✅ | ❌ |
 | Kanal mesajı | ✅ | ✅ | ✅ | ❌ |
-| Kanala eklendin | ✅ | ✅ | ✅ | ❌ |
-| Katılma isteği geldi | ✅ | ✅ | ✅ | ❌ |
-| Katılma isteği onaylandı | ✅ | ✅ | ✅ | ❌ |
-| Katılma isteği reddedildi | ✅ | ✅ | ✅ | ❌ |
-| Kolon eklendi | ✅ | ✅ | ❌ | ❌ |
+
+\* Katılma onayı ve reddi **kendi soket olaylarından** toast üretiyor
+(`join_request_approved` / `join_request_rejected`, `app.jsx`), bildirim
+yolundan bağımsız. Kullanıcının kendi başlattığı bir işlemin cevabı olduğu
+için bilerek bırakıldı — beklenen bir yanıt, sürpriz bir kesme değil.
+
+**Sohbet (DM ve kanal mesajı) bu kararın DIŞINDA.** Kendi işleyicisi ve kendi
+tercihleri var (`notifyMessages`, `notifyDMs`, `notifyGroupChat`) ve anlamı
+farklı: bir DM "biri şu an seninle konuşuyor" demek, kesmesi doğru.
+
+**Yol üstünde bulunan kusur:** kolon eklendiğinde ekranda hiçbir şey
+görünmüyor ama **ding geliyordu**. Sebep, kesme kararının iki okuyucusu
+olması ve birinin kuralı hiç uygulamamasıydı: toast `EKRANI_KESENLER`
+kümesinden geçiyordu, ses ise **kapısızdı** — her bildirim ses çıkarıyordu.
+Kullanıcı sesin nereden geldiğini bulamıyordu. İkisi artık tek kümeden
+besleniyor ve `bildirim.test.js` bunu kilitliyor.
 
 ◑ = e-posta altyapısı bağlı ama **varsayılan kapalı** (`NOTIFY_EMAIL=1`).
 
@@ -75,7 +93,8 @@ Rahatsız Etme (dnd) modu hepsini susturuyor.
 ## 3 · Boşluklar
 
 1. ~~**En önemli bildirim en sessiz olan.**~~ *1 Eylül'de kapatıldı — görev
-   bildirimleri artık ekranda görünüyor.* Hangi olayın keseceği hâlâ S1'e bağlı.
+   bildirimleri artık ekranda görünüyor.* ~~Hangi olayın keseceği hâlâ S1'e
+   bağlı.~~ *17 Eylül'de S1 kararlandı: atama ve bahsetme keser (kart #121).*
 2. **Tarayıcı bildirimi yok.** Sekme arka plandayken hiçbir şey görünmüyor.
    Kurumsalda insanlar gün boyu başka sekmede; uygulama açık ama görünmüyorsa
    bildirim kaçıyor.
@@ -97,11 +116,27 @@ Rahatsız Etme (dnd) modu hepsini susturuyor.
 Bunlar kod sorusu değil, **ürün kararı**. İkinci toplantıda masaya
 konabilecek nitelikte:
 
-**S1 · Hangi olay ekranı kesmeli?**
-Her bildirim toast olursa toast değersizleşir. Öneri: *sana doğrudan
-yöneltilenler* keser (atama, bahsetme, DM, sana yorum), *bilgi amaçlılar*
-kesmez (kolon eklendi, kanala eklendin). Ama bu bir varsayım — kullanıcıya
-sorulmalı.
+**S1 · Hangi olay ekranı kesmeli?** — **KARARLANDI (17 Eylül 2026, kart #121)**
+
+**Atama ve bahsetme keser; geri kalan her şey sessiz birikir** (panelde durur,
+zilde sayılır, ekranı kesmez). Sohbet bu kararın dışında (yukarı bakın).
+
+Gerekçe: kesme hakkı "senden bir şey bekleniyor" diyen bildirime ait. Atama ve
+bahsetme bu ikisi; ötekiler "bir şey oldu" diyor ve beklemeye tahammül eder.
+
+Buradaki eski öneri **daha geniştir** ve bilerek daraltıldı: "sana yorum" da
+kesenler arasındaydı. Yorum çoğu zaman bir tartışmanın devamı; on yorumlu bir
+kartta on kesme, toast'ı değersizleştirir. Panelde duruyor, kaybolmuyor.
+
+E-posta da aynı sınırı izliyor (`NOTIFY_EMAIL_TYPES` varsayılanı
+`task_assigned,mention`). Postalanan şey kesen şeyle aynı olmalı; aksi hâlde
+e-posta kutusu gürültüye boğulur ve hepsi birden okunmaz olur.
+
+**Gözden geçirilmeye değer tek madde — `join_request`.** Karar onu sessiz
+bıraktı ama o, ötekilerden farklı olarak **başka birini bekletiyor**: alana
+katılmak isteyen kişi, sahip fark edene kadar kapıda kalıyor. Bir yorumu
+kaçırmak kimseyi bekletmez, bunu kaçırmak bekletir. Kararı olduğu gibi
+uyguladık; yeniden açılırsa ilk aday bu satır.
 
 **S2 · Bildirim kanalı kullanıcı tercihine mi bırakılsın?**
 Olay × kanal (ekran / ses / e-posta / tarayıcı) matrisi kullanıcıya açılırsa
