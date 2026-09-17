@@ -982,3 +982,66 @@ describe('aktif alan geçişi — yüzey kendisiyle çelişmiyor', () => {
       '`user` istek başındaki alanı taşıyor — yanıt eski alanı gösterir');
   });
 });
+
+// ─── MCP yazma araçları REST ucundan geçer, doğrudan veritabanına yazmaz ─────
+//
+// NİÇİN (kart #222, 17 Eylül 2026): mcp.js bugün her yazmayı `callSelf` ile
+// REST ucuna devrediyor ve HİÇBİR doğrudan Prisma yazması içermiyor. Bu bir
+// tesadüf değil, bu yüzeyi ayakta tutan tasarım kararı.
+//
+// DEĞERİ ÖLÇÜLDÜ: 16 Eylül'de `72a114d` "bitiş kolonunda doğan kartın
+// completedAt'i" kusurunu ARAYÜZ yolu için düzeltti. MCP hiç düşünülmeden
+// yazıldı ve MCP de düzeldi, çünkü aynı uçtan geçiyor. Panodaki #155 kartı
+// bu yüzden kendiliğinden bayatladı.
+//
+// KORUMASIZ OLAN NEYDİ: biri "bir sorgu daha ucuz" diye doğrudan bir yazma
+// eklerse sessizce şunları atlar — REST ucundaki izin ve üyelik kapıları,
+// `yeniKartTamamlanma`, `recordTransition` (akış raporunun temeli), etkinlik
+// günlüğü, bildirimler ve `@bahsetme` kapsam kapısı. Sonuncusu en kritiği:
+// `add_comment` o yoldan geçiyor ve o kapı 17 Eylül'de kapandı (#190).
+// Doğrudan yazan bir yorum aracı, kapattığımız sızıntıyı MCP yüzeyinden
+// geri getirirdi.
+//
+// Merdivende bu, "belge → test" basamağı: bugün doğru olan şey yarın da
+// doğru kalsın diye.
+
+describe('MCP — yazma araçları REST ucundan geçer', () => {
+  const MCP = path.join(SRC, 'routes', 'mcp.js');
+  // Yazan Prisma çağrıları. Okuma (findUnique, findMany, count) serbest:
+  // yasaklanan şey veri DEĞİŞTİRMENİN kapıyı atlaması.
+  const YAZAN = /prisma\.(\w+)\.(create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/g;
+
+  test('mcp.js hiçbir yerde doğrudan veritabanına yazmıyor', () => {
+    const src = yorumsuzDosya(MCP);
+    const bulunan = [...src.matchAll(YAZAN)].map((m) => `prisma.${m[1]}.${m[2]}()`);
+    assert.deepEqual(
+      bulunan,
+      [],
+      'MCP aracı doğrudan veritabanına yazıyor. REST ucuna devret (callSelf); '
+      + 'aksi halde izin kapıları, geçiş kaydı, bildirimler ve @bahsetme kapsam '
+      + 'kapısı atlanır.',
+    );
+  });
+
+  test('devir gerçekten yapılıyor — callSelf yüzeyden silinmemiş', () => {
+    // Yukarıdaki test tek başına yanıltıcı olabilirdi: bütün yazma araçları
+    // silinse de yeşil kalırdı. Bu test "yasak yok" ile "yüzey yok" hâllerini
+    // ayırıyor.
+    const src = yorumsuzDosya(MCP);
+    const devir = (src.match(/callSelf\s*\(/g) || []).length;
+    assert.ok(
+      devir >= 5,
+      `callSelf çağrısı ${devir} tane — yazma yüzeyi devri bırakmış olabilir`,
+    );
+  });
+
+  test('tarama gerçekten yazma çağrısı görüyor (kör değil)', () => {
+    // Desenin kendisi ölçülüyor: gerçek bir yazma satırı verildiğinde
+    // yakalıyor mu? Aksi halde ilk test her zaman yeşil kalır ve hiçbir şeyi
+    // korumaz — bu depoda üç tarama testi ilk hâlinde tam olarak böyleydi.
+    const ornek = "await prisma.task.update({ where: { id }, data: { title } });";
+    assert.equal([...ornek.matchAll(YAZAN)].length, 1, 'desen gerçek bir yazmayı görmüyor');
+    const okuma = "const u = await prisma.user.findUnique({ where: { id } });";
+    assert.equal([...okuma.matchAll(YAZAN)].length, 0, 'desen okumayı yazma sanıyor');
+  });
+});
