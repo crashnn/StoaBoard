@@ -257,3 +257,74 @@ describe('Vitrin — tokenlar uygulamayla aynı', () => {
     );
   });
 });
+
+// ─── 4. Yapışkan öge genişliğini sınırlamıyor ──────────────────────────────
+//
+// KUSUR (kart #225, 17 Eylül 2026): `.ust` hem `position: sticky` hem
+// `max-width: 1140px; margin: 0 auto` taşıyordu. Yani ÇUBUK ortalanıyordu,
+// sayfa değil — 1366px ekranda iki yanda ~113px arka planı olmayan boşluk
+// kalıyor ve sayfa kaydırılınca içerik oradan görünerek geçiyordu. Kullanıcı
+// canlıda gördü.
+//
+// Eski yorum sorunu FARK ETMİŞTİ ama yanlış teşhis etmişti ("kenarlık sayfanın
+// tamamına ulaşmıyor") ve `box-shadow` yamasına geçmişti. Gölge de aynı 1140px
+// ile sınırlıydı; mesele kenarlık değil ARKA PLANDI. Belirti yamandı, sebep
+// durdu.
+//
+// Kural `.ust`'a DEĞİL, genel bir değişmeze bağlı: yapışkan ya da sabit
+// konumlu hiçbir öge kendi genişliğini sınırlamamalı. Aksi halde aynı tuzak
+// başka bir ögede tekrarlar ve kimse bağlantıyı kurmaz.
+
+describe('vitrin — yapışkan öge genişliğini sınırlamıyor', () => {
+  /** CSS kurallarını { secici, govde } olarak döner. CSS zaten yorumsuz. */
+  function kurallar() {
+    const out = [];
+    const re = /([^{}]+)\{([^{}]*)\}/g;
+    let m;
+    while ((m = re.exec(CSS)) !== null) {
+      const secici = m[1].trim().replace(/\s+/g, ' ');
+      if (!secici || secici.startsWith('@')) continue;
+      out.push({ secici, govde: m[2] });
+    }
+    return out;
+  }
+
+  test('sticky/fixed kuralı max-width taşımıyor', () => {
+    const suclu = kurallar()
+      .filter((k) => /position:\s*(sticky|fixed)/.test(k.govde) && /max-width:/.test(k.govde))
+      .map((k) => k.secici);
+    assert.deepEqual(
+      suclu, [],
+      'Yapışkan/sabit bir öge kendi genişliğini sınırlıyor. Arka planı viewport\'u '
+      + 'kaplamaz ve içerik yanlardan görünerek kayar. Ortalamayı içerideki '
+      + 'sarmalayıcıya taşı (bkz. .ust / .ust-ic).',
+    );
+  });
+
+  test('üst çubuk kalıbı uygulanmış — sarmalayıcı var ve ortalıyor', () => {
+    // İlk test, sticky kuralı hiç kalmasa da yeşil kalırdı; bu test kalıbın
+    // gerçekten uygulandığını ölçüyor.
+    const k = kurallar();
+    const ust = k.find((x) => x.secici === '.ust' && /position:\s*sticky/.test(x.govde));
+    assert.ok(ust, '.ust artık yapışkan değil — üst çubuk kaydırmada kayboluyor olabilir');
+    assert.ok(/background:/.test(ust.govde),
+      'yapışkan çubuğun arka planı yok; altından geçen içerik görünür');
+
+    const ic = k.find((x) => x.secici === '.ust-ic');
+    assert.ok(ic, 'sarmalayıcı (.ust-ic) yok — ortalama nereye gitti?');
+    assert.ok(/max-width:/.test(ic.govde) && /margin:\s*0 auto/.test(ic.govde),
+      'sarmalayıcı ortalamıyor; içerik sayfanın tamamına yayılır');
+  });
+
+  test('HTML sarmalayıcıyı gerçekten taşıyor', () => {
+    // CSS'te kural olup HTML'de sarmalayıcı olmasa kural ölü kalırdı.
+    assert.ok(/<header class="ust">\s*<div class="ust-ic">/.test(HTML),
+      'header içinde .ust-ic sarmalayıcısı yok — CSS kuralı hiçbir şeye uygulanmıyor');
+  });
+
+  test('ayrıştırıcı gerçekten kural buluyor (kör değil)', () => {
+    const k = kurallar();
+    assert.ok(k.length > 20, `yalnızca ${k.length} kural ayrıştırıldı — desen bozuk`);
+    assert.ok(k.some((x) => x.secici === '.ust'), '.ust kuralı bulunamadı');
+  });
+});

@@ -90,7 +90,6 @@ a:focus-visible {
 }
 
 /* ── Ortak kap ───────────────────────────────────────────────────────── */
-.ust, main > section, footer > * { }
 .ust,
 main > section,
 footer {
@@ -98,10 +97,30 @@ footer {
 }
 
 /* ── Üst çubuk ───────────────────────────────────────────────────────── */
+/*
+ * ÇUBUK TAM GENİŞLİK, İÇERİK ORTALANMIŞ — ikisi aynı ögede olamaz.
+ *
+ * 17 Eylül 2026'ya kadar `.ust`'un kendisi hem `position: sticky` hem
+ * `max-width: 1140px; margin: 0 auto` taşıyordu. Yani ÇUBUK ortalanıyordu,
+ * sayfa değil: 1366px ekranda iki yanda ~113px arka planı olmayan boşluk
+ * kalıyor ve sayfa kaydırılınca içerik oradan görünerek geçiyordu.
+ *
+ * Buradaki eski yorum sorunu FARK ETMİŞ ama yanlış teşhis etmişti — "kenarlık
+ * sayfanın tamamına ulaşmıyor" deyip `box-shadow` yamasına geçmiş. Gölge de
+ * aynı 1140px'i aşmıyordu; mesele kenarlık değil ARKA PLANDI. Belirti yamandı,
+ * sebep durdu. (Kullanıcı bunu canlıda gördü, kart #225.)
+ *
+ * Kural: yapışkan bir çubuk, viewport genişliğinde olmalı. Ortalama işi
+ * İÇİNDEKİ sarmalayıcıya düşer.
+ */
 .ust {
   position: sticky;
   top: 0;
   z-index: 10;
+  background: var(--bg);
+  box-shadow: 0 1px 0 var(--line);
+}
+.ust-ic {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -110,12 +129,7 @@ footer {
   padding: 0 48px;
   max-width: var(--kap);
   margin: 0 auto;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
 }
-/* Sticky öge max-width ile ortalanınca kenarlık sayfanın tamamına
-   ulaşmıyor; sarmalayıcı yerine gölge-kenarlık kullanılıyor. */
-.ust { box-shadow: 0 1px 0 var(--line); border-bottom: 0; }
 
 .logo { display: flex; align-items: center; gap: 10px; color: var(--ink); }
 .logo span { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
@@ -394,7 +408,7 @@ footer {
 /* ── Telefon — tek sütun (brief) ─────────────────────────────────────── */
 /* 768px yeni bir eşik değil: uygulamanın telefon kırılımı da bu. */
 @media (max-width: 768px) {
-  .ust { padding: 0 20px; height: 60px; }
+  .ust-ic { padding: 0 20px; height: 60px; }
   .logo span { font-size: 17px; }
   .ust nav { gap: 14px; }
   .dolgulu, .cizgili { height: 40px; padding: 0 14px; font-size: 13.5px; }
