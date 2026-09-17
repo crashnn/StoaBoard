@@ -641,7 +641,7 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       önekinden anahtar geri üretilemez. Değişken hiç yoksa sunucu bugün
       hiçbir şey yazmadan her isteği reddediyor — kapalı başarısızlık doğru,
       ama sessiz; açılışta gürültü çıkarmalı.
-- [ ] **`currentMember` okurken yazıyor.** Aktif alan sütunu boşsa ya da
+- [x] **`currentMember` okurken yazıyor.** Aktif alan sütunu boşsa ya da
       üyelik silinmişse ilk üyeliği seçip `users.currentWorkspaceId`ye
       YAZIYOR. Yani salt okuma işaretli `whoami` bir yazma yapabiliyor ve
       tarayıcıdaki aktif alanı değiştirebiliyor. Bugün pratikte zararsız
@@ -659,6 +659,14 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       bağlanmalı. Aciliyeti düşük: yazılan değer, her okuyucunun zaten
       türettiği değerin aynısı (ilk üyelik) — görünür bir alan değişikliği
       üretmiyor, yalnızca "salt okuma" sözünü bozuyor.
+      **BİRİNCİ AŞAMA KAPANDI 17 Eylül 2026** (`265b0fc`, kart #204). Üç kopya
+      teke indi (`routes/api.js` ve `sockets/chat.js` kopyaları silindi), net
+      −47 satır. **İkinci kusur bulundu:** üçünde de `findFirst` SIRASIZDI ve
+      "ilk üyelik" tanımsız bir seçimdi; görünmemesinin sebebi sonucun sütuna
+      yazılıp sabitlenmesiydi — yani kusuru örten şey maddenin şikâyet ettiği
+      yazmanın ta kendisi. Sıralama eklendi. **AÇIK KALAN:** yazmayı tümden
+      kaldırmak artık güvenli ama karar istiyor — sütun boşken `is_current`
+      işareti neye göre üretilecek (`api.js` bugün ham sütunla karşılaştırıyor).
 - [x] **`whoami`'ye `available_tools`.** *(Kapandı 13 Eylül 2026 — MCP 0.6.0,
       DEVIR 0-V: `server.available_tools`; tarama `tools/list` ile
       karşılaştırıyor, SDK'nın belgelenmemiş kaydı gerçek bir `McpServer`
@@ -713,7 +721,7 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       kabul etmiyor — `Prisma.DbNull` istiyor (göç betiği onu kullanıyor).
       Bugün hiçbir istemci `doc: null` göndermediği için yol ölü; açılırsa
       önce veritabanlı bir denemeyle doğrulanmalı.
-- [ ] **`doc` → açıklama senkronu başlıkları da açıklamaya katıyor.**
+- [x] **`doc` → açıklama senkronu başlıkları da açıklamaya katıyor.**
       *(13 Eylül 2026, göç sonrası okumada görüldü.)* `PATCH /tasks/:id`
       `doc` alınca `description`ı `p`, `h1`, `h2`, `h3` bloklarının metnini
       birleştirerek yeniden yazıyor. Sonuç: #19'un `desc` alanı "Açıklama
@@ -722,6 +730,12 @@ ilerlemeyi 100 yapıyor, geçişi kaydediyor.
       ASDASDAS" oldu, yani her açıklama düzenlemesi yeniden üretiyor. Pano kartı,
       arama ve MCP `desc`i bu hâliyle görüyor. Muhtemel düzeltme yalnızca `p`
       bloklarını almak; mevcut açıklamalar ayrıca temizlenmeli (veri yazımı).
+      **KAPANDI 17 Eylül 2026** (`77bac42`, kart #199). Sebep tahmin edilenden
+      netti: çekmece kartı açarken gövdeye KENDİ ürettiği bölüm başlığını koyuyor
+      (`drawer.jsx`), yani "Açıklama" arayüzün yapısal etiketi. `docDuzMetin`
+      artık h1/h2/h3 almıyor; kural veriye değil YAPIYA bağlı (bir test `_i18n`
+      işaretine bağlanmayı ayrıca yasaklıyor). **İLERİYE DÖNÜK:** bozulmuş
+      açıklamalar onarılmadı, önce canlıda kaç kayıt etkilendiği ölçülmeli.
 - [ ] **Açık sekme dağıtımı fark etmiyor — eski kodla saatlerce çalışabiliyor.**
       *(13 Eylül 2026 — DEVIR 0-U.)* Tek kaynak dağıtımından sonra, önceden
       açık sekme eski çekmeceyle çalıştı ve dört işlemin dördü de reddedildi.
@@ -1319,7 +1333,7 @@ bildirdi, ekran görüntüleriyle. Hiçbiri henüz koda girmedi; sırayı kullan
 verecek. Ortak not: dördü de **yalnızca dar ekranda** görülüyor, yani masaüstü
 turunda kaçan bir sınıf.
 
-- [ ] **Dil değiştirince vitrine atıyor** *(mobil)*. Vitrinden giriş ekranına
+- [x] **Dil değiştirince vitrine atıyor** *(mobil)*. Vitrinden giriş ekranına
       (`/giris`) gidip dili değiştirince kullanıcı vitrine geri düşüyor;
       tekrar giriş ekranına gelindiğinde dil değişmiş oluyor. Yani işlem
       çalışıyor ama kullanıcıyı bulunduğu yerden atıyor. Şüphe: dil değişimi
@@ -1327,8 +1341,11 @@ turunda kaçan bir sınıf.
       vitrin — `6c9b60a` tesisatı) devreye giriyor; dönüşte `/giris` hedefi
       korunmuyor. `auth.jsx` kendi `AUTH_I18N` sözlüğünü taşıyor (CLAUDE.md),
       oraya da bakılmalı.
+      **KAPANDI 17 Eylül 2026** (`0992aa4`, kart #192, ofis makinesi). `app.jsx`te
+      `view === 'auth'` dalı vardı ama `setView('auth')` hiç çağrılmıyor — ölü dal
+      yüzünden adres `/giris` iken `/` yapılıyordu. Canlı doğrulama bekliyor.
 
-- [ ] **"Tümünü oku" sonrası bildirimler okunmamış kalıyor** *(mobil,
+- [x] **"Tümünü oku" sonrası bildirimler okunmamış kalıyor** *(mobil,
       17 Eylül 2026; kullanıcıyla netleştirildi)*. "Tümünü oku"ya basılıyor,
       işlem **başarılı görünüyor**, bildirimler okunmamış kalmaya devam
       ediyor. Ekran görüntüsünden ölçülebilen: "Tümü 10" ve "Okunmamış 10"
@@ -1343,20 +1360,38 @@ turunda kaçan bir sınıf.
       Sessiz başarısızlık şüphesi: işlem başarılı görünüyor ama sonuç yok.
       Panoda kart #193.
       SONRA bu hâl görülüyor?
+      **TEŞHİS EDİLEBİLİR KILINDI 17 Eylül 2026** (`dd44764`, kart #193, ofis
+      makinesi). **Kart kapanmadı, sebebi önemli:** mobildeki olay yeniden
+      ÜRETİLEMEDİ, yani kök sebep kanıtlanmadı. Bulunan kusur gerçek ve geniş:
+      `notifications.jsx`teki beş işlemin beşi de ekranı yazmadan önce güncelleyip
+      hatayı `catch (_) {}` ile yutuyordu. Artık geri alıyor ve toast çıkarıyor —
+      bir dahaki denemede ya çalışacak ya sebebini söyleyecek.
+      **Bu maddedeki kanıtın üçte ikisi yanlış okumaydı:** "Tümü 10 = Okunmamış 10"
+      ve "ilk kayıtta nokta yok" kusur belirtisi değilmiş; sekme sayıları 15
+      Eylül'den beri yalnızca okunmamışı sayıyor. Ekran görüntüsünden çıkarım
+      yapıp kod okumamanın bedeli.
 
-- [ ] **Sohbet paneli karartılmış görünüyor** *(mobil)*. Pano üzerinde açılan
+- [x] **Sohbet paneli karartılmış görünüyor** *(mobil)*. Pano üzerinde açılan
       "Sohbetler" paneli gri bir perdenin ALTINDA kalıyor: başlık, sekmeler
       ve arka plan soluk, yalnızca mesaj balonları koyu. Panel kullanılabilir
       ama okunaklı değil. Şüphe: modal arka planı (backdrop) panelin üstüne
       boyanıyor — dar ekranda z-index ya da yığılma bağlamı (stacking
       context) sırası bozuluyor. Masaüstünde görülmüyor.
+      **KAPANDI 17 Eylül 2026** (`02177dc`, kart #194, ofis makinesi). Perde panelin
+      kendi `::before`'uydu; panel açıkken `transform` taşıdığı için (a) yığılma
+      bağlamı açıyor ve negatif z-index dışarı çıkamıyor, (b) sabit konumlu torunlar
+      için kapsayıcı blok oluyor ve `inset:0` ekranı değil PANELİ kaplıyordu. Kural
+      amacının tam tersini yapıyordu. Perde `body`ye taşındı. Canlı doğrulama bekliyor.
 
-- [ ] **Çizelge görünümü mobilde kullanılamaz** *(mobil)*. Gantt/çizelge dar
+- [x] **Çizelge görünümü mobilde kullanılamaz** *(mobil)*. Gantt/çizelge dar
       ekranda işe yaramıyor: görev sütunu genişliğin çoğunu alıyor, zaman
       ekseninden yalnızca bir ay etiketi ("Nis") ve boş ızgara görünüyor,
       çubuklar ekran dışında. Karar gerektiriyor: (a) mobilde çizelgeyi
       görünüm listesinden gizle, (b) yatay kaydırmalı sadeleştirilmiş bir
       kip ver. Ürün kararı — kod işi değil, önce (a)/(b) seçilmeli.
+      **KAPANDI 17 Eylül 2026** (`5813c81`, kart #195, ofis makinesi). Karar (a):
+      dar ekranda gizlenip yerine sebebi yazılıyor. Kural "dar ekran", "mobil
+      tarayıcı" değil — telefon yatay çevrilince çizelge açılıyor.
 - [x] **Çift tırnaklı `error` alanı dil taramasından kaçıyor** *(16 Eylül
       2026; aynı gün kapandı: tarama üç tırnağı da görüyor, üç kaçak koda
       çevrildi, mutasyonla doğrulandı)*. `attachments.js` sohbet yüklemesinde `error: "Dosya 50 MB'dan
