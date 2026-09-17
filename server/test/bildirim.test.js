@@ -682,3 +682,77 @@ describe('Bildirim kesme kümesi — tek karar, üç kanal (kart #121)', () => {
     }
   });
 });
+
+// ── "Tumunu oku" NULL satirlari da kapsamali (kart #193 kok sebep) ────────
+//
+// KUSUR, 17 Eylul 2026'da kullanicinin masaustu dogrulama turunda yakalandi.
+// Belirti: "tumunu oku"ya basiliyor, noktalar kayboluyor, sonra geri geliyor.
+// F5 ve HARD REFRESH de cozmuyor -- yani sorun istemci onbelleginde degil,
+// veri gercekten okunmamis kaliyor.
+//
+// KOK SEBEP semada: `read Boolean?` NULL olabilir ve `createAndPush` alani
+// hic yazmiyordu, yani her bildirim `read = NULL` doguyordu. Toplu okuma
+// sorgusu `where: { read: false }` diyordu ve SQL'de `read = false`,
+// `read IS NULL` satirlarini ESLESTIRMEZ. Sorgu hatasiz kosuyor, SIFIR satir
+// guncelliyor, uc `ok` donuyordu.
+//
+// KUSURU GIZLEYEN SEY: tekil okuma CALISIYORDU. `/:notifId/read` kimlige
+// gidiyor ve `read`in degerine bakmiyor. Yani "bildirime tikla" calisiyor,
+// "tumunu oku" calismiyordu -- ve ikisi ayni ekranda oldugu icin kusur
+// "bazen calisiyor" gibi gorunuyordu.
+//
+// Bu test ucuncu bir dusus olmasin diye UC seyi birden kilitliyor.
+describe('Tümünü oku — NULL kapsanıyor (kart #193)', () => {
+  const rotaSrc = yorumsuzDosya(path.join(SRC, 'routes', 'notifications.js'));
+  const libSrc = yorumsuzDosya(path.join(SRC, 'lib', 'notifications.js'));
+
+  /** Bir uc govdesini secicisinden ilk `});` kapanisina kadar alir. */
+  const ucGovdesi = (isaret) => {
+    const i = rotaSrc.indexOf(isaret);
+    assert.ok(i > 0, `${isaret} ucu bulunamadı`);
+    const son = rotaSrc.indexOf('\n);', i);
+    return rotaSrc.slice(i, son > i ? son : i + 1200);
+  };
+
+  test('toplu okuma read süzgeci kullanmıyor', () => {
+    const govde = ucGovdesi("'/read-all'");
+    assert.ok(
+      govde.includes('updateMany'),
+      'toplu okuma updateMany kullanmıyor; test güncellenmeli',
+    );
+    // Asil olcut: `read: false` (ya da `read: null`) SUZGEC olarak
+    // kullanilmamali. Veri uc degerli oldugu icin hangi degeri sectiginiz
+    // fark etmez -- otekini kacirirsiniz.
+    const suzgec = govde.slice(0, govde.indexOf('data:'));
+    assert.doesNotMatch(
+      suzgec, /read:\s*(false|null)/,
+      '"Tümünü oku" yeniden `read` süzgeci kullanıyor. Alan NULL olabildiği '
+      + 'için bu süzgeç satırların bir kısmını SESSİZCE atlar: sorgu hatasız '
+      + 'koşar, sıfır satır günceller, uç ok döner. Kartın kök sebebi tam '
+      + 'buydu (#193).',
+    );
+  });
+
+  test('toplu okuma kaç satır güncellediğini söylüyor', () => {
+    // Kusur dort gun fark edilmedi cunku uc her zaman ayni `{ ok: true }`
+    // donuyordu: "hepsini okudum" ile "hicbirini okuyamadim" ayirt edilemezdi.
+    const govde = ucGovdesi("'/read-all'");
+    assert.match(
+      govde, /updated/,
+      'Toplu okuma güncellenen satır sayısını döndürmüyor; işlem yine '
+      + 'gözlemlenemez olur ve "hiçbiri" ile "hepsi" aynı cevabı verir.',
+    );
+  });
+
+  test('yeni bildirim read: false ile doğuyor, NULL değil', () => {
+    // Okuma ucu artik suzgec kullanmadigi icin bu satir olmadan da calisir.
+    // Yine de sart: veri NULL ile false arasinda bolunmus kalirsa ileride
+    // `read: false` yazan BASKA bir sorgu ayni tuzaga duser.
+    assert.match(
+      libSrc, /read:\s*false/,
+      'createAndPush `read` alanını yazmıyor; şemada varsayılan yok, yani '
+      + 'bildirimler NULL doğar ve `read` üzerinden süzen her sorgu onları '
+      + 'sessizce atlar (kart #193).',
+    );
+  });
+});

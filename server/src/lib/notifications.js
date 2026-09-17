@@ -25,7 +25,23 @@ export function buildNotificationText(type, params = {}) {
  * io: Socket.IO Server instance (opsiyonel; null gelirse sadece DB'ye yazar)
  */
 export async function createAndPush(io, data) {
-  const notif = await prisma.notification.create({ data });
+  // `read: false` BURADA yazılıyor, çağıranlara bırakılmıyor.
+  //
+  // Şemada alan `Boolean?` ve varsayılanı yok; hiçbir çağıran da yazmıyordu,
+  // yani her bildirim `read = NULL` doğuyordu. Görüntüleme tarafı bunu tolere
+  // ediyor (`unread: !n.read`) ama SORGULAR etmiyor: `where: { read: false }`
+  // NULL satırları eşleştirmediği için "tümünü oku" hiçbir şeyi
+  // güncellemiyordu (kart #193, kök sebep).
+  //
+  // Okuma ucu artık `read` süzgeci kullanmıyor, yani bu satır olmadan da
+  // çalışır. Yine de yazılıyor: veri NULL ile false arasında bölünmüş kalırsa
+  // ileride `read: false` yazan BAŞKA bir sorgu aynı tuzağa düşer. Alanın üç
+  // değerli olması bir kaza; yeni satırlar iki değerli.
+  //
+  // Çağıran açıkça bir değer verdiyse ona dokunulmuyor.
+  const notif = await prisma.notification.create({
+    data: { read: false, ...data },
+  });
   if (io) {
     try {
       io.to(`user_${notif.userId}`).emit('notification', notificationToDict(notif));

@@ -42,11 +42,35 @@ notificationsRouter.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     const user = await loadUser(req);
-    await prisma.notification.updateMany({
-      where: { userId: user.id, read: false },
+
+    // KUSUR (17 Eylül 2026, kart #193 — kök sebep buymuş).
+    //
+    // Burada `where: { userId, read: false }` yazıyordu ve HİÇBİR ŞEYİ
+    // güncellemiyordu. Sebep şemada: `read Boolean?` yani NULL olabilir, ve
+    // `createAndPush` alanı hiç yazmıyor — her bildirim `read = NULL` doğuyor.
+    // SQL'de `read = false`, `read IS NULL` satırlarını EŞLEŞTİRMEZ.
+    //
+    // Sonuç mükemmel bir sessiz başarısızlıktı: sorgu hatasız koşuyor, sıfır
+    // satır güncelliyor, uç `ok` dönüyor. İstemci iyimser güncellemeyi yapıyor,
+    // noktalar kayboluyor, sonraki okumada geri geliyor. F5 ve hard refresh de
+    // çözmüyordu çünkü veri GERÇEKTEN okunmamıştı.
+    //
+    // Tekil okuma (`/:notifId/read`) çalışıyordu ve bu kusuru gizliyordu:
+    // `update({ data: { read: true } })` kimliğe gidiyor, `read`in değerine
+    // bakmıyor. Yani "bildirime tıkla" çalışıyor, "tümünü oku" çalışmıyordu.
+    //
+    // `read` SÜZGECİ TÜMDEN KALDIRILDI. Zaten okunmuş bir satırı yeniden
+    // okundu yazmak işlemsiz; NULL/false ayrımını burada yeniden kurmak aynı
+    // tuzağı başka bir yazımla geri getirirdi.
+    const { count } = await prisma.notification.updateMany({
+      where: { userId: user.id },
       data: { read: true },
     });
-    res.json({ ok: true });
+
+    // Sayı yanıta konuyor ki işlem GÖZLEMLENEBİLİR olsun. Bu kusur dört gün
+    // boyunca fark edilmedi çünkü uç her zaman aynı `{ ok: true }` dönüyordu:
+    // "hepsini okudum" ile "hiçbirini okuyamadım" aynı cevabı veriyordu.
+    res.json({ ok: true, updated: count });
   }),
 );
 
