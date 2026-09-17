@@ -16,7 +16,7 @@ En taze bölüm **0-AC**.
 
 ---
 
-## 0-AC. 17 Eylül öğleden sonra — mobil üçlü, kart numarası, dört karar
+## 0-AC. 17 Eylül öğleden sonra — mobil üçlü, kart numarası, dört karar, vitrin
 
 **İki makine aynı anda çalıştı:** bu tur ofis makinesinde (5432 kapalı,
 `mcp:tara` ve `prisma:push` koşmaz), kullanıcı paralel olarak ev makinesinde.
@@ -139,18 +139,131 @@ ANLATAN yorum yasaklı metnin kendisini içeriyordu (`.chat-panel`,
 `position: fixed`). 11 Eylül'deki tuzağın CSS'teki kardeşi. **Kaynak tarayan
 test yazıyorsan, dil ne olursa olsun yorumları önce boşluğa çevir.**
 
+### Öğle molası eki — kullanıcı yokken yapılanlar (dört commit)
+
+Kullanıcı yemek molasına çıktı, "gidebildiğin kadar git" dedi ve **push'u
+bekletti**. Elde kalan iki karara bağlanmış iş ile vitrinin kod tarafı
+yapıldı. Testler **588 → 618**.
+
+> **PUSH EDİLMEDİ.** `5813c81`, `b521439`, `3834fe3` yerelde duruyor.
+> `920b0fc` ve öncesi push edilmiş. Kullanıcı ev makinesinde paralel
+> çalışıyordu; çakışmayı önlemek için sekiz kart (120, 121, 122, 187, 192,
+> 193, 194, 195) ve `design/` klasörü bu oturuma ayrıldı.
+
+**`5813c81` — çizelge dar ekranda gizleniyor (#195).** Karar sabah verilmişti;
+bu tur uyguladı. Açık soru (eşik) **gerekçeyle cevaplandı: 768px**, çünkü bu
+depoda telefon kırılımı olarak zaten üç yerde kullanılıyor — yeni bir eşik
+"dar ekran" tanımının iki cevabı olması demekti. Tek sabitte
+(`CIZELGE_MIN_GENISLIK`). Ölçüm `matchMedia` ile, CSS ile **değil**: CSS
+gizler ama yine **çizer** ve yerine açıklama konamaz. Medya sorgusu `change`
+dinliyor, yani telefon yatay çevrilince çizelge kendiliğinden açılıyor.
+Görünüm seçicisindeki giriş **duruyor** — gizlemek "böyle bir özellik yok"
+izlenimi verirdi.
+
+**`b521439` — bildirim kesme kuralı (#121).** Atama ve bahsetme keser, gerisi
+sessiz birikir. `BILDIRIMLER.md`nin S1 sorusu kapandı, durum haritası
+yenilendi.
+
+**Yol üstünde asıl kusur çıktı ve kartın uyardığı sınıfın ta kendisiydi:**
+kesme kararının üç okuyucusu vardı ve biri kuralı **hiç uygulamıyordu** —
+toast `EKRANI_KESENLER`den geçiyordu, **ses kapısızdı**. Kolon eklendiğinde
+ekranda hiçbir şey görünmüyor ama **ding geliyordu**; kullanıcı sesin nereden
+geldiğini bulamıyordu. Ses ve toast artık tek kümeden besleniyor.
+
+*Kapsam varsayımı, kayda geçsin:* **sohbet bu kararın dışında bırakıldı.**
+Karar "gerisi sessiz" diyordu ama sohbetin kendi işleyicisi, kendi tercihleri
+ve farklı anlamı var — bir DM "biri şu an seninle konuşuyor" demek. Kullanıcı
+sohbetten hiç söz etmedi. Aksi isteniyorsa tek satır.
+
+*Gözden geçirilmeye değer:* `join_request` sessiz kaldı ama o ötekilerden
+farklı olarak **başka birini bekletiyor**. Bir yorumu kaçırmak kimseyi
+bekletmez, bunu kaçırmak bekletir. Karar olduğu gibi uygulandı; yeniden
+açılırsa ilk aday bu satır (karta ve belgeye yazıldı).
+
+**`3834fe3` — vitrin tasarımdan koda geçti (#187, alt görev 168 + 169).**
+Yer tutucu sayfa gerçek sayfayla değişti; ilerleme 1/6 → 3/6.
+
+**Dil kararı — brief'in sorduğu soruya cevap: TEK dosya, iki dil.** Türkçe
+işaretlemede, İngilizcesi aynı elemanın `data-en`inde. Gerekçe deponun kendi
+dersi: iki kopya ayrışır, tek kaynak ayrışamaz. Türkçe'nin işaretlemede
+durması ayrıca **dil sıçramasını** önlüyor ve JS kapalıysa sayfa Türkçe
+çalışıyor. Dil anahtarı `stoa.lang` — **uygulamanın kendi anahtarı**; ayrı bir
+anahtar, dili vitrinde seçip giriş ekranında Türkçe bulmak demekti.
+
+Yeni test dosyası **`server/test/vitrin.test.js`** (25 test). Ayrı dosya,
+çünkü `dil.test.js` `client/src/views`i tarıyor; vitrin statik ve kendi
+mekanizmasını taşıyor (`auth.jsx`in AUTH_I18N'i için verilen kararın aynısı).
+Üç ayrışma riskini kilitliyor: dil denkliği, sunucu sözleşmesi, **token
+eşliği** (on beş değişken `styles.css` ile birebir — `vitrin.css` uygulamanın
+CSS'ini içe aktarmıyor, misafire 210 KB indirmemek için, ve o ödün iki yerde
+iki değer demek).
+
+**Vitrinde iki yer bilerek yer tutucu, ikisi de açıkça işaretli:** ürün
+görseli (alt görev 167) ve **LinkedIn adresi** (`#linkedin-adresi-eklenecek`
+— GitHub gerçek, bu değil, **yayına almadan doldurulmalı**).
+
+### Claude Design turu ve öğrendiği ders
+
+Vitrin tasarımı `design` becerisiyle çizildi (artifact:
+`claude.ai/artifact/VMQ5F13oKwQnLhwFeVumVK`, çalışma dosyaları `design/`,
+**git'e girmedi**). Kendi taslağım incelettirildi ve **on bir gerçek kusur**
+çıktı. En ağırı kayda değer:
+
+**Koyu temada vurgu rengini sabit `#1a4a70` yazmıştım.** `styles.css:282` koyu
+temada `--accent-navy`yi `oklch(70% 0.10 240)` yapıyor; sabit lacivert koyu
+zeminde ~1.6:1 kontrast veriyor. Yani deponun kendi yorumunun (`:171-178`)
+"10 Eylül'de düzeltildi" dediği kusuru yeniden kurmuşum. Vitrin CSS'inde
+üçüncü kez kurulmasın diye **testle kilitlendi**.
+
+İncelemenin **iki bulgusu reddedildi**, doğrulanarak: "15 saniye uydurma sayı"
+değil (`auth.jsx:82` ve `:224`, ürünün mevcut iddiası), ve
+`hint-placeholder-val` `sc-for`un değil `sc-if`in özniteliği.
+
+### Bu turda mutasyon ÜÇ kez daha testin kendi kör noktasını buldu
+
+0-AC'nin ilk yarısında üç kez olmuştu; toplam altı. Artık bu bir kural:
+**mutasyon turu koşulmadan yazılmış kaynak taraması, ortalama olarak yanlış
+bir şeyi koruyor.**
+
+1. **`_playDing` taraması işlev TANIMINI buluyordu** (`function _playDing() {`).
+   Üç eşleşme var — tanım, bildirim çağrısı, sohbet çağrısı — ve sohbet
+   çağrısı kuralın dışında olmalı. Sınır artık soket işleyicisinin kendisi.
+2. **Vitrin sözleşme testi "bir yerde var mı" diye bakıyordu.** Üç kayıt
+   düğmesinden **ikisini** bozmak testi kırmıyordu, çünkü kalan biri deseni
+   karşılıyordu. Ölçüt artık bütün düğmelerin doğru yola gitmesi.
+3. **Mutasyonun kendisi kısmi uygulandı** (`replace(..., 1)`) ve "test
+   yakalamadı" gibi göründü. Ders taramadan değil turdan: *mutasyon gerçekten
+   uygulandı mı* diye bakmadan "yakalamadı" sonucuna varma.
+
 ### Kaldığı yer / yeniden başlayınca
 
-1. `git fetch && git status`. `main` push edilmiş, çalışma ağacı temiz.
-2. **Bu turun canlı doğrulaması, öncelikli:** kullanıcı mobilde (a) "Tümünü
-   oku"ya bassın — çalışmazsa artık kırmızı toast çıkıyor, o metin kök sebebi
-   verir; (b) sohbet panelini açsın — panel net, ARKASI kararmış olmalı;
-   (c) `/giris`te dili değiştirsin — giriş ekranında kalmalı. Üçü de
-   İncelemede'de bekliyor.
-3. **0-Z'nin canlı doğrulama listesi HÂLÂ açık** ve üç turdur devrediyor: içe
-   aktarma canlıda denenmedi, notlar iki hesapla doğrulanmadı.
-4. Karara bağlanmış iki kod işi hazır bekliyor: #121 (bildirim kesme) ve #195
-   (mobil çizelge). İkisinin de kuralı kartın yorumunda yazılı.
+1. `git fetch && git status`. **ÜÇ COMMIT PUSH BEKLİYOR** (`5813c81`,
+   `b521439`, `3834fe3`) — kullanıcı bilerek beklettirdi. Ayrıca `design/`
+   klasörü git'e hiç girmedi (Claude Design çalışma dosyaları).
+2. **Canlı doğrulama listesi, öncelikli.** Push + dağıtım sonrası:
+   - **Mobilde:** (a) "Tümünü oku" — çalışmazsa artık kırmızı toast çıkıyor,
+     o metin kök sebebi verir; (b) sohbet paneli — panel net, ARKASI kararmış
+     olmalı; (c) `/giris`te dil değiştir — giriş ekranında kalmalı;
+     (d) Çizelge sekmesi — açıklama gelmeli, boş ızgara değil; telefonu yatay
+     çevir, çizelge açılmalı.
+   - **Masaüstünde:** tarayıcıyı tam ekran YAPMADAN `/giris` ve
+     `/giris?kayit=1` — başlık tam görünmeli (eskiden üstten kesiliyordu).
+   - **Bildirim:** karta kendini ata → toast + ding. Kolon ekle → panelde
+     görünsün ama **ses çıkmasın** (eski davranışta çıkıyordu).
+   - **Vitrin:** oturumu kapat, `/` → yeni sayfa gelmeli; `?lang=en` →
+     İngilizce; sayı bandı gerçek sayıları göstermeli (tire kalırsa uç
+     cevap vermiyor).
+3. **0-Z'nin canlı doğrulama listesi HÂLÂ açık** ve dört turdur devrediyor:
+   içe aktarma canlıda denenmedi, notlar iki hesapla doğrulanmadı.
+4. **Kullanıcıdan iki karar bekleniyor** (#187):
+   - **Avatar çelişkisi:** kartın açıklaması "harf avatarı, YZ yüzü yok"
+     diyor, alt görev 171 "YZ portresi üret" diyor. Biri güncellenmeli.
+     Ajan fotoğrafik görüntü üretemiyor; monogram/harf avatarı SVG olarak
+     yapılabilir, portre kullanıcıdan gelmeli.
+   - **Demo alanı (167):** projeyi arayüzden kullanıcı açmalı, MCP'de
+     `manage_projects` izni araçsız. Açılırsa kartları MCP yazabilir.
+5. **Vitrinde LinkedIn adresi yer tutucu** (`#linkedin-adresi-eklenecek`).
+   Yayına almadan doldurulmalı; GitHub adresi gerçek, bu değil.
 
 ---
 
