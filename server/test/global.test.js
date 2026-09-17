@@ -505,3 +505,79 @@ describe('Kenar çubuğu — mobil menü her gezinmede kapanıyor', () => {
     );
   });
 });
+
+// ── Tam ekran sohbetten cikis yolu olmali (kart #233) ────────────────────
+//
+// KUSUR, 17 Eylul 2026, kullanicinin GERCEK CIHAZ testinde (Samsung S25 Edge):
+// sohbete girince cikamiyordu. Yenilemek, cerezleri temizlemek, yeniden giris
+// yapmak -- hicbiri cozmedi, cunku sorun durum degildi: EKRANDA CIKIS DUGMESI
+// YOKTU.
+//
+// DM dalinda geri dugmesi VARDI, kanal dalinda YOKTU. Masaustunde bu hic
+// gorunmuyor cunku kenar cubugu ve ust cubuk cikisi sagliyor; gercek telefonda
+// ikisi de erisilemiyor ve kullanici KALICI olarak sikisiyor.
+//
+// `onClose` prop'u app.jsx'ten zaten geciliyordu (dashboard'a doner) ama
+// chat.jsx'te hic cagrilmiyordu -- yayilan ama hic karsilanmayan bir yetenek.
+// Bugun ayni sinifin ucuncu vakasi (palet eylemleri, mobil menu, bu).
+//
+// KURAL: tam ekran bir gorunum, kendi icinde cikis tasimali. Kabuktan
+// cikilabiliyor olmasi yetmez -- kabuk her cihazda erisilebilir degil.
+describe('Tam ekran sohbet — çıkış yolu var (kart #233)', () => {
+  const chat = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'chat.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+
+  test('kanal başlığında onClose çağıran bir düğme var', () => {
+    // `onClose` PROP OLARAK ALINIYOR ama cagrilmiyorsa yetenek oludur.
+    assert.match(
+      chat, /function ChatPanel\(\{[^}]*onClose/,
+      'ChatPanel onClose prop\'unu almıyor; test güncellenmeli',
+    );
+    assert.match(
+      chat, /onClick=\{onClose\}/,
+      'Tam ekran sohbette `onClose` hiçbir düğmeye bağlı değil. Kullanıcı '
+      + 'kanal görünümüne girdiğinde çıkamaz — gerçek telefonda kenar çubuğu '
+      + 've üst çubuk erişilemediği için kalıcı sıkışma demek (kart #233).',
+    );
+  });
+
+  test('çıkış yalnızca tam ekran kipte gösteriliyor', () => {
+    // Panel kipinde cercevenin kendi kapatmasi var; ikinci bir dugme gurultu.
+    //
+    // ÇAPA `fullPage && onClose` KOŞULU, `onClick={onClose}` DEĞİL. Testin ilk
+    // yazımı `indexOf('onClick={onClose}')` kullaniyordu ve LIGHTBOX'in kapatma
+    // dugmesini buluyordu -- dosyada o once geliyor. Yani test, olcmek
+    // istediginden bambaska bir yere bakip kiriliyordu.
+    //
+    // Bugun ayni sinifa BESINCI dusus (tweaks sayimi, palet eylemleri, vitrin
+    // dugmeleri, yer tutucu sozlukleri, bu). Desen artik acik: bir kaynak
+    // taramasi "ilk eslesme"ye degil, KORUDUGU YAPIYA baglanmali.
+    const bas = chat.indexOf('fullPage && onClose');
+    assert.ok(
+      bas > 0,
+      'Çıkış düğmesi tam ekran kipiyle koşullanmamış; panel kipinde ikinci '
+      + 'bir kapatma düğmesi olarak görünür.',
+    );
+    // Kosul ile dugmenin AYNI blokta oldugu dogrulaniyor: kosulu yazip
+    // dugmeyi baska yere koymak testi aldatirdi.
+    const blok = chat.slice(bas, bas + 400);
+    assert.match(
+      blok, /onClick=\{onClose\}/,
+      '`fullPage && onClose` koşulu var ama içinde onClose çağıran bir düğme '
+      + 'yok; koşul boş bir daldan ibaret.',
+    );
+  });
+
+  test('etiket iki sözlükte de var', () => {
+    const veri = yorumsuzKaynak(
+      fs.readFileSync(path.join(SRC, 'data.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+    );
+    const bulunan = (veri.match(/chat_exit:/g) || []).length;
+    assert.equal(
+      bulunan, 2,
+      `chat_exit ${bulunan} sözlükte bulundu; tr ve en olmak üzere iki tane `
+      + 'bekleniyor. Tek sözlükte kalırsa öteki dilde Türkçe yedeğe düşer.',
+    );
+  });
+});

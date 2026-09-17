@@ -3085,6 +3085,33 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                 </>
               ) : (
                 <>
+                  {/* SOHBETTEN ÇIKIŞ — kanal görünümünde tek kaçış yolu.
+                      (17 Eylül 2026, kullanıcının gerçek cihaz testi, kart #233.)
+
+                      KUSUR: DM dalında geri düğmesi vardı (yukarıda), kanal
+                      dalında YOKTU. Masaüstünde bu görünmüyordu çünkü kenar
+                      çubuğu ve üst çubuk çıkışı sağlıyor. Gerçek telefonda
+                      ikisi de erişilemiyor ve kullanıcı sohbette KALICI olarak
+                      sıkışıyordu: yenilemek, çerez temizlemek, yeniden giriş
+                      yapmak — hiçbiri çıkarmıyordu, çünkü sorun durum değil
+                      EKRANDA ÇIKIŞ DÜĞMESİ OLMAMASIYDI.
+
+                      `onClose` prop'u zaten geçiliyordu (app.jsx, dashboard'a
+                      döner) ama hiçbir yerde çağrılmıyordu — yayılan ama hiç
+                      karşılanmayan bir yetenek.
+
+                      Yalnızca tam ekran kipte: panel kipinde çerçevenin kendi
+                      kapatması var, ikinci bir düğme gürültü olurdu. */}
+                  {fullPage && onClose && (
+                    <button
+                      className="icon-btn chat-fp-back-btn"
+                      onClick={onClose}
+                      title={window.t?.('chat_exit') || 'Sohbetten çık'}
+                      aria-label={window.t?.('chat_exit') || 'Sohbetten çık'}
+                    >
+                      <Icon name="chevronLeft" size={16} />
+                    </button>
+                  )}
                   <div className="chat-fp-channel-icon">
                     <ChannelIconMark channel={_findCh(activeChannel)} slug={activeChannel} size={12} />
                   </div>
