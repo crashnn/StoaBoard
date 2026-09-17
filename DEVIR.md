@@ -5,14 +5,70 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 16 Eylül 2026 akşamüstü, **ofis makinesinde** (5432 kapalı).
-En taze bölüm **0-Z**.
+**Son güncelleme:** 17 Eylül 2026 sabahı, **ev makinesinde** (kullanıcı uzaktan
+bağlı; 5432 açık). En taze bölüm **0-AA**.
 
-> **Toplantı BUGÜN: 16 Eylül 13:30–14:30, Teams ekran paylaşımı.** Yeni Claude
-> hesabı, yeni demo alanı, 20+ commit'lik bir düzeltme günü (0-W). Sabah
-> yapılacak tek iş: sunum sayfasının sayılarını yenileyip yayımlamak, 11:00'e
-> kadar. Demo rehberi [TOPLANTI-2-PLAN.md](TOPLANTI-2-PLAN.md), hesap geçişi
-> [HESAP-GECISI.md](HESAP-GECISI.md).
+> **Kullanıcı yolda, ofise geçiyor.** Ofis makinesinde *yerel* çalışılacaksa
+> 5432 kapalıdır: `npm run mcp:tara` ve `npm run prisma:push` orada koşmaz.
+> Ev makinesine uzaktan bağlanılırsa komutlar ev makinesinde çalışır ve o
+> kısıt geçerli olmaz — ofis ağı yalnızca ekranı taşır.
+
+---
+
+## 0-AA. 16 Eylül akşamı — davet kodu denetimi, yazan uçlarda kapı taraması, iki dil kusuru
+
+0-Z yazıldıktan **sonra** gelen dört commit. Devir notu bunları görmeden
+kapandığı için 17 Eylül sabahı geriye dönük yazıldı; sıra `git log` sırasıdır.
+
+- **Davet kodu denetim kaydına** (`ba1fd2d`). 2 Eylül turundan kalan tek
+  parça. Kod önyükleme yanıtında geliyordu: her sayfa açılışında sessizce
+  alınıyor, kimin ne zaman gördüğü yazılamıyordu. Davet kodu alana giriş
+  biletidir; kimin gördüğü üye çıkarma kadar önemli. Önyükleme artık yalnızca
+  `has_invite_code` diyor, kod `GET /workspaces/me/invite-code` ile çekiliyor
+  ve çağrı `AUDIT.INVITE_CODE_VIEWED` yazıyor (yenileme de, `via: regen`).
+  Kayda kodun kendisi yazılmıyor. İki tarama testi, mutasyonla doğrulandı.
+- **Yazan her uçta izin kapısı taraması** (`7dd888e`). "Uç testleri" kartının
+  veritabanı gerektirmeyen ara adımı. `requireAuth` "kim olduğunu biliyorum"
+  der, "hakkı var mı" demez; 15 Eylül'ün atama açığı tam bu sınıftı. Tarama
+  POST/PATCH/PUT/DELETE gövdelerinde izin, üyelik, sahiplik ya da kendi-kaydı
+  kapısı arıyor. **Kapının DOĞRU izni istediğini ölçmüyor** — o hâlâ akış
+  testinin işi ve hâlâ yok (TODO 5. madde).
+- **Çift/ters tırnaklı `error` alanları** (`c0f3ada`). Kapı taraması yazılırken
+  görüldü: üç `error` alanı düz Türkçe taşıyordu, `dil.test.js` yalnızca tek
+  tırnağı aradığı için hepsi kaçmıştı. Kaynak tarayan test kör noktası sınıfı,
+  11 Eylül'deki yorum tuzağının kardeşi. Tarama artık `'` `"` `` ` `` üçünü de
+  görüyor.
+- **Sözlükte tekrar anahtar** (`6038008`). Bir öncekinin yan hasarı:
+  `err_file_too_large` iki farklı sınır için iki kez yazıldı, JavaScript
+  sonrakini sessizce üstüne yazdı. Derleme yalnızca **uyardı**, testler geçti,
+  kanca durdurmadı; kullanıcı 20 MB sınırında "50 MB" mesajı görecekti.
+  Kusuru derleme çıktısındaki uyarıyı fark eden kullanıcı buldu. İki sınır iki
+  kod oldu; `dil.test.js`e "her sözlükte her anahtar bir kez" testi eklendi.
+  Ders CLAUDE.md'nin merdiveni: uyarı kapı değildir.
+
+**`9bcd09d` (kişisel MCP anahtarları) bu dördün üstünde ve HEAD.** Kendi devir
+bölümü **0-V2**'de duruyor — tarihi 13 Eylül ama 16 Eylül'de 62 commit'in
+üstüne rebase edildiği için `git log` sırasında en üstte görünüyor. Bölüm
+numarasıyla commit sırası burada ayrışıyor; şaşırma.
+
+### Durum (17 Eylül sabahı, ev makinesi)
+
+`main` ve `origin/main` eşit, çalışma ağacı temiz, HEAD `9bcd09d`.
+**565 test geçiyor**, 106 suite, ~6 sn. Test koşusundaki `[db] warmup failed`
+beklenen: uygulama modülü yüklenirken bağlantı deniyor, ölçüt alttaki
+`pass`/`fail`.
+
+### Kaldığı yer / yeniden başlayınca
+
+1. `git fetch && git status`. **0-Z'nin canlı doğrulama listesi hâlâ açık** ve
+   önceliği bundan yüksek: içe aktarma canlıda denenmedi, notlar iki hesapla
+   doğrulanmadı, Raporlar'da dışa/içe aktarma satırları görülmedi.
+2. Ev makinesinde **sohbete dosya yükleme kusuru** üstünde çalışılıyor
+   (TODO "Bilinen kusurlar", `POST /api/chat/upload` kapısız ve sınırsız).
+   Ayrı commit'te bırakılacak, **push edilmeyecek** — kullanıcı diff'i
+   görmeden canlıya gitmesin. Ofiste `git log origin/main..main` ile bak.
+3. Vitrin demo alanı ve ekran görüntüsü (0-Z akşam eki) canlıya yazıyor,
+   kullanıcı onayı bekliyor. Apex DNS kod işi değil, Railway paneli.
 
 ---
 
