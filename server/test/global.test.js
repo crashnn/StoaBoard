@@ -379,3 +379,78 @@ describe('Komut paleti — vaat, arama ve eylem karşılığı', () => {
     );
   });
 });
+
+// ── Pano arama cubugu da numarayla suzmeli (kart #226) ────────────────────
+//
+// KUSUR: kullanici kart numarasini ONCE pano arama cubuguna yazdi, komut
+// paletine degil. Ozellik palettteydi (#224) ve dogru calisiyordu ama kimse
+// orada aramadi. Yerlesim sinyali: insan kart ararken KARTLARIN DURDUGU
+// ekranin arama kutusuna bakiyor.
+//
+// Daha kotusu YANLIS BIR OLUMLU uretiyordu: "#193" baslik metni olarak
+// eslesiyor ve basliginda "#193" gecen bir kart geldigi icin arama
+// CALISIYOR SANILIYORDU. Kimlik aramasi degil metin aramasi yapiyordu --
+// yani kusur, dogru cevap verdigi icin gizleniyordu.
+//
+// KAPSAM FARKI BILINCLI ve test onu da koruyor: palet GLOBAL (baska
+// projedeki karti sunucudan ceker), pano cubugu AKTIF GORUNUMU suzer.
+// Ikisini ayni yapmak yanlis olurdu; kolonlar projeye ait.
+describe('Pano arama çubuğu — numarayla süzme (kart #226)', () => {
+  const board = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'views', 'board.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+
+  test('numara kipinde başlığa değil kimliğe bakıyor', () => {
+    assert.match(
+      board, /idHam/,
+      'Pano arama çubuğunda kimlik kipi yok; "#193" yazan kullanıcı başlık '
+      + 'metni araması yapar ve yanlış olumlu alır (kart #226).',
+    );
+    // Suzgec kimlik kipinde basligi ATLAMALI. `else if` bunun mekanizmasi:
+    // ikisi ayni dalda kalirsa metin eslesmesi yine devreye girer ve yanlis
+    // olumlu geri doner.
+    assert.match(
+      board, /\} else if \(q && !t\.title/,
+      'Kimlik kipi başlık eşleşmesini ATLAMIYOR. İkisi aynı dalda kalırsa '
+      + '"#193" yine başlıkta aranır ve kusur (yanlış olumlu) geri gelir.',
+    );
+  });
+
+  test('bulunamayınca sessiz boş liste bırakmıyor', () => {
+    assert.match(
+      board, /board_id_not_here/,
+      'Numara bu projede bulunamadığında kullanıcıya bir şey söylenmiyor. '
+      + 'Sessiz boş liste, "kart yok" ile "kart başka projede" arasındaki '
+      + 'farkı gizler ve kullanıcı özelliği bozuk sanır.',
+    );
+  });
+
+  test('yer tutucu metni numarayı keşfedilebilir kılıyor', () => {
+    const veri = yorumsuzKaynak(
+      fs.readFileSync(path.join(SRC, 'data.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+    );
+    // Kesfedilebilirlik kendi basina bir TODO maddesi (#156): ozellik var ama
+    // gorunmuyorsa yok sayilir. Kullanicinin bu karti acmasinin sebebi de bu.
+    //
+    // IKI SOZLUK AYRI AYRI olculuyor. Ilk yazim dosya genelinde ariyordu ve
+    // mutasyon turu onu dusurdu: Turkce ipucunu silmek testi KIRMIYORDU,
+    // cunku Ingilizce satir deseni karsiliyordu. Yani Turkce kullanici
+    // ozelligi kesfedemez hale gelir ve test yesil kalirdi -- olcut,
+    // olcmek istedigi seyden bagimsiz bir esleseye bakiyordu.
+    // Bugun bu sinifa dorduncu dusus (kart #226).
+    const yerTutucular = [...veri.matchAll(/board_search_placeholder:'([^']*)'/g)]
+      .map((m) => m[1]);
+    assert.equal(
+      yerTutucular.length, 2,
+      `board_search_placeholder ${yerTutucular.length} yerde bulundu; iki `
+      + 'sözlükte birer tane bekleniyor (tr ve en).',
+    );
+    const ipucusuz = yerTutucular.filter((v) => !v.includes('#'));
+    assert.deepEqual(
+      ipucusuz, [],
+      'Bu yer tutucular numara ipucunu taşımıyor: ' + JSON.stringify(ipucusuz)
+      + '. Özellik var ama o dildeki kullanıcı için keşfedilemez kalır '
+      + '(kart #156 ile aynı aile).',
+    );
+  });
+});

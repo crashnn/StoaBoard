@@ -1219,9 +1219,32 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
   };
 
   const q = searchQuery.toLowerCase().trim();
+
+  // ── "#193" — pano çubuğunda kart numarasıyla süzme (kart #226) ──────────
+  //
+  // KUSUR: kullanıcı kart numarasını ÖNCE buraya yazdı, komut paletine değil.
+  // Yerleşim sinyali: insan kart ararken kartların durduğu ekranın arama
+  // kutusuna bakıyor. Özellik paletteydi (#224) ve doğru çalışıyordu ama
+  // kimse orada aramadı.
+  //
+  // Daha kötüsü YANLIŞ BİR OLUMLU üretiyordu: "#193" başlık metni olarak
+  // eşleşiyordu ve başlığında "#193" geçen bir kart geldiği için arama
+  // ÇALIŞIYOR SANILDI. Kimlik araması yapmıyordu; metin araması yapıyordu.
+  //
+  // KAPSAM FARKI BİLEREK KORUNUYOR: komut paleti GLOBAL (başka projedeki
+  // kartı sunucudan çeker), bu çubuk AKTİF GÖRÜNÜMÜ süzer. Buradan başka
+  // projenin kartını göstermek yanlış olurdu — kolonlar bu projeye ait.
+  const idSorgu = /^#\s*(\d+)$/.exec(q);
+  const idHam = idSorgu ? idSorgu[1] : null;
+
   const myId = window.CURRENT_USER?.id;
   const visibleTasks = tasks.filter(t => {
-    if (q && !t.title.toLowerCase().includes(q)) return false;
+    // Kimlik kipinde başlığa BAKILMIYOR: "#193" yazan numara arıyor, metin
+    // değil. Tam eşleşme ve önek (numarayı tam hatırlamamak asıl sorun).
+    if (idHam) {
+      const kimlik = String(t.id);
+      if (kimlik !== idHam && !kimlik.startsWith(idHam)) return false;
+    } else if (q && !t.title.toLowerCase().includes(q)) return false;
     if (activePriority && t.priority !== activePriority) return false;
     if (activeLabels.size > 0 && !(t.labels || []).some(l => activeLabels.has(l))) return false;
     if (activeOverdue && !DATA.isOverdue(t.due, t.col)) return false;
@@ -1589,7 +1612,18 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
         {visibleTasks.length === 0 && (
           <div className="empty-state">
             <Icon name="list" size={28} strokeWidth={1.2} />
-            <div>{window.t('board_no_tasks')}</div>
+            {/* Numara arandı ve bu projede yok: SESSİZ boş liste bırakmıyoruz.
+                Kullanıcı "kart yok" ile "kart başka projede" arasındaki farkı
+                göremezdi ve özelliği bozuk sanırdı — bu deponun sessiz
+                başarısızlık kuralı (kart #226). Palet global arıyor, yol
+                oraya gösteriliyor. */}
+            {idHam ? (
+              <div>
+                {(window.t?.('board_id_not_here') || '#{n} bu projede yok — tüm projelerde aramak için Ctrl+K').replace('{n}', idHam)}
+              </div>
+            ) : (
+              <div>{window.t('board_no_tasks')}</div>
+            )}
           </div>
         )}
       </div>
