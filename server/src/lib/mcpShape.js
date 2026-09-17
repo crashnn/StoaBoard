@@ -383,6 +383,64 @@ export function notOzeti(not) {
   return { ...kalan, id: metinKimlik(not.id) };
 }
 
+// ─── Sohbet ────────────────────────────────────────────────────────────────
+
+/** Mesaj metni burada kırpılır; sohbet geçmişi uzun olabiliyor. */
+const MESAJ_SINIRI = 600;
+
+/**
+ * Sohbet mesajı özeti.
+ *
+ * `chatMessageToDict` arayüz için yazılmış ve modele hiçbir şey söylemeyen
+ * alanlar taşıyor: `time` (yerel saat dizesi — `ts` zaten ISO), `pinned`,
+ * `is_read`. Yüzeye olduğu gibi konsa her mesajda üç ölü alan dönerdi.
+ *
+ * SİLİNMİŞ MESAJ metnini TAŞIMAZ. Arayüz "bu mesaj silindi" yer tutucusu
+ * gösteriyor; metni yüzeye çıkarmak silmeyi anlamsız kılardı. Kayıt yine de
+ * dönüyor ki geçmişte boşluk görünmesin.
+ */
+export function kanalOzeti(k) {
+  const d = {
+    slug: k.slug || k.id,
+    name: k.name || '',
+    type: k.type || 'public',
+    member_count: k.member_count ?? 0,
+  };
+  if (k.description) d.description = k.description;
+  if (k.is_default) d.is_default = true;
+  // `is_member` yalnızca özel kanalda anlamlı: genel kanalda alanın her üyesi
+  // zaten yazabiliyor ve alan her satırda "true" demek gürültü olurdu.
+  if (k.type === 'private') d.is_member = Boolean(k.is_member);
+  return d;
+}
+
+export function mesajOzeti(m) {
+  if (!m) return null;
+  const silinmis = Boolean(m.deleted);
+  const ham = silinmis ? '' : (m.text || '');
+  const kirpildi = ham.length > MESAJ_SINIRI;
+  const d = {
+    id: metinKimlik(m.id),
+    from: m.from || 'unknown',
+    channel: m.channel || 'general',
+    ts: m.ts || '',
+    text: kirpildi ? kelimedeKes(ham, MESAJ_SINIRI) : ham,
+  };
+  if (kirpildi) d.text_truncated = true;
+  if (silinmis) d.deleted = true;
+  if (m.file_url) {
+    d.file = { name: m.file_name || '', type: m.file_type || 'file', url: m.file_url };
+  }
+  if (m.reply_to) {
+    d.reply_to = {
+      id: metinKimlik(m.reply_to.id),
+      sender: m.reply_to.sender || '',
+      text: m.reply_to.text || '',
+    };
+  }
+  return d;
+}
+
 // ─── Üye ───────────────────────────────────────────────────────────────────
 
 /**
@@ -480,6 +538,9 @@ export const ARAC_BASLIKLARI = {
   update_task: { tr: 'Görevi düzenle', en: 'Edit task' },
   move_task: { tr: 'Görevi taşı', en: 'Move task' },
   add_comment: { tr: 'Yorum ekle', en: 'Add comment' },
+  list_channels: { tr: 'Kanalları listele', en: 'List channels' },
+  list_messages: { tr: 'Mesajları listele', en: 'List messages' },
+  send_message: { tr: 'Mesaj gönder', en: 'Send message' },
   delete_task: { tr: 'Görevi çöpe at', en: 'Trash task' },
   restore_task: { tr: 'Görevi geri al', en: 'Restore task' },
   add_subtask: { tr: 'Alt görev ekle', en: 'Add subtask' },

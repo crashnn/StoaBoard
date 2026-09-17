@@ -71,6 +71,8 @@ import {
   gorevSuz,
   listeUyarisi,
   notOzeti,
+  kanalOzeti,
+  mesajOzeti,
   uyeOzeti,
   aramaEslesir,
   projeyiBul,
@@ -92,7 +94,7 @@ export const mcpRouter = Router();
 // cevaplanamıyor. Yüzeyi değiştiren her commit'te bump et; `initialize`
 // yanıtındaki serverInfo.version dağıtım kanıtı olarak okunabilsin.
 // Sürüm geçmişi ve kırıcı değişiklikler: MCP-SURUMLER.md.
-const MCP_VERSION = '0.6.1';
+const MCP_VERSION = '0.7.0';
 
 /**
  * Araçların fiilen kullandığı izinler.
@@ -1273,6 +1275,116 @@ function buildMcpServer(user, dil, req) {
         comment: yanit.data,
         task: { id: metinKimlik(task_id), title: g.gorev.title, project_name: g.proje.name },
       }, kapi.workspace);
+    },
+  );
+
+
+  // ── list_channels ────────────────────────────────────────────────────────
+
+  server.registerTool(
+    'list_channels',
+    {
+      title: B('list_channels'),
+      description:
+        'Aktif çalışma alanında GÖREBİLDİĞİN sohbet kanallarını listeler: '
+        + 'bütün genel kanallar ve üyesi olduğun özel kanallar. Üyesi olmadığın '
+        + 'özel bir kanal bu listede HİÇ görünmez — listede olmaması "yok" '
+        + 'demek değil, "senin görmediğin" demektir. '
+        + 'send_message ve list_messages\'in istediği kanal adı buradaki slug. '
+        + 'Doğrudan mesajlar (DM) bu yüzeyde YOK; kişiye özel yazışma MCP '
+        + 'üzerinden okunmuyor ve gönderilmiyor.',
+      inputSchema: {},
+      annotations: salt,
+    },
+    async () => {
+      const yanit = await callSelf(user, '/api/channels');
+      if (!yanit.ok) return hata(yanit);
+      const kanallar = (Array.isArray(yanit.data) ? yanit.data : []).map(kanalOzeti);
+      return baglamli(user, { count: kanallar.length, channels: kanallar });
+    },
+  );
+
+  // ── list_messages ────────────────────────────────────────────────────────
+
+  server.registerTool(
+    'list_messages',
+    {
+      title: B('list_messages'),
+      description:
+        'Bir kanaldaki mesajları eskiden yeniye listeler. Kanal adı '
+        + 'list_channels\'teki slug; görmediğin bir kanal istenirse boş döner. '
+        + 'Uzun mesaj metni kırpılır ve text_truncated ile işaretlenir. '
+        + 'Silinmiş mesajın METNİ DÖNMEZ, yalnızca deleted işareti — arayüz de '
+        + 'böyle davranıyor. '
+        + 'Doğrudan mesajlar (DM) bu araçla OKUNAMAZ; kapsam bilinçli olarak '
+        + 'kanallarla sınırlı.',
+      inputSchema: {
+        channel: z.string().trim().min(1).max(80)
+          .describe('kanal slug\'ı — list_channels yanıtındaki slug'),
+        limit: z.coerce.number().int().positive().max(200).optional()
+          .describe('en fazla kaç mesaj; varsayılan 50, en çok 200'),
+      },
+      annotations: salt,
+    },
+    async ({ channel, limit }) => {
+      const adet = limit || 50;
+      const yol = `/api/chat/messages?channel=${encodeURIComponent(channel)}&limit=${adet}`;
+      const yanit = await callSelf(user, yol);
+      if (!yanit.ok) return hata(yanit);
+      const ham = Array.isArray(yanit.data) ? yanit.data : [];
+      const mesajlar = ham.map(mesajOzeti).filter(Boolean);
+      return baglamli(user, { channel, count: mesajlar.length, messages: mesajlar });
+    },
+  );
+
+  // ── send_message ─────────────────────────────────────────────────────────
+
+  server.registerTool(
+    'send_message',
+    {
+      title: B('send_message'),
+      description:
+        'Bir kanala mesaj gönderir. Mesaj kullanıcının adına yazılır. '
+        + 'Kullanıcı açıkça istemediyse mesaj gönderme. '
+        + 'workspace_id zorunludur ve AKTİF alanın kimliği olmalıdır; değilse '
+        + '409 döner ve hiçbir şey yazılmaz. Kanal adı list_channels\'teki slug; '
+        + 'yazma yetkin olmayan bir kanal reddedilir. '
+        + 'Metinde @slug yazarsan o kişiye bildirim gider, ama yalnızca mesajı '
+        + 'görme hakkı varsa: alan dışındaki ya da özel kanala üye olmayan '
+        + 'birine bildirim GİTMEZ. '
+        + 'Doğrudan mesaj (DM) gönderilemez; kapsam bilinçli olarak kanallarla '
+        + 'sınırlı. '
+        + 'Bu araç tekrarlanabilir DEĞİLDİR: aynı çağrıyı iki kez yaparsan iki '
+        + 'ayrı mesaj oluşur, hata aldığını sanıp yeniden deneme.',
+      inputSchema: {
+        workspace_id: kimlik('aktif alanın kimliği — whoami yanıtındaki workspace.id'),
+        channel: z.string().trim().min(1).max(80)
+          .describe('kanal slug\'ı — list_channels yanıtındaki slug'),
+        text: z.string().trim().min(1).max(4000).describe('mesaj metni, düz metin'),
+      },
+      annotations: yazma,
+    },
+    async ({ workspace_id, channel, text }) => {
+      const kapi = await yazmaKapisi(user, workspace_id);
+      if (!kapi.ok) return hata(kapi.yanit);
+
+      // Kanal kapısı, bahsetme kapsamı ve bildirimler REST ucunda. Kendi
+      // yazmamızı yapsaydık üçü de atlanırdı — kart #222'nin yasakladığı şey.
+      const yanit = await callSelf(user, '/api/chat/messages', {
+        method: 'POST',
+        body: { text, channel },
+      });
+      if (!yanit.ok) return hata(yanit);
+
+      recordAudit(req, {
+        workspaceId: kapi.workspace.id,
+        user,
+        action: AUDIT.MCP_MESSAGE_SENT,
+        // Mesaj metni kayda YAZILMIYOR: denetim kaydı "kim ne yaptı" tablosu,
+        // içerik deposu değil (audit.js'in başındaki kural).
+        detail: { channel, message_id: metinKimlik(yanit.data?.id) },
+      });
+      return baglamli(user, { sent: true, message: mesajOzeti(yanit.data) }, kapi.workspace);
     },
   );
 

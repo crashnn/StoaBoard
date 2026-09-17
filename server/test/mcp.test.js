@@ -40,6 +40,8 @@ import {
   acikMi,
   listeUyarisi,
   notOzeti,
+  kanalOzeti,
+  mesajOzeti,
   uyeOzeti,
   aramaEslesir,
   kullanilmayanIzinler,
@@ -1043,5 +1045,115 @@ describe('MCP — yazma araçları REST ucundan geçer', () => {
     assert.equal([...ornek.matchAll(YAZAN)].length, 1, 'desen gerçek bir yazmayı görmüyor');
     const okuma = "const u = await prisma.user.findUnique({ where: { id } });";
     assert.equal([...okuma.matchAll(YAZAN)].length, 0, 'desen okumayı yazma sanıyor');
+  });
+});
+
+// ─── Sohbet araçları (0.7.0) ────────────────────────────────────────────────
+
+describe('mesajOzeti — arayüz alanları düşer, silinmiş metin çıkmaz', () => {
+  const ham = {
+    id: 42, from: 'eray-atalay', to: null, channel: 'genel',
+    time: '14:37', ts: '2026-09-17T11:37:00.000Z',
+    pinned: false, is_read: null, text: 'merhaba',
+  };
+
+  test('kimlik metin, arayüz alanları düşüyor', () => {
+    const d = mesajOzeti(ham);
+    assert.equal(d.id, '42', 'kimlik metin olmalı — yüzeyin her yerinde öyle');
+    assert.equal(d.text, 'merhaba');
+    assert.equal(d.channel, 'genel');
+    // `time` yerel saat dizesi ve `ts` zaten ISO; ikisini birden döndürmek
+    // modele hiçbir şey söylemez.
+    for (const olu of ['time', 'pinned', 'is_read', 'to']) {
+      assert.ok(!(olu in d), `${olu} yüzeyde kalmış — arayüz alanı`);
+    }
+  });
+
+  test('uzun metin kırpılıyor ve işaretleniyor', () => {
+    const d = mesajOzeti({ ...ham, text: 'x'.repeat(2000) });
+    // kelimedeKes sözleşmesi: sonuç en fazla sınır + 1 karakter — üç nokta
+    // tek karakter (…). 600 yazmak testi yanlış yapardı, kodu değil.
+    assert.ok(d.text.length <= 601, `metin kırpılmamış: ${d.text.length}`);
+    assert.ok(d.text.endsWith('…'), 'kırpma işareti yok');
+    assert.equal(d.text_truncated, true, 'kırpma işaretlenmemiş — model tam sanır');
+    assert.ok(!mesajOzeti(ham).text_truncated, 'kırpılmayanda işaret olmamalı');
+  });
+
+  test('SİLİNMİŞ mesajın metni dönmüyor', () => {
+    // Arayüz "bu mesaj silindi" yer tutucusu gösteriyor. Metni yüzeye çıkarmak
+    // silmeyi anlamsız kılardı. Kayıt yine de dönüyor ki geçmişte boşluk
+    // görünmesin.
+    const d = mesajOzeti({ ...ham, deleted: true, text: 'silinmiş sır' });
+    assert.equal(d.deleted, true);
+    assert.equal(d.text, '', 'silinmiş mesajın metni yüzeye çıkıyor');
+    assert.ok(!JSON.stringify(d).includes('sır'), 'metin başka bir alandan sızıyor');
+  });
+
+  test('dosya ve yanıt taşınıyor, kimlikler metin', () => {
+    const d = mesajOzeti({
+      ...ham,
+      file_url: '/api/media/7', file_name: 'a.pdf', file_type: 'file',
+      reply_to: { id: 9, sender: 'x', text: 'önceki' },
+    });
+    assert.deepEqual(d.file, { name: 'a.pdf', type: 'file', url: '/api/media/7' });
+    assert.equal(d.reply_to.id, '9', 'yanıt kimliği metin değil');
+  });
+});
+
+describe('kanalOzeti', () => {
+  test('genel kanalda is_member alanı yok, özel kanalda var', () => {
+    // Genel kanalda alanın her üyesi zaten yazabiliyor; her satırda "true"
+    // demek gürültü olurdu. Özel kanalda ise bilgi taşıyor.
+    const genel = kanalOzeti({ slug: 'genel', name: 'Genel', type: 'public', member_count: 4 });
+    assert.ok(!('is_member' in genel), 'genel kanalda is_member gürültüsü');
+    const ozel = kanalOzeti({ slug: 'gizli', name: 'Gizli', type: 'private', member_count: 2, is_member: false });
+    assert.equal(ozel.is_member, false);
+  });
+
+  test('boş açıklama ve is_default alan üretmiyor', () => {
+    const d = kanalOzeti({ slug: 'a', name: 'A', type: 'public' });
+    assert.ok(!('description' in d) && !('is_default' in d), 'boş alanlar yüzeye çıkmış');
+    assert.equal(d.member_count, 0, 'üye sayısı yoksa 0 olmalı');
+  });
+});
+
+describe('sohbet araçları — kapsam kanallarla sınırlı (DM yüzeyde yok)', () => {
+  // KAPSAM KARARI (17 Eylül 2026, kart #223): list_messages sohbet geçmişini
+  // okuma yetkisi veriyor. Bugün MCP anahtarı görev ve not görüyor; DM daha
+  // kişisel. İlk sürümde bilerek dışarıda bırakıldı.
+  //
+  // Bu test kararı KİLİTLİYOR: birinin `to` ya da `with` parametresi ekleyip
+  // DM'leri sessizce yüzeye açmasını engelliyor. Karar değişirse bu test
+  // bilerek güncellenir — asıl mesele, kapsamın kazayla genişlememesi.
+  const mcpSrc = yorumsuzDosya(path.join(SRC, 'routes', 'mcp.js'));
+
+  /** Bir aracın inputSchema gövdesi. */
+  function girdiSemasi(arac) {
+    const bas = mcpSrc.indexOf(`registerTool(\n    '${arac}'`);
+    const bas2 = bas === -1 ? mcpSrc.indexOf(`'${arac}',`) : bas;
+    assert.ok(bas2 !== -1, `${arac} kaydı bulunamadı`);
+    const semaBas = mcpSrc.indexOf('inputSchema:', bas2);
+    const semaSon = mcpSrc.indexOf('annotations:', semaBas);
+    assert.ok(semaBas !== -1 && semaSon !== -1, `${arac} girdi şeması okunamadı`);
+    return mcpSrc.slice(semaBas, semaSon);
+  }
+
+  for (const arac of ['send_message', 'list_messages']) {
+    test(`${arac} DM parametresi almıyor`, () => {
+      const sema = girdiSemasi(arac);
+      for (const yasak of ['to:', 'with:', 'receiver', 'dm']) {
+        assert.ok(
+          !sema.includes(yasak),
+          `${arac} girdi şemasında "${yasak}" var — DM kapsamı kazayla açılmış olabilir`,
+        );
+      }
+      assert.ok(sema.includes('channel:'), `${arac} kanal parametresi almıyor`);
+    });
+  }
+
+  test('şema okuyucu kör değil', () => {
+    // Yukarıdaki testler şema boş dönerse de yeşil kalırdı.
+    assert.ok(girdiSemasi('send_message').includes('text:'), 'şema okunamıyor, tarama kör');
+    assert.ok(girdiSemasi('list_messages').includes('limit:'), 'şema okunamıyor, tarama kör');
   });
 });

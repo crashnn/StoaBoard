@@ -16,6 +16,42 @@ commit'te sürüm artırılır ve buraya yazılır.
 
 ---
 
+## 0.7.0 — 17 Eylül 2026
+
+**Sohbet yüzeye çıktı.** Üç yeni araç, yirmi üç araç oldu. Kullanıcı artık
+"Claude, ekibe şunu yaz" diyebiliyor; iki Claude oturumu arasında da bir
+köprü kuruyor.
+
+- `list_channels` — görebildiğin kanallar. Üyesi olmadığın özel kanal bu
+  listede **hiç** görünmez; listede olmaması "yok" demek değil, "senin
+  görmediğin" demektir.
+- `list_messages` — bir kanaldaki mesajlar, eskiden yeniye. Uzun metin
+  kırpılır (`text_truncated`).
+- `send_message` — kanala mesaj. Denetim kaydına `mcp.message_sent`.
+
+**DM'ler bilerek yüzeyde YOK.** `list_messages` sohbet geçmişini okuma
+yetkisi veriyor; bugün anahtar görev ve not görüyor, kişiye özel yazışma
+daha hassas. Kapsam çalışma zamanında değil, **girdi şemasında** sınırlı:
+araçlar `to` ya da `with` parametresi almıyor, yani DM yolu yazılabilir
+değil. Bir test bunu kilitliyor — karar değişirse test bilerek güncellenir,
+kazayla genişlemez.
+
+**Silinmiş mesajın metni dönmez**, yalnızca `deleted` işareti. Arayüz de
+böyle davranıyor; metni yüzeye çıkarmak silmeyi anlamsız kılardı.
+
+**Araçlar kendi yazmalarını yapmıyor.** `send_message` de öteki yazma
+araçları gibi `callSelf` ile `POST /api/chat/messages`'tan geçiyor. Bu bir
+üslup tercihi değil, güvenlik koşulu: kanal üyelik kapısı, `@bahsetme`
+kapsam kapısı ve bildirimler o uçta duruyor. Aynı gün eklenen bir test
+(kart #222) doğrudan Prisma yazmasını yasaklıyor ve bu araç yazılırken
+mutasyonla doğrulandı — `send_message` doğrudan yazmaya çevrildiğinde test
+kırıldı.
+
+**Bahsetme kapsamı aynı gün kapanmıştı** (`82251b4`): `@slug` yalnızca
+mesajı görme hakkı olana bildirim gönderiyor. MCP o kapıyı miras alıyor.
+
+---
+
 ## 0.6.1 — 13 Eylül 2026
 
 **Araç yüzeyi değişmedi; kimlik kapısı genişledi.** Kişi kendi MCP anahtarını
