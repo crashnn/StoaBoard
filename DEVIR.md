@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 17 Eylül 2026 öğleden sonra, **ev makinesinde** (kullanıcı
-uzaktan bağlı; 5432 açık). En taze bölüm **0-AD**.
+**Son güncelleme:** 17 Eylül 2026 akşamı, **ev makinesinde** (kullanıcı
+uzaktan bağlı; 5432 açık). En taze bölüm **0-AE**.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,102 @@ uzaktan bağlı; 5432 açık). En taze bölüm **0-AD**.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AE. 17 Eylül akşamı — uçtan uca tur (A–E) ve mobilde kaybolan üst çubuk
+
+**Ev makinesi.** Kullanıcı günün ~23 commit'ini tarayıcıda harf harf turlarla
+(A–G) denedi ve bulguları anlık bildirdi. Testler **666 → 670**.
+
+### Kapanan: mobilde üst çubuk kayboluyordu ve çıkınca geri gelmiyordu (#233)
+
+Bu, 0-AC'de ofis oturumunun **teşhis edemeden** bıraktığı karttı. Orada üç
+bariz sebep doğru biçimde ölçülüp elenmişti (panel kaplaması, Topbar'ın render
+edilmemesi, hamburger'in gizliliği) ve c) maddesine bir **hipotez** yazılmıştı:
+`100vh` + `body{overflow:hidden}`. Hipotez doğru çıktı ama **eksikti**.
+
+Kartı çözen şey kullanıcının ikinci cümlesiydi. Önce "sohbete gidince direkt
+textinputtan başlatıyor, bu da topbarın kaymasına sebep oluyor" dedi; sonra
+ekledi: **"diğer ekranlarda da bugda kalıyor."** O cümle kusurun şeklini
+değiştirdi — bu bir *sohbet* kusuru değil. Sohbet yalnızca tetikleyici; hasar
+uygulama genelinde ve sayfa yenilenene kadar kalıcı.
+
+Kusur iki parçalıydı ve **her parça tek başına zararsız görünüyordu**:
+
+1. `.app { height: 100vh }`. Mobil Chrome'da `100vh`, adres çubuğu
+   **gizliyken**ki yüksekliktir. Çubuk görünürken kabuk ekrandan uzundur, yani
+   belge kaydırılabilir hâle gelir. Tek başına kimse fark etmez: kaydıracak bir
+   şey olmadığı sürece kaymaz.
+2. Sohbet açılınca metin kutusu **kendiliğinden** odaklanıyordu (`chat.jsx`,
+   "Focus input" etkisi, dokunmatik ayrımı yok). Odaklanma ekran klavyesini
+   açıyor; tarayıcı odaklanan alanı göstermek için belgeyi kaydırıyor ve üst
+   çubuk yukarıdan çıkıyor.
+
+Klavye kapanınca kaydırma **geri alınmıyor**, `body`de `overflow: hidden`
+olduğu için kullanıcı da geri kaydıramıyor. Kalıcılık buradan geliyor.
+
+**Kartın asıl bilmecesi de böylece çözüldü:** kusur masaüstü DevTools
+responsive kipinde neden görünmüyordu? Çünkü emülasyonda adres çubuğu da ekran
+klavyesi de yok; `100vh` görünen alana eşit ve hiçbir şey kaymıyor. Kusur
+ancak iki koşul **birlikte** varken doğuyor. Devralan için genel ders:
+*"emülasyonda üremiyor" bir açıklama değil, bir ipucu* — emülasyonun
+taklit etmediği şeyi sor.
+
+**Düzeltme.** `.app` ve `.drawer` artık `height: 100vh; height: 100dvh;`
+ikilisini taşıyor. İkili depoda **zaten yerleşikti** — `auth-page` ve
+`chat-panel` kullanıyordu, gerekçesi de `styles.css`te yazılıydı (#192 turunda
+eklenmişti). Üst çubuğu **tutan** en dış kabuk onu almayı kaçırmıştı. Yine
+"aynı olgunun birden çok okuyucusu, biri eksik" ailesi; bu ay dördüncü kez.
+
+Açılış odaklaması artık `pointer: coarse` ile sınırlı. Ölçüt ekran
+**genişliği** değil: aranan şey "ekran klavyesi açılır mı", "pencere dar mı"
+değil. Dar bir masaüstü penceresinde fiziksel klavye var ve oraya odaklamak
+hâlâ doğru davranış. Kullanıcı **eyleminden sonraki** odaklamalar (yanıtla,
+emoji, gönder) bilerek duruyor — orada klavyenin açılması istenen sonuç.
+
+Commit `f07e0d4`, canlıya indi. **Gerçek cihazda doğrulama bekliyor**
+(telefonda önce hard refresh gerekebilir).
+
+### Yeni test dosyası: `server/test/mobil.test.js`
+
+Dört test. Ölçüt kasten "hangi seçici" değil **kural**: yarın eklenecek yeni
+bir tam yükseklikli kabuk da aynı kapıdan geçsin. Karta ad yazan bir test bir
+sonraki kabuğu korumazdı.
+
+CSS yorumlarını boşaltan okuyucu `yardimcilar.js`ten **alınmadı** ve gerekçesi
+testin içinde yazılı: oradaki okuyucu JavaScript'e göre yazılmış ve `//`yi
+satır yorumu sayıyor. CSS'te `//` yorum değil — `url(https://...)` içinde
+geçiyor ve o satırın geri kalanı sessizce silinirdi. Bu, CLAUDE.md'nin "tek
+okuyucuda birleş" kuralının **bilinçli** istisnası; birleşmek burada yanlış
+cevap verirdi.
+
+### CLAUDE.md'ye yazılan kural (iki oturum anlaşmıştı, ofis bana bıraktı)
+
+*"Kaynak tarayan test, KORUDUĞU SATIRA bağlanmalı."* Dosya genelinde arayan ya
+da sayan bir ölçüt komşusundan ödünç alır. Bugün aynı sınıfa **dört kez**
+düşüldü ve dördünü de mutasyon buldu; listesi CLAUDE.md'de.
+
+Kuralla birlikte mutasyon turuna yeni bir adım girdi: **aklama denemesi** —
+ölçütün aradığı metni dosyada bırak ama korumadığı bir yere taşı; test yine
+kırılmalı. `mobil.test.js` bu denemeyi geçti.
+
+### Kaldığı yer
+
+- **F ve G turları koşulmadı.** F mobil, G ise MCP köprüsü (yeni sohbet ister).
+  Kart #234.
+- **#235** kolon/yorum bildirimleri canlı gelmiyor. Ofis oturumunun hipotezi
+  *ölçülmedi*: `io` `createAndPush`e geçirilmiyor olabilir. Devralan önce
+  ölçsün, hipoteze güvenmesin.
+- **#236** bildirim sesi kalitesi.
+- **#228** mobil yönlendirme/geçmiş — kullanıcıdan **üç karar** bekliyor.
+- **#237 — şema kartı AÇILDI** (ofis oturumu istemişti): `notifications.read`
+  sütunu NULL kabul ediyor.
+  `UPDATE notifications SET read = false WHERE read IS NULL;` → `SET DEFAULT
+  false;` → `SET NOT NULL;`. Bugünkü `37955c8` belirtiyi kapattı, sütun hâlâ
+  açık.
+- Kullanıcı kararı bekleyenler: #204 ikinci aşama (`is_current`), #191 + #198
+  (şema), #199 veri onarımı, #195 çizelge, #209 profil unvanı.
 
 ---
 

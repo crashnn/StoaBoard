@@ -1392,6 +1392,37 @@ turunda kaçan bir sınıf.
       **KAPANDI 17 Eylül 2026** (`5813c81`, kart #195, ofis makinesi). Karar (a):
       dar ekranda gizlenip yerine sebebi yazılıyor. Kural "dar ekran", "mobil
       tarayıcı" değil — telefon yatay çevrilince çizelge açılıyor.
+- [x] **Üst çubuk mobilde kayboluyor ve sohbetten çıkınca da geri gelmiyor**
+      *(17 Eylül 2026, gerçek cihaz — Samsung Galaxy S25 Edge / Chrome)*.
+      Kullanıcı önce "sohbete gidince direkt textinputtan başlatıyor, bu da
+      topbarın kaymasına sebep oluyor" dedi, sonra ekledi: **"diğer ekranlarda
+      da bugda kalıyor."** İkinci cümle kusurun şeklini değiştirdi — bu bir
+      sohbet kusuru değil, sohbet yalnızca tetikleyici; hasar uygulama
+      genelinde ve sayfa yenilenene kadar kalıcı.
+      **KAPANDI 17 Eylül 2026** (`f07e0d4`, kart #233). İki parçalıydı ve her
+      parça tek başına zararsız görünüyordu: (1) `.app` yüksekliği `100vh`
+      idi ve mobil Chrome'da `100vh` adres çubuğu **gizliyken**ki yüksekliği
+      verir, yani çubuk görünürken kabuk ekrandan uzun ve belge kaydırılabilir;
+      (2) sohbet açılınca metin kutusu kendiliğinden odaklanıyordu, bu ekran
+      klavyesini açıyor ve tarayıcı odaklanan alanı göstermek için belgeyi
+      kaydırıyor. Klavye kapanınca kaydırma geri alınmıyor, `body`de
+      `overflow: hidden` olduğu için kullanıcı da geri kaydıramıyor.
+      Kalıcılık buradan.
+      **Kartın asıl bilmecesi de burada çözüldü:** kusur masaüstü DevTools
+      responsive kipinde neden görünmüyordu? Çünkü emülasyonda adres çubuğu da
+      ekran klavyesi de yok; `100vh` görünen alana eşit ve hiçbir şey kaymıyor.
+      Kusur ancak iki koşul **birlikte** varken doğuyor, o yüzden ikisi de
+      düzeltildi. `.app` ve `.drawer` artık `100vh; 100dvh` ikilisini taşıyor
+      — ikili depoda zaten yerleşikti (`auth-page`, `chat-panel`), üst çubuğu
+      **tutan** en dış kabuk onu almayı kaçırmıştı. Açılış odaklaması artık
+      `pointer: coarse` ile sınırlı; ölçüt ekran **genişliği** değil, çünkü
+      aranan şey "ekran klavyesi açılır mı". Kullanıcı eyleminden sonraki
+      odaklamalar (yanıtla, emoji) bilerek duruyor.
+      Yeni test `server/test/mobil.test.js` (dört test) ve ölçüt kasten
+      "hangi seçici" değil **kural**: yarın eklenecek yeni bir tam yükseklikli
+      kabuk da aynı kapıdan geçsin. Altı mutasyon denendi, altısı yakalandı —
+      aralarında `pointer: coarse`ın dosyada bırakılıp etkiye bağlanmadığı
+      **aklama** denemesi de var.
 - [x] **Çift tırnaklı `error` alanı dil taramasından kaçıyor** *(16 Eylül
       2026; aynı gün kapandı: tarama üç tırnağı da görüyor, üç kaçak koda
       çevrildi, mutasyonla doğrulandı)*. `attachments.js` sohbet yüklemesinde `error: "Dosya 50 MB'dan

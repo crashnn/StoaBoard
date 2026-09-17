@@ -311,6 +311,26 @@ desen** (`[^)]*`) gerçekçi gerilemeyi kaçırdı. Üç tarama testinin üçü 
 hâlinde bir yönden yanlıştı ve üçünü de mutasyon buldu. **Kaynak tarayan test
 yazdıysan, koruduğu satırı kasten bozup kırıldığını görmeden bitmiş sayma.**
 
+**Kaynak tarayan test, KORUDUĞU SATIRA bağlanmalı.** Dosya genelinde arayan ya
+da sayan bir ölçüt komşusundan ödünç alır: ölçmek istediği şey bozulduğu hâlde
+başka bir satır onu aklar, test yeşil kalır ve korumadığı bir şeyi koruyor
+sanılır. Bu depoda 17 Eylül'de aynı sınıfa **dört kez** düşüldü ve dördünü de
+mutasyon buldu:
+
+- "dosyada en az bir 404 var" → başka bir reddetme sayıyı doldurdu
+- "dosyada `hasPermission…403` geçiyor" → başka bir eşleşme akladı
+- `lastIndexOf` ile alan sırası → baştaki fazladan bir alan ölçütü bozmadı
+- "anahtarda `ws${` var" → alan kimliğini yalnızca **bir daldan** düşürmek kaçtı
+
+Düzeltme her seferinde aynıydı: ölçütü önce ilgili **bloğa** daralt (etkinin
+gövdesi, fonksiyonun kendisi, kuralın süslü parantezi), sonra o blok içinde
+ara. Sayı kullanacaksan neyi saydığını yaz: "her dalda bir tane" ölçülebilir,
+"en az bir tane" ölçülemez.
+
+Mutasyon turuna bir de **aklama denemesi** ekle: ölçütün aradığı metni dosyada
+bırak ama korumadığı bir yere taşı. Test yine kırılmalı. Kırılmıyorsa ölçüt
+metni arıyordur, davranışı değil (17 Eylül, `mobil.test.js`).
+
 **Sessiz başarısızlıktan kaçın.** Bu depoda üç kusurun kök sebebi buydu:
 `if (!window.io) return`, `window.showToast?.()`, `if (satır && !yetki)`.
 Koşulun **yokluk hâli** ya reddetmeli ya gürültü çıkarmalı — sessizce atlamamalı.
