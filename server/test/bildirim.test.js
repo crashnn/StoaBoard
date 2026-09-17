@@ -51,7 +51,7 @@ const CLIENT = path.resolve(__dirname, '..', '..', 'client', 'src');
 
 const SOZLESME = new Map([
   ['channel_added', ['channel', 'who']],
-  ['column_added', ['title']],
+  ['column_added', ['title', 'who']],
   ['comment_added', ['preview', 'who']],
   ['dm_received', ['preview', 'who']],
   ['join_approved', ['workspace']],
@@ -67,6 +67,14 @@ const SOZLESME = new Map([
 // gidenler `notif_` anahtarı kullanıyor. Ayrım istemcide iki ayrı
 // fonksiyonda (`renderActivityText` / `renderNotifText`).
 const ETKINLIK = new Set(['task_created', 'task_moved', 'column_added']);
+
+// HER İKİ ailede birden üretilen türler. 17 Eylül 2026'da ilk örnek çıktı:
+// kullanıcı kolon açılınca bildirim de istedi ("Bilmem ne adında yeni kolon
+// açıldı diye bildirim gelebilir, ancak ses gerek yok"), böylece
+// `column_added` hem `logActivity` hem `createAndPush` ile üretilir oldu.
+// `ETKINLIK` tek başına ikili bir varsayım taşıyordu — tür ya hareket ya
+// bildirim. Varsayım kırıldı; bu küme iki anahtarın da aranmasını sağlıyor.
+const IKI_AILE = new Set(['column_added']);
 
 // Serbest metinle bildirim yazmasına bilerek izin verilen yerler. Liste
 // ACIK_UCLAR kalıbının aynısı: engellemek değil KARARI GÖRÜNÜR KILMAK için
@@ -188,8 +196,19 @@ describe('bildirim metni — istemci sözlüğü sözleşmeyi karşılıyor', ()
   });
 
   for (const [tur, alanlar] of SOZLESME) {
-    const anahtar = (ETKINLIK.has(tur) ? 'activity_' : 'notif_') + tur;
+    // Bir tür İKİ AİLEDE birden olabiliyor ve o zaman İKİ anahtar da gerekli.
+    // `ETKINLIK` bunu ikili varsayıyordu — tür ya hareket ya bildirim. 17
+    // Eylül 2026'da varsayım kırıldı: kullanıcı kolon açılınca bildirim de
+    // istedi ("Bilmem ne adında yeni kolon açıldı diye bildirim gelebilir,
+    // ancak ses gerek yok"), `column_added` artık hem `logActivity` hem
+    // `createAndPush` ile üretiliyor. Tek anahtar kontrol edilseydi öteki
+    // sözlükte eksik kalabilir ve kullanıcı ham JSON görürdü — bu dosyanın
+    // kapattığı kusurun ta kendisi.
+    const anahtarlar = IKI_AILE.has(tur)
+      ? [`activity_${tur}`, `notif_${tur}`]
+      : [(ETKINLIK.has(tur) ? 'activity_' : 'notif_') + tur];
 
+    for (const anahtar of anahtarlar) {
     test(`${anahtar} iki dilde de var`, () => {
       // Anahtar yoksa renderNotifText ham JSON'u döndürüyor ve kullanıcı
       // ekranda '{"type":"..."}' görüyor — sessiz değil ama çirkin ve çevrilmemiş.
@@ -214,6 +233,7 @@ describe('bildirim metni — istemci sözlüğü sözleşmeyi karşılıyor', ()
         );
       }
     });
+    }
   }
 });
 
@@ -667,6 +687,40 @@ describe('Bildirim kesme kümesi — tek karar, üç kanal (kart #121)', () => {
         + 'geldiğini bulamaz (kart #121).',
       );
     }
+  });
+
+  // BU TESTİ MUTASYON YAZDIRDI. Kolon bildirimini `task_created` üretecek
+  // biçimde bozdum ve HİÇBİR test kırılmadı: sözleşme testi haklı olarak
+  // susuyor, çünkü `task_created` + `{title}` geçerli bir üretici biçimi.
+  // Yani "kolon eklemek bildirim üretir" kuralını koruyan hiçbir şey yoktu —
+  // kullanıcının istediği özellik sessizce silinebilirdi.
+  //
+  // Sözleşme testi metnin BİÇİMİNİ ölçüyor, hangi olayın hangi bildirimi
+  // doğurduğunu değil. İkisi ayrı sorular ve ayrı testler istiyor.
+  test('kolon eklemek bildirim üretiyor — aktör hariç, alanın üyelerine', () => {
+    const src = yorumsuzDosya(path.join(SRC, 'routes', 'projects.js'));
+    const bas = src.indexOf("projectsRouter.post(\n  '/:projectId/columns',");
+    assert.notEqual(bas, -1, 'kolon ekleme ucu bulunamadı');
+    const blok = src.slice(bas, src.indexOf("'/:projectId/columns/reorder'", bas));
+
+    assert.match(blok, /createAndPush\(/,
+      'kolon eklendiğinde bildirim üretilmiyor. Karar (17 Eylül 2026, '
+      + 'kullanıcı): "Bilmem ne adında yeni kolon açıldı diye bildirim '
+      + 'gelebilir, ancak ses gerek yok."');
+
+    // Ölçüt `createAndPush` çağrısından SONRASINA bakıyor, bloğun tamamına
+    // değil. Blokta İKİ üretici var — `logActivity` de `column_added` yazıyor
+    // — ve blok genelinde aramak, bildirimi başka bir türe çevirmeyi
+    // aklıyordu. Mutasyon bunu ikinci denemede yakaladı; aynı ders bugün
+    // altıncı kez (CLAUDE.md: ölçüt koruduğu satıra bağlanmalı).
+    const bildirimKismi = blok.slice(blok.indexOf('createAndPush('));
+    assert.match(bildirimKismi, /buildNotificationText\('column_added'/,
+      'bildirim üretiliyor ama türü `column_added` değil — istemci onu '
+      + 'çeviremez ve kullanıcı ham JSON görür');
+    assert.match(blok, /NOT:\s*\{\s*userId:\s*user\.id\s*\}/,
+      'kolonu ekleyen kişiye de kendi bildirimi gidiyor');
+    assert.match(blok, /workspaceId:\s*access\.project\.workspaceId/,
+      'bildirimde alan kimliği yok — zil başka alanda da sayar (panelGorunur)');
   });
 
   test('sessiz türler gerçekten kümenin dışında', () => {

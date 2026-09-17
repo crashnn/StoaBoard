@@ -46,6 +46,32 @@ export function parseDate(val) {
 }
 
 /**
+ * Bugünün tarihi, `parseDate` ile AYNI biçimde: UTC gece yarısı.
+ *
+ * Yeni kartın başlangıç tarihi varsayılanı (kullanıcı kararı, 17 Eylül 2026):
+ * "task oluştururken başlangıç tarihi oluşturduğu an, bitiş tarihi kullanıcı
+ * belirlesin... ancak başlangıç değişebilir, default bugün o gün olsun."
+ *
+ * Biçim `parseDate`e BAĞLI, kendi başına değil: o tarihleri UTC gece yarısı
+ * olarak saklıyor ve `taskToDict` `toISOString().slice(0, 10)` ile geri
+ * okuyor. Buradan farklı bir an (örneğin `new Date()`) yazmak, aynı alanın
+ * iki ayrı biçimde doğması demek olurdu — kartın saati saklanır, listede
+ * görünmez, ama sıralama ve rapor karşılaştırmaları sessizce kayardı.
+ *
+ * SAAT DİLİMİ, bilinen sınır: "bugün" sunucunun UTC takvimine göre. Türkiye
+ * UTC+3 olduğu için yerel saatle 00:00–03:00 arasında açılan kart bir önceki
+ * günü alır. Sunucuda saat dilimi bilgisi yok (istek onu taşımıyor) ve kart
+ * bir VARSAYILAN alıyor — kullanıcı tarihi çekmeceden değiştirebiliyor. Doğru
+ * çözüm isteğin saat dilimini taşıması; o ayrı bir karar ve TODO'ya yazıldı.
+ */
+export function bugununTarihi() {
+  const simdi = new Date();
+  return new Date(Date.UTC(
+    simdi.getUTCFullYear(), simdi.getUTCMonth(), simdi.getUTCDate(),
+  ));
+}
+
+/**
  * Belirli kolondaki bir sonraki task position'ı. Python _next_position karşılığı.
  */
 export async function nextTaskPosition(projectId, columnId) {

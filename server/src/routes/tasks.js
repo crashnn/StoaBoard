@@ -30,6 +30,7 @@ import {
 } from '../lib/serializers.js';
 import {
   parseDate,
+  bugununTarihi,
   nextTaskPosition,
   logActivity,
   recalcTaskProgress,
@@ -242,8 +243,14 @@ projectTasksRouter.post(
           progress: ilerlemeHesapla({ altlar: [], kolonBitti: col?.isDone === true }),
           // Bitiş kolonunda doğan kart o an tamamlanmıştır; raporlar buna bakıyor.
           completedAt: yeniKartTamamlanma(col),
+          // BİTİŞ tarihi boş doğuyor: onu kullanıcı belirliyor (karar,
+          // 17 Eylül 2026). Tahmin edilen bir bitiş, girilmemiş bitişten
+          // kötüdür — raporda gerçekmiş gibi görünür.
           dueDate: parseDate(data.due),
-          startDate: parseDate(data.start),
+          // BAŞLANGIÇ varsayılanı bugün. Elle verilen değere dokunulmuyor ve
+          // kullanıcı sonradan da değiştirebiliyor; burası yalnızca boşluğu
+          // dolduruyor. Boş başlangıç akış raporunda "açılış" ile karışıyordu.
+          startDate: parseDate(data.start) || bugununTarihi(),
           assigneeDates: data.assignee_dates || null,
           createdBy: user.id,
           position,

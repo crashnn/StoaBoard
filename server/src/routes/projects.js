@@ -34,7 +34,7 @@ import {
   labelToDictValue,
   taskToDict,
 } from '../lib/serializers.js';
-import { buildNotificationText } from '../lib/notifications.js';
+import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { deleteProjectTree, logActivity } from '../lib/projects.js';
 
 export const projectsRouter = Router();
@@ -302,12 +302,53 @@ projectsRouter.post(
         tx,
         projectId,
         user.id,
-        buildNotificationText('column_added', { title }),
+        // `who` şablonda kullanılmıyor (akış aktörü ayrı gösteriyor) ama
+        // bildirim üreticisiyle ALAN KÜMESİ aynı kalmalı — sözleşme bunu
+        // ölçüyor ve ayrışma sessiz kusura yol açıyor (bildirim.test.js).
+        buildNotificationText('column_added', { who: user.name, title }),
       );
       return created;
     });
 
-    await kolonlariYayinla(req.app.get('io'), access.project, user.slug);
+    const io = req.app.get('io');
+    await kolonlariYayinla(io, access.project, user.slug);
+
+    // Kolon eklemek alanın ÖTEKİ üyelerine bildirim üretiyor — SESSİZCE.
+    //
+    // KARAR (17 Eylül 2026, kullanıcı): "Bilmem ne adında yeni kolon açıldı
+    // diye bildirim gelebilir, ancak ses gerek yok."
+    //
+    // Sessizlik için burada bir şey yapmaya gerek yok ve bu bilinçli: kesme
+    // kararı TEK yerde, istemcideki `EKRANI_KESENLER` kümesinde duruyor
+    // (kart #121). `column_added` o kümede olmadığı için ses de toast da
+    // çıkmıyor, bildirim yalnızca panele düşüp zili artırıyor. Kuralı burada
+    // ikinci kez yazmak, aynı kararın iki okuyucusu demek olurdu — bu deponun
+    // tekrar eden kusur sınıfı.
+    //
+    // NİÇİN BUGÜNE KADAR YOKTU: `logActivity` çağrısı `buildNotificationText`
+    // kullandığı için bildirim üretiliyor sanılıyordu. Üretilen şey HAREKET
+    // KAYDIYDI; #121'in "kolon sessiz birikir" kuralı var olmayan bir
+    // bildirimi tarif ediyormuş (kart #235).
+    //
+    // E-posta gitmiyor: `emailableTypes()` varsayılanı `task_assigned,mention`.
+    //
+    // KAPSAM: alan üyeleri. Bugün alan üyeliği zaten panoyu görme hakkı
+    // demek, yani kolon başlığı kimseye yeni bir şey açmıyor. #117 (proje
+    // bazlı üyelik) geldiğinde BURASI DA DARALTILMALI — `lib/board.js`teki
+    // aynı borç senedi.
+    const digerUyeler = await prisma.workspaceMember.findMany({
+      where: { workspaceId: access.project.workspaceId, NOT: { userId: user.id } },
+      select: { userId: true },
+    });
+    for (const uye of digerUyeler) {
+      await createAndPush(io, {
+        userId: uye.userId,
+        text: buildNotificationText('column_added', { who: user.name, title }),
+        senderSlug: user.slug,
+        workspaceId: access.project.workspaceId,
+      });
+    }
+
     res.status(201).json(columnToDict(col));
   }),
 );
