@@ -5,7 +5,7 @@
 // Bootstrap için minimum gerekenleri içerir; chat grubunda genişletilecek.
 
 import { prisma } from '../db.js';
-import { resolveWorkspaceId } from './workspace.js';
+import { resolveWorkspaceId, usersShareWorkspace } from './workspace.js';
 
 const CHANNEL_SLUG_STRIP = /[^a-z0-9\-_çğıöşü]+/g;
 
@@ -257,4 +257,66 @@ export async function listAccessibleChannels(user) {
     const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return at - bt;
   });
+}
+
+/**
+ * Sohbet hedefini çözer ve YAZMA kapısını uygular.
+ *
+ * DM ise: karşı taraf var mı, kendisi değil mi, aynı çalışma alanında mı.
+ * Kanal ise: kanal var mı, kullanıcının o kanalda rolü var mı.
+ *
+ * NİÇİN ORTAK BİR YARDIMCI: 16 Eylül 2026'ya kadar bu kapı yalnızca mesaj
+ * gönderme ucunda (`POST /chat/messages`) duruyordu. Dosya yükleme ucu
+ * (`POST /chat/upload`) hiçbir kanala ya da alana bağlı değildi ve yalnızca
+ * oturum istiyordu. İki uç aynı sohbete yazıyor, dolayısıyla aynı kapıdan
+ * geçmeli. Kapıyı ikinci kez YAZMAK yerine tek yere çıkarmanın sebebi
+ * CLAUDE.md'deki merdiven: kopya ayrışabilir, ortak yardımcı ayrışamaz.
+ * Bu deponun "aynı olgunun birden çok okuyucusu" kusur sınıfı.
+ *
+ * Dönüş, çağıranın doğrudan yanıta çevirebileceği biçimde:
+ *   { ok: true,  workspaceId, receiver, channel }
+ *   { ok: false, status, error, message }
+ */
+export async function resolveChatTarget(user, { to = null, channel = 'general' } = {}) {
+  const slug = ((channel || 'general') + '').trim().toLowerCase().slice(0, 80) || 'general';
+
+  if (to) {
+    const receiver = await prisma.user.findUnique({ where: { slug: to } });
+    if (!receiver) {
+      return { ok: false, status: 404, error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' };
+    }
+    if (receiver.id === user.id) {
+      return { ok: false, status: 400, error: 'err_cannot_message_self', message: 'Kendinize mesaj gönderemezsiniz' };
+    }
+    const workspaceId = await resolveWorkspaceId(user);
+    if (!(await usersShareWorkspace(user.id, receiver.id, workspaceId))) {
+      return { ok: false, status: 403, error: 'err_user_not_in_team', message: 'Bu kullanıcı aktif takımınızda değil' };
+    }
+    return { ok: true, workspaceId, receiver, channel: 'dm' };
+  }
+
+  const workspaceId = await resolveWorkspaceId(user);
+  // Alanı olmayan kullanıcı ve 'general' bilerek kapı dışı: 'general' her
+  // alanın örtük kanalı, ayrı bir `channels` kaydı olmayabiliyor.
+  if (workspaceId && slug !== 'general') {
+    const chRow = await prisma.channel.findFirst({
+      where: { workspaceId, slug },
+      include: { members: true },
+    });
+    // Var olmayan bir kanala yazılamaz; aksi halde kanal listesinde
+    // görünmeyen, üyeliği ve moderasyonu olmayan gizli bir yazışma alanı
+    // açılabiliyordu.
+    if (!chRow) {
+      return { ok: false, status: 404, error: 'err_channel_not_found', message: 'Kanal bulunamadı' };
+    }
+    if (!(await userChannelRole(chRow, user.id))) {
+      return {
+        ok: false,
+        status: 403,
+        error: 'err_channel_send_forbidden',
+        message: 'Bu kanala mesaj gönderme yetkiniz yok',
+      };
+    }
+  }
+  return { ok: true, workspaceId, receiver: null, channel: slug };
 }

@@ -340,7 +340,7 @@ const KAPI = new RegExp([
   'memberForWorkspace\\(', 'currentMember\\(', 'usersShareWorkspace\\(', "role === 'owner'", 'isOwner',
   // kayıt yükleyip erişim denetleyen yardımcılar (dosya başına bir tane)
   'loadTaskWithAccess\\(', 'loadProjectWithAccess\\(', 'requireTaskAccess\\(', 'loadTaskAccess\\(',
-  'resolveScope\\(', 'resolveWorkspaceId\\(', 'userChannelRole\\(',
+  'resolveScope\\(', 'resolveWorkspaceId\\(', 'userChannelRole\\(', 'resolveChatTarget\\(',
   // MCP: anahtar + yazma kapısı
   'requireMcpToken', 'yazmaKapisi\\(', 'aktifProje\\(',
   // kendi kaydı: sorgu kullanıcıyla daraltılmış ya da yol /me
@@ -353,11 +353,6 @@ const KAPISIZ_UCLAR = new Map([
   ['auth.js POST /logout',          'oturumu yıkar'],
   ['auth.js POST /forgot-password', 'giriş yapmadan kullanılır'],
   ['auth.js POST /reset-password',  'aynı akış, kod ile doğrulanır'],
-  // 16 Eylül 2026'da bu tarama yazılırken görüldü: sohbete dosya yükleme
-  // yalnızca oturum istiyor; dosya hiçbir kanala ya da alana bağlı değil ve
-  // 50 MB'a kadar sınırsız tekrar yüklenebiliyor. Bir yetki açığı değil
-  // (kimsenin verisine erişilmiyor) ama kaynak istismarı yolu. TODO'da.
-  ['attachments.js POST /',         'sohbet yüklemesi; dosya kimseye bağlı değil, kapı yok — kaynak sınırı TODO'],
 ]);
 
 describe('yetkilendirme — yazan her uçta izin kapısı', () => {

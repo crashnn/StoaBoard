@@ -19,7 +19,7 @@ import {
   usersShareWorkspace,
 } from '../lib/workspace.js';
 import { chatMessageToDict } from '../lib/serializers.js';
-import { userChannelRole, canManageChannel, parseHiddenFor } from '../lib/channels.js';
+import { userChannelRole, canManageChannel, parseHiddenFor, resolveChatTarget } from '../lib/channels.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 
 export const chatRouter = Router();
@@ -48,47 +48,17 @@ chatRouter.post(
     const fileName = data.file_name || null;
     const replyData =
       data.reply_to && typeof data.reply_to === 'object' ? data.reply_to : null;
-    let channel = ((data.channel || 'general') + '').trim().toLowerCase().slice(0, 80) || 'general';
-
     if (!text && !fileUrl) {
       return res.status(400).json({ error: 'err_message_empty', message: 'Mesaj boş olamaz' });
     }
 
-    let receiver = null;
-    let workspaceId = null;
-
-    if (toSlug) {
-      receiver = await prisma.user.findUnique({ where: { slug: toSlug } });
-      if (!receiver) return res.status(404).json({ error: 'err_user_not_found', message: 'Kullanıcı bulunamadı' });
-      if (receiver.id === user.id) {
-        return res.status(400).json({ error: 'err_cannot_message_self', message: 'Kendinize mesaj gönderemezsiniz' });
-      }
-      workspaceId = await resolveWorkspaceId(user);
-      if (!(await usersShareWorkspace(user.id, receiver.id, workspaceId))) {
-        return res.status(403).json({ error: 'err_user_not_in_team', message: 'Bu kullanıcı aktif takımınızda değil' });
-      }
-      channel = 'dm';
-    } else {
-      workspaceId = await resolveWorkspaceId(user);
-      if (workspaceId && channel !== 'general') {
-        const chRow = await prisma.channel.findFirst({
-          where: { workspaceId, slug: channel },
-          include: { members: true },
-        });
-        // Var olmayan bir kanala yazılamaz; aksi halde kanal listesinde
-        // görünmeyen, üyeliği ve moderasyonu olmayan gizli bir yazışma alanı
-        // açılabiliyordu.
-        if (!chRow) {
-          return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
-        }
-        const role = await userChannelRole(chRow, user.id);
-        if (!role) {
-          return res
-            .status(403)
-            .json({ error: 'err_channel_send_forbidden', message: 'Bu kanala mesaj gönderme yetkiniz yok' });
-        }
-      }
+    // Kapı ortak: sohbete dosya yükleme ucu da aynı yardımcıdan geçiyor.
+    // İki uç aynı sohbete yazıyor; kapının iki kopyası ayrışabilirdi.
+    const hedef = await resolveChatTarget(user, { to: toSlug, channel: data.channel });
+    if (!hedef.ok) {
+      return res.status(hedef.status).json({ error: hedef.error, message: hedef.message });
     }
+    const { workspaceId, receiver, channel } = hedef;
 
     const replyToId = replyData?.id != null ? parseInt(replyData.id, 10) : null;
 

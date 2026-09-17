@@ -1083,3 +1083,163 @@ describe('bildirim ucu — başkasına yazmak üyelik kapısından geçiyor', ()
     assert.ok(/403/.test(h), 'reddetme 403 ile yapılmıyor');
   });
 });
+
+// ─── Sohbete dosya yükleme: kapı, tür ve hız sınırı ──────────────────────────
+//
+// KUSUR (16 Eylül 2026 bulundu, 17 Eylül kapandı): `POST /api/chat/upload`
+// yalnızca `requireAuth` taşıyordu. Yüklenen dosya hiçbir kanala, DM'e ya da
+// çalışma alanına bağlı değildi; tür sorulmuyordu ve tekrar sınırı yoktu.
+// Dosya `uploaded_files` tablosuna bytes olarak yazıldığı için tek bir hesap
+// depoyu doldurabiliyordu. Kart eki ucu aynı depoya yazıyor ve tür soruyordu:
+// aynı kaynağa açılan iki kapıdan yalnızca biri denetliyordu.
+//
+// Kapı KOPYALANMADI, ortak bir yardımcıya (`resolveChatTarget`) çıkarıldı ve
+// mesaj gönderme ucu da oradan geçiyor. Gerekçe CLAUDE.md'nin merdiveni:
+// iki kopya ayrışabilir, tek kaynak ayrışamaz. Aşağıdaki son test tam da bu
+// ayrışmayı imkânsız kılıyor.
+
+import multer from 'multer';
+import { uploadErrorHandler, UPLOAD_MAX_BYTES } from '../src/lib/uploads.js';
+
+describe('sohbete dosya yükleme — kapı, tür, sınır', () => {
+  const EKLER = path.resolve(__dirname, '..', 'src', 'routes', 'attachments.js');
+  const SOHBET = path.resolve(__dirname, '..', 'src', 'routes', 'chat.js');
+
+  /** `chatUploadRouter.post(` kaydının gövdesi — komşu kayda taşmadan. */
+  function yuklemeIsleyicisi() {
+    const src = yorumsuzDosya(EKLER);
+    const bas = src.indexOf('chatUploadRouter.post(');
+    assert.ok(bas !== -1, 'sohbet yükleme kaydı bulunamadı');
+    // Kendi kaydını 'sonraki' sanmamak için aramaya kayıt adından SONRA başla:
+    // `\w*[Rr]outer` deseni `chatUploadRouter`'ın kendisini de eşliyor.
+    const ofset = bas + 'chatUploadRouter.post('.length;
+    const sonraki = src.slice(ofset).search(/\w*[Rr]outer\.(get|post|patch|put|delete)\(/);
+    return sonraki === -1 ? src.slice(bas) : src.slice(bas, ofset + sonraki);
+  }
+
+  test('yükleme bir kanala ya da DM\'e bağlı — kapı var', () => {
+    const h = yuklemeIsleyicisi();
+    assert.ok(
+      /resolveChatTarget\(/.test(h),
+      'sohbet yüklemesi hedef kapısından geçmiyor: dosya yine hiçbir kanala '
+      + 'bağlı değil ve alanı olmayan biri de yükleyebilir.',
+    );
+    assert.ok(
+      /hedef\.ok/.test(h) && /hedef\.status/.test(h),
+      'kapının sonucu reddetmeye çevrilmiyor — kapı çağrılıp yok sayılmış olabilir',
+    );
+  });
+
+  test('dosya türü denetleniyor (kart ekiyle aynı elek)', () => {
+    const h = yuklemeIsleyicisi();
+    assert.ok(
+      /ALLOWED_MIME_PREFIXES/.test(h),
+      'sohbet yüklemesi tür sormuyor; kart eki soruyor. Aynı depoya yazan iki '
+      + 'kapıdan biri eleksiz kalmış olur.',
+    );
+  });
+
+  test('hız sınırı var ve anahtarı kullanıcı (IP değil)', () => {
+    const h = yuklemeIsleyicisi();
+    assert.ok(/rateLimited\(/.test(h), 'sohbet yüklemesinde tekrar sınırı yok');
+    assert.ok(
+      /chat-upload:\$\{user\.id\}/.test(h),
+      'hız sınırı kullanıcıya bağlı değil. IP anahtarı yanlış olurdu: aynı '
+      + 'ofisten çalışan ekip tek IP\'den gelir ve birbirini sınırlar.',
+    );
+    assert.ok(/429/.test(h), 'sınır aşımı 429 ile bildirilmiyor');
+  });
+
+  test('erişilemez boyut kontrolü geri gelmedi', () => {
+    const h = yuklemeIsleyicisi();
+    // Gerçek sınır multer'da (UPLOAD_MAX_BYTES). Route gövdesindeki
+    // `size > 50 MB` kontrolü ölü koddu ve kullanıcıya YANLIŞ sınır söylüyordu:
+    // multer isteği zaten 10 MB'da kesiyordu.
+    assert.ok(
+      !/50 \* 1024 \* 1024/.test(h),
+      'route gövdesinde erişilemez bir boyut kontrolü var — multer sınırı daha '
+      + 'küçük olduğu için bu dal hiç çalışmaz ama kullanıcıya sınır diye söylenir',
+    );
+    assert.ok(
+      !/err_chat_file_too_large/.test(h),
+      'ölü sınır mesajı geri gelmiş; tek gerçek sınır UPLOAD_MAX_BYTES',
+    );
+  });
+
+  test('multer reddi 413 üretiyor, 500 değil', () => {
+    // KUSUR: multer sınırı aşan isteği MulterError ile reddediyor ve bu hata
+    // hiçbir yerde yakalanmadığı için genel işleyiciye düşüyordu. Kullanıcı
+    // "dosya çok büyük" yerine "Şu an bağlanılamıyor" görüyordu: düzeltilebilir
+    // bir kullanıcı hatası, sunucu arızası gibi raporlanıyordu.
+    const kayit = {};
+    const res = {
+      status(k) { kayit.kod = k; return this; },
+      json(g) { kayit.govde = g; return this; },
+    };
+    const hata = new multer.MulterError('LIMIT_FILE_SIZE');
+    let sonrakiCagrildi = false;
+    uploadErrorHandler(hata, {}, res, () => { sonrakiCagrildi = true; });
+
+    assert.equal(kayit.kod, 413);
+    assert.equal(kayit.govde.error, 'err_file_too_large');
+    assert.equal(sonrakiCagrildi, false, 'hata yutulmadı, genel işleyiciye düşüyor');
+
+    // Mesajdaki sayı GERÇEK sınırdan türemeli; sabit yazılırsa ikisi ayrışır.
+    const mb = Math.floor(UPLOAD_MAX_BYTES / (1024 * 1024));
+    assert.ok(
+      kayit.govde.message.includes(String(mb)),
+      `mesaj gerçek sınırı (${mb} MB) söylemiyor: "${kayit.govde.message}"`,
+    );
+  });
+
+  test('multer dışı hata yutulmuyor', () => {
+    // Kapalı başarısızlık kuralı: bu işleyici yalnızca kendi tanıdığı hatayı
+    // çevirmeli, tanımadığını olduğu gibi geçirmeli.
+    let gecen = null;
+    uploadErrorHandler(new Error('alakasız'), {}, {
+      status() { throw new Error('yanıt üretmemeliydi'); },
+    }, (e) => { gecen = e; });
+    assert.ok(gecen instanceof Error && gecen.message === 'alakasız');
+  });
+
+  test('istemci hedef alanlarını dosyadan ÖNCE gönderiyor', () => {
+    // İNCE TUZAK: multer `req.body`'yi akışta dosyaya kadar gördüğü metin
+    // alanlarından doldurur. `file` önce eklenirse `channel`/`to` sunucuya hiç
+    // ulaşmaz ve kapı her isteği 'general'a yazılmış sayar — yani kapı sessizce
+    // etkisizleşir. Sıra bir biçim tercihi değil, kapının ön koşulu.
+    const src = yorumsuzDosya(
+      path.resolve(__dirname, '..', '..', 'client', 'src', 'chat.jsx'),
+    );
+    const bas = src.indexOf("fetch('/api/chat/upload'");
+    assert.ok(bas !== -1, 'istemcideki yükleme çağrısı bulunamadı');
+    const pencere = src.slice(Math.max(0, bas - 1200), bas);
+
+    // İLK dosya eklemesi ile SON hedef eklemesi karşılaştırılıyor. lastIndexOf
+    // ile bakmak kör nokta üretiyordu: başa fazladan bir `file` eklendiğinde
+    // son `file` hâlâ sonda kalıyor ve ihlal görünmüyordu (mutasyon buldu).
+    // Doğru değişmez: hiçbir dosya eklemesi hedef alanlarından önce gelmemeli.
+    const fileIdx = pencere.indexOf("fd.append('file'");
+    const chIdx = pencere.lastIndexOf("fd.append('channel'");
+    const toIdx = pencere.lastIndexOf("fd.append('to'");
+    assert.ok(fileIdx !== -1, 'dosya alanı eklenmiyor');
+    assert.ok(chIdx !== -1 && toIdx !== -1, 'kanal/DM hedefi gönderilmiyor — sunucudaki kapı hedefi göremez');
+    assert.ok(
+      chIdx < fileIdx && toIdx < fileIdx,
+      'hedef alanları dosyadan SONRA ekleniyor; multer bunları okuyamaz ve kapı etkisizleşir',
+    );
+  });
+
+  test('iki uç aynı kapıdan geçiyor (ayrışma imkânsız)', () => {
+    // Kusurun kök sebebi kapının tek bir uçta durmasıydı. Kapı ortak bir
+    // yardımcıya çıkarıldı; bu test ikisinin de oradan geçtiğini kilitliyor.
+    // Biri kendi kopyasını yazmaya dönerse burada kırılır.
+    const ekler = yorumsuzDosya(EKLER);
+    const sohbet = yorumsuzDosya(SOHBET);
+    assert.ok(/resolveChatTarget/.test(ekler), 'yükleme ucu ortak kapıyı kullanmıyor');
+    assert.ok(/resolveChatTarget/.test(sohbet), 'mesaj ucu ortak kapıyı kullanmıyor');
+    assert.ok(
+      !/prisma\.channel\.findFirst[\s\S]{0,400}?err_channel_send_forbidden/.test(sohbet),
+      'mesaj ucu kanal kapısını yeniden kendi içinde kurmuş — kopya ayrışır',
+    );
+  });
+});

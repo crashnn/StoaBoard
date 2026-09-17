@@ -2284,10 +2284,24 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
     setUploading(true);
     try {
       const fd = new FormData();
+      // Hedef alanları dosyadan ÖNCE eklenmeli: multer `req.body`'yi akışta
+      // dosyaya kadar gördüğü metin alanlarından doldurur, sonrakiler sunucuya
+      // ulaşmaz. Sunucu bu iki alanla kanal/DM kapısını uyguluyor.
+      if (dmWith) fd.append('to', dmWith);
+      else fd.append('channel', activeChannel || 'general');
       fd.append('file', file);
       const res = await fetch('/api/chat/upload', { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok) { window.showToast?.(data.error || (window.t?.('chat_upload_failed')||'Yükleme başarısız'), 'error'); return; }
+      if (!res.ok) {
+        // Burada ham `fetch` var (dosya gövdesi JSON değil), yani apiFetch'in
+        // çeviri katmanı devrede değil. Sözleşme elle uygulanıyor: kod önce
+        // sözlükten geçer, yoksa sunucunun metnine düşer. Öncesinde ham kod
+        // gösteriliyordu; yeni kapı hataları bunu görünür bir kusur yapardı.
+        const kod = data.error || null;
+        const cevrilmis = kod && window.t?.(kod) !== kod ? window.t?.(kod) : null;
+        window.showToast?.(cevrilmis || data.message || (window.t?.('chat_upload_failed') || 'Yükleme başarısız'), 'error');
+        return;
+      }
       setPendingFile({ url: data.url, type: data.type, name: data.name, size: data.size });
     } catch (err) {
       window.showToast?.((window.t?.('chat_upload_error')||'Yükleme sırasında hata: ') + err.message, 'error');

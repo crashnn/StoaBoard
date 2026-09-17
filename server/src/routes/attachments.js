@@ -15,7 +15,9 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { memberForWorkspace } from '../lib/workspace.js';
 import { taskAttachmentToDict } from '../lib/serializers.js';
-import { upload, storeFile } from '../lib/uploads.js';
+import { upload, storeFile, uploadErrorHandler } from '../lib/uploads.js';
+import { resolveChatTarget } from '../lib/channels.js';
+import { rateLimited } from '../lib/rateLimit.js';
 
 export const taskAttachmentsRouter = Router();   // /tasks/:taskId/attachments
 export const attachmentsRouter = Router();       // /attachments/:id
@@ -31,6 +33,13 @@ const ALLOWED_MIME_PREFIXES = [
   'application/msword',
   'application/vnd.',
 ];
+
+// Sohbet yüklemesi hız sınırı. Dosya `uploaded_files` tablosuna bytes olarak
+// yazılıyor ve satırın sahibi yok; sınırsız tekrar tek bir hesabın depoyu
+// doldurmasına yetiyordu. Anahtar KULLANICI kimliği, IP değil: aynı ofisten
+// çalışan ekip tek IP'den gelir ve birbirini sınırlardı.
+const CHAT_UPLOAD_MAX = 20;
+const CHAT_UPLOAD_WINDOW_MS = 10 * 60 * 1000;
 
 const ALLOWED_IMAGE_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp']);
 const ALLOWED_VIDEO_EXT = new Set(['mp4', 'webm', 'ogg', 'mov']);
@@ -91,6 +100,7 @@ taskAttachmentsRouter.post(
   '/:taskId/attachments',
   requireAuth,
   upload.single('file'),
+  uploadErrorHandler,
   asyncHandler(async (req, res) => {
     const taskId = parseInt(req.params.taskId, 10);
     const ctx = await requireTaskAccess(req, res, taskId);
@@ -100,9 +110,9 @@ taskAttachmentsRouter.post(
     if (!req.file.originalname) {
       return res.status(400).json({ error: 'err_file_name_empty', message: 'Dosya adı boş' });
     }
-    if (req.file.size > 20 * 1024 * 1024) {
-      return res.status(413).json({ error: 'err_file_too_large', message: 'Dosya 20 MB sınırını aşıyor' });
-    }
+    // Boyut kontrolü multer'da (uploads.js, UPLOAD_MAX_BYTES) ve aşım
+    // `uploadErrorHandler` ile 413'e çevriliyor. Buradaki eski `> 20 MB`
+    // kontrolü erişilemezdi: multer zaten 10 MB'da kesiyordu.
     const mime = req.file.mimetype || 'application/octet-stream';
     if (!ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p))) {
       return res.status(415).json({ error: 'err_unsupported_file_type', message: `Desteklenmeyen dosya türü: ${mime}` });
@@ -204,12 +214,39 @@ chatUploadRouter.post(
   '/',
   requireAuth,
   upload.single('file'),
+  uploadErrorHandler,
   asyncHandler(async (req, res) => {
+    const user = await loadUser(req);
+    if (!user) return res.status(401).json({ error: 'err_auth_required' });
+
+    // Hedef kapısı mesaj göndermeyle AYNI yardımcıdan geçiyor: yüklenen dosya
+    // artık bir kanala ya da DM'e bağlı ve yükleyen o hedefe yazabiliyor.
+    // Öncesinde uç yalnızca oturum istiyordu; dosya hiçbir şeye bağlı değildi,
+    // yani alanı olmayan ya da kanala üye olmayan biri de yükleyebiliyordu.
+    const hedef = await resolveChatTarget(user, {
+      to: req.body?.to || null,
+      channel: req.body?.channel,
+    });
+    if (!hedef.ok) {
+      return res.status(hedef.status).json({ error: hedef.error, message: hedef.message });
+    }
+
+    if (rateLimited(`chat-upload:${user.id}`, CHAT_UPLOAD_MAX, CHAT_UPLOAD_WINDOW_MS)) {
+      return res.status(429).json({
+        error: 'err_upload_rate_limited',
+        message: 'Çok fazla dosya yüklediniz; biraz sonra tekrar deneyin',
+      });
+    }
+
     if (!req.file) return res.status(400).json({ error: 'err_no_file_selected', message: 'Dosya seçilmedi' });
     const origName = req.file.originalname || '';
     if (!origName) return res.status(400).json({ error: 'err_invalid_file', message: 'Geçersiz dosya' });
-    if (req.file.size > 50 * 1024 * 1024) {
-      return res.status(400).json({ error: 'err_chat_file_too_large', message: "Dosya 50 MB'dan büyük olamaz" });
+
+    // Kart eki bu denetimden geçiyordu, sohbet yüklemesi geçmiyordu: aynı
+    // depoya yazan iki kapıdan yalnızca biri tür soruyordu.
+    const mime = req.file.mimetype || 'application/octet-stream';
+    if (!ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p))) {
+      return res.status(415).json({ error: 'err_unsupported_file_type', message: `Desteklenmeyen dosya türü: ${mime}` });
     }
 
     const ext = origName.includes('.')
