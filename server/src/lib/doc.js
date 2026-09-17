@@ -53,10 +53,27 @@ export function docDenetle(doc) {
 }
 
 /**
- * Açıklama (`description`) senkronu için düz metin: MCP ve liste görünümü
- * gövdeyi buradan görür. Düzyazı blokları girer (başlık, paragraf, alıntı,
- * uyarı kutusu, liste maddeleri); kod bloğu girmez — bir yapıştırılmış
- * yığın açıklamayı ezmesin.
+ * Açıklama (`description`) senkronu için düz metin: pano kartı, arama ve
+ * MCP `desc` gövdeyi buradan görür.
+ *
+ * İÇERİK girer (paragraf, alıntı, uyarı kutusu, liste maddeleri).
+ * YAPI girmez:
+ *   - kod bloğu (`pre`) — bir yapıştırılmış yığın açıklamayı ezmesin
+ *   - başlıklar (`h1`/`h2`/`h3`) — gerekçe aşağıda
+ *
+ * BAŞLIKLAR 17 EYLÜL 2026'DA ÇIKARILDI. Öncesinde giriyorlardı ve bu, her
+ * açıklama düzenlemesinde veriyi bozuyordu: çekmece kartı açarken gövdeye
+ * KENDİ ürettiği bir başlık koyuyor (`drawer.jsx`, `{ kind: "h2", text:
+ * "Açıklama", _i18n: "drawer_description" }`), yani "Açıklama" kullanıcının
+ * yazdığı bir şey değil, arayüzün yapısal etiketi. Sonuç: #19'un açıklaması
+ * "Açıklama ttakcviöm Alt görevler" oldu — iki bölüm başlığı da metnin
+ * içinde. Eski veriye özgü değildi; tarayıcıda açılan her kart yeniden
+ * üretiyordu.
+ *
+ * Kural bilerek YAPISAL: "kendi ürettiğim başlığı `_i18n` ile işaretlerim,
+ * onu ele" demek daha akıllı görünüyordu ama o alan istemci denetiminde ve
+ * kullanıcının elle yazdığı başlık da yapı sayılır. Bir önizleme için bölüm
+ * etiketi gürültüdür, kim yazmış olursa olsun.
  */
 export function docDuzMetin(doc) {
   if (!Array.isArray(doc)) return '';
@@ -64,7 +81,7 @@ export function docDuzMetin(doc) {
   for (const b of doc) {
     if (!b) continue;
     if (b.kind === 'ul' && Array.isArray(b.items)) { parcalar.push(...b.items.filter((x) => typeof x === 'string' && x)); continue; }
-    if (['h1', 'h2', 'h3', 'p', 'quote', 'callout'].includes(b.kind) && b.text) parcalar.push(b.text);
+    if (['p', 'quote', 'callout'].includes(b.kind) && b.text) parcalar.push(b.text);
   }
   return parcalar.join(' ').slice(0, 1000);
 }

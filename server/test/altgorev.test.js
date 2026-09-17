@@ -339,7 +339,7 @@ describe('kart gövdesi — docDenetle ve docDuzMetin', async () => {
     assert.equal(docDenetle([{ kind: 'ul', items: 'a,b' }]).ok, false, 'liste maddeleri dizi olmalı');
   });
 
-  test('düz metin: düzyazı girer, kod girmez, 1000 karakterde kırpılır', () => {
+  test('düz metin: içerik girer, YAPI (başlık, kod) girmez, 1000 karakterde kırpılır', () => {
     const doc = [
       { kind: 'h2', text: 'Açıklama' },
       { kind: 'p', text: 'Birinci' },
@@ -348,8 +348,42 @@ describe('kart gövdesi — docDenetle ve docDuzMetin', async () => {
       { kind: 'callout', text: 'Uyarı' },
       { kind: 'ul', items: ['madde', ''] },
     ];
-    assert.equal(docDuzMetin(doc), 'Açıklama Birinci Alıntı Uyarı madde');
+    // 'Açıklama' bir h2; 17 Eylül 2026'dan beri düz metne GİRMİYOR.
+    assert.equal(docDuzMetin(doc), 'Birinci Alıntı Uyarı madde');
     assert.equal(docDuzMetin([{ kind: 'p', text: 'x'.repeat(1500) }]).length, 1000);
     assert.equal(docDuzMetin(null), '');
+  });
+
+  // KUSUR (17 Eylül 2026, kart #199): başlıklar düz metne giriyordu ve bu,
+  // her açıklama düzenlemesinde veriyi bozuyordu. Çekmece kartı açarken
+  // gövdeye KENDİ ürettiği bölüm başlıklarını koyuyor (drawer.jsx: h2
+  // 'Açıklama', h2 'Alt görevler'), yani onlar içerik değil arayüz etiketi.
+  // Gözlenen hasar: #19'un açıklaması 'Açıklama ttakcviöm Alt görevler'.
+  // Eski veriye özgü değildi — tarayıcıda açılan her kart yeniden üretiyordu.
+  test('çekmecenin ürettiği bölüm başlıkları açıklamaya sızmıyor', () => {
+    const cekmeceGovdesi = [
+      { kind: 'h2', text: 'Açıklama', _i18n: 'drawer_description' },
+      { kind: 'p', text: 'ttakcviöm' },
+      { kind: 'h2', text: 'Alt görevler', _i18n: 'drawer_subtasks' },
+    ];
+    assert.equal(
+      docDuzMetin(cekmeceGovdesi),
+      'ttakcviöm',
+      'bölüm başlıkları açıklamaya sızıyor — kart gövdesi her düzenlemede bozulur',
+    );
+  });
+
+  test('kural yapısal: _i18n işareti OLMAYAN başlık da girmiyor', () => {
+    // Kasıtlı tasarım kararı. `_i18n` istemci denetiminde bir alan;
+    // ona güvenen bir kural, alanı göndermeyen bir istemcide çöker.
+    // Üstelik kullanıcının elle yazdığı başlık da yapıdır: bir önizleme
+    // için bölüm etiketi gürültüdür, kim yazmış olursa olsun.
+    assert.equal(
+      docDuzMetin([{ kind: 'h2', text: 'Elle yazılmış başlık' }, { kind: 'p', text: 'gövde' }]),
+      'gövde',
+      'kural _i18n alanına bağlanmış olabilir — istemci onu göndermezse başlık sızar',
+    );
+    assert.equal(docDuzMetin([{ kind: 'h1', text: 'H1' }, { kind: 'h3', text: 'H3' }]), '',
+      'h1 ve h3 de yapıdır, h2 ile aynı kurala tabi');
   });
 });
