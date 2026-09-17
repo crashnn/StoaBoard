@@ -69,6 +69,27 @@ export function bahsedilenleriCoz(bahsedilenler, uyeler) {
     if (!anahtar || gorulenAd.has(anahtar)) continue;
     gorulenAd.add(anahtar);
 
+    // SLUG ÖNCE — ve belirsizlik doğuramaz, çünkü slug benzersiz.
+    //
+    // KUSUR (17 Eylül 2026, kullanıcının D turu, kart #235): "bahsetme"nin
+    // dört okuyucusu vardı ve dördü farklı şey anlıyordu. Sohbet slug'a
+    // (`@eray-atalay`), kart yorumu ad önekine bakıyordu; yorumdaki seçici de
+    // yalnızca İLK ADI yazıyordu (`@Eray`). Aynı alanda iki "Eray Atalay"
+    // varken her yorum bahsetmesi belirsiz çıkıyor ve kural gereği KİMSEYE
+    // bildirim gitmiyordu. Kullanıcı bunu canlıda buldu: "comment @ yapınca
+    // bir şey yok, ancak sohbetten @ yapınca bıt diye ses çıkıyor."
+    //
+    // Ad öneki KALDIRILMADI, altına alındı: eski yorumlarda `@Eray` yazıyor ve
+    // onlar çalışmaya devam etmeli. Bu değişiklik yalnızca genişletiyor.
+    const slugEsi = havuz.filter((u) => u.slug && adKatla(u.slug) === anahtar);
+    if (slugEsi.length === 1) {
+      const kisi = slugEsi[0];
+      if (gorulenId.has(kisi.id)) continue;
+      gorulenId.add(kisi.id);
+      eslesen.push(kisi);
+      continue;
+    }
+
     const adaylar = havuz.filter((u) => adKatla(u.name).startsWith(anahtar));
     if (adaylar.length === 0) {
       bulunamayan.push(ad);

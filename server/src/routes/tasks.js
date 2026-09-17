@@ -728,7 +728,10 @@ tasksRouter.get(
 
 // ─── POST /tasks/:taskId/comments ──────────────────────────────────────────
 
-const MENTION_RE = /@([\wçğışöüÇĞİŞÖÜ]+)/g;
+// Tire SLUG için gerekli: seçici artık `@eray-atalay` yazıyor ve tiresiz bir
+// desen onu "eray"da kesip yine ad önekine düşürürdü — yani kusur aynen
+// kalırdı. Türkçe harfler eski yorumlardaki ad yazımı için duruyor (kart #235).
+const MENTION_RE = /@([\wçğışöüÇĞİŞÖÜ-]+)/g;
 
 tasksRouter.post(
   '/:taskId/comments',
@@ -777,7 +780,7 @@ tasksRouter.post(
     if (mentions.length) {
       const uyeSatirlari = await prisma.workspaceMember.findMany({
         where: { workspaceId: project.workspaceId },
-        select: { user: { select: { id: true, name: true } } },
+        select: { user: { select: { id: true, name: true, slug: true } } },
       });
       const cozum = bahsedilenleriCoz(mentions, uyeSatirlari.map((m) => m.user));
 

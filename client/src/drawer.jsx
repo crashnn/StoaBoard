@@ -412,10 +412,14 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
     const cursor = el ? el.selectionStart : newComment.length;
     const before = newComment.slice(0, cursor);
     const after  = newComment.slice(cursor);
-    const match  = before.match(/@([\wçğıöşüÇĞİÖŞÜ]*)$/i);
-    const firstName = member.name.split(' ')[0];
+    const match  = before.match(/@([\wçğıöşüÇĞİÖŞÜ-]*)$/i);
+    // İLK AD DEĞİL SLUG. İlk ad benzersiz değil: aynı alanda iki "Eray Atalay"
+    // varken `@Eray` ikisine de uyuyor, sunucu belirsiz sayıyor ve kimseye
+    // bildirim gitmiyor (kart #235). Slug benzersiz olduğu için belirsizlik
+    // doğmuyor; sohbet tarafı zaten yıllardır slug yazıyor ve çalışan taraf o.
+    // Kullanıcı yine adı görüyor — çip çözümleyici slug'ı ada çeviriyor.
     const prefix = match ? before.slice(0, before.length - match[0].length) : before;
-    setNewComment(prefix + '@' + firstName + ' ' + after);
+    setNewComment(prefix + '@' + member.id + ' ' + after);
     setMentionQuery(null);
     setTimeout(() => el && el.focus(), 0);
   };
@@ -946,7 +950,10 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
                               window.__CHAT_MENTION_TASK__ = { id: task.id, title: task.title };
                               if (window.__OPEN_CHAT__) window.__OPEN_CHAT__(mentioned.id);
                             }}>
-                            @{mentioned.name.split(' ')[0]}
+                            {/* Tam ad: iki "Eray Atalay" varken "@Eray" çipi
+                                hangisinin bahsedildiğini söylemiyordu. Sohbet
+                                çipi de tam ad gösteriyor (kart #235). */}
+                            @{mentioned.name}
                           </span>
                         );
                       }

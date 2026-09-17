@@ -853,6 +853,88 @@ describe('bahsedilenleriCoz — bahsetme alan üyeleriyle sınırlı', () => {
     const r = bahsedilenleriCoz(['Eray', 'Era'], uyeler);
     assert.deepEqual(r.eslesen, [eray]);
   });
+
+  // ── SLUG (kart #235) ────────────────────────────────────────────────────
+  //
+  // KUSUR: "bahsetme"nin DÖRT okuyucusu vardı ve dördü farklı şey anlıyordu.
+  // Sohbet slug'a bakıyor, kart yorumu ad önekine; yorumdaki seçici de
+  // yalnızca İLK ADI yazıyordu. Kullanıcının alanında iki "Eray Atalay - N"
+  // hesabı var, yani `@Eray` ikisine birden uyuyor, belirsiz sayılıyor ve
+  // KİMSEYE bildirim gitmiyordu. Sohbetten @ çalışıp yorumdan @ çalışmaması
+  // bundandı.
+
+  const erayBir = { id: 5, name: 'Eray Atalay - 1', slug: 'eray-atalay' };
+  const erayIki = { id: 6, name: 'Eray Atalay - 2', slug: 'eray-atalay-3' };
+
+  test('slug birebir eşleşiyor — ad öneki belirsizken bile', () => {
+    // Kullanıcının GERÇEK durumu. Ad öneki iki kişiye uyuyor; slug tek kişiye.
+    const ikili = [erayBir, erayIki];
+    assert.deepEqual(bahsedilenleriCoz(['eray-atalay'], ikili).eslesen, [erayBir]);
+    assert.deepEqual(bahsedilenleriCoz(['eray-atalay-3'], ikili).eslesen, [erayIki]);
+  });
+
+  test('slug varken ad önekinin belirsizliği DEVREYE GİRMİYOR', () => {
+    // Slug benzersiz olduğu için belirsizlik doğuramaz; bu, slug dalının ad
+    // dalından ÖNCE çalıştığını kilitliyor. Sıra ters çevrilirse bu test kırılır.
+    const r = bahsedilenleriCoz(['eray-atalay'], [erayBir, erayIki]);
+    assert.deepEqual(r.belirsiz, []);
+    assert.deepEqual(r.bulunamayan, []);
+  });
+
+  test('ad öneki KALDIRILMADI — eski yorumlar çalışmaya devam ediyor', () => {
+    // Depoda bugüne kadar yazılmış yorumlarda `@Eray` var. Değişiklik yalnızca
+    // genişletiyor; daralttığı an eski yorumların bahsetmeleri ölürdü.
+    assert.deepEqual(bahsedilenleriCoz(['Eray'], uyeler).eslesen, [eray]);
+  });
+
+  test('slug ile ad aynı kişiye çıkarsa tek bildirim', () => {
+    const r = bahsedilenleriCoz(['eray-atalay', 'Eray'], [erayBir]);
+    assert.deepEqual(r.eslesen, [erayBir]);
+  });
+
+  test('slug taşımayan üye listesi eski davranışta kalıyor', () => {
+    // `slug` alanı seçilmemiş bir çağrı (başka bir yüzey) patlamamalı.
+    const r = bahsedilenleriCoz(['Eray'], [{ id: 9, name: 'Eray Atalay' }]);
+    assert.equal(r.eslesen.length, 1);
+  });
+});
+
+// Kaynak kilidi: çözücü doğru olsa da çağıran taraf slug'ı OKUMUYORSA kusur
+// aynen durur. Üç okuyucunun üçü de ayrı ayrı kilitleniyor — ölçüt dosya
+// genelinde değil, koruduğu bloğa bağlı (CLAUDE.md).
+describe('bahsetme — slug zinciri uçtan uca bağlı (#235)', () => {
+  const tasksSrc = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'tasks.js'));
+  const drawerSrc = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'client', 'src', 'drawer.jsx'), 'utf8',
+  ).replace(/\r\n/g, '\n');
+
+  test('sunucu deseni tireyi kabul ediyor — yoksa slug "eray"da kesilir', () => {
+    const m = tasksSrc.match(/const MENTION_RE = ([^;]+);/);
+    assert.ok(m, 'tasks.js içinde MENTION_RE bulunamadı');
+    assert.ok(/-\]/.test(m[1]) || /\\-/.test(m[1]),
+      `desen tire taşımıyor (${m[1].trim()}) — "@eray-atalay" "eray" diye kesilir ve `
+      + 'yine belirsiz ad önekine düşer');
+  });
+
+  test('üye sorgusu slug alanını okuyor', () => {
+    // Çözücüye slug'sız satır giderse slug dalı hiç çalışmaz ve kusur sessizce
+    // geri gelir: hiçbir şey hata vermez, yalnızca bildirim gitmez.
+    const bas = tasksSrc.indexOf('const mentions = ');
+    assert.notEqual(bas, -1, 'yorum ucundaki bahsetme bloğu bulunamadı');
+    const blok = tasksSrc.slice(bas, tasksSrc.indexOf('const comment = ', bas));
+    assert.ok(/slug:\s*true/.test(blok),
+      'bahsetme bloğundaki üye sorgusu slug seçmiyor — çözücü slug dalını kullanamaz');
+  });
+
+  test('seçici ilk adı değil benzersiz kimliği yazıyor', () => {
+    const bas = drawerSrc.indexOf('const insertMention');
+    assert.notEqual(bas, -1, 'insertMention bulunamadı');
+    const blok = drawerSrc.slice(bas, drawerSrc.indexOf('};', bas));
+    assert.ok(/'@' \+ member\.id/.test(blok),
+      'seçici hâlâ ad yazıyor — aynı ilk ada sahip iki üye varken bildirim kimseye gitmez');
+    assert.ok(!/member\.name\.split\(' '\)\[0\]/.test(blok),
+      'ilk ad hesabı hâlâ duruyor; seçici onu yazıyor olabilir');
+  });
 });
 
 describe('adKatla — I/ı/İ/i aynı yere düşüyor', () => {
