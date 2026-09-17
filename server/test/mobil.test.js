@@ -165,7 +165,7 @@ describe('mobil düzen', () => {
 // Düzeltme rapor satırlarını düz bir esnek sütun yapıyor: sütun sayısı ve
 // sırası ne olursa olsun çakışma imkânsız. Izgara varsayımı kalmadığı için
 // yarın eklenecek altıncı bir rapor tablosu da bozulmaz.
-describe('rapor tabloları — mobilde çakışmıyor (#241)', () => {
+describe('rapor tabloları — mobilde çakışmıyor (#243)', () => {
   const JSX = fs.readFileSync(
     path.join(KOK, 'client', 'src', 'views', 'reports.jsx'), 'utf8',
   ).replace(/\r\n/g, '\n');

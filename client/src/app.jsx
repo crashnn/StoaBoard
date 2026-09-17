@@ -123,7 +123,7 @@ function App() {
   // İKİ AYRI SAYI, çünkü iki ayrı soruya cevap veriyorlar:
   //   notifCount  — son bakıştan SONRA gelen okunmamışlar → rozet
   //   notifUnread — hâlâ okunmamış olanların tamamı       → nokta
-  // Zile bakmak "okudum" demek değil; okumak ayrı bir eylem (kart #240).
+  // Zile bakmak "okudum" demek değil; okumak ayrı bir eylem (kart #242).
   const [notifUnread, setNotifUnread]     = useS(0);
   // Rozet "son bakıştan beri gelen okunmamış" sayar (rozet.js). Paneli
   // açan/kapatan her yol buradan geçer: yerel sayaç sıfırlanır VE bakış anı

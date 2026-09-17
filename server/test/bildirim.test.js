@@ -832,7 +832,7 @@ describe('Tümünü oku — NULL kapsanıyor (kart #193)', () => {
 //
 // Kural ÜÇ DOSYAYA yayılıyor ve üçü de ayrı ayrı kilitleniyor: göstergenin
 // kendisi doğru olsa da onu besleyen sayı yanlışsa kusur aynen sürer.
-describe('zil göstergesi — nokta gerçek okunmamışa bağlı (#240)', () => {
+describe('zil göstergesi — nokta gerçek okunmamışa bağlı (#242)', () => {
   const SHELL = yorumsuzDosya(path.join(CLIENT, 'shell.jsx'));
   const APP = yorumsuzDosya(path.join(CLIENT, 'app.jsx'));
   const PANEL = yorumsuzDosya(path.join(CLIENT, 'notifications.jsx'));

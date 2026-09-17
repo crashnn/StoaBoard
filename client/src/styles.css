@@ -3108,7 +3108,7 @@ input, textarea, select, [contenteditable="true"] {
 /* ── Blok düzenleyici (Notion-lite faz 1, 15 Eylül 2026) ─────────────── */
 .doc-block { position: relative; }
 
-/* Blok içindeki tek satır sonları korunuyor (kart #240).
+/* Blok içindeki tek satır sonları korunuyor (kart #241).
    Açıklama metni düz metin olarak saklanıyor ve içinde madde imi listeleri,
    ayraç satırları, girintili bloklar oluyor. `normal` ile bunların hepsi tek
    satıra akıyordu: veri yerindeydi, ekran onu düzleştiriyordu.
@@ -9593,7 +9593,7 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .list-table td:nth-child(n + 3):empty,
   .list-table td:nth-child(n + 3) > :only-child:empty { display: none; }
 
-  /* ── Rapor tabloları ızgaradan MUAF (kart #241) ──────────────────────
+  /* ── Rapor tabloları ızgaradan MUAF (kart #243) ──────────────────────
      KUSUR (17 Eylül 2026, kullanıcının gerçek cihaz turu): denetim kaydında
      "yazılar üst üste gelmiş" — olay başlığı ve zaman damgası çakışıyordu.
 

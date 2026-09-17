@@ -70,7 +70,7 @@ function tumKonumlar(etiket) {
   return yerler;
 }
 
-describe('kaplama panelleri ErrorBoundary içinde (#242)', () => {
+describe('kaplama panelleri ErrorBoundary içinde (#244)', () => {
   for (const [etiket, ad] of KAPLAMALAR) {
     test(`${ad} sarılı — HER geçtiği yerde`, () => {
       // "İLK geçtiği yer" ölçütü BU TESTİN İLK HÂLİNDE VARDI ve mutasyon onu
