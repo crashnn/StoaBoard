@@ -1243,3 +1243,80 @@ describe('sohbete dosya yükleme — kapı, tür, sınır', () => {
     );
   });
 });
+
+// ─── @bahsetme kapsam kapısı: HER İKİ yolda da ───────────────────────────────
+//
+// KUSUR (17 Eylül 2026): bahsetme bildirimi mesajın 80 karakterlik önizlemesini
+// taşıyor, dolayısıyla yalnızca mesajı görme hakkı olan kişiye gitmeli. Bu kapı
+// 12 Eylül'de `mentionAllowed` olarak yazıldı ve SOKET yoluna takıldı
+// (`sockets/chat.js`) — ama REST yoluna (`routes/chat.js` POST /messages) hiç
+// takılmadı. İstemcinin kullandığı yol REST'tir: yani kapısız olan yol, canlıda
+// etkin olan yoldu. Özel kanaldaki bir mesaj, @slug yazılarak platformdaki
+// herhangi birine sızdırılabiliyordu.
+//
+// Kök sebep kapının kendisi değil, TEK YOLDA durmasıydı. Bu yüzden test iki
+// yolu birlikte kilitliyor: biri kapıyı kaybederse kırılır. Sırayı da ölçüyor —
+// kapı yazmadan SONRA gelirse bildirim yine de gider (kapalı başarısızlık).
+
+describe('@bahsetme — kapsam kapısı iki yolda da var', () => {
+  const REST = path.resolve(__dirname, '..', 'src', 'routes', 'chat.js');
+  const SOKET = path.resolve(__dirname, '..', 'src', 'sockets', 'chat.js');
+
+  /** Bahsetme döngüsünden dosyanın sonuna kadar — kapı ve yazma burada. */
+  function bahsetmeBlogu(dosya) {
+    const src = yorumsuzDosya(dosya);
+    const bas = src.indexOf('matchAll(MENTION_RE)');
+    assert.ok(bas !== -1, `bahsetme döngüsü bulunamadı: ${path.basename(dosya)}`);
+    return src.slice(bas);
+  }
+
+  test('REST yolu (istemcinin kullandığı yol) kapıdan geçiyor', () => {
+    const blok = bahsetmeBlogu(REST);
+    assert.ok(
+      /mentionAllowed\(/.test(blok),
+      'routes/chat.js bahsetme döngüsü kapsam sormuyor: bildirim önizlemesi '
+      + 'alan dışındaki ya da özel kanala üye olmayan birine gidebilir.',
+    );
+  });
+
+  test('soket yolu kapıdan geçiyor', () => {
+    assert.ok(/mentionAllowed\(/.test(bahsetmeBlogu(SOKET)), 'sockets/chat.js kapıyı kaybetmiş');
+  });
+
+  test('kapı yazmadan ÖNCE geliyor — kapalı başarısızlık', () => {
+    // Kapı yazma çağrısından sonra gelirse bildirim yine de yazılır; kapının
+    // varlığı yetmez, sırası da değişmez olmalı.
+    const rest = bahsetmeBlogu(REST);
+    const restKapi = rest.indexOf('mentionAllowed(');
+    const restYazma = rest.indexOf('createAndPush(');
+    assert.ok(restKapi !== -1, 'REST: kapı yok (indexOf -1 sıra testini sessizce geçirirdi)');
+    assert.ok(restYazma !== -1, 'REST yolunda bildirim yazma çağrısı bulunamadı');
+    assert.ok(restKapi < restYazma, 'REST: kapı bildirim yazıldıktan sonra geliyor');
+
+    const soket = bahsetmeBlogu(SOKET);
+    const soketKapi = soket.indexOf('mentionAllowed(');
+    const soketYazma = soket.indexOf('prisma.notification.create(');
+    assert.ok(soketKapi !== -1, 'soket: kapı yok');
+    assert.ok(soketYazma !== -1, 'soket yolunda bildirim yazma çağrısı bulunamadı');
+    assert.ok(soketKapi < soketYazma, 'soket: kapı bildirim yazıldıktan sonra geliyor');
+  });
+
+  test('kapıya gerçek kapsam besleniyor, sabit değil', () => {
+    // `sharesWorkspace: true` gibi sabit bir değer kapıyı sessizce açar ve
+    // yukarıdaki üç test yine yeşil kalırdı.
+    const blok = bahsetmeBlogu(REST);
+    const cagri = blok.slice(blok.indexOf('mentionAllowed('), blok.indexOf('if (!canSee)'));
+    assert.ok(
+      /usersShareWorkspace\(/.test(cagri),
+      'alan ortaklığı gerçekten sorulmuyor — kapıya sabit değer besleniyor olabilir',
+    );
+    assert.ok(
+      /userChannelRole\(/.test(cagri),
+      'özel kanal üyeliği gerçekten sorulmuyor',
+    );
+    assert.ok(
+      !/sharesWorkspace:\s*true/.test(cagri) && !/hasChannelRole:\s*true/.test(cagri),
+      'kapıya sabit true besleniyor: kapı var ama hiçbir şeyi reddetmez',
+    );
+  });
+});

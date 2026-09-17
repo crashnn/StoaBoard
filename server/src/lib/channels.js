@@ -274,7 +274,12 @@ export async function listAccessibleChannels(user) {
  * Bu deponun "aynı olgunun birden çok okuyucusu" kusur sınıfı.
  *
  * Dönüş, çağıranın doğrudan yanıta çevirebileceği biçimde:
- *   { ok: true,  workspaceId, receiver, channel }
+ *   { ok: true,  workspaceId, receiver, channel, channelRow }
+ *
+ * `channelRow` yalnızca gerçek bir kanal kaydı varsa dolu (DM'de, 'general'da
+ * ve alansız kullanıcıda null). Çağıranlar aynı satırı yeniden sormasın diye
+ * döndürülüyor: bahsetme kapısı kanalın özel olup olmadığını, yayın da kimlere
+ * gönderileceğini buradan okuyor. Öncesinde aynı satır üç kez sorgulanıyordu.
  *   { ok: false, status, error, message }
  */
 export async function resolveChatTarget(user, { to = null, channel = 'general' } = {}) {
@@ -292,14 +297,15 @@ export async function resolveChatTarget(user, { to = null, channel = 'general' }
     if (!(await usersShareWorkspace(user.id, receiver.id, workspaceId))) {
       return { ok: false, status: 403, error: 'err_user_not_in_team', message: 'Bu kullanıcı aktif takımınızda değil' };
     }
-    return { ok: true, workspaceId, receiver, channel: 'dm' };
+    return { ok: true, workspaceId, receiver, channel: 'dm', channelRow: null };
   }
 
   const workspaceId = await resolveWorkspaceId(user);
   // Alanı olmayan kullanıcı ve 'general' bilerek kapı dışı: 'general' her
   // alanın örtük kanalı, ayrı bir `channels` kaydı olmayabiliyor.
+  let chRow = null;
   if (workspaceId && slug !== 'general') {
-    const chRow = await prisma.channel.findFirst({
+    chRow = await prisma.channel.findFirst({
       where: { workspaceId, slug },
       include: { members: true },
     });
@@ -318,5 +324,5 @@ export async function resolveChatTarget(user, { to = null, channel = 'general' }
       };
     }
   }
-  return { ok: true, workspaceId, receiver: null, channel: slug };
+  return { ok: true, workspaceId, receiver: null, channel: slug, channelRow: chRow };
 }

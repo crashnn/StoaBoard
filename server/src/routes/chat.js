@@ -19,7 +19,13 @@ import {
   usersShareWorkspace,
 } from '../lib/workspace.js';
 import { chatMessageToDict } from '../lib/serializers.js';
-import { userChannelRole, canManageChannel, parseHiddenFor, resolveChatTarget } from '../lib/channels.js';
+import {
+  userChannelRole,
+  canManageChannel,
+  parseHiddenFor,
+  resolveChatTarget,
+  mentionAllowed,
+} from '../lib/channels.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 
 export const chatRouter = Router();
@@ -58,7 +64,7 @@ chatRouter.post(
     if (!hedef.ok) {
       return res.status(hedef.status).json({ error: hedef.error, message: hedef.message });
     }
-    const { workspaceId, receiver, channel } = hedef;
+    const { workspaceId, receiver, channel, channelRow } = hedef;
 
     const replyToId = replyData?.id != null ? parseInt(replyData.id, 10) : null;
 
@@ -104,6 +110,30 @@ chatRouter.post(
         notified.add(slug);
         const m = await prisma.user.findUnique({ where: { slug } });
         if (!m || m.id === user.id) continue;
+
+        // Bahsedilen kişi bu mesajı görme hakkına sahip değilse bildirim
+        // gönderilmez. Aksi halde bir üye, @slug yazarak çalışma alanı
+        // dışındaki ya da özel kanala üye olmayan rastgele birine mesaj
+        // önizlemesi (80 karakter) sızdırabilirdi.
+        //
+        // Bu kapı 12 Eylül 2026'da SOKET yolunda kurulmuştu (sockets/chat.js)
+        // ama REST yoluna hiç takılmadı — ve istemcinin kullandığı yol REST,
+        // yani kapısız olan yol canlıda etkin olan yoldu. Aynı olgunun iki
+        // okuyucusu, bu deponun tanıdık kusur sınıfı. Karar saf mentionAllowed
+        // içinde; DB aramaları (alan ortaklığı, kanal rolü) burada yapılıyor.
+        const isPrivate = channelRow?.type === 'private';
+        const canSee = mentionAllowed({
+          isDm: Boolean(receiver),
+          mentionedIsReceiver: Boolean(receiver) && m.id === receiver.id,
+          sharesWorkspace:
+            !receiver
+            && Boolean(workspaceId)
+            && (await usersShareWorkspace(user.id, m.id, workspaceId)),
+          isPrivateChannel: isPrivate,
+          hasChannelRole: isPrivate ? Boolean(await userChannelRole(channelRow, m.id)) : false,
+        });
+        if (!canSee) continue;
+
         const preview = text.slice(0, 80) + (text.length > 80 ? '…' : '');
         await createAndPush(io, {
           userId: m.id,
@@ -121,12 +151,9 @@ chatRouter.post(
         io?.to(`user_${user.id}`).emit('chat_message', payload);
         io?.to(`user_${receiver.id}`).emit('chat_message', payload);
       } else if (workspaceId) {
-        const chRow = await prisma.channel.findFirst({
-          where: { workspaceId, slug: channel },
-          include: { members: true },
-        });
-        if (chRow?.type === 'private') {
-          for (const cm of chRow.members) {
+        // Kanal kaydı kapıdan geliyor; aynı satır için üçüncü bir sorgu yok.
+        if (channelRow?.type === 'private') {
+          for (const cm of channelRow.members) {
             io?.to(`user_${cm.userId}`).emit('chat_message', payload);
           }
         } else {
