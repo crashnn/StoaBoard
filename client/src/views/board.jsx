@@ -174,6 +174,16 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
       {task.desc && <div className="card-desc-preview">{task.desc}</div>}
 
       <div className="card-meta">
+        {/* Kart numarası — Ayarlar → Görünüm → Geliştirici ile açılıp kapanıyor,
+            varsayılan kapalı. `card-meta` içinde duruyor çünkü sağ üst köşe
+            "BEN" rozetinin, üst şerit de etiketlerin: mutlak konumlandırma
+            ikisiyle de çakışırdı. Çeviriye girmiyor — "#193" bir numara,
+            metin değil. */}
+        {tweaks.showCardIds && (
+          <div className="meta-item card-id" title={window.t?.('board_card_id') || 'Kart numarası'}>
+            #{task.id}
+          </div>
+        )}
         <div className="priority-pill">
           <span className="priority-dot" data-p={task.priority} />
           <span style={{ color: 'var(--ink-muted)' }}>

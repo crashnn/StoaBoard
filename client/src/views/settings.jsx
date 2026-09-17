@@ -1276,6 +1276,23 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
             </div>
           </div>
 
+          {/* Kart numarası — geliştirici kolaylığı, varsayılan kapalı.
+              Arayüzde kart numarası hiçbir yerde görünmüyordu; bir kartı
+              konuşurken ("şu #193") ancak başlığından eşleştirilebiliyordu.
+              Açık olduğunda numara kartta ve çekmecede görünüyor.
+              Anahtar `tweaks` içinde, yani öteki görünüm tercihleriyle aynı
+              yerde saklanıyor ve yeniden yüklemede kalıyor. */}
+          <div className="tweak-group">
+            <div className="tweak-label">{_t('set_app_devtools','Geliştirici')}</div>
+            <div className="tweak-toggle" onClick={() => setTweak('showCardIds', !tweaks.showCardIds)}>
+              <span>{_t('set_app_card_ids','Kart numaralarını göster')}</span>
+              <div className="toggle" data-on={!!tweaks.showCardIds} />
+            </div>
+            <div className="desc" style={{ marginTop: 4 }}>
+              {_t('set_app_card_ids_desc','Kartın ve çekmecenin üstünde #numara görünür. Bir kartı başkasına tarif ederken işe yarar.')}
+            </div>
+          </div>
+
         </div>
       </div>
 

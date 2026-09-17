@@ -1242,6 +1242,7 @@ function App() {
                 onDelete={(id) => { deleteTask(id); closeTaskPage(); }}
                 onCreateTask={(newTask) => setTasks(prev => [newTask, ...prev])}
                 canManageTasks={canManageTasks}
+                tweaks={tweaks}
               />
             ) : null}
             {(view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') && (
@@ -1318,6 +1319,7 @@ function App() {
         onCreateTask={(newTask) => setTasks(prev => [newTask, ...prev])}
         canManageTasks={canManageTasks}
         onOpenPage={openTaskPage}
+        tweaks={tweaks}
       />
       <AddTaskModal open={canManageTasks && modalOpen} onClose={() => { setModalOpen(false); setModalInitialDates(null); }} defaultCol={modalCol} onCreate={createTask} initialDates={modalInitialDates} />
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onAction={handleCmd} />

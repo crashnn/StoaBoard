@@ -156,3 +156,70 @@ test('giriş ekranının adresi `authed` ile belirleniyor, ölü bir `view` değ
     );
   }
 });
+
+// ── Canlı tercih, tohum global'inden okunmamalı ────────────────────────────
+//
+// Kart numarası özelliği (17 Eylül 2026) `tweaks.showCardIds`i çekmeceye PROP
+// olarak taşıyor. Cazip kısayol `window.__TWEAKS__` okumaktı; çekmece zaten
+// başka globaller okuyor (DATA.COLUMNS, window.t) ve bir prop zinciri
+// eklemekten ucuz görünüyor.
+//
+// Ama `__TWEAKS__` ötekilerden farklı: o sunucunun sayfaya gömdüğü BAŞLANGIÇ
+// TOHUMU. Canlı değer React durumunda ve `setTweak` yalnızca onu güncelliyor.
+// Global'den okunsaydı kullanıcı anahtarı açtığında çekmece ESKİ değeri
+// göstermeye devam ederdi: ayar "açık", ekran "kapalı". Sessiz tutarsızlık --
+// istisna yok, hata yok, yalnızca yanlış ekran.
+//
+// Bu testin ölçtüğü şey bir stil tercihi değil: tohum ile canlı durumun
+// karıştırılması, bu depoda `window.io` ve rozet sayacı kusurlarının aynı
+// ailesinden.
+test('çekmece tweaks değerini prop olarak alıyor, tohum global\'inden değil', () => {
+  const drawer = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'drawer.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+
+  assert.doesNotMatch(
+    drawer, /window\.__TWEAKS__/,
+    'drawer.jsx `window.__TWEAKS__` okuyor. O değer sunucunun gömdüğü BAŞLANGIÇ '
+    + 'tohumu, canlı tercih değil: `setTweak` onu güncellemiyor. Okunursa ayar '
+    + 'değiştiğinde çekmece eski değeri gösterir. `tweaks` prop olarak geçilmeli.',
+  );
+
+  // Prop gerçekten alınıyor mu? Yoksa yukarıdaki yasak, hiç kullanılmayan bir
+  // özelliği "koruyor" olurdu.
+  assert.match(
+    drawer, /function TaskDrawer\([^)]*tweaks/,
+    'TaskDrawer `tweaks` prop\'unu almıyor; kart numarası hiçbir zaman görünmez.',
+  );
+
+  // Her iki çağrı yeri de geçirmeli. Biri unutulursa özellik "bazen çalışan"
+  // bir şeye dönüşür: çekmecede görünür, tam ekran kartta görünmez.
+  const app = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'app.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+  // Sayım her çağrının KENDİ bloğu içinde yapılıyor. İlk yazımında
+  // `tweaks={tweaks}` dosyanın tamamında sayılıyordu ve 7 çıkıyordu: başka
+  // bileşenler (SettingsView, TweaksPanel…) de aynı prop'u alıyor. Yani
+  // ölçüt, ölçmek istediği şeyden bağımsız bir sayıya bakıyordu ve iki
+  // çağrıdan biri tweaks'siz olsa bile yeşil kalabilirdi.
+  const eksik = [];
+  let ara = 0;
+  for (;;) {
+    const bas = app.indexOf('<TaskDrawer', ara);
+    if (bas < 0) break;
+    const son = app.indexOf('/>', bas);
+    assert.ok(son > bas, 'TaskDrawer çağrısının sonu bulunamadı');
+    const blok = app.slice(bas, son);
+    if (!/tweaks=\{tweaks\}/.test(blok)) {
+      eksik.push(`satır ${app.slice(0, bas).split('\n').length}`);
+    }
+    ara = son;
+  }
+  assert.ok(ara > 0, 'app.jsx içinde TaskDrawer çağrısı bulunamadı');
+  assert.deepEqual(
+    eksik, [],
+    `Şu TaskDrawer çağrılarına tweaks geçilmiyor: ${eksik.join(', ')}. `
+    + 'Eksik olan çağrıda kart numarası hiç görünmez — özellik "bazen çalışan" '
+    + 'bir şeye döner.',
+  );
+});

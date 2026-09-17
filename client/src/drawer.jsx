@@ -8,7 +8,12 @@ import { API, fmtTimeAgo } from './data.jsx';
 import { DatePicker } from './modals.jsx';
 import { WorkLogSection } from './worklog.jsx';
 
-function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, onCreateTask, canManageTasks = true, pageMode = false, onOpenPage }) {
+// `tweaks` BİLEREK prop, global değil. Çekmece başka globalleri (DATA.COLUMNS,
+// window.t) okuyor ama `window.__TWEAKS__` bunlardan farklı: o sunucunun
+// gömdüğü BAŞLANGIÇ tohumu, canlı durum değil. Oradan okunsaydı anahtar
+// açıldığında çekmece yeniden yükleme yapılana kadar eski değeri gösterirdi —
+// ekran bir şey, ayar başka bir şey derdi. Prop, iki tarafı aynı kaynağa bağlıyor.
+function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, onCreateTask, canManageTasks = true, pageMode = false, onOpenPage, tweaks = {} }) {
   const [detail, setDetail]             = useDrawerState(null);
   const [newComment, setNewComment]     = useDrawerState('');
   const [submitting, setSubmitting]     = useDrawerState(false);
@@ -1043,6 +1048,13 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
             <span>StoaBoard Web</span>
             <span className="sep"><Icon name="chevronRight" size={11} /></span>
             <span style={{ color: 'var(--ink)' }}>{col.title_tr}</span>
+            {/* Kart numarası — Ayarlar → Görünüm → Geliştirici ile açılıyor.
+                Kırıntı satırının sonunda, çünkü çalışırken göz zaten orada. */}
+            {tweaks.showCardIds && (
+              <span className="card-id" title={window.t?.('board_card_id') || 'Kart numarası'}>
+                #{task.id}
+              </span>
+            )}
           </div>
           <div className="drawer-head-actions">
             <button className="icon-btn" title={window.t('drawer_duplicate')} onClick={handleDuplicate} disabled={duplicating}>
