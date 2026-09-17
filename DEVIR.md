@@ -5,13 +5,118 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 17 Eylül 2026 sabahı, **ev makinesinde** (kullanıcı uzaktan
-bağlı; 5432 açık). En taze bölüm **0-AA**.
+**Son güncelleme:** 17 Eylül 2026 öğleden önce, **ev makinesinde** (kullanıcı
+uzaktan bağlı; 5432 açık). En taze bölüm **0-AB**.
 
-> **Kullanıcı yolda, ofise geçiyor.** Ofis makinesinde *yerel* çalışılacaksa
-> 5432 kapalıdır: `npm run mcp:tara` ve `npm run prisma:push` orada koşmaz.
-> Ev makinesine uzaktan bağlanılırsa komutlar ev makinesinde çalışır ve o
-> kısıt geçerli olmaz — ofis ağı yalnızca ekranı taşır.
+> **Ofis makinesinde *yerel* çalışılacaksa 5432 kapalıdır:** `npm run mcp:tara`
+> ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
+> komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
+> ekranı taşır.
+
+---
+
+## 0-AB. 17 Eylül — iki güvenlik kapısı, mobil saha turu
+
+Kullanıcı yolda; ev makinesine uzaktan bağlı çalışıldı. Testler **565 → 577**.
+Beş commit `main`e push edildi (Railway dağıttı).
+
+### Sohbete dosya yükleme kapısı (`eecc25e`)
+
+TODO'daki açık maddeydi. `POST /api/chat/upload` yalnızca `requireAuth`
+taşıyordu: dosya hiçbir kanala/alana bağlı değildi, türü sorulmuyordu, tekrar
+sınırı yoktu. Kart eki ucu **aynı** depoya yazıyor ve tür soruyordu.
+
+Kapı **kopyalanmadı**, ortak yardımcıya çıkarıldı: `resolveChatTarget`
+(`lib/channels.js`). Mesaj gönderme ucundaki kapı zaten doğruydu; ikinci bir
+kopya yazmak yerine tek yere alındı ve iki uç da oradan geçiyor.
+
+**Yol üstünde üç kusur daha çıktı:**
+
+1. **Boyut sınırı yalandı.** multer 10 MB'da kesiyordu; route'lardaki `50 MB`
+   (sohbet) ve `20 MB` (kart eki) kontrolleri **erişilemez koddu**. Kullanıcıya
+   söylenen sınır gerçek sınır değildi. Sayı tek yere alındı
+   (`UPLOAD_MAX_BYTES`), mesaj ondan türetiliyor. Sözlükteki metinler de
+   düzeltildi; `err_chat_file_too_large` (16 Eylül'de eklenmişti) artık
+   üretilmiyor ve sözlükten çıktı.
+2. **Sınır aşımı 500 dönüyordu.** `MulterError` hiçbir yerde yakalanmıyordu;
+   kullanıcı "dosya çok büyük" yerine "Şu an bağlanılamıyor" görüyordu —
+   düzeltilebilir bir kullanıcı hatası, sunucu arızası gibi raporlanıyordu.
+   `uploadErrorHandler` artık 413 üretiyor.
+3. **İstemci ham `fetch` kullandığı için** `apiFetch`'in çeviri katmanı devrede
+   değildi; toast ham kodu gösteriyordu.
+
+**İnce tuzak, testle kilitli:** multer `req.body`'yi akışta **dosyaya kadar**
+gördüğü metin alanlarından doldurur. İstemci `to`/`channel` alanlarını dosyadan
+ÖNCE ekliyor. Yanlış sırada kapı **sessizce** etkisizleşir (her istek
+`general` sayılır) — bu yüzden sıra bir biçim tercihi değil, kapının ön koşulu.
+
+### `@bahsetme` kapsam kapısı (`82251b4`) — daha ağırı
+
+Yükleme işi sırasında bulundu. Bahsetme bildirimi mesajın 80 karakterlik
+önizlemesini taşıyor. `routes/chat.js` POST `/messages` içindeki döngü
+`prisma.user.findUnique({ where: { slug } })` diyordu ve **hiçbir kapsam**
+sormuyordu: özel kanaldaki bir mesaj `@slug` ile platformdaki herhangi birine
+sızdırılabiliyordu.
+
+**Kök sebep kapı değil, kapının tek yolda durmasıydı.** `mentionAllowed`
+12 Eylül'de yazıldı, test edildi ve yalnızca `sockets/chat.js`e takıldı.
+İstemcinin kullandığı yol REST — yani **kapısız olan yol, canlıda etkin olan
+yoldu.** DEVIR 0-J'de kart yorumunda kapatılan kusurun kardeşi.
+
+Bu yüzden düzeltme kapıyı kopyalamakla kalmadı: dört test **iki yolu birlikte**
+kilitliyor. Sıra da ölçülüyor (kapı yazmadan önce) ve kapıya **sabit değer**
+beslenmediği ayrıca doğrulanıyor — `sharesWorkspace: true` beslenirse kapı
+yerinde durur ama hiçbir şeyi reddetmez, ilk üç test yeşil kalırdı.
+
+Yol üstünde: `resolveChatTarget` artık kanal kaydını da döndürüyor
+(`channelRow`). Aynı satır **üç kez** sorgulanıyordu — kapıda, bahsetmede,
+yayında. Şimdi bir kez.
+
+### Mutasyon turları iki kez testin kendi kör noktasını buldu
+
+Yükleme turunda 6/6, bahsetme turunda 4/4 mutasyon yakalandı. **İkisinde de
+tur, testin kendi zayıflığını gösterdi:**
+
+- Sıra kontrolü `lastIndexOf` ile bakıyordu; başa eklenen fazladan bir `file`
+  alanını görmüyordu (son `file` hâlâ sonda kalıyor).
+- Kapı hiç yokken `indexOf` −1 döndüğü için `−1 < yazma` doğru çıkıyor ve sıra
+  testi sessizce geçiyordu.
+
+CLAUDE.md'nin kuralı bir kez daha karşılığını verdi: *kaynak tarayan test,
+koruduğu satır kasten bozulup kırıldığı görülmeden bitmiş sayılmaz.*
+
+### Mobil saha turu (kullanıcı, canlıda, Android/Chrome)
+
+Dört bulgu, hiçbiri koda girmedi; panoda kart açıldı (#192–#195):
+
+- **Dil değiştirince vitrine atıyor.** `/giris`te dili değiştirince kullanıcı
+  vitrine düşüyor; dönünce dil değişmiş oluyor. Şüphe: yeniden yükleme + `/`
+  yönlendirmesi, dönüşte hedef korunmuyor.
+- **"Tümünü oku" sonrası bildirimler okunmamış kalıyor.** İşlem başarılı
+  görünüyor. "Tümü 10" = "Okunmamış 10" iken listedeki ilk kayıtta nokta yok.
+  Sessiz başarısızlık şüphesi; sayaç ayrı kaynaktan besleniyor olabilir.
+- **Sohbet paneli karartılmış.** Perde panelin üstüne boyanıyor gibi; dar
+  ekranda z-index / yığılma bağlamı.
+- **Çizelge dar ekranda kullanılamaz.** Ürün kararı bekliyor: mobilde gizle mi,
+  sadeleştirilmiş kip mi.
+
+### Panoya yazıldı (Netaş alanı, `Ana Proje`, MCP ile)
+
+`#189` ve `#190` İncelemede + ayrıntılı yorum; `#191` (bayt kotası, şema),
+`#192`–`#195` (mobil). **Uyarı:** MCP'nin aktif alanı tarayıcı oturumuyla
+ortaktır — kullanıcı mobilde gezerken alan kendiliğinden değişti (15 → 1 → 15).
+Panoya yazmadan önce `list_projects` ile hangi alanda olduğunu **doğrula**.
+
+### Kaldığı yer / yeniden başlayınca
+
+1. `git fetch && git status`. `main` push edilmiş durumda, çalışma ağacı temiz.
+2. **0-Z'nin canlı doğrulama listesi hâlâ açık** ve önceliği yüksek: içe
+   aktarma canlıda denenmedi, notlar iki hesapla doğrulanmadı.
+3. **Bu turun canlı doğrulaması:** (a) sohbete dosya yükle — kanal ve DM'de
+   çalışmalı; üye olmadığın özel kanala yüklenememeli. (b) 10 MB üstü dosya
+   413 ve doğru mesaj vermeli, 500 değil. (c) Özel kanalda alan dışından
+   birini `@` ile an — bildirim **gitmemeli**.
+4. Sırada: mobil bulgular (#192–#195) ve vitrin demo alanı (0-Z akşam eki).
 
 ---
 
@@ -63,10 +168,7 @@ beklenen: uygulama modülü yüklenirken bağlantı deniyor, ölçüt alttaki
 1. `git fetch && git status`. **0-Z'nin canlı doğrulama listesi hâlâ açık** ve
    önceliği bundan yüksek: içe aktarma canlıda denenmedi, notlar iki hesapla
    doğrulanmadı, Raporlar'da dışa/içe aktarma satırları görülmedi.
-2. Ev makinesinde **sohbete dosya yükleme kusuru** üstünde çalışılıyor
-   (TODO "Bilinen kusurlar", `POST /api/chat/upload` kapısız ve sınırsız).
-   Ayrı commit'te bırakılacak, **push edilmeyecek** — kullanıcı diff'i
-   görmeden canlıya gitmesin. Ofiste `git log origin/main..main` ile bak.
+2. Sohbete dosya yükleme kusuru **kapandı** ve push edildi — ayrıntı 0-AB.
 3. Vitrin demo alanı ve ekran görüntüsü (0-Z akşam eki) canlıya yazıyor,
    kullanıcı onayı bekliyor. Apex DNS kod işi değil, Railway paneli.
 
