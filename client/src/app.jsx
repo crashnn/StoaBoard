@@ -984,6 +984,21 @@ function App() {
       setView('board');
     }
     else if (action.startsWith('goto:')) setView(action.slice(5));
+    // Paletten kart açma (17 Eylül 2026): "#193" aramasının ve başlıkla
+    // görev aramasının hedefi. `openTaskById` zaten kartı yerel listede
+    // arıyor, bulamazsa sunucudan çekiyor, gerekirse projeyi değiştiriyor
+    // ve gerçekten yoksa toast gösteriyor — yani başka bir projedeki kart
+    // da, silinmiş bir kart da doğru davranışı alıyor.
+    else if (action.startsWith('open:task:')) {
+      const taskId = parseInt(action.slice('open:task:'.length), 10);
+      // Sayı değilse sessizce geçmiyoruz: paletten gelen her eylem bir
+      // kullanıcı tıklamasıdır, yokluk hâli görünür olmalı.
+      if (Number.isFinite(taskId) && taskId > 0) openTaskById(taskId);
+      else window.showToast?.(window.t?.('app_err_task_missing') || 'Görev bulunamadı', 'error');
+    }
+    // Yalnızca yol gösteren satır (paletteki "#" ipucu); tıklanınca palet
+    // kapanıyor, başka bir şey olmuyor.
+    else if (action === 'noop') { /* bilerek boş */ }
     else if (action.startsWith('open:note:')) {
       const noteId = parseInt(action.slice('open:note:'.length), 10);
       if (Number.isFinite(noteId)) {

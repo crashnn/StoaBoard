@@ -16,7 +16,7 @@
 // Bu test o sınıfı kapatır: deneyimle bulunan bir kusuru, bir daha
 // deneyim gerektirmeyecek bir kurala çevirir.
 
-import { test } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -282,4 +282,100 @@ test('çizelge dar ekranda gizleniyor ama görünüm seçicide duruyor (kart #19
     'Dar ekranda gösterilecek açıklama metni yok; kullanıcı yine boş bir '
     + 'alan görür.',
   );
+});
+
+// ── Komut paletinin yaydigi her eylemin bir karsiligi olmali ──────────────
+//
+// Bu dosyanin konusuyla ayni sinif: ORADA "okunan ama hic atanmayan" deger,
+// BURADA "yayilan ama hic karsilanmayan" eylem. Ikisinin de belirtisi ayni --
+// sessizlik. Karsiligi olmayan bir palet satiri tiklaniyor, palet kapaniyor,
+// hicbir sey olmuyor; ne hata, ne istisna.
+//
+// KUSUR (17 Eylul 2026, "#193 ile arama" isi sirasinda gorulda): palet
+// GOREVLERI HIC ARAMIYORDU -- yalnizca komutlar ve notlar. Oysa yer tutucu
+// metni "Komut, GOREV veya sayfa ara..." diyordu. Vaat edilen yapilmiyordu ve
+// arama "calisiyor" gorunuyordu, yalnizca sonuc vermiyordu.
+//
+// Bu yuzden test IKI yonu birden olcuyor: yer tutucu gorev vaat ediyorsa
+// palet gorev ARAMALI, ve paletin urettigi her eylem app.jsx'te
+// KARSILANMALI.
+describe('Komut paleti — vaat, arama ve eylem karşılığı', () => {
+  const palet = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'palette.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+  const app = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'app.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+  const veri = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'data.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+
+  test('yer tutucu görev vaat ediyorsa palet görev arıyor', () => {
+    // Olcut metnin kendisi degil VAADI: iki dilde de "görev"/"task" geciyorsa
+    // aramanin gorev kaynagina bakmasi gerekiyor.
+    const vaat = /palette_ph:'[^']*(görev|task)/i.test(veri);
+    const ariyor = /__APP_TASKS__/.test(palet);
+    assert.ok(
+      !vaat || ariyor,
+      'Arama kutusunun yer tutucusu görev aramayı VAAT EDİYOR ama palet '
+      + 'görev kaynağına (`window.__APP_TASKS__`) hiç bakmıyor. Kullanıcı '
+      + 'arıyor, sonuç çıkmıyor, hata da yok — sessiz kusur.',
+    );
+  });
+
+  test('# ile numara araması var ve yalnızca kart döndürüyor', () => {
+    assert.match(
+      palet, /\^#/,
+      "Palette `#` ile başlayan sorgu için bir dal yok; kart numarasıyla "
+      + 'arama çalışmaz (kullanıcı isteği, 17 Eylül).',
+    );
+    // ID kipi komut/not gostermemeli: "#193" yazan komut aramiyor.
+    // Dalin ERKEN DONMESI bunun mekanizmasi; return yoksa sonuclar
+    // komutlarla karisir.
+    const i = palet.indexOf('^#');
+    const dal = palet.slice(i, i + 2200);
+    assert.match(
+      dal, /return sonuclar;/,
+      'ID kipi erken dönmüyor; kart sonuçları komut ve notlarla karışır.',
+    );
+  });
+
+  /** Kaynaktan `action: 'x'` ve `action: 'x' + y` biçimlerini toplar. */
+  const eylemler = (src) => {
+    const out = new Set();
+    for (const m of src.matchAll(/action:\s*'([a-z:]+)'/g)) out.add(m[1]);
+    // `action: 'open:task:' + t.id` gibi birlestirmeler -> onek olarak
+    for (const m of src.matchAll(/action:\s*'([a-z:]+:)'\s*\+/g)) out.add(m[1]);
+    return out;
+  };
+
+
+  test('paletin ve komut listesinin her eylemi karşılanıyor', () => {
+    const tum = new Set([...eylemler(palet), ...eylemler(veri)]);
+    assert.ok(tum.size >= 10, `yalnızca ${tum.size} eylem bulundu; tarama deseni bozulmuş olabilir`);
+
+    // Karşılaştırma DÜZ METİNLE yapılıyor, düzenli ifadeyle değil. Eylem
+    // adları yalnızca küçük harf ve iki nokta taşıyor, yani kaçışa gerek
+    // yok — ve kaçışlı yazım bu oturumda ÜÇ kez ters tepti (şablon
+    // dizesinde sınır sandığım kaçış backspace çıktı, iki kez de yazma
+    // katmanı ters bölüyü yuttu). Kaçışa güvenmeyen yazımda o tuzağın
+    // hiçbir biçimi yok.
+    const karsilanmayan = [];
+    for (const e of tum) {
+      const tam = app.includes("action === '" + e + "'");
+      const onek = app.includes("action.startsWith('" + e);
+      // `goto:board` gibi olanlar genel `startsWith('goto:')` dalına düşüyor.
+      const kok = e.includes(':') ? e.slice(0, e.indexOf(':') + 1) : null;
+      const genel = kok ? app.includes("action.startsWith('" + kok + "')") : false;
+      if (!tam && !onek && !genel) karsilanmayan.push(e);
+    }
+
+    assert.deepEqual(
+      karsilanmayan, [],
+      'Bu eylemler palette ya da komut listesinde üretiliyor ama handleCmd '
+      + 'onları karşılamıyor. Kullanıcı tıklıyor, palet kapanıyor, hiçbir '
+      + 'şey olmuyor — ne hata ne istisna. Karşılanmayanlar: '
+      + karsilanmayan.join(', '),
+    );
+  });
 });

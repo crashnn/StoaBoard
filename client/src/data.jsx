@@ -849,7 +849,10 @@ window.APP_I18N = {
     shell_copy:'Kopyala', shell_copied:'Kopyalandı!', shell_show:'Göster', shell_hide:'Gizle',
     shell_cmd_title:'Komut paleti (Ctrl+K)',
     // Palette
-    palette_ph:'Komut, görev veya sayfa ara...',
+    palette_ph:'Komut, görev veya sayfa ara — numara için #193',
+    palette_group_tasks:'Görevler',
+    palette_id_hint:'Kart numarası yaz: #193',
+    palette_task_elsewhere:'Bu projede değil — açmayı dene',
     palette_navigate:'gez', palette_select:'seç', palette_close:'kapat',
     // Chat extra
     chat_search_ph:'Sohbet ara...', chat_team_channels:'Takım kanalları',
@@ -1760,7 +1763,10 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     shell_copy:'Copy', shell_copied:'Copied!', shell_show:'Show', shell_hide:'Hide',
     shell_cmd_title:'Command palette (Ctrl+K)',
     // Palette
-    palette_ph:'Search commands, tasks or pages...',
+    palette_ph:'Search commands, tasks or pages — use #193 for a number',
+    palette_group_tasks:'Tasks',
+    palette_id_hint:'Type a card number: #193',
+    palette_task_elsewhere:'Not in this project — try opening it',
     palette_navigate:'navigate', palette_select:'select', palette_close:'close',
     // Chat extra
     chat_search_ph:'Search chats...', chat_team_channels:'Team channels',

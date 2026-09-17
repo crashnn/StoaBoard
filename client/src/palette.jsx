@@ -13,6 +13,63 @@ function CommandPalette({ open, onClose, onAction }) {
   }, [open]);
 
   const flat = useM(() => {
+    // ── "#193" — kart numarasıyla arama ───────────────────────────────────
+    //
+    // Kullanıcı isteği (17 Eylül 2026): kart numaraları artık arayüzde
+    // görünebiliyor (Ayarlar → Görünüm → Geliştirici) ama arama onları
+    // bulamıyordu; numarayı bilip kartı gözle aramak gerekiyordu.
+    //
+    // ID kipinde YALNIZCA kart sonucu dönüyor, komut ve not göstermiyoruz:
+    // "#193" yazan biri komut aramıyor, gürültü olurdu.
+    const idEslesme = /^#\s*(\d*)$/.exec(q.trim());
+    if (idEslesme) {
+      const ham = idEslesme[1];
+      const grup = window.t?.('palette_group_tasks') || 'Görevler';
+
+      // Yalnızca "#" yazılmışsa ne yapacağını söyle. Boş liste "sonuç yok"
+      // ekranına düşerdi ve kullanıcı özelliğin çalışmadığını sanardı.
+      if (!ham) {
+        return [{
+          label: window.t?.('palette_id_hint') || 'Kart numarası yaz: #193',
+          icon: 'search',
+          action: 'noop',
+          group: grup,
+        }];
+      }
+
+      // `__APP_TASKS__` AKTİF PROJENİN kartları (app.jsx orada tutuyor).
+      // Başka projedeki kart burada yok — aşağıdaki "yine de aç" dalı tam
+      // bu yüzden var.
+      const gorevler = window.__APP_TASKS__ || [];
+      const tam = gorevler.filter(t => String(t.id) === ham);
+      // Önek eşleşmesi bilinçli: "gözle seçmesi zor" denen sorun tam olarak
+      // numarayı tam hatırlamamak. "#19" yazan #190–#199'u da görüyor.
+      const onek = gorevler.filter(t => String(t.id) !== ham && String(t.id).startsWith(ham));
+
+      const sonuclar = [...tam, ...onek].slice(0, 8).map(t => ({
+        label: `#${t.id} · ${t.title}`,
+        icon: 'circleCheck',
+        action: 'open:task:' + t.id,
+        group: grup,
+        sub: t.col || null,
+      }));
+
+      // Aktif projede tam eşleşme yoksa yine de açmayı teklif et. Ölü bir
+      // teklif değil: `openTaskById` kartı sunucudan çekiyor ve gerekirse
+      // projeyi değiştiriyor; gerçekten yoksa "Görev bulunamadı" diyor.
+      // Sessizce boş liste döndürmek, var olan bir kartı bulunamaz yapardı.
+      if (!tam.length) {
+        sonuclar.push({
+          label: `#${ham}`,
+          icon: 'search',
+          action: 'open:task:' + ham,
+          group: grup,
+          sub: window.t?.('palette_task_elsewhere') || 'Bu projede değil — açmayı dene',
+        });
+      }
+      return sonuclar;
+    }
+
     const all = [];
     DATA.COMMANDS.forEach(g => g.items.forEach(it => all.push({ ...it, group: g.group })));
     let base = all;
@@ -20,6 +77,28 @@ function CommandPalette({ open, onClose, onAction }) {
       const ql = q.toLowerCase();
       base = all.filter(it => it.label.toLowerCase().includes(ql));
     }
+
+    // ── Başlıkla görev arama ──────────────────────────────────────────────
+    //
+    // KUSUR (17 Eylül 2026, `#id` işi sırasında görüldü): yer tutucu metni
+    // "Komut, GÖREV veya sayfa ara..." diyordu ama palet görevleri hiç
+    // aramıyordu — yalnızca komutlar ve notlar. Vaat edilen, yapılmıyordu.
+    // Sessiz bir kusur: arama çalışıyor görünüyor, yalnızca sonuç vermiyor.
+    if (q && (window.__APP_TASKS__ || []).length) {
+      const ql = q.toLowerCase();
+      const gorevHits = (window.__APP_TASKS__ || [])
+        .filter(t => (t.title || '').toLowerCase().includes(ql))
+        .slice(0, 6)
+        .map(t => ({
+          label: t.title,
+          icon: 'circleCheck',
+          action: 'open:task:' + t.id,
+          group: window.t?.('palette_group_tasks') || 'Görevler',
+          sub: t.col || null,
+        }));
+      base = [...base, ...gorevHits];
+    }
+
     if (q && (DATA.NOTES || []).length) {
       const ql = q.toLowerCase();
       const noteHits = (DATA.NOTES || [])
