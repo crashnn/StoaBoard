@@ -1292,19 +1292,25 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       öksüz dosya temizliğini de mümkün kılar: bugün mesaja dönüşmeyen
       yükleme hiçbir şeye bağlı değil ve kimse silemiyor.
 
-- [ ] **GÜVENLİK: sohbet mesajındaki `@bahsetme` platform geneli arıyor**
-      *(17 Eylül 2026, yükleme kapısı üstünde çalışırken bulundu)*. Bu, 12
-      Eylül'de kart yorumunda kapatılan kusurun (DEVIR 0-J) **REST sohbet**
-      yolundaki kardeşi ve hâlâ açık. `routes/chat.js` POST `/messages`
-      içindeki bahsetme döngüsü `prisma.user.findUnique({ where: { slug } })`
-      diyor ve **hiçbir kapsam sormuyor**: bildirim mesajın 80 karakterlik
-      önizlemesini taşıdığı için, özel bir kanaldaki mesaj platformdaki
-      herhangi bir kullanıcıya `@slug` yazılarak sızdırılabilir.
-      Kapı zaten yazılmış ve test edilmiş durumda (`mentionAllowed`,
-      `lib/channels.js`) ve **soket yolunda uygulanıyor** (`sockets/chat.js`
-      ~245, gerekçe yorumuyla). İstemcinin kullandığı yol REST, yani kapısız
-      olan yol canlıda etkin olan yol. Çözüm mevcut kalıbı REST ucuna taşımak;
-      `sockets/chat.js` bire bir örnek.
+- [x] **GÜVENLİK: sohbet mesajındaki `@bahsetme` platform geneli arıyordu**
+      *(17 Eylül 2026 bulundu ve aynı gün kapandı)*. 12 Eylül'de kart
+      yorumunda kapatılan kusurun (DEVIR 0-J) **REST sohbet** yolundaki
+      kardeşiydi. `routes/chat.js` POST `/messages` içindeki bahsetme döngüsü
+      `prisma.user.findUnique({ where: { slug } })` diyor ve hiçbir kapsam
+      sormuyordu; bildirim mesajın 80 karakterlik önizlemesini taşıdığı için
+      özel kanaldaki bir mesaj `@slug` ile platformdaki herhangi birine
+      sızdırılabiliyordu.
+      **Kök sebep kapı değil, kapının TEK YOLDA durmasıydı:** `mentionAllowed`
+      zaten yazılı ve test ediliydi, ama yalnızca `sockets/chat.js`e takılmıştı.
+      İstemcinin kullandığı yol REST, yani kapısız olan yol canlıda etkin olan
+      yoldu. Aynı olgunun iki okuyucusu — bu deponun tanıdık sınıfı.
+      Dört test **iki yolu birlikte** kilitliyor (biri kapıyı kaybederse
+      kırılır), sıra da ölçülüyor (kapı yazmadan önce), ve kapıya sabit değer
+      beslenmediği ayrıca doğrulanıyor. Dört mutasyonun dördü yakalandı;
+      mutasyon turu sıra testinin kendi zayıflığını da buldu (kapı hiç yoksa
+      `indexOf` −1 döndüğü için test sessizce geçiyordu).
+      **Yol üstünde:** `resolveChatTarget` artık kanal kaydını da döndürüyor —
+      aynı satır üç kez sorgulanıyordu, şimdi bir kez.
 
 #### Mobil saha turu — 17 Eylül 2026
 
