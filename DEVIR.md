@@ -5,13 +5,152 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 17 Eylül 2026 öğleden önce, **ev makinesinde** (kullanıcı
-uzaktan bağlı; 5432 açık). En taze bölüm **0-AB**.
+**Son güncelleme:** 17 Eylül 2026 öğleden sonra, **ofis makinesinde**
+(5432 kapalı; kullanıcı aynı anda ev makinesine uzaktan bağlı çalıştı).
+En taze bölüm **0-AC**.
 
 > **Ofis makinesinde *yerel* çalışılacaksa 5432 kapalıdır:** `npm run mcp:tara`
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AC. 17 Eylül öğleden sonra — mobil üçlü, kart numarası, dört karar
+
+**İki makine aynı anda çalıştı:** bu tur ofis makinesinde (5432 kapalı,
+`mcp:tara` ve `prisma:push` koşmaz), kullanıcı paralel olarak ev makinesinde.
+Çakışma olmadı ama pano tur boyunca altımızda değişti — aşağıda.
+
+Testler **577 → 585**. Dört commit `main`e push edildi, Railway dağıttı.
+
+### Mobil üçlü (0-AB'nin saha turundan) — üçü de kapandı
+
+**`dd44764` — bildirim işlemleri sessizce başarısız oluyordu (#193).**
+`notifications.jsx`teki beş işlemin beşi de ekranı sunucuya yazmadan ÖNCE
+güncelliyor ve hatayı `catch (_) {}` ile yutuyordu. Ekran "oldu", kayıt
+"olmadı" diyordu. Sunucu tarafı doğruydu.
+
+**Kartın kanıtı kısmen yanlış okumaydı ve bunu bilmek önemli:** "Tümü 10 =
+Okunmamış 10" bir kusur belirtisi DEĞİL — sekme sayıları 15 Eylül'den beri
+yalnızca okunmamışı sayıyor. İlk kayıtta nokta olmaması da tutarlı. Rozetin
+ayrı kaynaktan beslendiği doğru ama bilinçli (`rozet.js`). Yani kartın üç
+"ölçülebilen" bulgusundan üçü de açıklanabilir davranıştı; asıl kusur başka
+yerdeydi.
+
+**Kök sebep KANITLANMADI:** mobildeki olay yeniden üretilemedi. Düzeltme
+kusuru kapatmıyor, **teşhis edilebilir** kılıyor — geri alma + toast. Bir
+dahaki denemede ya çalışacak ya sebebini söyleyecek.
+
+**`02177dc` — sohbet perdesi paneli karartıyordu (#194).** Perde panelin kendi
+`::before`'uydu (`position:fixed; inset:0; z-index:-1`). Panel açıkken
+`transform` taşıyor ve transform İKİ şey birden yapar: yığılma bağlamı açar
+(negatif z-index dışarı çıkamaz) ve sabit konumlu torunlar için kapsayıcı blok
+olur (`inset:0` ekranı değil PANELİ kaplar). Kural amacının tam tersini
+yapıyordu. Perde `body`ye taşındı (z-index 74, panel 75).
+
+**`0992aa4` — giriş ekranında dil değiştirince vitrine düşme (#192).** İki
+doğru parça, aradaki yanlış varsayım. `app.jsx`teki adres etkisi
+`view === 'auth'` dalı taşıyordu ama **`setView('auth')` hiçbir yerde
+çağrılmıyor** — giriş ekranını `authed` açıyor. Ölü dal yüzünden adres `/giris`
+iken sessizce `/` yapılıyordu; `switchLang`in `location.reload()` çağrısı da o
+adresi yüklüyordu. Oturum yokken `/` vitrin demek. `window.io` ile aynı kök
+sebep: okunan ama hiç atanmayan değer.
+
+Yol üstünde ikinci bir kusur kapandı: önyükleme sürerken `authed` false olduğu
+için giriş YAPMIŞ kullanıcı da bir an `/giris`e itiliyordu ve geri tuşu onu
+giriş ekranına atıyordu. `loading` kapısı eklendi.
+
+**Üçü de canlıda İÇERİKTEN doğrulandı** (paketten `notif_err_action` ve
+`body:has(.chat-panel` arandı, `view==="auth"` yokluğu ölçüldü).
+**Kullanıcının mobil doğrulaması HENÜZ YAPILMADI** — kartlar bu yüzden
+Tamamlandı'da değil İncelemede, adım adım test talimatı yorumlarında.
+
+> **Paket hash'i dağıtım doğrulaması için GÜVENİLMEZ.** Canlı JS paketi
+> yerelde derlenenden farklı hash ve farklı boyut taşıyor (739 KB / 507 KB);
+> Railway parça bölmeyi farklı uyguluyor. Hash bekleyen bir yoklama boşuna
+> bekler. Ölçüt paketin İÇİNDE bir dizi aramaktır.
+
+### `338c2d5` — kart numarası gösterme anahtarı (kullanıcı önerisi)
+
+Ayarlar → Görünüm → Geliştirici → "Kart numaralarını göster", varsayılan
+kapalı. Açıkken numara kartta (`card-meta`) ve çekmecenin kırıntı satırında.
+
+İki karar kayda değer:
+
+- **Anahtar Tweaks paneline KONMADI, Ayarlar'a kondu.** Tweaks paneli
+  (`tweaks.jsx`) daha doğal görünüyor ama **ulaşılamıyor**: `tweaksAvailable`
+  bir üst çerçeveden gelen `postMessage` ile açılıyor (`__activate_edit_mode`),
+  gömülü bir editör ortamından kalma. Oraya konsa özellik yazılmış ama
+  erişilemez olurdu.
+- **`tweaks` çekmeceye PROP olarak geçiyor, `window.__TWEAKS__` değil.** O
+  global sunucunun gömdüğü BAŞLANGIÇ TOHUMU; canlı değer React durumunda ve
+  `setTweak` yalnızca onu güncelliyor. Global'den okunsaydı anahtar açıldığında
+  çekmece eski değeri gösterirdi: ayar "açık", ekran "kapalı". Testle kilitli.
+
+### Dört ürün kararı (kod değil, karar)
+
+- **#120 süreyi kim girer → bugünkü hâl kalıyor, bilinçli seçim olarak.**
+  Kişi kendi süresini girer, onay katmanı yok. Onay akışı Jira'yı ağır yapan
+  katmanın ta kendisi. **Ödün:** beyan edilen emek denetlenmiyor; ekip
+  büyüdüğünde yeniden açılacak madde bu. **Kapandı.**
+- **#122 sohbetin kapsamı → #117'ye bağlandı.** Görünürlük modeli yokken
+  "proje kanalı"nı kimin göreceğinin cevabı yok. **Kapandı** (bağımsız açık
+  madde olmaktan çıktı). #119 da aynı sebeple #117'yi bekliyor.
+- **#121 bildirim kesme → atama + bahsetme keser, gerisi sessiz birikir.**
+  Teslim tarihi bilerek dışarıda: her sabah bir dalga kesme üretir, en hızlı
+  "bildirimleri kapatma" sebebi budur. E-posta da aynı sınırı izler.
+  **Kod işi kaldı** (Yapılacak'ta); kesme kararı TEK yerden verilmeli.
+- **#195 mobil çizelge → dar ekranda gizle + "geniş ekranda" notu.**
+  Sadeleştirme işi kırık olmaktan çıkarmaz, kırıklığı uğraşılmış hâle getirir.
+  **Kod işi kaldı.** Açık soru: eşik 768 mi, tablet için 900 mü.
+
+### Pano tur boyunca değişti: TODO.md panoya taşındı
+
+Kullanıcı ev makinesinde TODO.md'yi panoya boşalttı — **26 → 51 açık kart**
+(#204 ve sonrası). **Bu yeni iş DEĞİL:** hepsi TODO'da zaten bilinçli
+ertelenmiş maddeler, gerekçeleri kartların içinde. Çoğu `backlog` + `low`.
+Sayıya bakıp panik yapma; bugünkü gerçek yük değişmedi.
+
+**Sonuç olarak TODO.md artık tek kaynak değil.** Bir madde ararken panoya da
+bak; ikisi ayrışmışsa panoya güven.
+
+### Mutasyon turları ÜÇ KEZ testin kendi kör noktasını buldu
+
+0-AB'de iki kez olmuştu, bu turda üç kez. Sayı artık tesadüf sayılamaz.
+
+1. **Sabit pencere komşu işleve taştı.** "Geri alma var mı" taraması 700
+   karakterlik pencereyle bakıyordu; `markAllRead`in yakalayıcısı boşaltılınca
+   pencere BİR SONRAKİ işleve taşıyor, oradaki `geriAl(onceki` çağrısını
+   görüyor ve test yeşil kalıyordu. Tarama, koruması gereken şeyi komşusunun
+   kodundan **ödünç alıp aklıyordu**. Sınır artık bir sonraki `const <ad> =`.
+2. **Ters bölü + b, şablon dizesinde SINIR değil BACKSPACE karakteridir.**
+   Bağımlılık listesi o kaçışla aranıyordu ve desen hiçbir şeye eşleşmiyordu.
+   Liste artık ayrıştırılıp küme olarak karşılaştırılıyor — kaçışa güvenen
+   yazım yok.
+3. **Global sayım, ölçtüğü şeyden bağımsızdı.** `tweaks={tweaks}` dosyanın
+   TAMAMINDA sayılıyordu ve 7 çıkıyordu (SettingsView, TweaksPanel de aynı
+   prop'u alıyor). İki `TaskDrawer` çağrısından biri tweakssiz olsa bile test
+   yeşil kalabilirdi. Sayım artık her çağrının kendi bloğu içinde.
+
+**Ve bir kez de CSS'te yorum tuzağı düştü:** `kontrast.test.js`e yazılan perde
+taraması ilk koşusunda YANLIŞ ALARM verdi, çünkü `styles.css`teki kusuru
+ANLATAN yorum yasaklı metnin kendisini içeriyordu (`.chat-panel`,
+`position: fixed`). 11 Eylül'deki tuzağın CSS'teki kardeşi. **Kaynak tarayan
+test yazıyorsan, dil ne olursa olsun yorumları önce boşluğa çevir.**
+
+### Kaldığı yer / yeniden başlayınca
+
+1. `git fetch && git status`. `main` push edilmiş, çalışma ağacı temiz.
+2. **Bu turun canlı doğrulaması, öncelikli:** kullanıcı mobilde (a) "Tümünü
+   oku"ya bassın — çalışmazsa artık kırmızı toast çıkıyor, o metin kök sebebi
+   verir; (b) sohbet panelini açsın — panel net, ARKASI kararmış olmalı;
+   (c) `/giris`te dili değiştirsin — giriş ekranında kalmalı. Üçü de
+   İncelemede'de bekliyor.
+3. **0-Z'nin canlı doğrulama listesi HÂLÂ açık** ve üç turdur devrediyor: içe
+   aktarma canlıda denenmedi, notlar iki hesapla doğrulanmadı.
+4. Karara bağlanmış iki kod işi hazır bekliyor: #121 (bildirim kesme) ve #195
+   (mobil çizelge). İkisinin de kuralı kartın yorumunda yazılı.
 
 ---
 

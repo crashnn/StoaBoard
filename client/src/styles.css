@@ -3925,12 +3925,15 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
 
 /* ─── LAYOUT ─────────────────────────────────────────────────── */
 .auth-page {
-  height: 100vh; width: 100vw; overflow: hidden;
+  /* `dvh` mobilde adres cubugu acilip kapandikca dogru yuksekligi verir;
+     `vh` orada en buyuk degeri dondurup alt kismi cubugun altina itiyor.
+     `chat-panel` ayni ikiliyi zaten kullaniyor, kalip ondan. */
+  height: 100vh; height: 100dvh; width: 100vw; overflow: hidden;
   display: grid; grid-template-columns: 2fr 1fr;
   background: var(--bg);
 }
 .auth-visual {
-  position: relative; height: 100vh; width: 100%;
+  position: relative; height: 100vh; height: 100dvh; width: 100%;
   overflow: hidden; display: flex; flex-direction: column;
 }
 .auth-visual::after {
@@ -4019,11 +4022,29 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
 .stats-row span { font-size: 12.5px; color: var(--color-ink-muted); }
 
 /* ─── SAĞ TARAF ───────────────────────────────────────────────── */
+/* KUSUR (17 Eylül 2026, kullanıcı ekran görüntüsü): tarayıcı tam ekran
+   DEĞİLKEN kayıt formunun başlığı üstten kesiliyor ve ULAŞILAMIYORDU.
+   F11 ile sorun kayboluyordu, o yüzden "sıkışık görünüyor" diye okunuyordu.
+
+   Sebep `align-items: center`. Bir esnek kapsayıcıda öğe kapsayıcıdan
+   UZUNSA, ortalama taşmayı iki yana EŞİT dağıtır; üste taşan kısım ise
+   kaydırmayla ulaşılamaz, çünkü kaydırma yalnızca bitiş yönünde çalışır.
+   `overflow-y: auto` burada yanlış bir güven veriyordu: çubuk vardı ama
+   kesilen yeri açmıyordu.
+
+   Rakam: 768px ekranda tarayıcı çubuklarıyla görünür alan ~658px, kayıt
+   formu dolgusuyla ~700px. ~42px taşma, yarısı üstten kesiliyor.
+
+   ÇÖZÜM `margin: auto`. Otomatik kenar boşluğu yalnızca POZİTİF boş alanı
+   emer; alan negatifken sıfıra iner, yani öğe başa yaslanır ve tamamı
+   kaydırılabilir kalır. `align-items: safe center` de aynı işi görürdü ama
+   desteklenmeyen tarayıcıda bildirim tümden düşer ve kural sessizce
+   kaybolur — otomatik kenar boşluğunun öyle bir eşiği yok. */
 .auth-form-wrap {
-  height: 100vh; overflow-y: auto;
-  display: flex; align-items: center; justify-content: center; padding: 48px;
+  height: 100vh; height: 100dvh; overflow-y: auto;
+  display: flex; justify-content: center; padding: 48px;
 }
-.auth-form { width: 100%; max-width: 390px; }
+.auth-form { width: 100%; max-width: 390px; margin: auto; }
 .auth-form h2 {
   font-family: var(--font-display); font-size: 36px; letter-spacing: -0.015em;
   margin-bottom: 8px; color: var(--color-ink);
@@ -5816,7 +5837,12 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   /* ── Auth sayfası ── */
   .auth-page { grid-template-columns: 1fr; }
   .auth-visual { display: none !important; }
-  .auth-form-wrap { padding: 32px 20px; align-items: flex-start; }
+  /* Dar ekranda form üste yaslanır. Eskiden bu `align-items: flex-start` ile
+     yapılıyordu; artık ortalamayı `.auth-form`un otomatik kenar boşluğu
+     yapıyor ve otomatik boşluk `align-items`i EZER — yani o bildirim ölü
+     koda dönmüştü. Üst boşluk sıfırlanıyor, alt boşluk emici kalıyor. */
+  .auth-form-wrap { padding: 32px 20px; }
+  .auth-form { margin-top: 0; margin-bottom: auto; }
   .auth-form h2 { font-size: 28px; }
   .auth-form input { max-width: 100%; box-sizing: border-box; }
   .glow-input { font-size: 16px !important; } /* prevent iOS zoom on focus */

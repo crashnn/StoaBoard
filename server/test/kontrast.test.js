@@ -299,3 +299,74 @@ describe('Sohbet perdesi — transform tasiyan elemanin icinde degil (kart #194)
     );
   });
 });
+
+// ── Giris ekrani, tam ekran olmadan da tamamen gorunmeli ───────────────────
+//
+// KUSUR (17 Eylul 2026, kullanici ekran goruntusu): tarayici tam ekran
+// DEGILKEN kayit formunun basligi ustten kesiliyor ve ULASILAMIYORDU. F11
+// basinca kayboldugu icin "sikisik gorunuyor" diye okunuyordu; oysa icerigin
+// bir kismi gercekten erisilemezdi.
+//
+// SEBEP `align-items: center`. Bir esnek kapsayicida oge kapsayicidan UZUNSA,
+// ortalama tasmayi iki yana ESIT dagitir; uste tasan kisim kaydirmayla
+// ulasilamaz, cunku kaydirma yalnizca bitis yonunde calisir. `overflow-y: auto`
+// burada yanlis bir guven veriyordu: cubuk vardi ama kesilen yeri acmiyordu.
+//
+// COZUM `margin: auto` -- otomatik kenar boslugu yalnizca POZITIF bos alani
+// emer, alan negatifken sifira iner ve oge basa yaslanir.
+//
+// Bu kural CSS'te kendini savunamiyor: biri ortalamayi "daha temiz" diye
+// `align-items: center`a geri cevirirse hicbir sey patlamaz, yalnizca giris
+// ekraninin usttu yine kesilir. O yuzden merdivenin ust basamagina tasindi.
+describe('Giris ekrani — ortalama, icerigi erisilemez kilmamali', () => {
+  // Yorumlar once bosaltiliyor: bu dosyadaki kusuru ANLATAN yorumlar yasakli
+  // metnin kendisini iciyor (`align-items: center`). Ayni tuzak bu turda bir
+  // kez dustu (kart #194 taramasi), ikinci kez dusmesin.
+  const KOD = CSS.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+
+  const kuralGovdesi = (secici) => {
+    const i = KOD.indexOf(secici);
+    if (i < 0) return null;
+    const bas = KOD.indexOf('{', i);
+    const son = KOD.indexOf('}', bas);
+    return bas < 0 || son < 0 ? null : KOD.slice(bas + 1, son);
+  };
+
+  test('.auth-form-wrap dikey ortalamayi align-items ile yapmiyor', () => {
+    const govde = kuralGovdesi('.auth-form-wrap {');
+    assert.ok(govde, '.auth-form-wrap kurali bulunamadi');
+    assert.doesNotMatch(
+      govde, /align-items:\s*center/,
+      'Giris formu yeniden `align-items: center` ile ortalanmis. Form '
+      + 'goruntu alanindan uzun oldugunda tasmanin usttu KAYDIRILAMAZ olur ve '
+      + 'baslik kesilir (kart: F11 olmadan sikisik gorunum). Ortalamayi '
+      + '`.auth-form { margin: auto }` yapmali.',
+    );
+  });
+
+  test('.auth-form otomatik kenar bosluguyla ortalaniyor', () => {
+    const govde = kuralGovdesi('.auth-form {');
+    assert.ok(govde, '.auth-form kurali bulunamadi');
+    assert.match(
+      govde, /margin:\s*auto/,
+      'Ortalamayi yapan `margin: auto` kaldirilmis; form artik hic '
+      + 'ortalanmiyor ya da align-items\'e geri donulmus olabilir.',
+    );
+  });
+
+  test('tam ekran yuksekligi kullanan auth kurallari dvh yedegi tasiyor', () => {
+    // `vh` mobilde adres cubugu acikken en buyuk degeri donduruyor ve alt
+    // kisim cubugun altinda kaliyor. Bu dosya `chat-panel`de zaten ikili
+    // bildirim kullaniyor; giris ekrani de ayni kalibi izlemeli.
+    for (const secici of ['.auth-page {', '.auth-visual {', '.auth-form-wrap {']) {
+      const govde = kuralGovdesi(secici);
+      assert.ok(govde, `${secici} kurali bulunamadi`);
+      if (!/height:\s*100vh/.test(govde)) continue; // yukseklik vermiyorsa konu dis
+      assert.match(
+        govde, /height:\s*100dvh/,
+        `${secici} 100vh veriyor ama 100dvh yedegi yok: mobilde adres cubugu `
+        + 'acikken icerigin alti cubugun altinda kalir.',
+      );
+    }
+  });
+});
