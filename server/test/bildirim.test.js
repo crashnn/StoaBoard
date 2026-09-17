@@ -464,3 +464,105 @@ describe('zil rozeti — son bakıştan beri gelen okunmamış', async () => {
     assert.doesNotThrow(() => sonBakisYaz(patlayan, 'x', 1));
   });
 });
+
+// ── Bildirim işlemleri sessizce başarısız olmamalı ─────────────────────────
+//
+// KUSUR (17 Eylül 2026, kullanıcının mobil saha turu, kart #193): kullanıcı
+// "Tümünü oku"ya basıyor, işlem başarılı görünüyor, sonraki açılışta
+// bildirimler okunmamış geri geliyordu.
+//
+// Sebep sınıfı bu depoda adı konmuş olan: İYİMSER GÜNCELLEME + YUTULAN HATA.
+// `notifications.jsx` içindeki beş işlemin beşi de ekranı sunucuya yazmadan
+// ÖNCE güncelliyor ve yazma hatasını `catch (_) {}` ile yutuyordu. Ekran
+// "oldu" diyor, kayıt "olmadı" diyordu. CLAUDE.md'nin kuralı: yokluk hâli ya
+// reddetmeli ya gürültü çıkarmalı.
+//
+// Bu tarama, bir SUNUCU ÇAĞRISINI yutan boş yakalayıcıyı arıyor. Yasak
+// bilinçli olarak DAR: `_parseNotifType` içindeki `catch (_) {}` meşru —
+// orada ayrıştırma denemesinin başarısızlığı `return null` ile ZATEN
+// karşılanıyor, sessizce atlanan bir şey yok. Ölçüt "boş yakalayıcı var mı"
+// değil, "bir `API.` çağrısının hatası yutuluyor mu".
+describe('Bildirim işlemleri — sessiz başarısızlık yok (kart #193)', () => {
+  const DOSYA = path.join(CLIENT, 'notifications.jsx');
+  // Yorumlar siliniyor değil BOŞLUĞA çevriliyor; konumlar korunuyor.
+  const kod = yorumsuzDosya(DOSYA);
+
+  // Boş gövdeli yakalayıcının iki yazımı: `catch (e) {}` ve `.catch(() => {})`.
+  // İç içe parantez yok (yakalama parametresi tek belirteç), o yüzden
+  // `[^()]*` güvenli — CLAUDE.md'deki `[^)]*` tuzağı burada geçerli değil.
+  const BOS_YAKALAYICI = /(?:\}\s*catch\s*(?:\([^()]*\))?\s*\{\s*\}|\.catch\(\s*(?:\([^()]*\)|[A-Za-z0-9_$]+)\s*=>\s*\{\s*\}\s*\))/g;
+
+  test('bir API çağrısının hatasını yutan boş yakalayıcı yok', () => {
+    const kacaklar = [];
+    for (const m of kod.matchAll(BOS_YAKALAYICI)) {
+      // Pencere KOD karakteri üzerinden ölçülüyor: boşluk sıkıştırılmazsa
+      // yorumu bol bir blokta pencere koda hiç ulaşmaz (CLAUDE.md).
+      const oncesi = kod.slice(Math.max(0, m.index - 600), m.index).replace(/\s+/g, ' ');
+      if (!/API\.[A-Za-z]/.test(oncesi)) continue;
+      const satir = kod.slice(0, m.index).split('\n').length;
+      kacaklar.push(`notifications.jsx:${satir} → ${m[0].replace(/\s+/g, ' ')}`);
+    }
+    assert.deepEqual(
+      kacaklar, [],
+      'Sunucu çağrısının hatası yutuluyor: ekran "oldu" derken kayıt "olmadı" '
+      + 'diyebilir. Hatayı geri alma + toast ile görünür kıl (geriAl).\n  '
+      + kacaklar.join('\n  '),
+    );
+  });
+
+  // Yukarıdaki tarama "hata yutulmuyor" der, "ekran gerçeğe döndürülüyor"
+  // demez. Yakalayıcıya yalnızca bir `console.log` konsa üstteki test yeşil
+  // kalır ve kullanıcı yine yanlış ekran görür. Bu yüzden geri alma ayrıca
+  // ölçülüyor.
+  // Pencere SABİT boyutlu DEĞİL, işlev sınırına bağlı.
+  //
+  // İlk yazımında 700 karakterlik sabit pencere kullanılıyordu ve mutasyon
+  // turu onu hemen düşürdü: `markAllRead`in yakalayıcısı boşaltıldığında
+  // pencere bir SONRAKİ işleve taşıyor, oradaki `geriAl(onceki` çağrısını
+  // görüyor ve test yeşil kalıyordu. Yani tarama, koruduğu şeyi komşusunun
+  // kodundan "ödünç alıp" aklıyordu. Sınır artık bir sonraki `const <ad> =`
+  // bildirimi; her işlev yalnızca kendi gövdesinden geçiyor.
+  const govdesi = (ad) => {
+    const i = kod.indexOf(`const ${ad} =`);
+    assert.ok(i > 0, `${ad} bulunamadı — yeniden adlandırıldıysa test de güncellenmeli`);
+    const sonraki = kod.slice(i + 1).search(/\n {2}const [A-Za-z0-9_$]+ =/);
+    return sonraki < 0 ? kod.slice(i) : kod.slice(i, i + 1 + sonraki);
+  };
+
+  test('dört işlem de iyimser değişikliği geri alıyor', () => {
+    for (const islem of ['markRead', 'markAllRead', 'deleteAll', 'dismiss']) {
+      const govde = govdesi(islem);
+      assert.match(
+        govde, /const onceki = items/,
+        `${islem}: iyimser güncellemeden önce eski durum yakalanmıyor, geri alınamaz`,
+      );
+      assert.match(govde, /geriAl\(onceki/, `${islem}: hata yolunda geri alma yok`);
+    }
+  });
+
+  test('geri alma hem durumu döndürüyor hem gürültü çıkarıyor', () => {
+    const govde = govdesi('geriAl');
+    assert.match(govde, /setItems\(onceki\)/, 'ekran gerçeğe döndürülmüyor');
+    assert.match(govde, /showToast/, 'hata sessiz kalıyor — kullanıcı sebebi göremez');
+  });
+
+  // `data.jsx` Node'da içe aktarılamıyor (modül yüklenirken `window`a
+  // dokunuyor), o yüzden sözlük kaynaktan okunuyor — `dil.test.js` ile aynı
+  // yöntem. Anahtar kümelerinin birebir eşitliğini zaten o test kilitliyor;
+  // burada bu İKİ anahtarın gerçekten var olduğu doğrulanıyor, çünkü kod
+  // onlara ada göre başvuruyor ve yedek metin eksikliği gizlerdi.
+  test('hata metinleri iki sözlükte de var', () => {
+    const src = yorumsuzDosya(path.join(CLIENT, 'data.jsx'));
+    const satirlar = src.split(/\r?\n/);
+    for (const lang of ['tr', 'en']) {
+      const bas = satirlar.findIndex(l => new RegExp(`^  ${lang}: \\{`).test(l));
+      assert.ok(bas >= 0, `APP_I18N içinde '${lang}' bloğu bulunamadı`);
+      let son = bas + 1;
+      while (son < satirlar.length && !/^ {2}\},/.test(satirlar[son])) son += 1;
+      const blok = satirlar.slice(bas + 1, son).join('\n');
+      for (const anahtar of ['notif_err_action', 'notif_err_load']) {
+        assert.match(blok, new RegExp(`\\b${anahtar}\\s*:`), `${lang} sözlüğünde ${anahtar} yok`);
+      }
+    }
+  });
+});

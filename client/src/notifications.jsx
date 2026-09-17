@@ -76,6 +76,17 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
     return () => document.removeEventListener('mousedown', handler);
   }, [open, fullPage]);
 
+  // Yükleme başarısız olursa panel BOŞ görünüyordu — "bildirimin yok" ile
+  // "bildirimleri getiremedim" aynı ekrana çıkıyordu (kart #193 ile aynı
+  // sınıf). Liste artık elde olanla duruyor ve sebep toast'a yazılıyor.
+  const yuklemeHatasi = (e) => {
+    window.showToast?.(
+      (window.t?.('notif_err_load') || 'Bildirimler yüklenemedi')
+      + (e?.message ? `: ${e.message}` : ''),
+      'error',
+    );
+  };
+
   React.useEffect(() => {
     if (open) {
       API.getNotifications()
@@ -85,7 +96,7 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
           const unread = notifs.filter(n => n.unread).length;
           if (unread === 0) window.__NOTIF_BADGE_RESET__?.();
         })
-        .catch(() => {});
+        .catch(yuklemeHatasi);
     }
   }, [open]);
 
@@ -94,7 +105,7 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
     if (fullPage) {
       API.getNotifications()
         .then(notifs => { setItems(notifs); DATA.NOTIFICATIONS = notifs; })
-        .catch(() => {});
+        .catch(yuklemeHatasi);
     }
   }, [fullPage]);
 
@@ -113,12 +124,43 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
     return () => sock.off('notification', onNewNotification);
   }, [socket]);
 
+  // İyimser güncelleme + yutulan hata = sessiz başarısızlık.
+  //
+  // KUSUR (17 Eylül 2026, kullanıcının mobil saha turu, kart #193): beş
+  // bildirim işleminin beşi de `catch (_) {}` taşıyordu ve hepsi ekranı
+  // SUNUCUYA YAZMADAN ÖNCE güncelliyordu. Yazma başarısız olduğunda ekran
+  // "oldu" diyor, kayıt "olmadı" diyordu; kullanıcı "Tümünü oku"ya basıyor,
+  // işlem başarılı görünüyor, sonraki açılışta bildirimler okunmamış geri
+  // geliyordu. Başarısızlığın kendisi kadar kötüsü GÖRÜNMEZ olması: ne
+  // kullanıcı ne de hata ayıklayan sebebi öğrenebiliyordu.
+  //
+  // CLAUDE.md'nin kuralı: yokluk hâli ya reddetmeli ya gürültü çıkarmalı.
+  // Burada ikisi de yapılıyor — iyimser değişiklik GERİ ALINIYOR (ekran
+  // yeniden gerçeği gösteriyor) ve hata toast'a yazılıyor.
+  //
+  // `onceki`nin `setItems` dışında yakalanma sebebi: React 18'de durum
+  // güncelleyici saf olmalı, içinden bir değişkene yazmak StrictMode'un çift
+  // çağrısında yanlış anlık görüntü bırakır. `items` render kapanışından
+  // okunuyor ve bu işleyicilerin hepsi kullanıcı olayından çağrılıyor, yani
+  // tazedir.
+  const geriAl = (onceki, e) => {
+    setItems(onceki);
+    DATA.NOTIFICATIONS = onceki;
+    window.showToast?.(
+      (window.t?.('notif_err_action') || 'Bildirim işlemi kaydedilemedi')
+      + (e?.message ? `: ${e.message}` : ''),
+      'error',
+    );
+  };
+
   const markRead = async (id) => {
+    const onceki = items;
     setItems(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
-    try { await API.markRead(id); } catch (_) {}
+    try { await API.markRead(id); } catch (e) { geriAl(onceki, e); }
   };
 
   const markAllRead = async () => {
+    const onceki = items;
     setItems(prev => prev.map(n => ({ ...n, unread: false })));
     try {
       await API.markAllRead();
@@ -126,20 +168,22 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
       setItems(fresh);
       DATA.NOTIFICATIONS = fresh;
       window.__NOTIF_BADGE_RESET__?.();
-    } catch (_) {}
+    } catch (e) { geriAl(onceki, e); }
   };
 
   const deleteAll = async () => {
+    const onceki = items;
     const ids = filtered.map(n => n.id);
     setItems(prev => prev.filter(n => !ids.includes(n.id)));
     setConfirmDel(false);
-    try { await Promise.all(ids.map(id => API.deleteNotif(id))); } catch (_) {}
+    try { await Promise.all(ids.map(id => API.deleteNotif(id))); } catch (e) { geriAl(onceki, e); }
   };
 
   const dismiss = async (e, id) => {
     e.stopPropagation();
+    const onceki = items;
     setItems(prev => prev.filter(n => n.id !== id));
-    try { await API.deleteNotif(id); } catch (_) {}
+    try { await API.deleteNotif(id); } catch (err) { geriAl(onceki, err); }
   };
 
   const handleNotifClick = (n) => {
