@@ -3,62 +3,232 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>StoaBoard — takımlar için sade proje panosu</title>
+<title data-en="StoaBoard — a simple project board for teams">StoaBoard — takımlar için sade proje panosu</title>
 <meta name="description" content="Kartlar, raporlar ve yapay zekâ ile konuşarak yönetim; hepsi tek yerde, hepsi sade.">
 <link rel="icon" href="/static/StoaBoard_symbol.png">
 <link rel="stylesheet" href="/static/vitrin/vitrin.css">
 </head>
 <body>
 <!--
-  YER TUTUCU. Asıl şablon Claude Design'dan geliyor (VITRIN-BRIEF.md);
-  gelince bu dosya ve vitrin.css onunla değişir. Buradaki bağlantılar ve
-  sayı bandı sözleşmesi korunmalı: /giris, /giris?kayit=1, /api/public/stats.
+  Vitrin sayfası — misafir önce ürünü görsün (kart #187).
+
+  DİL: TEK dosya, iki dil. Türkçe metin işaretlemede duruyor, İngilizcesi
+  aynı elemanın `data-en` özniteliğinde. İki ayrı HTML tutmak daha basit
+  görünüyordu ama bu depo o dersi ödedi: iki kopya AYRIŞIR, tek kaynak
+  ayrışamaz. Kardeş alan kalıbı (`label` / `label_en`) uygulamada da
+  kullanılıyor ve `dil.test.js` onu tanıyor; buradaki `data-en` aynı fikrin
+  HTML karşılığı. `test/vitrin.test.js` her Türkçe metnin karşılığını
+  zorunlu kılıyor.
+
+  Türkçe işaretlemede duruyor ki Türkçe ziyaretçide DİL SIÇRAMASI olmasın:
+  sayfa doğru dille boyanıyor, yalnızca İngilizce seçiminde JS metni
+  değiştiriyor.
+
+  SÖZLEŞME — değiştirilmemeli: /giris, /giris?kayit=1, /api/public/stats.
 -->
 <header class="ust">
-  <a class="logo" href="/"><img src="/static/StoaBoard_symbol.png" alt="" width="24" height="24"><span>Stoa<em>Board</em></span></a>
+  <a class="logo" href="/" aria-label="StoaBoard">
+    <img src="/static/StoaBoard_symbol.png" alt="" width="24" height="24">
+    <span>Stoa<em>Board</em></span>
+  </a>
   <nav>
-    <a href="/giris">Giriş</a>
-    <a class="dolgulu" href="/giris?kayit=1">Ücretsiz başla</a>
+    <a href="/giris" data-en="Sign in">Giriş</a>
+    <a class="dolgulu" href="/giris?kayit=1" data-en="Start free">Ücretsiz başla</a>
   </nav>
 </header>
 
 <main>
+
+  <!-- ── Kahraman ────────────────────────────────────────────────────── -->
   <section class="kahraman">
-    <h1>Panonu sür, yapay zekâya söyle.</h1>
-    <p>Kartlar, raporlar ve konuşarak yönetim; hepsi tek yerde, hepsi sade.</p>
-    <div class="dugmeler">
-      <a class="dolgulu" href="/giris?kayit=1">Ücretsiz başla</a>
-      <a class="cizgili" href="/giris">Giriş yap</a>
+    <div class="kahraman-metin">
+      <h1 data-en="Drive your board. Or just tell the AI.">Panonu sür, yapay zekâya söyle.</h1>
+      <p class="alt" data-en="Cards, reports and conversational management — all in one place, all simple.">Kartlar, raporlar ve konuşarak yönetim; hepsi tek yerde, hepsi sade.</p>
+      <div class="dugmeler">
+        <a class="dolgulu buyuk" href="/giris?kayit=1" data-en="Start free">Ücretsiz başla</a>
+        <a class="cizgili buyuk" href="/giris" data-en="Sign in">Giriş yap</a>
+      </div>
+    </div>
+
+    <!--
+      16:10 ürün görseli. Tarayıcı çerçevesi YOK (brief).
+      Gerçek görsel demo panosundan gelecek (alt görev 167): jenerik alan,
+      anonim adlar. Gerçek pano kullanılmayacak — kart başlıkları yol
+      haritası ve güvenlik işleri. O gelene kadar burada AÇIKÇA işaretli
+      bir yer tutucu duruyor; boş bir kutu "bozuk" gibi görünürdü.
+    -->
+    <div class="gorsel" role="img" aria-label="Ürün ekran görüntüsü yer tutucusu">
+      <div class="gorsel-cubuk"><i></i><b></b></div>
+      <div class="gorsel-kolonlar">
+        <div class="gorsel-kolon"><b></b><i style="height:52px"></i><i style="height:38px"></i><i style="height:44px"></i></div>
+        <div class="gorsel-kolon"><b></b><i style="height:40px"></i><i style="height:56px"></i></div>
+        <div class="gorsel-kolon"><b></b><i style="height:46px"></i><i style="height:36px"></i><i style="height:40px"></i></div>
+      </div>
+      <div class="gorsel-perde"><span data-en="Product screenshot goes here">Ürün ekran görüntüsü buraya</span></div>
     </div>
   </section>
 
+  <!-- ── Sayı bandı ──────────────────────────────────────────────────── -->
+  <!-- Değerler /api/public/stats'ten geliyor. Uydurma sayı yok; uç
+       cevap vermezse tire kalıyor (aşağıdaki betik). -->
   <section class="sayilar" aria-label="Gerçek sayılar">
-    <div><b data-stat="workspaces">—</b><span>çalışma alanı</span></div>
-    <div><b data-stat="tasks">—</b><span>kart</span></div>
-    <div><b data-stat="completed">—</b><span>tamamlanan iş</span></div>
+    <div><b data-stat="workspaces">—</b><span data-en="workspaces">çalışma alanı</span></div>
+    <div><b data-stat="tasks">—</b><span data-en="cards">kart</span></div>
+    <div><b data-stat="completed">—</b><span data-en="completed">tamamlanan iş</span></div>
   </section>
 
+  <!-- ── Üç iddia ────────────────────────────────────────────────────── -->
   <section class="kutular">
-    <article><h2>Yapay zekâ ile konuş</h2><p>Panoyu sohbetle sür: kart aç, ata, taşı, yorum yaz. Her işlem kayıtlı.</p></article>
-    <article><h2>Kim ne kadar çalıştı</h2><p>Kişi, dönem ve akış raporları. Excel'e ve PDF'e çıkar.</p></article>
-    <article><h2>Güvenli ve izlenebilir</h2><p>Her dışa aktarma ve her yapay zekâ yazması denetim kaydında.</p></article>
+    <article>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>
+      <h2 data-en="Talk to the AI">Yapay zekâ ile konuş</h2>
+      <p data-en="Drive the board by chatting: open, move, assign, comment. Every action lands in the audit log.">Panoyu sohbetle sür: kart aç, taşı, ata, yorum yaz. Yapılan her işlem denetim kaydına düşüyor.</p>
+    </article>
+    <article>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 4-6"/></svg>
+      <h2 data-en="Who worked how much">Kim ne kadar çalıştı</h2>
+      <p data-en="Person, period and flow reports. Time in column and declared effort are measured separately; export to Excel and PDF.">Kişi, dönem ve akış raporları. Geçiş süresi ile harcanan emek ayrı ölçülüyor; çıktı Excel ve PDF olarak dışa aktarılıyor.</p>
+    </article>
+    <article>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7.5 3v5.6c0 4.3-3 8-7.5 9.4-4.5-1.4-7.5-5.1-7.5-9.4V6z"/><path d="M9.2 12.2l2 2 3.6-3.9"/></svg>
+      <h2 data-en="Safe and traceable">Güvenli ve izlenebilir</h2>
+      <p data-en="Every export and every AI write is in the audit log. Who took which data, and when, can be answered later.">Her dışa aktarma ve her yapay zekâ yazması denetim kaydında. Kim hangi veriyi ne zaman aldı, geriye dönük görülebiliyor.</p>
+    </article>
   </section>
+
+  <!-- ── Bilerek yapmadıklarımız ─────────────────────────────────────── -->
+  <!-- Ton: gurur değil TERCİH (brief). Her maddenin gerekçesi var; çizili
+       dört ad tek başına övünme gibi okunur. -->
+  <section class="secimler">
+    <div class="secimler-metin">
+      <h2 data-en="What we deliberately left out">Bilerek yapmadıklarımız</h2>
+      <p data-en="These are not gaps, they are choices. Each one is a capable feature — and each one makes setup, training and upkeep heavier. We left them out to keep things simple.">Bunlar eksik değil, tercih. Her biri güçlü bir özellik — ve her biri kurulumu, eğitimi ve bakımı ağırlaştıran bir katman. Sadeliği korumak için eklemedik.</p>
+    </div>
+    <ul class="secimler-liste">
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        <div>
+          <b data-en="Workflow engine">İş akışı motoru</b>
+          <span data-en="Validators, post-functions, screen schemes. Setup takes weeks and upkeep never ends.">Doğrulayıcılar, otomatik eylemler, ekran şemaları. Kurulumu haftalar alır, bakımı hiç bitmez.</span>
+        </div>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        <div>
+          <b data-en="Query language">Sorgu dili</b>
+          <span data-en="Learning a separate query language is a job of its own. Filters and reports cover this without it.">Ayrı bir sorgu dili öğrenmek başlı başına bir iş. Süzgeçler ve raporlar bunu öğrenmeye gerek kalmadan karşılıyor.</span>
+        </div>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        <div>
+          <b data-en="Story points">Story point</b>
+          <span data-en="An estimation unit means something different in every team. We measure elapsed time and declared effort.">Tahmin birimi ekipten ekibe anlam değiştiriyor. Biz geçen süreyi ve harcanan emeği ölçüyoruz.</span>
+        </div>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        <div>
+          <b data-en="Custom fields">Özel alanlar</b>
+          <span data-en="An open-ended schema per team means a pile of fields nobody fills in three months later.">Her takıma açık uçlu şema, üç ay sonra kimsenin doldurmadığı bir alan yığını demek.</span>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ── Kapanış ─────────────────────────────────────────────────────── -->
+  <section class="kapanis">
+    <h2 data-en="Set your team up in fifteen seconds.">Takımını on beş saniyede kur.</h2>
+    <p data-en="Open a card, invite someone, start talking. No setup, no training.">Kart aç, birini davet et, konuşmaya başla. Kurulum yok, eğitim yok.</p>
+    <a class="dolgulu buyuk" href="/giris?kayit=1" data-en="Start free">Ücretsiz başla</a>
+  </section>
+
 </main>
 
 <footer>
-  <span>© StoaBoard</span>
+  <span class="telif">© 2026 StoaBoard</span>
+  <div class="alt-sag">
+    <a href="https://github.com/crashnn/StoaBoard" aria-label="GitHub" rel="noopener">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.3-4.3-2.2-6-2.6m12 4.6v-3.5c0-1 .1-1.4-.5-2 2.6-.3 5-1.3 5-5.6a4.3 4.3 0 0 0-1.2-3 4 4 0 0 0-.1-3s-1-.3-3.3 1.2a11.3 11.3 0 0 0-6 0C6.6 3.6 5.6 3.9 5.6 3.9a4 4 0 0 0-.1 3A4.3 4.3 0 0 0 4.3 10c0 4.3 2.4 5.3 5 5.6-.6.6-.6 1.2-.5 2V21"/></svg>
+    </a>
+    <!-- LinkedIn adresi henüz yok; doldurulmadan yayına alınmamalı.
+         Sahte bir ev sayfası bağlantısı koymak yerine boş bırakıldı. -->
+    <a href="#linkedin-adresi-eklenecek" aria-label="LinkedIn" rel="noopener">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-13h4v1.8A6 6 0 0 1 16 8z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+    </a>
+    <div class="dil" role="group" aria-label="Dil">
+      <a href="?lang=tr" data-dil="tr">TR</a>
+      <a href="?lang=en" data-dil="en">EN</a>
+    </div>
+  </div>
 </footer>
 
 <script>
-  // Sayı bandı: gerçek toplamlar, sunucu 10 dk önbellekliyor. Uydurma sayı yok;
-  // gelmezse tire kalır.
-  fetch('/api/public/stats').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-    if (!d) return;
-    document.querySelectorAll('[data-stat]').forEach(function (el) {
-      var v = d[el.getAttribute('data-stat')];
-      if (typeof v === 'number') el.textContent = v.toLocaleString('tr-TR');
-    });
-  }).catch(function () {});
+(function () {
+  'use strict';
+
+  // ── Dil ─────────────────────────────────────────────────────────────
+  //
+  // Sıra: ?lang= → localStorage['stoa.lang'] → Türkçe.
+  //
+  // `stoa.lang` UYGULAMANIN KENDİ anahtarı (auth.jsx, app.jsx). Vitrin ayrı
+  // bir anahtar kullansaydı kullanıcı dili vitrinde seçip giriş ekranında
+  // Türkçe bulurdu — aynı olgunun iki okuyucusu.
+  //
+  // Depolama gizli pencerede ya da engellenmiş olabilir; okuma ve yazma
+  // sarılı ve yokluk hâli Türkçe. Sessizce atlanmıyor: Türkçe BİLİNÇLİ
+  // varsayılan, işaretlemede duran dil.
+  var TR = 'tr', EN = 'en';
+
+  function depoOku() {
+    try { return localStorage.getItem('stoa.lang'); } catch (e) { return null; }
+  }
+  function depoYaz(d) {
+    try { localStorage.setItem('stoa.lang', d); } catch (e) { /* gizli pencere */ }
+  }
+
+  var sorgu = null;
+  try {
+    sorgu = new URLSearchParams(location.search).get('lang');
+  } catch (e) { sorgu = null; }
+
+  var dil = (sorgu === EN || sorgu === TR) ? sorgu : (depoOku() === EN ? EN : TR);
+  if (sorgu === EN || sorgu === TR) depoYaz(sorgu);
+
+  // Türkçe işaretlemede zaten duruyor; yalnızca İngilizcede metin değişiyor.
+  // Böylece Türkçe ziyaretçide hiç sıçrama olmuyor.
+  if (dil === EN) {
+    document.documentElement.lang = EN;
+    var hedefler = document.querySelectorAll('[data-en]');
+    for (var i = 0; i < hedefler.length; i += 1) {
+      var el = hedefler[i];
+      var ceviri = el.getAttribute('data-en');
+      // Boş `data-en` çeviriyi silmek olurdu; yokluk hâlinde Türkçe kalıyor.
+      if (ceviri) el.textContent = ceviri;
+    }
+  }
+
+  var secili = document.querySelector('[data-dil="' + dil + '"]');
+  if (secili) secili.setAttribute('aria-current', 'true');
+
+  // ── Sayı bandı ──────────────────────────────────────────────────────
+  //
+  // Gerçek toplamlar; sunucu 10 dk önbellekliyor. Uç cevap vermezse TİRE
+  // kalıyor — uydurma sayı yazılmıyor ve "0" da yazılmıyor: sıfır, bilinmeyen
+  // ile aynı şey değil ve boş bir ürün izlenimi verirdi.
+  fetch('/api/public/stats')
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d) return;
+      var yerel = dil === EN ? 'en-US' : 'tr-TR';
+      var kutular = document.querySelectorAll('[data-stat]');
+      for (var i = 0; i < kutular.length; i += 1) {
+        var v = d[kutular[i].getAttribute('data-stat')];
+        if (typeof v === 'number') kutular[i].textContent = v.toLocaleString(yerel);
+      }
+    })
+    .catch(function () { /* tire kalıyor */ });
+}());
 </script>
 </body>
 </html>
