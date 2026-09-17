@@ -252,8 +252,8 @@ function Sidebar({
       {/* Orta blok kaydirilabilir: proje/DM birikince alt kisim erisilemez oluyordu */}
       <div className="sidebar-scroll">
       <div className="sidebar-section">
-        <NavItem icon="home"          label={window.t?.('nav_home') || 'Ana Sayfa'}   sub="Dashboard" onClick={() => onView('dashboard')} active={view === 'dashboard'} />
-        <NavItem icon="circleCheck"   label={window.t?.('nav_tasks') || 'Görevlerim'}  sub="My Tasks"
+        <NavItem onMobileClose={onMobileClose} icon="home"          label={window.t?.('nav_home') || 'Ana Sayfa'}   sub="Dashboard" onClick={() => onView('dashboard')} active={view === 'dashboard'} />
+        <NavItem onMobileClose={onMobileClose} icon="circleCheck"   label={window.t?.('nav_tasks') || 'Görevlerim'}  sub="My Tasks"
           badge={myTasksOpenCount > 0 ? (myTasksOpenCount > 99 ? '99+' : String(myTasksOpenCount)) : null}
           badgeUnread
           onClick={() => {
@@ -263,30 +263,30 @@ function Sidebar({
           }}
           active={false}
         />
-        <NavItem icon="layoutBoard"   label={window.t?.('nav_board') || 'Pano'}       sub="Kanban"    onClick={() => onView('board')}     active={view === 'board'} />
-        <NavItem icon="calendar"      label={window.t?.('nav_calendar') || 'Takvim'}  sub="Calendar"  onClick={() => onView('calendar')}  active={view === 'calendar'} />
-        <NavItem icon="msg"           label={window.t?.('nav_chat') || 'Sohbet'}      sub="Chat"
+        <NavItem onMobileClose={onMobileClose} icon="layoutBoard"   label={window.t?.('nav_board') || 'Pano'}       sub="Kanban"    onClick={() => onView('board')}     active={view === 'board'} />
+        <NavItem onMobileClose={onMobileClose} icon="calendar"      label={window.t?.('nav_calendar') || 'Takvim'}  sub="Calendar"  onClick={() => onView('calendar')}  active={view === 'calendar'} />
+        <NavItem onMobileClose={onMobileClose} icon="msg"           label={window.t?.('nav_chat') || 'Sohbet'}      sub="Chat"
           badge={chatUnreadTotal > 0 ? (chatUnreadTotal > 99 ? '99+' : String(chatUnreadTotal)) : null}
           badgeUnread
           onClick={() => onView('chat')}
           active={view === 'chat'}
         />
-        <NavItem icon="note"          label={window.t?.('nav_notes') || 'Notlar'}     sub="Notes"
+        <NavItem onMobileClose={onMobileClose} icon="note"          label={window.t?.('nav_notes') || 'Notlar'}     sub="Notes"
           badge={notesCount > 0 ? (notesCount > 99 ? '99+' : String(notesCount)) : null}
           onClick={() => onView('notes')}
           active={view === 'notes'}
         />
-        <NavItem icon="bell"          label={window.t?.('nav_notifications') || 'Bildirimler'} sub="Notifications"
+        <NavItem onMobileClose={onMobileClose} icon="bell"          label={window.t?.('nav_notifications') || 'Bildirimler'} sub="Notifications"
           badge={notifCount > 0 ? (notifCount > 99 ? '99+' : String(notifCount)) : null}
           badgeUnread
           onClick={() => onOpenNotifs?.()}
           active={view === 'notifications'}
         />
-        <NavItem icon="chart"         label={window.t?.('nav_reports') || 'Raporlar'}  sub="Reports"
+        <NavItem onMobileClose={onMobileClose} icon="chart"         label={window.t?.('nav_reports') || 'Raporlar'}  sub="Reports"
           onClick={() => onView('reports')}
           active={view === 'reports'}
         />
-        <NavItem icon="trash"         label={window.t?.('nav_trash') || 'Çöp Kutusu'}         sub="Trash"
+        <NavItem onMobileClose={onMobileClose} icon="trash"         label={window.t?.('nav_trash') || 'Çöp Kutusu'}         sub="Trash"
           badge={trashCount > 0 ? (trashCount > 99 ? '99+' : String(trashCount)) : null}
           onClick={() => onView('trash')}
           active={view === 'trash'}
@@ -344,7 +344,7 @@ function Sidebar({
       </div>
 
       <div className="sidebar-footer">
-        <NavItem icon="settings" label={window.t?.('nav_settings') || 'Ayarlar'} sub="Settings" onClick={() => onView('settings')} active={view === 'settings'} />
+        <NavItem onMobileClose={onMobileClose} icon="settings" label={window.t?.('nav_settings') || 'Ayarlar'} sub="Settings" onClick={() => onView('settings')} active={view === 'settings'} />
         <StatusProfileWidget me={me} myStatus={myStatus} onStatusChange={onStatusChange} collapsed={collapsed} />
       </div>
     </aside>
@@ -447,9 +447,34 @@ function StatusProfileWidget({ me, myStatus, onStatusChange, collapsed }) {
   );
 }
 
-function NavItem({ icon, label, sub, badge, badgeUnread, active, onClick }) {
+/**
+ * Kenar çubuğu gezinme öğesi.
+ *
+ * MOBİL MENÜYÜ KAPATMA BURADA, çağrı yerlerinde değil.
+ *
+ * KUSUR (17 Eylül 2026, kullanıcının mobil turu): menü her öğede sola
+ * kapanıyordu ama Bildirimler'de kapanmıyordu. Sebep iki ayrı yol olmasıydı:
+ * öğelerin çoğu `onView`den geçiyor ve o hem görünümü değiştirip hem menüyü
+ * kapatıyor; Bildirimler ise kendi geri çağrısını (`onOpenNotifs`) kullanıyor
+ * ve o yalnızca görünümü değiştiriyordu. Aynı olgunun iki okuyucusu, biri
+ * eksik — bu deponun tekrar eden sınıfı.
+ *
+ * `onOpenNotifs`e bir satır eklemek kusuru kapatırdı ama YARIN EKLENECEK
+ * on birinci öğe yine unutabilirdi. Kapatma bu yüzden tek geçitte: on
+ * NavItem'in onu da buradan geçiyor ve yeni bir öğe eklemek onu atlamayı
+ * imkânsız kılıyor (CLAUDE.md'nin merdiveni: kuralı belgeye değil,
+ * yapıya yaz).
+ *
+ * `onMobileClose` masaüstünde de çağrılıyor ve zararsız: menü zaten kapalı
+ * durumda, `setMobileSidebarOpen(false)` işlemsiz.
+ */
+function NavItem({ icon, label, sub, badge, badgeUnread, active, onClick, onMobileClose }) {
+  const bas = () => {
+    onClick?.();
+    onMobileClose?.();
+  };
   return (
-    <div className="nav-item" data-active={!!active} onClick={onClick} title={sub}>
+    <div className="nav-item" data-active={!!active} onClick={bas} title={sub}>
       <Icon name={icon} size={16} />
       <span className="sidebar-label">{label}</span>
       {badge && <span className="nav-badge" data-new={badge === 'Yeni' || !!badgeUnread}>{badge}</span>}

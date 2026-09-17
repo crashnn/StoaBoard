@@ -454,3 +454,54 @@ describe('Pano arama çubuğu — numarayla süzme (kart #226)', () => {
     );
   });
 });
+
+// ── Kenar cubugundan gezinen her oge mobil menuyu kapatmali ──────────────
+//
+// KUSUR (17 Eylul 2026, kullanicinin mobil turu): menu her ogede sola
+// kapaniyordu ama Bildirimler'de kapanmiyordu -- gidiyorsun ama menu
+// ustunde duruyor.
+//
+// SEBEP IKI AYRI YOL: ogelerin cogu `onView`den geciyor ve o hem gorunumu
+// degistirip hem menuyu kapatiyor. Bildirimler ise kendi geri cagrisini
+// (`onOpenNotifs`) kullaniyordu ve o yalnizca gorunumu degistiriyordu.
+// Ayni olgunun iki okuyucusu, biri eksik.
+//
+// NICIN YAMA DEGIL YAPI: `onOpenNotifs`e bir satir eklemek kusuru kapatirdi
+// ama yarin eklenecek on birinci oge yine unutabilirdi. Kapatma tek gecide
+// alindi (NavItem), yani atlamak icin bilerek ugrasmak gerekiyor.
+//
+// Bu test o gecidi kilitliyor: NavItem kapatmayi KENDISI yapmali ve her
+// kullanim yerine gecirilmeli.
+describe('Kenar çubuğu — mobil menü her gezinmede kapanıyor', () => {
+  const shell = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'shell.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+
+  test('NavItem kapatmayı kendisi yapıyor', () => {
+    const i = shell.indexOf('function NavItem(');
+    assert.ok(i > 0, 'NavItem bileşeni bulunamadı');
+    const govde = shell.slice(i, shell.indexOf('\n}', i));
+    assert.match(
+      govde, /onMobileClose/,
+      'NavItem mobil menüyü kapatmıyor. Kapatmayı çağrı yerlerine bırakmak '
+      + 'bu kusuru üretti: on öğeden dokuzu kapatıyordu, biri unutulmuştu.',
+    );
+    // Kapatma onClick'ten SONRA gelmeli ama asil olcut IKISININ DE
+    // cagrilmasi; yalnizca birini cagiran bir govde ya gezinmez ya kapanmaz.
+    assert.match(govde, /onClick\?\.\(\)/, 'NavItem onClick çağırmıyor');
+    assert.match(govde, /onMobileClose\?\.\(\)/, 'NavItem onMobileClose çağırmıyor');
+  });
+
+  test('her NavItem kullanımına prop geçiriliyor', () => {
+    // Bir tanesini atlamak, o ogede kusurun aynen geri gelmesi demek --
+    // ve bu tam olarak bugunku kusurun bicimi.
+    const kullanim = (shell.match(/<NavItem\s/g) || []).length;
+    const gecirilen = (shell.match(/<NavItem onMobileClose=\{onMobileClose\}/g) || []).length;
+    assert.ok(kullanim > 0, 'shell.jsx içinde NavItem kullanımı bulunamadı');
+    assert.equal(
+      gecirilen, kullanim,
+      `${kullanim} NavItem var ama ${gecirilen} tanesine onMobileClose `
+      + 'geçiliyor. Eksik olanda mobil menü açık kalır.',
+    );
+  });
+});
