@@ -225,3 +225,77 @@ describe('Vurgu rengi — ornek kare uygulanan rengi gosteriyor', () => {
     }
   });
 });
+
+// ── Sohbet perdesi, karartmasi gereken seyin uzerinde olmali (kart #194) ───
+//
+// KUSUR (17 Eylul 2026, mobil saha turu): dar ekranda sohbet paneli donuk gri
+// goruluyordu. Perde panelin KENDI `::before`'uydu ve amacinin tam tersini
+// yapiyordu -- arka plani degil PANELI karartiyordu.
+//
+// Sebep tek ozellik: panel acikken transform tasiyor. Transform iki sey birden
+// yapar: (1) yigilma baglami acar, yani negatif z-index panelden DISARI
+// cikamaz; (2) sabit konumlu torunlar icin kapsayici blok olur, yani tam ekran
+// kaplama ekrani degil PANELI kaplar. Ikisi birlesince perde yanlis tarafa
+// dusuyordu. Mesaj balonlarinin net kalmasi teshisin kanitiydi: kendi opak
+// arka planlari var ve perdeden SONRA boyaniyorlar.
+//
+// Kural CSS'te ifade edilemedigi icin merdivenin bir ust basamagina tasindi.
+describe('Sohbet perdesi — transform tasiyan elemanin icinde degil (kart #194)', () => {
+  // YORUMLAR ONCE BOSALTILIYOR -- bu testin ilk yazimi tam da bu yuzden yanlis
+  // alarm verdi: styles.css'teki kusuru ANLATAN yorum, yasakli metnin
+  // kendisini ("position: fixed", ".chat-panel ... ::before") iceriyor ve
+  // tarama onu kod sandi. 11 Eylul'deki tuzagin CSS'teki kardesi (CLAUDE.md).
+  // Silinmiyor, BOSLUGA cevriliyor: konumlar ve satir numaralari korunuyor.
+  const CSS_KOD = CSS.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+
+  /** Bir kuralin govdesi: secicinin gectigi yerden ilk '}' karakterine kadar.
+   *  Ic ice parantezli secicilerde `[^)]*` kullanilmiyor -- o desen
+   *  `:not([data-full-page="true"])` gibi bir seciciyi gecemez (CLAUDE.md). */
+  const kuralGovdesi = (secici) => {
+    const i = CSS_KOD.indexOf(secici);
+    if (i < 0) return null;
+    const bas = CSS_KOD.indexOf('{', i);
+    const son = CSS_KOD.indexOf('}', bas);
+    return bas < 0 || son < 0 ? null : CSS_KOD.slice(bas + 1, son);
+  };
+
+  test('perde panelin sozde-cocugu degil', () => {
+    // Seciciyi satir basindan yakala: `body:has(.chat-panel...)::before`
+    // mesru ve o da ".chat-panel" ile "::before" iceriyor. Olcut, seciciye
+    // `.chat-panel` ile BASLAYIP `::before` ile bitmesi.
+    const kacaklar = [...CSS_KOD.matchAll(/^\s*(\.chat-panel[^{\n]*::before)\s*\{([^}]*)\}/gm)]
+      .filter(m => /position:\s*fixed/.test(m[2]))
+      .map(m => m[1].trim());
+    assert.deepEqual(
+      kacaklar, [],
+      'Sohbet perdesi yeniden panelin sozde-cocugu olarak yazilmis: '
+      + `${kacaklar.join(', ')}\n  Panel transform tasidigi icin perde ne `
+      + 'panelden disari cikabilir ne ekrani kaplayabilir; sonuc paneli '
+      + 'karartmaktir (kart #194).',
+    );
+  });
+
+  test('perde body uzerinde ve panelin hemen altinda katmanlanmis', () => {
+    const govde = kuralGovdesi('body:has(.chat-panel');
+    assert.ok(govde, 'body uzerindeki sohbet perdesi kurali bulunamadi');
+    assert.match(govde, /position:\s*fixed/, 'perde ekrana sabitlenmemis');
+    assert.match(govde, /inset:\s*0/, 'perde tam ekran degil');
+
+    // Katmanlama iliskisi SAYIYLA kilitleniyor: panelin z-index'i degisip
+    // perdeninki ayni kalirsa perde panelin USTUNE cikar ve kusur baska bir
+    // yazimla aynen geri gelir. Iliski olculmezse bayatlar.
+    const panelGovde = kuralGovdesi('.chat-panel:not([data-full-page="true"])');
+    assert.ok(panelGovde, 'kompakt panel kurali bulunamadi');
+
+    const perdeZ = Number((govde.match(/z-index:\s*(-?\d+)/) || [])[1]);
+    const panelZ = Number((panelGovde.match(/z-index:\s*(-?\d+)/) || [])[1]);
+    assert.ok(Number.isFinite(perdeZ), 'perdenin z-index degeri okunamadi');
+    assert.ok(Number.isFinite(panelZ), 'panelin z-index degeri okunamadi');
+    assert.ok(
+      perdeZ > 0 && perdeZ < panelZ,
+      `Perde (z-index ${perdeZ}) panelin (z-index ${panelZ}) ALTINDA ve `
+      + 'sayfanin ustunde olmali. Degilse ya paneli karartir ya da arka plani '
+      + 'hic karartmaz.',
+    );
+  });
+});

@@ -9271,13 +9271,37 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .notif-panel { top: 56px; }
 
   /* ── Chat compact dropdown: don't bleed onto background views.
-     Adds a backdrop so settings/notes underneath aren't visible. ── */
-  .chat-panel:not([data-full-page="true"])[data-open="true"]::before {
+     Adds a backdrop so settings/notes underneath aren't visible.
+
+     KUSUR (17 Eylül 2026, mobil saha turu, kart #194): perde panelin KENDİ
+     `::before`'uydu ve amacının tam tersini yapıyordu — arka planı değil
+     PANELİ karartıyordu. Sebep tek satır: panel açıkken
+     `transform: translateY(0) scale(1)` taşıyor (satır ~5889) ve transform
+     İKİ şey birden yapıyor:
+
+       1. Yığılma bağlamı açar. `z-index: -1` panelden DIŞARI çıkamaz; perde
+          panelin arka planının üstüne, çocuklarının altına boyanır.
+       2. `position: fixed` torunlar için kapsayıcı blok olur. `inset: 0`
+          artık ekranı değil PANELİ kaplar.
+
+     Sonuç: arka plan hiç kararmıyordu, panel donuk gri görünüyordu. Mesaj
+     balonlarının net kalması teşhisin kanıtıydı — onların kendi opak arka
+     planları var ve perdeden SONRA boyanıyorlar.
+
+     Perde bu yüzden panelin dışına, `body`ye taşındı: `body` transform /
+     filter / opacity taşımıyor, yani yığılma bağlamı açmıyor ve perde kök
+     bağlamda panelin (z-index 75) hemen altında duruyor. `body:has(...)`
+     bu dosyada zaten kullanılıyor (aşağıda `.topbar` kuralı).
+
+     `pointer-events: none` bilinçli olarak korundu: perdeye dokunarak kapatma
+     davranışı bu commit'in kapsamı değil, panelin kendi dışarı-tıklama
+     işleyicisi var. ── */
+  body:has(.chat-panel:not([data-full-page="true"])[data-open="true"])::before {
     content: '';
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.35);
-    z-index: -1;
+    z-index: 74;
     pointer-events: none;
   }
 
