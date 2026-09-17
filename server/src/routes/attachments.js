@@ -70,7 +70,8 @@ async function requireTaskAccess(req, res, taskId) {
   }
   const member = await memberForWorkspace(user.id, project.workspaceId);
   if (!member) {
-    res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
+  // Kâhin kapalı: red, "bulunamadı" ile aynı gövde (kart #227, tasks.js).
+    res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
     return null;
   }
   return { user, task, project };

@@ -145,7 +145,8 @@ async function loadTaskAccess(req, res, taskId) {
   }
   const member = await memberForWorkspace(user.id, project.workspaceId);
   if (!member) {
-    res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
+  // Kâhin kapalı: red, "bulunamadı" ile aynı gövde (kart #227, tasks.js).
+    res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
     return null;
   }
   return { user, task, project, member };
@@ -254,7 +255,19 @@ workLogsRouter.delete(
       const member = project
         ? await memberForWorkspace(user.id, project.workspaceId)
         : null;
-      if (!member || !hasPermission(member, 'manage_tasks')) {
+      // Kâhin kapalı (kart #227): ÜYE OLMAMAK ile İZNİ OLMAMAK ayrı iki
+      // durum ve ayrı cevap istiyor.
+      //   - Alanın üyesi değilsen kaydın VARLIĞINI bilmemelisin -> 404,
+      //     yukarıdaki "bulunamadı" dalıyla aynı gövde. Birleşik kontrol
+      //     403 döndüğü için kimlik deneyerek "bu süre kaydı var" bilgisi
+      //     çıkarılabiliyordu; süre kayıtları kişisel, görev kimliğinden de
+      //     hassas.
+      //   - Üyeysen ama iznin yoksa 403 DOĞRU: kaydın varlığını zaten
+      //     görebiliyorsun, yalnızca silemiyorsun.
+      if (!member) {
+        return res.status(404).json({ error: 'err_worklog_not_found', message: 'Süre kaydı bulunamadı' });
+      }
+      if (!hasPermission(member, 'manage_tasks')) {
         return res.status(403).json({ error: 'err_worklog_delete_forbidden', message: 'Bu kaydı silme yetkiniz yok' });
       }
     }

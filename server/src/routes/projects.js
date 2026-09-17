@@ -63,7 +63,8 @@ async function loadProjectWithAccess(req, res, projectId, { permission = null, a
   }
   const member = await memberForWorkspace(user.id, project.workspaceId);
   if (!member) {
-    res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
+  // Kâhin kapalı: red, "bulunamadı" ile aynı gövde (kart #227, tasks.js).
+    res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     return { denied: true };
   }
   if (permission && !hasPermission(member, permission)) {

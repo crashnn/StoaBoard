@@ -98,8 +98,24 @@ async function loadTaskWithAccess(req, res, taskId, { permission = null, include
     return { denied: true };
   }
   const member = await memberForWorkspace(user.id, project.workspaceId);
+  // KÂHİN KAPALI (17 Eylül 2026, kart #227). Üyelik reddi, kaydın HİÇ
+  // OLMADIĞI durumla AYNI gövdeyi döndürüyor. Öncesinde 403
+  // "Bu projeye erişiminiz yok" dönüyordu ve bu iki durumu ayırt edilebilir
+  // kılıyordu: kimlik deneyerek "bu kart var ama göremiyorum" ile "böyle bir
+  // kart yok" ayrıştırılabiliyordu. Kimlikler sıralı olduğu için bu,
+  // platformdaki kart sayısını ve açılma sırasını dışarı veriyordu — içerik
+  // değil, kardinalite.
+  //
+  // Bu depo aynı kâhini MCP yüzeyinde BİLEREK kapatmıştı
+  // (`erisimYoksaBulunamadi`); REST tarafı o kuralın dışında kalmıştı. Kart
+  // #224 (# ile kart numarası arama) yüzeyi davet edince görünür oldu.
+  //
+  // KURAL: reddin gövdesi, hemen yukarıdaki "bulunamadı" dalıyla AYNI olmalı.
+  // Farklı bir kod ya da mesaj yazmak kâhini geri açar. Aynı kalıbın altı
+  // kopyası var (tasks.js x2, attachments.js, notes.js, projects.js,
+  // reports.js) ve bir test hepsini birlikte kilitliyor.
   if (!member) {
-    res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
+    res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
     return { denied: true };
   }
   if (permission && !hasPermission(member, permission)) {
@@ -166,7 +182,8 @@ projectTasksRouter.get(
     const project = await prisma.project.findUnique({ where: { id: projectId } });
     if (!project) return res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     const member = await memberForWorkspace(user.id, project.workspaceId);
-    if (!member) return res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
+  // Kâhin kapalı: red, "bulunamadı" ile aynı gövde (kart #227, tasks.js).
+    if (!member) return res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
 
     const tasks = await prisma.task.findMany({
       where: { projectId, deletedAt: null },

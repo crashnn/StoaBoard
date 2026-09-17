@@ -514,7 +514,8 @@ taskLinkedNotesRouter.get(
     });
     if (!project) return res.status(404).json({ error: 'err_project_not_found', message: 'Proje bulunamadı' });
     const member = await memberForWorkspace(user.id, project.workspaceId);
-    if (!member) return res.status(403).json({ error: 'err_project_forbidden', message: 'Bu projeye erişiminiz yok' });
+  // Kâhin kapalı: red, "bulunamadı" ile aynı gövde (kart #227, tasks.js).
+    if (!member) return res.status(404).json({ error: 'err_task_not_found', message: 'Görev bulunamadı' });
 
     const linkRows = await prisma.noteLinkedTask.findMany({
       where: { taskId },

@@ -1470,3 +1470,110 @@ describe('aktif alan çözümü — tek kaynak, deterministik', () => {
     );
   });
 });
+
+// ─── Üyelik reddi kâhin açmıyor ─────────────────────────────────────────────
+//
+// KUSUR (kart #227, 17 Eylül 2026): kimlikle kayıt arayan uçlar iki farklı
+// cevap veriyordu — kayıt yoksa 404, kayıt VAR ama üyesi değilsen 403
+// "Bu projeye erişiminiz yok". Bu bir VARLIK KÂHİNİ: kimlik deneyerek
+// "bu kart var ama göremiyorum" ile "böyle bir kart yok" ayırt edilebiliyordu.
+// Kimlikler sıralı olduğu için platformdaki kart sayısı ve açılma sırası
+// dışarı sızıyordu — içerik değil, kardinalite.
+//
+// Depo aynı kâhini MCP yüzeyinde BİLEREK kapatmıştı (`erisimYoksaBulunamadi`);
+// REST tarafı o kuralın dışında kalmıştı. Kullanıcı kart #224'ü (# ile kart
+// numarası arama) denerken sordu ve ölçünce ALTI KOPYA çıktı: tasks.js (iki
+// kez), attachments.js, notes.js, projects.js, reports.js.
+//
+// Altısını da tek bir yardımcıya çıkarmak daha iyi olurdu ama dönüş biçimleri
+// farklı ({denied:true} / null / doğrudan return). Birleştirme yerine kural
+// BURADA kilitlendi: kopyalar kalabilir, ayrışamaz.
+
+describe('üyelik reddi var/yok kâhini açmıyor', () => {
+  const ROUTES = path.resolve(__dirname, '..', 'src', 'routes');
+
+  /**
+   * KÂHİN TANIMI — kural dar olmak ZORUNDA, yoksa meşru kapıları suçlar.
+   *
+   * Kâhin ancak şu koşulda vardır: AYNI işlev hem 404 (kayıt yok) hem 403
+   * (kayıt var, erişim yok) dönebiliyor ve ikisi de istekten gelen AYNI
+   * kimliğe bakıyor. O zaman kimlik deneyerek varlık çıkarsanabilir.
+   *
+   * İLK YAZIMIM YANLIŞTI ve bu kayda değer: "hiçbir üyelik reddi 403
+   * dönmesin" demiştim. Tarama on üç yer buldu ve ÇOĞU MEŞRUDU —
+   * `!member || !hasPermission(...)` ve `member.role !== "owner"` birer
+   * izin reddi: orada kullanıcı kaydın varlığını zaten biliyor, yalnızca
+   * işlemi yapamıyor. Kural daraltılmasaydı test, düzeltilmesi YANLIŞ olan
+   * kapıları bozmaya zorlardı.
+   */
+  function kahinler() {
+    const out = [];
+    for (const ad of fs.readdirSync(ROUTES).filter((x) => x.endsWith('.js'))) {
+      const src = yorumsuzDosya(path.join(ROUTES, ad));
+      for (const m of src.matchAll(/if\s*\(\s*!member\b/g)) {
+        const sonraki = src.indexOf('if (', m.index + 4);
+        const govde = src.slice(m.index, sonraki === -1 ? m.index + 400 : sonraki);
+        if (!/status\(403\)/.test(govde)) continue;
+        // İşlev başı: geriye doğru en yakın `async (` ya da `function `.
+        const once = src.slice(0, m.index);
+        const bas = Math.max(once.lastIndexOf('async ('), once.lastIndexOf('function '));
+        const onceki = src.slice(bas === -1 ? 0 : bas, m.index);
+        if (/status\(404\)[\s\S]{0,120}?_not_found/.test(onceki)) {
+          out.push({ dosya: ad, govde: govde.replace(/\s+/g, ' ').slice(0, 110) });
+        }
+      }
+    }
+    return out;
+  }
+
+  test('kimlikle kayıt arayan hiçbir uç üyelik reddini 403 ile ayırt ettirmiyor', () => {
+    assert.deepEqual(
+      kahinler(), [],
+      'Bu uçlar hem 404 (kayıt yok) hem 403 (kayıt var, erişim yok) dönüyor: '
+      + 'kimlik deneyerek varlık çıkarsanabilir. Üyelik reddini, yukarıdaki '
+      + '"bulunamadı" dalıyla AYNI 404 gövdesine çevir (MCP tarafındaki '
+      + 'erisimYoksaBulunamadi ile aynı karar).',
+    );
+  });
+
+  test('404 dönen her üyelik reddi bir _not_found kodu taşıyor', () => {
+    // MUTASYON BULDU: ilk yazımda "dosyada EN AZ BİR red 404 dönüyor mu"
+    // diye ölçüyordum. Bir redin gövdesini `err_no_access` yapmak testi
+    // kırmıyordu, çünkü aynı dosyadaki BAŞKA bir red hâlâ 404+_not_found
+    // dönüyordu ve sayaç doluyordu. Ölçüt, ölçmek istediği şeyden bağımsız
+    // bir sayıya bakıyordu.
+    //
+    // Doğru kural: 404 ile reddeden her kapının GÖVDESİ de "bulunamadı"
+    // olmalı. Farklı bir kod, kâhini durum kodundan değil gövdeden geri
+    // açar — kullanıcı yine iki durumu ayırt eder.
+    const suclu = [];
+    for (const ad of fs.readdirSync(ROUTES).filter((x) => x.endsWith('.js'))) {
+      const src = yorumsuzDosya(path.join(ROUTES, ad));
+      for (const m of src.matchAll(/if\s*\(\s*!member\s*\)/g)) {
+        const sonraki = src.indexOf('if (', m.index + 4);
+        const govde = src.slice(m.index, sonraki === -1 ? m.index + 300 : sonraki);
+        if (!/status\(404\)/.test(govde)) continue;
+        if (!/_not_found/.test(govde)) suclu.push(`${ad}: ${govde.replace(/\s+/g, ' ').slice(0, 90)}`);
+      }
+    }
+    assert.deepEqual(suclu, [],
+      '404 ile reddeden bir kapının gövdesi "bulunamadı" değil — kâhin gövdeden geri açılıyor');
+  });
+
+  test('süre kaydı izin reddi 403 KALMALI — tarama meşru kapıyı suçlamıyor', () => {
+    // NEGATİF DURUM. `!member` reddi 404 olmalı ama `!hasPermission` reddi
+    // 403 kalmalı: kullanıcı kaydın varlığını zaten görebiliyor, yalnızca
+    // silemiyor. İkisini karıştıran bir kural meşru kapıyı bozmaya zorlardı.
+    //
+    // MUTASYON BULDU: ilk yazımda deseni DOSYA GENELİNDE arıyordum
+    // (`hasPermission ... 403`). Süre kaydı kapısını 404 yapmak testi
+    // kırmıyordu, çünkü reports.js içinde başka bir hasPermission+403 vardı.
+    // Ölçüt artık o kapıya ADIYLA bağlı.
+    const src = yorumsuzDosya(path.join(ROUTES, 'reports.js'));
+    const i = src.indexOf('err_worklog_delete_forbidden');
+    assert.ok(i !== -1, 'süre kaydı silme reddi kaybolmuş');
+    const cevre = src.slice(Math.max(0, i - 200), i);
+    assert.ok(/status\(403\)/.test(cevre), 'süre kaydı izin reddi artık 403 dönmüyor');
+    assert.ok(/hasPermission\(/.test(cevre), 'red izin kontrolüne bağlı değil');
+  });
+});
