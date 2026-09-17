@@ -88,3 +88,71 @@ test('okunan her window.* globali bir yerde atanmış olmalı', () => {
     'bir global, kodun o dalını hiç çalışmadan atlatır.',
   );
 });
+
+// ── Adres çubuğu, ekranı açan bayrağın kendisine bakmalı (kart #192) ───────
+//
+// Yukarıdaki taramanın kardeşi ve aynı kök sebep: OKUNAN AMA HİÇ ATANMAYAN
+// bir değer. Orada `window.io`, burada `view === 'auth'`.
+//
+// KUSUR (17 Eylül 2026, mobil saha turu): giriş ekranında dili değiştiren
+// kullanıcı vitrine düşüyordu. `app.jsx`teki adres etkisi `view === 'auth'`
+// diye bir dal taşıyordu ama `setView('auth')` hiçbir yerde çağrılmıyor —
+// giriş ekranını `authed` bayrağı açıyor. Dal ölü olduğu için giriş
+// ekranındaki kullanıcı `else` dalına düşüyor ve adresi `/giris` iken
+// sessizce `/` yapılıyordu.
+//
+// Tek başına görünmez: pushState sayfayı yeniden yüklemiyor. Ama
+// `views/auth.jsx` dil değişiminde `location.reload()` çağırıyor ve o an
+// yüklenen adres artık `/`. Oturum yokken `/` vitrini veriyor. İki ayrı doğru
+// kod parçası, aradaki yanlış varsayım yüzünden kullanıcıyı akıştan atıyordu.
+test('giriş ekranının adresi `authed` ile belirleniyor, ölü bir `view` değeriyle değil', () => {
+  const kaynak = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'app.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+
+  // 1. `'auth'` hâlâ hiçbir yere ATANMIYOR mu? Atanır hâle gelirse aşağıdaki
+  //    yasak anlamsızlaşır ve bu test yanlış bir şeyi korumaya devam eder.
+  const ataniyor = /setView\(\s*['"]auth['"]\s*\)/.test(kaynak);
+
+  // 2. Atanmıyorsa, karşılaştırılıyor da olmamalı.
+  const karsilastiriliyor = /view\s*===\s*['"]auth['"]/.test(kaynak);
+
+  assert.ok(
+    !karsilastiriliyor || ataniyor,
+    "app.jsx `view === 'auth'` karşılaştırması yapıyor ama `setView('auth')` "
+    + 'hiçbir yerde çağrılmıyor: dal ÖLÜ ve giriş ekranındaki kullanıcı yanlış '
+    + "dala düşüyor. Ölçüt `authed` olmalı — ekranı açan bayrağın kendisi "
+    + '(kart #192).',
+  );
+
+  // 3. Adres etkisi kimlik BİLİNMEDEN yazmamalı. Önyükleme sürerken `authed`
+  //    false; o aralıkta adres yazılırsa giriş YAPMIŞ kullanıcı da bir an
+  //    `/giris`e itilir ve geri tuşu onu giriş ekranına atar.
+  const i = kaynak.indexOf("window.history.pushState({}, '', `/giris");
+  assert.ok(i > 0, 'giriş adresini yazan pushState bulunamadı');
+  const etkiBasi = kaynak.lastIndexOf('useEf(() => {', i);
+  assert.ok(etkiBasi > 0, 'adres etkisinin başı bulunamadı');
+  const etki = kaynak.slice(etkiBasi, i);
+  assert.match(
+    etki, /if \(loading\) return;/,
+    'Adres etkisi `loading` kapısı taşımıyor: kimlik bilinmeden adres '
+    + 'yazılıyor ve giriş yapmış kullanıcı bir an /giris\'e itiliyor.',
+  );
+
+  // 4. Bağımlılık listesi üç değeri de taşımalı; biri düşerse etki bayat bir
+  //    değerle koşar ve kusur sessizce geri gelir.
+  // Liste ayrıştırılıp KÜME olarak karşılaştırılıyor; düzenli ifade değil.
+  // İlk yazımında `new RegExp('\\b' + ad + '\\b')` kullanılıyordu ve şablon
+  // dizesindeki `\b` JavaScript'te SINIR değil BACKSPACE karakteridir — desen
+  // hiçbir şeye eşleşmiyordu. Kaçışa güvenmeyen bu yazımda o tuzak yok.
+  const son = kaynak.indexOf('}, [', i);
+  const liste = kaynak.slice(son + 4, kaynak.indexOf(']', son));
+  const bagimliliklar = new Set(liste.split(',').map(s => s.trim()));
+  for (const ad of ['view', 'authed', 'loading']) {
+    assert.ok(
+      bagimliliklar.has(ad),
+      `Adres etkisinin bağımlılık listesinde ${ad} yok (bulunan: ${[...bagimliliklar].join(', ')}). `
+      + 'Biri düşerse etki bayat bir değerle koşar ve kusur sessizce geri gelir.',
+    );
+  }
+});

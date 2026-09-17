@@ -170,12 +170,37 @@ function App() {
   const canManageMembers = isOwner || myPerms.includes('manage_members');
   const canManageWorkspace = isOwner || myPerms.includes('manage_workspace');
 
+  // Adres çubuğu ile ekranın eşitlenmesi.
+  //
+  // KUSUR (17 Eylül 2026, mobil saha turu, kart #192): giriş ekranında dili
+  // değiştiren kullanıcı vitrine düşüyordu. Zinciri kuran şey buradaydı.
+  //
+  // Koşul `view === 'auth'` yazılmıştı ama `setView('auth')` HİÇBİR YERDE
+  // çağrılmıyor — giriş ekranı `view` ile değil `authed` bayrağıyla açılıyor
+  // (aşağıda `if (!authed)`). Yani o dal ÖLÜ KOD'du ve giriş ekranındaki
+  // kullanıcı `else` dalına düşüyordu: `view` varsayılanı 'board' olduğu için
+  // adres `/giris` iken sessizce `/` yapılıyordu.
+  //
+  // Tek başına görünmezdi — pushState sayfayı yeniden yüklemiyor, ekran giriş
+  // ekranı olarak kalıyor. Ama `switchLang` (`views/auth.jsx`) dili yazdıktan
+  // sonra `location.reload()` çağırıyor ve o an yüklenen adres artık `/`.
+  // Oturum yokken `/` vitrini veriyor (app.js, 6c9b60a). Kullanıcı akıştan
+  // çıkıyor, dil ise gerçekten değişmiş oluyor — kartta tarif edilen tam bu.
+  //
+  // Ölçüt artık `authed`, yani ekranı açan bayrağın kendisi: aynı olgunun iki
+  // okuyucusu kalmadı.
+  //
+  // `loading` kapısı şart: önyükleme bitene kadar `authed` false, ve o aralıkta
+  // adres yazılırsa GİRİŞ YAPMIŞ kullanıcı da bir an `/giris`e itilir, sonra
+  // `/`ye geri döner. İki sahte geçmiş kaydı kalır ve geri tuşu kullanıcıyı
+  // giriş ekranına atar. Kimlik bilinmeden adres yazılmaz.
   useEf(() => {
+    if (loading) return;
     if (view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') {
       if (window.location.pathname !== `/${view}`) {
         window.history.pushState({}, '', `/${view}`);
       }
-    } else if (view === 'auth') {
+    } else if (!authed) {
       // Giriş ekranının adresi /giris: kök artık misafire vitrini veriyor
       // (app.js). Sorgu korunuyor ki ?join=KOD ve ?kayit=1 kaybolmasın.
       if (window.location.pathname !== '/giris') {
@@ -187,7 +212,7 @@ function App() {
         window.history.pushState({}, '', '/');
       }
     }
-  }, [view]);
+  }, [view, authed, loading]);
 
   useEf(() => {
     const handlePop = () => {
