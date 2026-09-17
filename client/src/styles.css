@@ -9593,6 +9593,48 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .list-table td:nth-child(n + 3):empty,
   .list-table td:nth-child(n + 3) > :only-child:empty { display: none; }
 
+  /* ── Rapor tabloları ızgaradan MUAF (kart #241) ──────────────────────
+     KUSUR (17 Eylül 2026, kullanıcının gerçek cihaz turu): denetim kaydında
+     "yazılar üst üste gelmiş" — olay başlığı ve zaman damgası çakışıyordu.
+
+     SEBEP: yukarıdaki kart düzeni ilk hücrenin ONAY KUTUSU olduğunu varsayıyor
+     ve ona 18px'lik bir ızgara sütunu veriyor. Pano liste görünümünde bu doğru.
+     Rapor tablolarında ilk hücre veri: denetim kaydında ZAMAN DAMGASI, kişi
+     raporunda ad. 18px'lik yuvaya sıkışıp taşıyor ve başlık hücresinin üstüne
+     biniyordu.
+
+     Aynı sınıfın iki farklı sütun anlamı vardı ve kural yalnızca birini
+     tanıyordu — bu deponun tanıdık sınıfı: aynı olgunun birden çok okuyucusu.
+
+     Rapor satırları burada düz blok yığını oluyor: sütun sayısı ve sırası ne
+     olursa olsun çakışma imkânsız. Izgara varsayımı yok, dolayısıyla yarın
+     eklenecek altıncı bir rapor tablosu da bozulmaz. */
+  .list-table.rep-table tr {
+    /* `flex` çünkü `order` gerekiyor: olay başlığı kaynakta üçüncü hücre ama
+       satırın çapası o, en üstte okunmalı. `block` olsaydı `order` sessiz bir
+       no-op olurdu — çalışmayan ama çalışıyor görünen kural. */
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+  }
+  .list-table.rep-table td {
+    display: block;
+    grid-column: auto;
+    grid-row: auto;
+    padding: 1px 0;
+    border-bottom: none;
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  /* Olay başlığı satırın çapası: önce ve belirgin okunmalı. */
+  .list-table.rep-table td.title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    order: -1;
+  }
+  .list-table.rep-table td:empty { display: none; }
+
   /* Notes grid: force single column on phones */
   .notes-grid-grid { grid-template-columns: 1fr; }
   .notes-header { padding: 16px 16px 12px; }

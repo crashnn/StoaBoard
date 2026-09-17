@@ -145,3 +145,65 @@ describe('mobil düzen', () => {
       + 'yanıtla/emoji sonrası klavye açılmaz');
   });
 });
+
+// ─── Rapor tabloları: kart ızgarası onlara uymuyor ─────────────────────────
+//
+// KUSUR (17 Eylül 2026, kullanıcının gerçek cihaz turu): "denetim kaydında
+// yazılar üst üste gelmiş." Olay başlığı ve zaman damgası çakışıyordu.
+//
+// SEBEP: mobilde `.list-table tr` iki sütunlu bir ızgaraya dönüşüyor ve ilk
+// hücrenin ONAY KUTUSU olduğunu varsayıp ona 18px'lik bir sütun veriyor
+// (`grid-row: 1 / span 2; grid-column: 1`). Pano liste görünümünde bu doğru.
+// Rapor tablolarında ise ilk hücre VERİ: denetim kaydında zaman damgası, kişi
+// raporunda ad. 18px'lik yuvaya sıkışıp taşıyor ve başlık hücresinin üstüne
+// biniyordu.
+//
+// Aynı sınıfın (`list-table`) iki farklı sütun anlamı vardı ve kural yalnızca
+// birini tanıyordu — bu deponun tanıdık sınıfı: aynı olgunun birden çok
+// okuyucusu, biri görülmemiş.
+//
+// Düzeltme rapor satırlarını düz bir esnek sütun yapıyor: sütun sayısı ve
+// sırası ne olursa olsun çakışma imkânsız. Izgara varsayımı kalmadığı için
+// yarın eklenecek altıncı bir rapor tablosu da bozulmaz.
+describe('rapor tabloları — mobilde çakışmıyor (#241)', () => {
+  const JSX = fs.readFileSync(
+    path.join(KOK, 'client', 'src', 'views', 'reports.jsx'), 'utf8',
+  ).replace(/\r\n/g, '\n');
+
+  test('HER rapor tablosu muafiyet sınıfını taşıyor', () => {
+    // Ölçüt "en az bir tane" DEĞİL, "hiç eksik yok": tek bir tablonun sınıfı
+    // unutulsa o tablo sessizce çakışır ve kimse fark etmez. Yarın eklenecek
+    // yeni bir rapor tablosu da bu testi kırar, yani kural kendini hatırlatır.
+    const cipsiz = (JSX.match(/className="list-table"/g) || []).length;
+    assert.equal(cipsiz, 0,
+      `${cipsiz} rapor tablosu \`rep-table\` sınıfı taşımıyor — mobilde ilk `
+      + 'hücre 18px onay kutusu yuvasına sıkışır ve başlıkla çakışır');
+    const cipli = (JSX.match(/className="list-table rep-table"/g) || []).length;
+    assert.ok(cipli >= 5, `beklenen rapor tablosu sayısı düşmüş (${cipli})`);
+  });
+
+  test('muafiyet kuralı ızgarayı gerçekten bozuyor', () => {
+    // Sınıfı eklemek tek başına yetmez: CSS tarafı ızgarayı iptal etmiyorsa
+    // hücreler yine aynı yuvaya düşer. İki yarı da ayrı ayrı ölçülüyor.
+    const css = fs.readFileSync(CSS_YOL, 'utf8');
+    const bas = css.indexOf('.list-table.rep-table tr');
+    assert.notEqual(bas, -1, 'rapor tablosu muafiyet kuralı yok');
+    const blok = css.slice(bas, css.indexOf('}', bas));
+    assert.ok(/display:\s*(flex|block)/.test(blok),
+      'rapor satırı hâlâ ızgara — hücreler aynı yuvaya düşüp çakışır');
+    assert.ok(!/display:\s*grid/.test(blok),
+      'rapor satırına yeniden ızgara verilmiş');
+  });
+
+  test('hücreler ızgara yerleşiminden de kurtarılmış', () => {
+    // `tr` ızgara olmaktan çıksa bile hücrelerdeki `grid-column`/`grid-row`
+    // bildirimleri miras kalırsa düzen yine şaşar. Kusurun taşıyıcısı
+    // hücrelerdeki bu iki bildirimdi.
+    const css = fs.readFileSync(CSS_YOL, 'utf8');
+    const bas = css.indexOf('.list-table.rep-table td {');
+    assert.notEqual(bas, -1, 'rapor hücresi kuralı yok');
+    const blok = css.slice(bas, css.indexOf('}', bas));
+    assert.ok(/grid-column:\s*auto/.test(blok) && /grid-row:\s*auto/.test(blok),
+      'hücreler ızgara yerleşimini bırakmıyor');
+  });
+});

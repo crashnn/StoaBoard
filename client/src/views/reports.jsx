@@ -340,7 +340,7 @@ function PersonReport({ data, onOpenTask, project }) {
               <Stat label={T('rep_stat_completed', 'Tamamlanan')} value={p.completed} />
               <Stat label={T('rep_stat_open', 'Açık kalan')} value={Math.max(0, p.tasks.length - p.completed)} />
             </div>
-            <table className="list-table">
+            <table className="list-table rep-table">
               <thead>
                 <tr>
                   <th>{T('rep_col_task', 'Görev')}</th>
@@ -425,7 +425,7 @@ function PeriodReport({ data, onOpenTask }) {
         </div>
         <div className="panel-body">
           {data.completed_tasks?.length ? (
-            <table className="list-table">
+            <table className="list-table rep-table">
               <thead>
                 <tr>
                   <th>{T('rep_col_task', 'Görev')}</th>
@@ -481,7 +481,7 @@ function FlowReport({ data, onOpenTask }) {
             </div>
           </div>
           <div className="panel-body">
-            <table className="list-table">
+            <table className="list-table rep-table">
               <thead>
                 <tr>
                   <th>{T('rep_col_column', 'Kolon')}</th>
@@ -515,7 +515,7 @@ function FlowReport({ data, onOpenTask }) {
         </div>
         <div className="panel-body">
           {data.slowest?.length ? (
-            <table className="list-table">
+            <table className="list-table rep-table">
               <thead>
                 <tr>
                   <th>{T('rep_col_task', 'Görev')}</th>
@@ -565,7 +565,7 @@ function AuditReport({ data }) {
           </div>
         </div>
         <div className="panel-body">
-          <table className="list-table">
+          <table className="list-table rep-table">
             <thead>
               <tr>
                 <th style={{ width: 150 }}>{T('rep_col_time', 'Zaman')}</th>
