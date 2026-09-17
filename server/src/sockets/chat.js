@@ -17,7 +17,7 @@ import * as onlineState from '../lib/onlineState.js';
 import { chatMessageToDict, notificationToDict } from '../lib/serializers.js';
 import { buildNotificationText } from '../lib/notifications.js';
 import { sessionMiddleware } from '../app.js';
-import { usersShareWorkspace } from '../lib/workspace.js';
+import { usersShareWorkspace, resolveWorkspaceId } from '../lib/workspace.js';
 import { userChannelRole, mentionAllowed } from '../lib/channels.js';
 
 const MENTION_RE = /@([\w-]+)/g;
@@ -34,26 +34,10 @@ async function loadUser(socket) {
 
 async function resolveActiveWorkspaceId(user) {
   if (!user) return null;
-  if (user.currentWorkspaceId) {
-    const m = await prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: {
-          workspaceId: user.currentWorkspaceId,
-          userId: user.id,
-        },
-      },
-    });
-    if (m) return user.currentWorkspaceId;
-  }
-  const m = await prisma.workspaceMember.findFirst({ where: { userId: user.id } });
-  if (m) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { currentWorkspaceId: m.workspaceId },
-    });
-    return m.workspaceId;
-  }
-  return null;
+  // Mantık lib/workspace.js'te tek kaynakta. Buradaki kopya 17 Eylül 2026'da
+  // silindi: üç kopyadan biriydi ve üçü de sırasız `findFirst` kullanıyordu
+  // (bkz. currentMember'ın gerekçesi).
+  return resolveWorkspaceId(user);
 }
 
 async function getOnlineSlugsWithStatus() {

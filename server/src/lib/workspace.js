@@ -17,8 +17,24 @@ export {
 import { hasPermission } from './permissions.js';
 
 /**
- * Kullanıcının aktif workspace membership'i — current_workspace_id'ye bakar,
- * yoksa ilk membership'i bulup onu set eder. Python _current_member karşılığı.
+ * Kullanıcının etkin çalışma alanı üyeliği: aktif alan sütunu geçerliyse onu,
+ * değilse üyeliklerinden deterministik olanı döner ve sütuna yazar.
+ *
+ * TEK KAYNAK OLMAK ZORUNDA. 17 Eylül 2026'ya kadar bu mantığın ÜÇ kopyası
+ * vardı: burası, `routes/api.js` (önyükleme) ve `sockets/chat.js`. Üçü de
+ * aynı işi yapıyor ve aynı iki kusuru taşıyordu; birini düzeltmek ötekileri
+ * düzeltmiyordu. Bu deponun tanıdık sınıfı — aynı olgunun birden çok
+ * okuyucusu. Kopyalar silindi, ikisi de buraya bağlandı.
+ *
+ * SIRALAMA SÜS DEĞİL, DOĞRULUK. Üç kopyada da `findFirst` SIRASIZ
+ * çağrılıyordu ve Postgres sırasız sorguda satır sırasını garanti etmez:
+ * "ilk üyelik" tanımsız bir seçimdi. Bugüne kadar görünmemesinin sebebi
+ * kayda değer — ilk çözümün sonucu sütuna YAZILIP sabitleniyor, yani kusuru
+ * örten şey tam da "okurken yazıyor" diye şikâyet edilen davranıştı. Yazmayı
+ * sıralama eklemeden kaldırmak, aktif alanın istekler arası oynamasına yol
+ * açardı. Sıra `workspaceId` artan: kararlı ve açıklanabilir.
+ *
+ * Python _current_member karşılığı.
  */
 export async function currentMember(user) {
   if (!user) return null;
@@ -37,6 +53,7 @@ export async function currentMember(user) {
   const m = await prisma.workspaceMember.findFirst({
     where: { userId: user.id },
     include: { workspaceRole: true },
+    orderBy: { workspaceId: 'asc' },
   });
   if (m) {
     await prisma.user.update({

@@ -1401,3 +1401,72 @@ describe('sohbet taslağı — hedefe bağlı, alanlar arası taşınmaz', () =>
     );
   });
 });
+
+// ─── Aktif alan çözümü tek kaynakta ──────────────────────────────────────────
+//
+// KUSUR (kart #204, DEVIR 0-V; 17 Eylül 2026'da kapandı): "aktif alan sütunu
+// boşsa ilk üyeliği seç ve sütuna yaz" mantığının ÜÇ KOPYASI vardı —
+// `lib/workspace.js` (currentMember), `routes/api.js` (önyükleme) ve
+// `sockets/chat.js`. Üçü de aynı işi yapıyordu, üçü de aynı iki kusuru
+// taşıyordu ve birini düzeltmek ötekileri düzeltmiyordu.
+//
+// NİÇİN ÖNEMLİ: bu çözüm, yazmalarının HANGİ ALANA gideceğini belirliyor.
+// Üç ayrı okuyucunun üç farklı cevaba varabilmesi, kapsam üstüne kurulmuş
+// bir üründe kabul edilemez.
+//
+// İKİNCİ KUSUR, İLKİNİN ALTINDA SAKLIYDI: üç kopyada da `findFirst` SIRASIZ
+// çağrılıyordu ve Postgres sırasız sorguda satır sırasını garanti etmez —
+// "ilk üyelik" tanımsız bir seçimdi. Görünmemesinin sebebi kayda değer:
+// sonucun sütuna yazılıp sabitlenmesi kusuru örtüyordu. Yani kusuru gizleyen
+// şey, kartın şikâyet ettiği "okurken yazma" davranışının ta kendisiydi.
+
+describe('aktif alan çözümü — tek kaynak, deterministik', () => {
+  const SRC_DIZIN = path.resolve(__dirname, '..', 'src');
+  // Bu iki imzayı BİRLİKTE taşıyan dosya, okurken onaran bir kopyadır:
+  // "bu kullanıcının herhangi bir üyeliği" sorgusu + aktif alan sütununa yazma.
+  const HERHANGI_UYELIK = /workspaceMember\.findFirst\s*\(\s*\{\s*where:\s*\{\s*userId/;
+  const AKTIF_ALAN_YAZ = /currentWorkspaceId:/;
+  const IZINLI = path.join('lib', 'workspace.js');
+
+  function kopyalar() {
+    return kaynakDosyalari(SRC_DIZIN, /\.js$/)
+      .filter((yol) => {
+        const src = yorumsuzDosya(yol);
+        return HERHANGI_UYELIK.test(src) && AKTIF_ALAN_YAZ.test(src);
+      })
+      .map((yol) => path.relative(SRC_DIZIN, yol));
+  }
+
+  test('okurken onaran mantık yalnızca lib/workspace.js içinde', () => {
+    assert.deepEqual(
+      kopyalar(),
+      [IZINLI],
+      'Aktif alan çözümünün bir kopyası daha var. Üç kopya 17 Eylül 2026\'da '
+      + 'teke indirildi; dördüncüsünü yazmak yerine currentMember ya da '
+      + 'resolveWorkspaceId çağır.',
+    );
+  });
+
+  test('tarama gerçekten o dosyayı buluyor (kör değil)', () => {
+    // İlk test "hiçbir dosya eşleşmiyor" hâlinde de yeşil kalırdı ve hiçbir
+    // şeyi korumazdı. Bu depoda üç tarama testi ilk hâlinde tam olarak
+    // böyleydi.
+    assert.ok(kopyalar().includes(IZINLI), 'tarama tek kaynağı bile göremiyor — desen bozuk');
+  });
+
+  test('geri düşüş deterministik — findFirst sırasız değil', () => {
+    // Sıralama olmadan "ilk üyelik" tanımsızdır. Yazmayı kaldırmak isteyen
+    // biri (kartın asıl talebi) önce buranın deterministik olduğundan emin
+    // olmalı, yoksa aktif alan istekler arası oynar.
+    const src = yorumsuzDosya(path.join(SRC_DIZIN, 'lib', 'workspace.js'));
+    const bas = src.search(HERHANGI_UYELIK);
+    assert.ok(bas !== -1, 'geri düşüş sorgusu bulunamadı');
+    const kapanis = src.indexOf('});', bas);
+    const sorgu = src.slice(bas, kapanis === -1 ? undefined : kapanis);
+    assert.ok(
+      /orderBy:/.test(sorgu),
+      'üyelik geri düşüşü sırasız — Postgres satır sırasını garanti etmez, '
+      + 'aktif alan istekler arası oynayabilir',
+    );
+  });
+});

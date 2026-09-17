@@ -118,32 +118,10 @@ apiRouter.get(
     const projectIdParam = parseInt(req.query.project, 10);
     const projectFilter = Number.isFinite(projectIdParam) ? projectIdParam : null;
 
-    // Aktif workspace üyeliğini çöz
-    let member = null;
-    if (user.currentWorkspaceId) {
-      member = await prisma.workspaceMember.findUnique({
-        where: {
-          workspaceId_userId: {
-            workspaceId: user.currentWorkspaceId,
-            userId: user.id,
-          },
-        },
-        include: { workspaceRole: true },
-      });
-    }
-    if (!member) {
-      member = await prisma.workspaceMember.findFirst({
-        where: { userId: user.id },
-        include: { workspaceRole: true },
-      });
-      if (member) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { currentWorkspaceId: member.workspaceId },
-        });
-        user.currentWorkspaceId = member.workspaceId;
-      }
-    }
+    // Aktif workspace üyeliğini çöz — mantık lib/workspace.js'te tek kaynakta.
+    // Buradaki kopya 17 Eylül 2026'da silindi: üç kopyadan biriydi ve üçü de
+    // sırasız `findFirst` kullanıyordu (bkz. currentMember'ın gerekçesi).
+    const member = await currentMember(user);
 
     if (!member) {
       return res.json({
