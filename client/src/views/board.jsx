@@ -925,9 +925,52 @@ function TimelineView({ tasks, onOpenTask }) {
   );
 }
 
+/**
+ * Çizelgenin gizlendiği eşik.
+ *
+ * 768px yeni bir sayı değil: bu depoda telefon kırılımı olarak zaten üç
+ * yerde kullanılıyor (`styles.css`). Yeni bir eşik icat etmek, dar ekran
+ * tanımının iki ayrı cevabı olması demekti.
+ */
+const CIZELGE_MIN_GENISLIK = 768;
+
+/**
+ * Dar ekranda mı? `matchMedia` ile, CSS'le değil.
+ *
+ * CSS `display: none` çizelgeyi GİZLER ama yine ÇİZER: yüzlerce kartın
+ * konumu hesaplanır, sonra çöpe gider. Üstelik yerine bir açıklama
+ * koyamazdık — kullanıcı boş bir alan görürdü. Görünüm seçimi React
+ * tarafında olduğu için ölçüm de orada.
+ *
+ * Sunucu tarafı render ya da `matchMedia`sız bir ortamda `false` dönüyor:
+ * yokluk hâlinde çizelge GÖSTERİLİYOR. Bilinçli — yanlış tarafta hata
+ * yapacaksak, çalışan bir özelliği gizlemek yerine dar ekranda kötü
+ * görünmesini seçiyoruz (geri dönüşü kullanıcının elinde).
+ */
+function useDarEkran(esik = CIZELGE_MIN_GENISLIK) {
+  const sorgu = `(max-width: ${esik}px)`;
+  const [dar, setDar] = useBoardState(
+    () => (typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia(sorgu).matches
+      : false),
+  );
+  useBoardEf(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia(sorgu);
+    const onChange = (e) => setDar(e.matches);
+    // Ekran döndürüldüğünde ya da pencere yeniden boyutlandığında güncellenmeli;
+    // tek seferlik ölçüm, telefonu yatay çeviren kullanıcıda bayat kalırdı.
+    mq.addEventListener('change', onChange);
+    setDar(mq.matches);
+    return () => mq.removeEventListener('change', onChange);
+  }, [sorgu]);
+  return dar;
+}
+
 // ─── BoardView (with sub-view switcher) ──────────────────────────────────────
 function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, switching, initialSubView, onSubViewChange }) {
   const [subView, setSubView] = useBoardState(() => initialSubView || localStorage.getItem('stoa.boardSubView') || 'kanban');
+  const darEkran = useDarEkran();
   useBoardEf(() => {
     localStorage.setItem('stoa.boardSubView', subView);
     onSubViewChange?.(subView);
@@ -1556,8 +1599,43 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
       <TableView tasks={visibleTasks} onOpenTask={onOpenTask} onMoveTask={onMoveTask} canManageTasks={canManageTasks} />
     )}
 
+    {/* Çizelge dar ekranda ÇİZİLMİYOR, yerine sebebi yazılıyor.
+        (17 Eylül 2026, kullanıcının mobil saha turu — kart #195.)
+
+        Kullanıcının ifadesi "çizelge kullanılmaz"dı: görev sütunu genişliğin
+        çoğunu alıyor, zaman ekseninden tek bir ay etiketi görünüyor,
+        çubuklar ekran dışında kalıyor. Görünüm açılıyor ama hiçbir bilgi
+        vermiyor.
+
+        Sadeleştirilmiş bir mobil kip DENENMEDİ ve gerekçesi kararda yazılı:
+        çizelge özü gereği zaman eksenine genişlik isteyen bir görünüm.
+        Sütunu daraltsak eksen hâlâ birkaç güne sığar; ekseni yatay
+        kaydırsak kullanıcı iki boyutta birden kaydırmak zorunda kalır.
+        Yani sadeleştirme işi kırık olmaktan çıkarmaz, kırıklığı daha
+        uğraşılmış hâle getirir.
+
+        Görünüm seçicideki çizelge girişi BİLEREK duruyor. Gizlemek
+        "böyle bir özellik yok" izlenimi verirdi; tıklayan kullanıcı
+        özelliğin var olduğunu ve neden burada olmadığını öğreniyor. */}
     {subView === 'timeline' && (
-      <TimelineView tasks={visibleTasks} onOpenTask={onOpenTask} />
+      darEkran ? (
+        <div className="board-empty-note">
+          <Icon name="calendar" size={40} strokeWidth={1} />
+          <div className="board-empty-note-title">
+            {window.t?.('board_timeline_wide_only') || 'Çizelge geniş ekranda'}
+          </div>
+          <p className="board-empty-note-desc">
+            {window.t?.('board_timeline_wide_only_desc')
+              || 'Çizelge, işleri bir zaman ekseni üzerinde gösteriyor ve bunun için genişliğe ihtiyacı var. Bilgisayarda ya da tableti yatay çevirdiğinde açılır.'}
+          </p>
+          <p className="board-empty-note-desc">
+            {window.t?.('board_timeline_wide_only_alt')
+              || 'Bu ekranda Liste, Pano ve Tablo görünümleri var.'}
+          </p>
+        </div>
+      ) : (
+        <TimelineView tasks={visibleTasks} onOpenTask={onOpenTask} />
+      )
     )}
 
     {draggingId && canManageTasks && (

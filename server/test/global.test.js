@@ -223,3 +223,63 @@ test('çekmece tweaks değerini prop olarak alıyor, tohum global\'inden değil'
     + 'bir şeye döner.',
   );
 });
+
+// ── Cizelge dar ekranda gizlenir, ama VARLIGI gizlenmez (kart #195) ────────
+//
+// KARAR (17 Eylul 2026, kullanicinin mobil saha turundan): cizelge dar
+// ekranda cizilmiyor, yerine sebebi yaziliyor. Kullanicinin ifadesi
+// "cizelge kullanilmaz"di -- gorunum aciliyor ama hicbir bilgi vermiyordu.
+//
+// Bu testin korudugu UC sey ve her birinin ayri gerekcesi var:
+//
+// 1. Olcum `matchMedia` ile, yani JS tarafinda. CSS `display: none` cizelgeyi
+//    gizler ama yine CIZER (yuzlerce kartin konumu hesaplanir, cope gider) ve
+//    yerine aciklama konamaz -- kullanici bos alan gorur.
+// 2. Esik SABIT BIR SAYI olarak degil, tek bir sabitten okunuyor. Iki yerde
+//    ayri sayi, "dar ekran" tanimin iki cevabi olmasi demek.
+// 3. Gorunum secicideki cizelge girisi DURUYOR. Gizlemek "boyle bir ozellik
+//    yok" izlenimi verirdi; tiklayan kullanici ozelligin var oldugunu ve
+//    nicin burada olmadigini ogreniyor. Bu, kararin kendisi kadar onemli ve
+//    "temizlik" diye silinmesi en muhtemel parca.
+test('çizelge dar ekranda gizleniyor ama görünüm seçicide duruyor (kart #195)', () => {
+  const kaynak = yorumsuzKaynak(
+    fs.readFileSync(path.join(SRC, 'views', 'board.jsx'), 'utf8').replace(/\r\n/g, '\n'),
+  );
+
+  // 1. Olcum JS tarafinda
+  assert.match(
+    kaynak, /matchMedia/,
+    'Çizelgenin dar ekran ölçümü `matchMedia` ile yapılmıyor. CSS ile '
+    + 'gizlemek çizelgeyi yine çizer ve yerine açıklama konamaz (kart #195).',
+  );
+
+  // 2. Esik tek bir sabitten
+  const sabit = kaynak.match(/const CIZELGE_MIN_GENISLIK = (\d+)/);
+  assert.ok(sabit, 'CIZELGE_MIN_GENISLIK sabiti bulunamadı — eşik elle yazılmış olabilir');
+  const esik = Number(sabit[1]);
+  assert.ok(
+    esik >= 480 && esik <= 1024,
+    `Eşik ${esik}px makul aralıkta değil (480-1024). Çok küçükse telefonda `
+    + 'çizelge yine açılır, çok büyükse dizüstünde gereksiz gizlenir.',
+  );
+
+  // 3. Gorunum secicisinde cizelge girisi hala var
+  assert.match(
+    kaynak, /id: 'timeline'/,
+    'Görünüm seçicisinden çizelge girişi kaldırılmış. Karar onu BIRAKMAKTI: '
+    + 'gizlemek "böyle bir özellik yok" izlenimi verir (kart #195).',
+  );
+
+  // 4. Dar ekranda TimelineView yerine bir not geliyor; kosul gercekten
+  //    dallaniyor mu? `darEkran` okunmadan yazilmis bir dal, kusurun sessizce
+  //    geri gelmesi demek.
+  const i = kaynak.indexOf("subView === 'timeline'");
+  assert.ok(i > 0, 'çizelge dalı bulunamadı');
+  const dal = kaynak.slice(i, i + 900);
+  assert.match(dal, /darEkran/, 'çizelge dalı dar ekran ölçümünü okumuyor');
+  assert.match(
+    dal, /board_timeline_wide_only/,
+    'Dar ekranda gösterilecek açıklama metni yok; kullanıcı yine boş bir '
+    + 'alan görür.',
+  );
+});

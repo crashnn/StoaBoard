@@ -2612,6 +2612,44 @@ input, textarea, select, [contenteditable="true"] {
 }
 .dash-empty-state .icon { color: var(--ink-faint); }
 
+/* Pano boş-durum notu — bir görünümün NİÇİN burada olmadığını anlatır.
+   İlk kullanıcısı çizelge (kart #195): dar ekranda çizelge çizilmiyor,
+   yerine bu not geliyor. `.dash-empty-state`ten ayrı, çünkü o pano
+   kutucuklarının içine oturan küçük bir durum; bu ise görünüm alanının
+   tamamını kaplıyor ve iki paragraf metin taşıyor.
+   Tek değişkeni bile ham renk değil; tokenlardan okuyor. */
+.board-empty-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 56px 24px;
+  min-height: 320px;
+  text-align: center;
+  color: var(--ink-muted);
+}
+.board-empty-note > svg { color: var(--ink-dim); }
+.board-empty-note-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.board-empty-note-desc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+  max-width: 34em;
+  text-wrap: pretty;
+}
+.board-empty-note-desc + .board-empty-note-desc {
+  color: var(--ink-faint);
+  font-size: 13.2px;
+}
+
 /* People list */
 .people-list { display: flex; flex-direction: column; gap: 2px; }
 .person-row {
