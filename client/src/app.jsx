@@ -120,6 +120,11 @@ function App() {
   const pendingGTimer  = useRef(null);
   const [myStatusState, setMyStatusState] = useS('online');
   const [notifCount, setNotifCount]       = useS(0);
+  // İKİ AYRI SAYI, çünkü iki ayrı soruya cevap veriyorlar:
+  //   notifCount  — son bakıştan SONRA gelen okunmamışlar → rozet
+  //   notifUnread — hâlâ okunmamış olanların tamamı       → nokta
+  // Zile bakmak "okudum" demek değil; okumak ayrı bir eylem (kart #240).
+  const [notifUnread, setNotifUnread]     = useS(0);
   // Rozet "son bakıştan beri gelen okunmamış" sayar (rozet.js). Paneli
   // açan/kapatan her yol buradan geçer: yerel sayaç sıfırlanır VE bakış anı
   // tarayıcıya yazılır. Önceden beş ayrı `setNotifCount(0)` vardı, hiçbiri
@@ -421,7 +426,10 @@ function App() {
         window.DATA.NOTIFICATIONS.unshift(notif);
         // Panelde görünmeyecek bildirim (başka alan) zili de doldurmasın —
         // aynı süzgeç, rozet.js.
-        if (panelGorunur(notif, window.__CURRENT_WS_ID__, notifType(notif.text))) setNotifCount(c => c + 1);
+        if (panelGorunur(notif, window.__CURRENT_WS_ID__, notifType(notif.text))) {
+          setNotifCount(c => c + 1);
+          setNotifUnread(c => c + 1);
+        }
         const twks = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
         const myStatus = window.__MY_STATUS__ || 'online';
 
@@ -679,10 +687,14 @@ function App() {
     // başka alandan gelen okunmamış bildirim zili doldurup panelde
     // görünmüyordu, kullanıcı hiç okuyamıyordu (15 Eylül).
     const wsId = data.workspace?.id || null;
+    const gorunurBildirimler = (data.notifications || [])
+      .filter(n => panelGorunur(n, wsId, notifType(n.text)));
     setNotifCount(yeniOkunmamisSayisi(
-      (data.notifications || []).filter(n => panelGorunur(n, wsId, notifType(n.text))),
+      gorunurBildirimler,
       sonBakisOku(localStorage, data.user?.id),
     ));
+    // Aynı süzgeç: panelde görünmeyecek bildirim noktayı da doldurmasın.
+    setNotifUnread(gorunurBildirimler.filter(n => n.unread).length);
     if (typeof data.notes_count === 'number') setNotesCount(data.notes_count);
 
     // Background-prefetch notes so palette + sidebar badge stay in sync without opening the page
@@ -923,6 +935,10 @@ function App() {
   window.__APP_TASKS__ = tasks;
   window.__SWITCH_VIEW__ = setView;
   window.__NOTIF_BADGE_RESET__ = rozetBakildi;
+  // Panel okundu/okunmadı işaretlemesini kendisi yapıyor; nokta oradan
+  // besleniyor. Panel kapalıyken sayıyı app.jsx kendi artırıyor, açıldığında
+  // panel onu sunucudan gelen gerçekle hizalıyor.
+  window.__NOTIF_UNREAD_SET__ = setNotifUnread;
   // Kimliğinden kart açma — bildirimlerin ve raporların ortak yolu.
   //
   // Raporlar bu yola 15 Eylül'de girdi: kişi raporu bütün projeleri
@@ -1226,6 +1242,7 @@ function App() {
           activeCrumb={crumb}
           onChatOpen={() => openChat()}
           notifCount={notifCount}
+          notifUnread={notifUnread}
           canManageTasks={canManageTasks}
           onMobileMenuToggle={() => setMobileSidebarOpen(v => !v)}
         />

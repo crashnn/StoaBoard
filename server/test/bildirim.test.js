@@ -756,3 +756,74 @@ describe('Tümünü oku — NULL kapsanıyor (kart #193)', () => {
     );
   });
 });
+
+// ─── Zil göstergesi: rozet ve nokta ayrı soruları cevaplıyor ────────────────
+//
+// KUSUR (17 Eylül 2026, kullanıcının gerçek cihaz turu): zilin üstündeki küçük
+// nokta, gösterilecek bir şey KALMADIĞINDA çıkıyordu. Koşul
+// "notifCount > 0 ? rozet : nokta" idi — yani okunmamış yokken nokta beliriyor
+// ve "bir şey var" diye işaret ediyordu. Kullanıcının ifadesi: "bildirim rozeti
+// dışında bildirim var imiş de okunmamış gibi hissettiriyor."
+//
+// Bu, dosyanın açılış cümlesindeki sınıfın ta kendisi: aynı olgunun (okunmamış
+// bildirim) iki göstergesi vardı ve biri olguyu hiç okumuyordu.
+//
+// KURAL — üç durum, üç cevap:
+//   - son bakıştan SONRA gelen okunmamış var → sayılı rozet
+//   - okunmamış var ama yeni değil           → nokta
+//   - hiç okunmamış yok                      → hiçbir şey
+//
+// Zile bakmak okumak değildir: sayılı rozet bakışla sıfırlanıyor, bildirimler
+// ise okunana kadar okunmamış kalıyor. Nokta tam o aralığı anlatıyor.
+//
+// Kural ÜÇ DOSYAYA yayılıyor ve üçü de ayrı ayrı kilitleniyor: göstergenin
+// kendisi doğru olsa da onu besleyen sayı yanlışsa kusur aynen sürer.
+describe('zil göstergesi — nokta gerçek okunmamışa bağlı (#240)', () => {
+  const SHELL = yorumsuzDosya(path.join(CLIENT, 'shell.jsx'));
+  const APP = yorumsuzDosya(path.join(CLIENT, 'app.jsx'));
+  const PANEL = yorumsuzDosya(path.join(CLIENT, 'notifications.jsx'));
+
+  test('nokta yalnızca okunmamış VARKEN çiziliyor', () => {
+    // Ölçüt zil düğmesinin bloğuna bağlı, dosya geneline değil: notifUnread'in
+    // Topbar'a geçiyor olması onun GÖSTERGEYİ kapıladığını göstermez.
+    const bas = SHELL.indexOf('data-notif-toggle=');
+    assert.notEqual(bas, -1, 'zil düğmesi bulunamadı');
+    const blok = SHELL.slice(bas, SHELL.indexOf('</button>', bas));
+
+    assert.match(blok, /notifUnread\s*>\s*0\s*\?\s*<span className="pip"/,
+      'nokta okunmamış sayısına bağlı değil — okunmamış yokken de çıkar');
+  });
+
+  test('okunmamış sayısı açılışta GERÇEK okunmamıştan besleniyor', () => {
+    // `yeniOkunmamisSayisi` son bakışa göre süzüyor; nokta onu KULLANMAMALI,
+    // yoksa rozetle aynı şeyi sayar ve "okunmamış var ama yeni değil" durumu
+    // hiç görünmez.
+    const bas = APP.indexOf('function _applyBootstrap');
+    assert.notEqual(bas, -1, '_applyBootstrap bulunamadı');
+    const blok = APP.slice(bas, APP.indexOf('\n  }', bas)).replace(/\s+/g, ' ');
+    assert.match(blok, /setNotifUnread\(.*n\.unread/,
+      'açılışta okunmamış sayısı hesaplanmıyor — nokta yenilemeden sonra yanlış olur');
+  });
+
+  test('soketten gelen bildirim İKİ sayacı da artırıyor', () => {
+    // Yalnızca rozet artarsa, kullanıcı zile bakıp rozeti düşürdüğünde nokta
+    // hiç belirmez ve okunmamış bildirim sessizce kaybolur.
+    const bas = APP.indexOf("sock.on('notification'");
+    assert.notEqual(bas, -1, 'bildirim dinleyicisi bulunamadı');
+    const blok = APP.slice(bas, bas + 1200);
+    assert.match(blok, /setNotifCount\(c => c \+ 1\)/, 'rozet artmıyor');
+    assert.match(blok, /setNotifUnread\(c => c \+ 1\)/,
+      'okunmamış sayacı artmıyor — nokta yeni bildirimden haberdar olmaz');
+  });
+
+  test('panel okundu işaretledikçe sayıyı geri bildiriyor', () => {
+    // "Tümünü oku"dan sonra noktanın gitmesi bu köprüye bağlı. Panel,
+    // okundu/okunmadı işaretlemesini yapan yer olduğu için gerçeği ilk bilen.
+    // Köprünün İKİ ucu da ölçülüyor: yalnızca biri varsa sayı hiçbir yere
+    // gitmez ve kusur sessizce sürer.
+    assert.match(PANEL, /window\.__NOTIF_UNREAD_SET__\?\.\(unreadCount\)/,
+      'panel okunmamış sayısını bildirmiyor — okundu işaretlemek noktayı silmez');
+    assert.match(APP, /window\.__NOTIF_UNREAD_SET__ = setNotifUnread/,
+      'köprünün karşı ucu yok — panelin bildirdiği sayı hiçbir yere gitmiyor');
+  });
+});

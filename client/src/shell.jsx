@@ -482,7 +482,7 @@ function NavItem({ icon, label, sub, badge, badgeUnread, active, onClick, onMobi
   );
 }
 
-function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onChatOpen, notifCount, canManageTasks, onMobileMenuToggle }) {
+function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onChatOpen, notifCount, notifUnread, canManageTasks, onMobileMenuToggle }) {
   const [showCode, setShowCode] = useState(false);
   const [copied, setCopied] = useState(false);
   // Kod önyüklemede yok; "göster" ya da "kopyala" basılınca sunucudan çekilir
@@ -552,9 +552,25 @@ function Topbar({ view, onView, openCmd, openNotifs, openModal, activeCrumb, onC
         </button>
         <button className="icon-btn" data-notif-toggle="true" onClick={openNotifs} title={window.t?.('topbar_notifications') || 'Bildirimler'} style={{ position: 'relative' }}>
           <Icon name="bell" size={16} />
+          {/* KUSUR (17 Eylül 2026, kullanıcı): nokta, gösterilecek bir şey
+              KALMADIĞINDA çıkıyordu. Koşul `notifCount > 0 ? rozet : nokta`
+              idi, yani okunmamış yokken nokta beliriyor ve "bir şey var" diye
+              işaret ediyordu. Kullanıcının ifadesi: "bildirim rozeti dışında
+              bildirim var imiş de okunmamış gibi hissettiriyor."
+
+              Üç durum, üç ayrı cevap:
+                • son bakıştan sonra gelen okunmamış var  → SAYILI ROZET
+                • okunmamış var ama yeni değil            → NOKTA
+                • hiç okunmamış yok                       → hiçbir şey
+
+              Zile bakmak okumak değil: `notifCount` bakışla sıfırlanıyor ama
+              bildirimler okunana kadar okunmamış kalıyor. Nokta tam da o
+              aralığı anlatıyor ve artık yalnızca orada duruyor. Panel
+              okunmamış satırı zaten işaretliyor
+              (`.notif-item[data-unread="true"]`), yani açılınca yeri görünüyor. */}
           {notifCount > 0
             ? <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 14, height: 14, borderRadius: 7, background: 'var(--status-rose)', color: 'white', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px', lineHeight: 1 }}>{notifCount > 9 ? '9+' : notifCount}</span>
-            : <span className="pip" />
+            : notifUnread > 0 ? <span className="pip" /> : null
           }
         </button>
         {canManageTasks && <button className="btn btn-primary" onClick={openModal}><Icon name="plus" size={14} /> {(window.t?.('topbar_new_task') || 'Yeni görev').replace('+ ', '')}</button>}

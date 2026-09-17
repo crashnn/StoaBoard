@@ -256,6 +256,15 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
                  : visibleItems.filter(n => _notifCategory(n) === tab);
   const unreadCount = counts.unread || 0;
 
+  // Nokta buradan besleniyor. Panel okundu/okunmadı işaretlemesini yapan yer,
+  // dolayısıyla gerçeği ilk bilen de burası: "tümünü oku"dan sonra noktanın
+  // gitmesi bu satıra bağlı. Sayı zaten panelGorunur'dan geçmiş öğelerden
+  // geliyor, yani zil ve panel aynı kümeyi sayıyor — ikisinin ayrışması bu
+  // depoda bir kez kusur olmuştu (15 Eylül).
+  React.useEffect(() => {
+    window.__NOTIF_UNREAD_SET__?.(unreadCount);
+  }, [unreadCount]);
+
   const tabs = [
     { id: 'all',      label: window.t('notif_tab_all'),      count: counts.all || 0 },
     { id: 'unread',   label: window.t('notif_tab_unread'),   count: counts.unread || 0 },
