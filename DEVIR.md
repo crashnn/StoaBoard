@@ -5,14 +5,174 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 17 Eylül 2026 öğleden sonra, **ofis makinesinde**
-(5432 kapalı; kullanıcı aynı anda ev makinesine uzaktan bağlı çalıştı).
-En taze bölüm **0-AC**.
+**Son güncelleme:** 17 Eylül 2026 öğleden sonra, **ev makinesinde** (kullanıcı
+uzaktan bağlı; 5432 açık). En taze bölüm **0-AD**.
+
+> **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
+> Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
 
 > **Ofis makinesinde *yerel* çalışılacaksa 5432 kapalıdır:** `npm run mcp:tara`
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AD. 17 Eylül öğleden sonra — ev makinesi turu, MCP 0.7.0, iki oturum deneyi
+
+**Bu tur ev makinesinde; ofis makinesi aynı anda 0-AC'yi sürdürüyordu.**
+Testler **585 → 639**. Beş commit `main`e push edildi.
+
+> **0-AC'nin "kaldığı yer" 1. maddesi KAPANDI:** beklettirilen üç commit
+> (`5813c81`, `b521439`, `3834fe3`) ve sonraki ikisi push edildi, dağıtım
+> indi. 2–5. maddeler hâlâ açık. `design/` klasörü hâlâ git dışında.
+
+### Beş commit
+
+**`77bac42` — kart gövdesindeki bölüm başlıkları açıklamaya sızıyordu (#199).**
+`docDuzMetin` h1/h2/h3'ü de birleştiriyordu. Sebep kartta tahmin edilenden
+netti: çekmece kartı açarken gövdeye KENDİ ürettiği başlığı koyuyor
+(`drawer.jsx`, `{ kind:"h2", text:"Açıklama", _i18n:"drawer_description" }`),
+yani "Açıklama" kullanıcının yazdığı değil arayüzün yapısal etiketi. Sonuç:
+#19'un açıklaması "Açıklama ttakcviöm Alt görevler" oldu ve her düzenleme
+yeniden üretiyordu — **veriyi BİRİKEREK bozan** bir kusur.
+
+Kural bilerek **yapısal**, veriye bağlı değil: `_i18n` işaretine bakıp yalnızca
+çekmecenin ürettiklerini elemek daha akıllı görünüyordu ama o alan istemci
+denetiminde ve kullanıcının elle yazdığı başlık da yapıdır. Bir test tam olarak
+o alternatifi yasaklıyor.
+
+**İLERİYE DÖNÜK, GEÇMİŞİ ONARMIYOR.** Bozulmuş açıklamalar kendiliğinden
+düzelmez. Onarım güvenli (`doc` sağlam, `desc` ondan türetilebilir) ama üretim
+veri göçü: önce **kaç kayıt etkilenmiş ölçülmeli**. Ev makinesinin
+`DATABASE_URL`i Neon'un ayrı dalına bakıyor, buradan sayılamaz.
+
+**`f135a19` — sohbet taslağı alanlar arası taşınıyordu (#221).** Mesaj
+kutusundaki metin hedeften bağımsız tek bir durumdu; alan değişince A için
+yazılan taslak B'nin kanalında duruyordu ve Enter içeriği yanlış alana
+gönderirdi. Kullanıcı bulguyu "sorun olmayabilir" diye bildirdi; **tam da
+@bahsetme sızıntı testi sırasında ilk denemede düştü.**
+
+Taslak artık **(alan + hedef)** çifti başına bellekte. Anahtarın alan kimliği
+taşıması şart: "genel" her alanda var, yalnızca kanal adına göre saklamak
+kusuru daha sinsi biçimde geri getirirdi. Yanıt ve eklenmiş dosya da hedefe
+bağlı, ikisi de devrediliyor. **Bellekte, diskte değil** — `localStorage`
+sohbet metnini ortak makinede başkasının ekranına düşürebilirdi; sayfa
+yenilenince taslak gider, bilinçli ödün.
+
+**`3e0f45f` — MCP yazma araçları REST ucundan geçer, doğrudan yazmaz (#222).**
+Kart #155 doğrulanırken çıktı. O kart BAYAT çıktı: 16 Eylül'de `72a114d`
+"bitiş kolonunda doğan kartın completedAt'i" kusurunu ARAYÜZ yolu için
+düzeltmiş ve **MCP kendiliğinden düzelmiş**, çünkü `create_task` kendi kartını
+yazmıyor — `callSelf` ile REST ucunu çağırıyor. Tek yol tasarımının karşılığı.
+
+Ama bu miras **korunmuyordu**. Hiçbir test doğrudan yazmayı yasaklamıyordu.
+Biri kolaylık için bir Prisma yazması eklerse izin kapıları, `completedAt`,
+geçiş kaydı, bildirimler ve **`@bahsetme` kapsam kapısı** atlanırdı.
+Sonuncusu kritik: `add_comment` o yoldan geçiyor.
+
+**`265b0fc` — aktif alan çözümü tek kaynakta ve deterministik (#204).**
+DEVIR 0-V doğru saymış: üç kopya vardı (`lib/workspace.js`, `routes/api.js`,
+`sockets/chat.js`). İkisi silindi, ikisi de mevcut yardımcıya bağlandı —
+yeni soyutlama gerekmedi, kopyalar birebir aynıydı. Net **−47 satır**.
+
+**İkinci kusur ilkinin altında saklıydı:** üç kopyada da `findFirst` SIRASIZ
+çağrılıyordu ve Postgres sırasız sorguda satır sırasını garanti etmez —
+"ilk üyelik" tanımsız bir seçimdi. Görünmemesinin sebebi kayda değer:
+sonucun sütuna yazılıp sabitlenmesi kusuru örtüyordu. **Kusuru gizleyen şey,
+kartın şikâyet ettiği "okurken yazma" davranışının ta kendisiydi.**
+
+**Kart AÇIK.** Asıl talep (yazmayı tümden kaldırmak) yapılmadı: sıralama
+olmadan güvenli değildi, artık güvenli ama bir karar istiyor — sütun boş
+kalırsa `api.js`teki `is_current = wm.workspaceId === user.currentWorkspaceId`
+karşılaştırması **hiçbir alanı aktif göstermez**.
+
+**`a67ecad` — MCP 0.7.0: sohbet araçları (#223).** `list_channels`,
+`list_messages`, `send_message`. Üç araç, çünkü ikisi yetmiyordu: kanal
+listesi olmadan model hangi kanalların var olduğunu bilemez.
+
+**DM'ler bilerek yüzeyde yok** ve bu çalışma zamanında değil **girdi
+şemasında** sınırlı: araçlar `to`/`with` parametresi almıyor, yani DM yolu
+yazılabilir değil. Unutulan bir kontrolle açılacak türden bir kapı değil.
+
+**Sürüm 0.7.0, 0.8.0 değil.** Kart #205 (`add_attachment`) 0.7.0'ı "aday"
+diye tutuyordu ama o sürüm çıkmadı. **Sürüm rezerve edilmez, sırayla verilir.**
+
+### Ders: bir MCP sürümünü yazan oturum onu KULLANAMAZ
+
+MCP-SURUMLER.md'nin başında "araç yüzeyi değişen her sürümden sonra yeni
+sohbet aç" yazıyor. Bugün o kuralın açıkça söylenmeyen sonucu ısırdı:
+**yeni yüzeyi ancak dağıtımdan SONRA açılan bir oturum görür.** Sürümü yazan
+oturum göremez, çünkü araç listesini bağlantı başında çekmiştir.
+
+Ölçüldü, varsayılmadı: dağıtım indikten sonra `whoami` **0.7.0 ve 23 araç**
+diyor, ama her iki oturum da kendi listesinden üçünü **yükleyemedi**
+("No matching deferred tools found"). Yani sohbet köprüsü yazıldığı gün
+**iki yönde de kapalı** kaldı.
+
+Ev oturumu önce "sen yeni sohbet açarsan görürsün, tek yönlü olur" dedi;
+ofis oturumu bunu **ölçerek** düzeltti — o da aynı durumdaydı. Koşullu ifade
+doğru, pratik sonuç yanlıştı.
+
+### İki oturum paralel çalıştı — ne işe yaradı
+
+Kanal: panodaki **kart #196** ("📮 Oturumlar arası koordinasyon"). Yorumlar
+iki oturumun da okuyabildiği tek yer. **Depoya değil panoya kurulması
+bilinçliydi:** iki oturumun da yazacağı dosyalar TODO.md ve DEVIR.md; kanal
+oraya kurulsaydı tam da çakışılacak yerde buluşulurdu.
+
+**İş sahiplenme protokolü (çalıştı):** karta girmeden önce
+`list_tasks(col:"doing")` oku, boşsa `add_assignees` + `move_task("doing")`,
+bitince `review`. `add_assignees` **birleşiyor** (tam liste değil), yani aynı
+anda sahiplenme sessiz kayıp değil **görünür çift atama** üretir.
+
+**MCP yazma çakışması — bilinmesi gerekenler:** yorumlar ve
+`add_labels`/`add_assignees` güvenli (birleşiyorlar). `update_task` ile `desc`
+**yerine koyuyor** ve sürüm kontrolü yok: aynı kartın açıklamasını iki oturum
+düzenlerse biri sessizce kaybolur. `move_task` son yazana teslim.
+
+**Dosya bölüşümü kendiliğinden yürüdü:** ofis istemcide (`app.jsx`,
+`notifications.jsx`, `styles.css`, `palette.jsx`, `static/vitrin/*`), ev
+sunucuda (`lib/*`, `routes/*`, `sockets/*`). On commit rebase edildi, **tek
+çakışma çıkmadı** ve birleşim birlikte doğrulandı (639 test).
+
+**Aktif alan tuzağı ısırdı:** kullanıcı test için alan değiştirince MCP'nin
+aktif alanı da değişti ve pano yazmaları 409 yedi. Güvenli başarısızlık —
+yanlış panoya yazmadı. Kural: **yazmadan önce `list_projects` ile hangi
+alanda olduğunu doğrula.** Kök sebep #204'te.
+
+### Canlı doğrulama — bu turda yapılanlar
+
+0-AB'nin iki güvenlik düzeltmesi **kullanıcıyla canlıda doğrulandı**:
+- Yükleme sınırı: 15 MB reddedildi, 9 MB geçti, ekranda "File exceeds the
+  10 MB limit". Üç şeyi birden kanıtladı — 413 dönüyor (500 değil), istemci
+  kodu çeviriden geçiriyor, **`en` sözlüğü de doğru** (arayüz İngilizceydi).
+- `@bahsetme` kapısı iki yönde de doğru: alan üyesine bildirim **gitti**,
+  alan dışındakine **gitmedi**. Negatif test doğru yapıldı — kullanıcı açılır
+  listenin önerisini beklemedi, metni **elle yazıp gönderdi**. Eski kodda
+  sızıntı tam o yoldan oluyordu. "Arayüz önermiyor" ile "sunucu reddediyor"
+  aynı şey değildir.
+
+**İlk denemede mesaj görünmemişti; sebep eski sekmeydi.** Kart #201 ("açık
+sekme dağıtımı fark etmiyor") artık teorik değil, **iki canlı kanıtı var**.
+
+### Kaldığı yer / yeniden başlayınca
+
+1. `git fetch && git status`. `main` push edilmiş, dağıtım indi
+   (`whoami` → 0.7.0). **Kart #196'nın yorumlarını oku** — öteki oturumun
+   son durumu orada.
+2. **0-AC'nin 2–5. maddeleri hâlâ açık** (mobil/masaüstü canlı doğrulama,
+   #187 avatar ve demo alanı kararları, vitrindeki LinkedIn yer tutucusu).
+3. **0-Z'nin listesi beş turdur devrediyor:** içe aktarma canlıda denenmedi,
+   notlar iki hesapla doğrulanmadı. Her tur "sıradaki" deniyor ve her tur
+   başka iş araya giriyor.
+4. **Kullanıcı kararı bekleyen üç şey:** #204 ikinci aşaması (`is_current`),
+   #191 (`uploaded_files.uploader_id`) ve #198 (`board_columns.is_done`
+   NOT NULL) — son ikisi **şema**, elle uygulanır.
+5. **#199'un veri onarımı:** önce canlıda kaç kaydın `desc` alanı `doc`tan
+   türetilenden farklı, ölçülmeli.
+6. Sohbet köprüsü (#223) **denenmedi**: dağıtımdan sonra açılan yeni bir
+   oturum gerekiyor. Bugünkü iki oturum da göremiyor.
 
 ---
 
