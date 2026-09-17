@@ -1268,14 +1268,84 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
-- [ ] **Sohbete dosya yükleme kapısız ve sınırsız** *(16 Eylül 2026, yazan
-      uçlarda kapı taraması yazılırken)*. `POST /api/chat/upload` yalnızca
-      oturum istiyor; dosya hiçbir kanala/alana bağlı değil, 50 MB'a kadar,
-      tekrar sınırı yok, veritabanına yazılıyor. Yetki açığı değil (kimsenin
-      verisi okunmuyor) ama kaynak istismarı: bir hesap depoyu doldurabilir.
-      Çözüm: yüklemeyi kanal/DM bağlamına bağla (üyelik kapısı), kullanıcı
-      başına günlük hacim sınırı, hız sınırı. `yetki.test.js` KAPISIZ_UCLAR'da
-      gerekçesiyle duruyor.
+- [x] **Sohbete dosya yükleme kapısız ve sınırsız** *(16 Eylül 2026 bulundu;
+      17 Eylül kapandı)*. `POST /api/chat/upload` yalnızca oturum istiyordu:
+      dosya hiçbir kanala/alana bağlı değildi, türü sorulmuyordu, tekrar
+      sınırı yoktu. Kapı **kopyalanmadı**, ortak yardımcıya çıkarıldı
+      (`resolveChatTarget`, `lib/channels.js`) ve mesaj gönderme ucu da
+      oradan geçiyor — iki kopya ayrışabilirdi. Tür eleği kart ekiyle aynı;
+      hız sınırı kullanıcı başına 10 dakikada 20 (IP değil: aynı ofis tek IP).
+      Sekiz regresyon testi, altı mutasyonun altısı yakalandı.
+      **Yol üstünde üç kusur daha çıktı ve kapandı:** (a) boyut sınırı yalandı
+      — multer 10 MB'da kesiyordu, route'taki 50/20 MB kontrolleri erişilemez
+      koddu ve kullanıcıya yanlış sınır söyleniyordu; sayı tek yere alındı
+      (`UPLOAD_MAX_BYTES`). (b) Sınır aşımı 500 dönüyordu — `MulterError`
+      yakalanmıyordu; artık 413. (c) İstemci ham `fetch` kullandığı için
+      hata kodları çevrilmeden ham gösteriliyordu.
+
+- [ ] **Sohbet yükleme kotası SAYI bazlı, BAYT bazlı değil** *(17 Eylül 2026,
+      yukarıdaki iş kapatılırken bilinçli olarak dışarıda bırakıldı)*. Hız
+      sınırı kullanıcı başına 10 dakikada 20 yükleme; etkin tavan 20 x 10 MB.
+      Gerçek bayt kotası için `uploaded_files` satırının **sahibi** olmalı ve
+      tabloda `uploader_id` yok. Eklemek şema değişikliği demek (CLAUDE.md:
+      şema bilinçli ve elle uygulanır), o yüzden ayrı madde. Aynı sütun
+      öksüz dosya temizliğini de mümkün kılar: bugün mesaja dönüşmeyen
+      yükleme hiçbir şeye bağlı değil ve kimse silemiyor.
+
+- [ ] **GÜVENLİK: sohbet mesajındaki `@bahsetme` platform geneli arıyor**
+      *(17 Eylül 2026, yükleme kapısı üstünde çalışırken bulundu)*. Bu, 12
+      Eylül'de kart yorumunda kapatılan kusurun (DEVIR 0-J) **REST sohbet**
+      yolundaki kardeşi ve hâlâ açık. `routes/chat.js` POST `/messages`
+      içindeki bahsetme döngüsü `prisma.user.findUnique({ where: { slug } })`
+      diyor ve **hiçbir kapsam sormuyor**: bildirim mesajın 80 karakterlik
+      önizlemesini taşıdığı için, özel bir kanaldaki mesaj platformdaki
+      herhangi bir kullanıcıya `@slug` yazılarak sızdırılabilir.
+      Kapı zaten yazılmış ve test edilmiş durumda (`mentionAllowed`,
+      `lib/channels.js`) ve **soket yolunda uygulanıyor** (`sockets/chat.js`
+      ~245, gerekçe yorumuyla). İstemcinin kullandığı yol REST, yani kapısız
+      olan yol canlıda etkin olan yol. Çözüm mevcut kalıbı REST ucuna taşımak;
+      `sockets/chat.js` bire bir örnek.
+
+#### Mobil saha turu — 17 Eylül 2026
+
+Kullanıcı canlıda (stoaboard.com, Android/Chrome, gizli sekme) dört bulgu
+bildirdi, ekran görüntüleriyle. Hiçbiri henüz koda girmedi; sırayı kullanıcı
+verecek. Ortak not: dördü de **yalnızca dar ekranda** görülüyor, yani masaüstü
+turunda kaçan bir sınıf.
+
+- [ ] **Dil değiştirince vitrine atıyor** *(mobil)*. Vitrinden giriş ekranına
+      (`/giris`) gidip dili değiştirince kullanıcı vitrine geri düşüyor;
+      tekrar giriş ekranına gelindiğinde dil değişmiş oluyor. Yani işlem
+      çalışıyor ama kullanıcıyı bulunduğu yerden atıyor. Şüphe: dil değişimi
+      bir yeniden yükleme tetikliyor ve `/` yönlendirmesi (oturum yoksa
+      vitrin — `6c9b60a` tesisatı) devreye giriyor; dönüşte `/giris` hedefi
+      korunmuyor. `auth.jsx` kendi `AUTH_I18N` sözlüğünü taşıyor (CLAUDE.md),
+      oraya da bakılmalı.
+
+- [ ] **Bildirim okundu durumu tutarsız** *(mobil)*. Kullanıcının ifadesi
+      belirsiz, **doğrulanması gerek**: "bildirimler okundu dese de okundu
+      işaretlenmiş". Ekran görüntüsünde ölçülebilir olan: başlık "Bildirimler
+      10", süzgeçler "Tümü 10" ve "Okunmamış 10" **aynı sayıyı** veriyor,
+      ama listedeki ilk kayıtta (Musa Koçak, 18 saat önce) okunmamış noktası
+      YOK, altındaki dördünde var. Yani en az bir kart okunmuş görünüyorken
+      okunmamış sayısına dahil. Zil rozetindeki nokta da duruyor.
+      Şüphe: "tümünü oku" ya da tekil okuma yazıyor ama sayaç aynı kaynaktan
+      okunmuyor (iki okuyucu sınıfı). Kullanıcıya sorulacak: hangi işlemden
+      SONRA bu hâl görülüyor?
+
+- [ ] **Sohbet paneli karartılmış görünüyor** *(mobil)*. Pano üzerinde açılan
+      "Sohbetler" paneli gri bir perdenin ALTINDA kalıyor: başlık, sekmeler
+      ve arka plan soluk, yalnızca mesaj balonları koyu. Panel kullanılabilir
+      ama okunaklı değil. Şüphe: modal arka planı (backdrop) panelin üstüne
+      boyanıyor — dar ekranda z-index ya da yığılma bağlamı (stacking
+      context) sırası bozuluyor. Masaüstünde görülmüyor.
+
+- [ ] **Çizelge görünümü mobilde kullanılamaz** *(mobil)*. Gantt/çizelge dar
+      ekranda işe yaramıyor: görev sütunu genişliğin çoğunu alıyor, zaman
+      ekseninden yalnızca bir ay etiketi ("Nis") ve boş ızgara görünüyor,
+      çubuklar ekran dışında. Karar gerektiriyor: (a) mobilde çizelgeyi
+      görünüm listesinden gizle, (b) yatay kaydırmalı sadeleştirilmiş bir
+      kip ver. Ürün kararı — kod işi değil, önce (a)/(b) seçilmeli.
 - [x] **Çift tırnaklı `error` alanı dil taramasından kaçıyor** *(16 Eylül
       2026; aynı gün kapandı: tarama üç tırnağı da görüyor, üç kaçak koda
       çevrildi, mutasyonla doğrulandı)*. `attachments.js` sohbet yüklemesinde `error: "Dosya 50 MB'dan
