@@ -1320,3 +1320,84 @@ describe('@bahsetme — kapsam kapısı iki yolda da var', () => {
     );
   });
 });
+
+// ─── Sohbet taslağı hedefe bağlı ─────────────────────────────────────────────
+//
+// KUSUR (17 Eylül 2026, kart #221): mesaj kutusundaki metin hedeften BAĞIMSIZ
+// tek bir durumdu. Alan değiştirince A alanı için yazılmış taslak B alanının
+// kanalında duruyordu; Enter'a basmak içeriği yanlış alana gönderirdi. Kimse
+// bir kuralı ihlal etmez — arayüz kullanıcıyı hataya davet ederdi. Alan
+// kapsamı üstüne kurulmuş bir üründe kabul edilemez: sunucuda kapı kapı
+// üyelik denetlerken (bugün ikisi kapandı) arayüz içeriği alanlar arası
+// taşıyordu. Kusur, @bahsetme sızıntı testi sırasında ilk denemede düştü.
+
+describe('sohbet taslağı — hedefe bağlı, alanlar arası taşınmaz', () => {
+  const CHAT = path.resolve(__dirname, '..', '..', 'client', 'src', 'chat.jsx');
+
+  /** Taslak etkisinin gövdesi — komşu etkiye taşmadan. */
+  function taslakBlogu() {
+    const src = yorumsuzDosya(CHAT);
+    const bas = src.indexOf('const taslaklar');
+    assert.ok(bas !== -1, 'taslak deposu bulunamadı');
+    const etkiBas = src.indexOf('useChatE(', bas);
+    assert.ok(etkiBas !== -1, 'taslak etkisi bulunamadı');
+    const sonraki = src.indexOf('useChatE(', etkiBas + 1);
+    return sonraki === -1 ? src.slice(bas) : src.slice(bas, sonraki);
+  }
+
+  test('anahtar ALAN kimliğini taşıyor, yalnızca kanal adını değil', () => {
+    // İNCE TUZAK: "genel" kanalı HER alanda var. Taslağı yalnızca kanal
+    // slug'ına göre saklamak kusuru geri getirir, üstelik daha sinsi biçimde:
+    // metin bu kez "aynı adlı kanal" olduğu için taşınır.
+    const blok = taslakBlogu();
+    assert.ok(
+      /taslakAnahtari\s*=\s*\([^)]*ws/.test(blok),
+      'anahtar üreticisi alan kimliği almıyor — taslak alanlar arası taşınır',
+    );
+    assert.ok(
+      /ws\$\{/.test(blok),
+      'anahtarın içinde alan kimliği yok; yalnızca kanal adına göre saklanıyor olabilir',
+    );
+    assert.ok(
+      /:dm:/.test(blok) && /:ch:/.test(blok),
+      'DM ve kanal ayrı ad alanında değil — aynı slug ikisinde çakışabilir',
+    );
+  });
+
+  test('etki alan, DM ve kanal değişiminin üçünü de izliyor', () => {
+    const blok = taslakBlogu();
+    const deps = /\}\s*,\s*\[([^\]]*)\]\s*\)/.exec(blok);
+    assert.ok(deps, 'etkinin bağımlılık dizisi okunamadı');
+    for (const ad of ['wsId', 'dmWith', 'activeChannel']) {
+      assert.ok(
+        deps[1].includes(ad),
+        `bağımlılıklarda ${ad} yok — o değişince taslak devredilmez ve taşınır`,
+      );
+    }
+  });
+
+  test('yanıt ve eklenmiş dosya da hedefe bağlı', () => {
+    // Yalnızca metni düzeltmek yarım düzeltme olurdu: yanıt bağlamı ve
+    // yüklenmiş dosya da hedefe aittir ve aynı yoldan taşınıyordu.
+    const blok = taslakBlogu();
+    assert.ok(/replyTo/.test(blok), 'yanıt durumu taslakla birlikte devredilmiyor');
+    assert.ok(/pendingFile/.test(blok), 'eklenmiş dosya taslakla birlikte devredilmiyor');
+    assert.ok(
+      /setReplyTo\(/.test(blok) && /setPendingFile\(/.test(blok),
+      'ikisi kaydediliyor ama geri yüklenmiyor olabilir',
+    );
+  });
+
+  test('taslak diske yazılmıyor', () => {
+    // Bilinçli ödün: sayfa yenilenince taslak gider. localStorage'a yazmak
+    // sohbet metnini diske düşürür ve ortak makinede başkasının ekranına
+    // gelebilir. Bu testin yorumu "localStorage" kelimesini İÇERİYOR —
+    // tarama yorumları boşluğa çevirmeseydi burada yanlış alarm verirdi
+    // (CLAUDE.md, 11 Eylül yorum tuzağı).
+    const blok = taslakBlogu();
+    assert.ok(
+      !/localStorage|sessionStorage/.test(blok),
+      'taslak tarayıcı deposuna yazılıyor — sohbet metni diske düşmemeli',
+    );
+  });
+});

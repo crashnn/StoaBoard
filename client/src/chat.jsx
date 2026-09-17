@@ -1732,6 +1732,50 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   const [channelSettingsId, setChannelSettingsId] = useChatS(null); // for future use
   const [mentionTaskRef, setMentionTaskRef] = useChatS(null); // { id, title } set when navigating from a @mention
 
+  // ── Taslak hedefe bağlı: alan/kanal/DM değişince taşınmaz ──────────────
+  //
+  // KUSUR (17 Eylül 2026, kart #221): mesaj kutusundaki metin hedeften
+  // BAĞIMSIZ tek bir durumdu. Alan değiştirince A alanı için yazılmış taslak
+  // B alanının kanalında duruyordu; Enter'a basmak içeriği yanlış alana
+  // gönderirdi. Kimse bir kuralı ihlal etmez — arayüz kullanıcıyı hataya
+  // davet ederdi. Alan kapsamı üstüne kurulmuş bir üründe kabul edilemez:
+  // sunucuda kapı kapı üyelik denetlerken arayüz içeriği alanlar arası
+  // taşıyordu. Kusur, @bahsetme sızıntı testi sırasında ilk denemede düştü.
+  //
+  // ANAHTAR (alan + hedef) ÇİFTİ, yalnızca kanal adı DEĞİL: "genel" her
+  // alanda var, yalnızca ada göre saklamak kusuru daha sinsi biçimde geri
+  // getirirdi (taslak bu kez "aynı adlı kanal" olduğu için taşınırdı).
+  //
+  // BELLEKTE, diskte değil: sohbet metni localStorage'a yazılsaydı ortak
+  // makinede başkasının ekranına düşerdi. Sayfa yenilenince taslak gider;
+  // bilinçli ödün.
+  //
+  // YANIT ve EKLENMİŞ DOSYA da taşınıyordu — ikisi de hedefe bağlı, ikisi de
+  // burada. Yalnızca metni düzeltmek aynı riski başka kılıkta bırakırdı.
+  const taslaklar = useChatRef(new Map());
+  const oncekiHedef = useChatRef(null);
+  const taslakAnahtari = (ws, dm, ch) => (dm
+    ? `ws${ws || 0}:dm:${dm}`
+    : `ws${ws || 0}:ch:${ch || 'general'}`);
+
+  useChatE(() => {
+    const yeni = taslakAnahtari(wsId, dmWith, activeChannel);
+    // Metin deps içinde olduğu için bu etki her tuşta çalışır; hedef
+    // değişmediyse hemen çıkar. Karşılığında kapanış HER ZAMAN taze:
+    // taslağı ref aynasından okumak gerekmiyor, sıralama varsayımı yok.
+    if (oncekiHedef.current === yeni) return;
+    // İlk çalışma (montaj): yalnızca hedefi kaydet, duruma DOKUNMA. Aksi
+    // halde panel her açıldığında yazılmakta olan metin sıfırlanırdı.
+    if (oncekiHedef.current === null) { oncekiHedef.current = yeni; return; }
+    // Bu render'da yalnızca hedef değişti; text hâlâ ÖNCEKİ hedefin taslağı.
+    taslaklar.current.set(oncekiHedef.current, { text, replyTo, pendingFile });
+    oncekiHedef.current = yeni;
+    const kayit = taslaklar.current.get(yeni);
+    setText(kayit?.text || '');
+    setReplyTo(kayit?.replyTo || null);
+    setPendingFile(kayit?.pendingFile || null);
+  }, [wsId, dmWith, activeChannel, text, replyTo, pendingFile]);
+
   // Refresh channels from API on open / workspace switch
   useChatE(() => {
     if (!open) return;
