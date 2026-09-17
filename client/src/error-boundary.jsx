@@ -48,6 +48,16 @@ export class ErrorBoundary extends React.Component {
               'Bu bölüm yüklenirken bir hata oluştu. Yeniden deneyebilir ya da soldan başka bir bölüme geçebilirsiniz.',
             )}
           </div>
+          {/* HATA METNİ EKRANDA. Önceden yalnızca konsola yazılıyordu ve
+              kullanıcının çoğu raporu TELEFONDAN geliyor — orada konsol
+              açmak pratikte imkânsız. "Beyaz ekran geldi, bozuk" ile
+              "TypeError: x is undefined" arasındaki fark, bir kusurun bir
+              saatte mi yoksa bir günde mi kapandığıdır.
+              Çeviriye bağlanmıyor: içerik zaten teknik ve İngilizce geliyor;
+              sözlüğe anahtar açmak onu çevirmiş yapmazdı. */}
+          {this.state.error?.message && (
+            <div className="error-boundary-detail">{this.state.error.message}</div>
+          )}
           <button className="btn btn-primary" onClick={this.reset}>
             <Icon name="refresh" size={14} /> {t('err_retry', 'Yeniden dene')}
           </button>

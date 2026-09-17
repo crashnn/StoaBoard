@@ -1410,6 +1410,21 @@ function App() {
         </ErrorBoundary>
       </div>
 
+      {/* KAPLAMA KATMANI DA SARILIYOR (17 Eylül 2026).
+          `ErrorBoundary`nin kendi açıklaması bu kusuru birebir tarif ediyor:
+          "bir boundary yoksa TÜM ağaç unmount olur — ekran komple siyah
+          kalır". Ders 2 Eylül'de GÖRÜNÜMLER için öğrenilmişti ve görünüm alanı
+          sarılmıştı; çekmece, sohbet ve bildirim panelleri DIŞARIDA kaldı.
+          Onlar da render ediyor, onlar da fırlatabiliyor.
+
+          Kullanıcı bunu canlıda buldu: kart yorumundaki bahsetmeye basınca
+          DM açılacakken sayfa tamamen beyazladı — ne üst çubuk ne kenar
+          çubuğu, hiçbir şey. Tek bir panelin hatası bütün uygulamayı
+          götürüyordu ve geriye hiçbir iz kalmıyordu.
+
+          Her panel KENDİ boundary'sinde: biri çökerse ötekiler ayakta kalıyor
+          ve kullanıcının kaçış yolu (kenar çubuğu, üst çubuk) hep duruyor. */}
+      <ErrorBoundary key="drawer">
       <TaskDrawer
         open={!!drawerTask} task={drawerTask} onClose={closeDrawer}
         onMoveTask={moveTask}
@@ -1423,8 +1438,14 @@ function App() {
         onOpenPage={openTaskPage}
         tweaks={tweaks}
       />
+      </ErrorBoundary>
+      <ErrorBoundary key="modal">
       <AddTaskModal open={canManageTasks && modalOpen} onClose={() => { setModalOpen(false); setModalInitialDates(null); }} defaultCol={modalCol} onCreate={createTask} initialDates={modalInitialDates} />
+      </ErrorBoundary>
+      <ErrorBoundary key="palette">
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onAction={handleCmd} />
+      </ErrorBoundary>
+      <ErrorBoundary key="notif">
       <NotifPanel
         open={notifOpen}
         onClose={() => { setNotifOpen(false); rozetBakildi(); }}
@@ -1435,7 +1456,9 @@ function App() {
         tweaks={tweaks}
         setTweak={setTweak}
       />
+      </ErrorBoundary>
       {/* Slide-out popup chat — only when NOT on full-page chat route */}
+      <ErrorBoundary key="chat">
       {view !== 'chat' && (
         <ChatPanel
           open={chatOpen}
@@ -1463,6 +1486,7 @@ function App() {
           highlightMsgId={chatHighlightMsgId}
         />
       )}
+      </ErrorBoundary>
       <TweaksPanel tweaks={tweaks} setTweak={setTweak} visible={tweaksAvailable} />
       {projectModal && canManageProjects && <NewProjectModal onClose={() => setProjectModal(false)} onCreate={handleCreateProject} />}
       {wsJoinModalOpen && (

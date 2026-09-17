@@ -10268,6 +10268,27 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
 }
 .error-boundary-sub { font-size: 14px; max-width: 420px; line-height: 1.5; }
 
+/* Hata metni. Kullanıcı raporlarının çoğu TELEFONDAN geliyor ve orada konsol
+   açmak pratikte imkânsız; "beyaz ekran geldi" ile "x is undefined" arasındaki
+   fark bir kusurun bir saatte mi bir günde mi kapandığıdır. Tek satıra
+   sıkıştırılmıyor: hata metni uzun olabiliyor ve kırpılan kısım tam da
+   aranan kısım olur. */
+.error-boundary-detail {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  max-width: 420px;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  user-select: text;
+}
+
 /* ─── DASHBOARD — PANO DAGILIMI (yatay yigilmis cubuk) ─────────────────────
    Dikey yigilmis sutunlarin yerini aldi. Iki sebep: eski grafigin "Ay"
    verisi uydurmaydi, ve yigilmis sutunda en alttaki disinda hicbir dilim
