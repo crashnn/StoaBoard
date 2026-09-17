@@ -1322,15 +1322,20 @@ turunda kaçan bir sınıf.
       korunmuyor. `auth.jsx` kendi `AUTH_I18N` sözlüğünü taşıyor (CLAUDE.md),
       oraya da bakılmalı.
 
-- [ ] **Bildirim okundu durumu tutarsız** *(mobil)*. Kullanıcının ifadesi
-      belirsiz, **doğrulanması gerek**: "bildirimler okundu dese de okundu
-      işaretlenmiş". Ekran görüntüsünde ölçülebilir olan: başlık "Bildirimler
-      10", süzgeçler "Tümü 10" ve "Okunmamış 10" **aynı sayıyı** veriyor,
-      ama listedeki ilk kayıtta (Musa Koçak, 18 saat önce) okunmamış noktası
-      YOK, altındaki dördünde var. Yani en az bir kart okunmuş görünüyorken
-      okunmamış sayısına dahil. Zil rozetindeki nokta da duruyor.
-      Şüphe: "tümünü oku" ya da tekil okuma yazıyor ama sayaç aynı kaynaktan
-      okunmuyor (iki okuyucu sınıfı). Kullanıcıya sorulacak: hangi işlemden
+- [ ] **"Tümünü oku" sonrası bildirimler okunmamış kalıyor** *(mobil,
+      17 Eylül 2026; kullanıcıyla netleştirildi)*. "Tümünü oku"ya basılıyor,
+      işlem **başarılı görünüyor**, bildirimler okunmamış kalmaya devam
+      ediyor. Ekran görüntüsünden ölçülebilen: "Tümü 10" ve "Okunmamış 10"
+      aynı sayıyı veriyor, ama listedeki ilk kayıtta okunmamış noktası yok —
+      yani en az bir kart okunmuş görünürken okunmamış sayısına dahil. Zil
+      rozetindeki nokta da duruyor.
+      Sırayla bakılacak: (1) yazma gerçekten oluyor mu (uç çağrılıyor mu,
+      `isRead` dönüyor mu), (2) oluyorsa sayaç neden eski — rozet ve süzgeç
+      sayısı okuma yolundan mı besleniyor yoksa ayrı kaynaktan mı (**bu
+      deponun tanıdık "aynı olgunun birden çok okuyucusu" sınıfı**),
+      (3) iyimser arayüz güncellemesi var mı, yeniden çekim yapılıyor mu.
+      Sessiz başarısızlık şüphesi: işlem başarılı görünüyor ama sonuç yok.
+      Panoda kart #193.
       SONRA bu hâl görülüyor?
 
 - [ ] **Sohbet paneli karartılmış görünüyor** *(mobil)*. Pano üzerinde açılan
