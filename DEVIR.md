@@ -98,8 +98,22 @@ biri ilk hâlinde yanlış şeyi ölçüyordu.
 
 ### Kaldığı yer
 
-- **#240 DOĞRULAMA BEKLİYOR** — düzeltme canlıda ama kullanıcı henüz denemedi.
-  Kanaldan DM'ye geçiş ve bahsetmeden DM açma, ikisi de sınanmalı.
+- **#240 KISMEN AÇIK.** Kullanıcı 18 Eylül sabahı, `2d2ba93` sonrası ölçtü:
+  - ✅ sağ üst sohbet düğmesinden DM
+  - ✅ kart yorumundaki bahsetme çipinden DM  *(bu düzeldi)*
+  - ✅ soldan açılır menüden üyeye basarak DM
+  - ❌ **tam sayfa sohbette genel kanaldan DM'ye geçmek — HÂLÂ KIRIK**
+
+  Ayrım önemli: çalışan üç yolun üçü de panele `openChat()` ile DIŞARIDAN
+  hedef veriyor. Kırık yol hedefi BİLEŞENİN İÇİNDEN değiştiriyor. Ayrıca
+  `<ChatPanel>` yalnızca `view !== 'chat'` iken render ediliyor; tam sayfa
+  sohbet AYRI bir render yolu.
+
+  **Ölçülmedi, tahmin yazılmıyor.** İki olasılık: (a) tam sayfa kipte ayrı bir
+  kusur var, (b) kullanıcı dağıtım inmeden denedi (push ~05:50 UTC). Devralan
+  önce (b)'yi elesin — hard refresh sonrası tekrar denensin. Hata metni artık
+  görünür (#244), ekrandaki teknik satırı istemek en hızlı yol. Çökme mi yoksa
+  sessizce hiçbir şey olmaması mı, o bile bilinmiyor.
 - **#238 sürükle-kapat** doğrulama bekliyor (tutamak çubuğu görünüyor mu,
   eşik altında yaylanıyor mu).
 - **#241, #242, #243** gerçek cihaz doğrulaması bekliyor.
