@@ -979,6 +979,19 @@ function useDarEkran(sorgu = CIZELGE_GIZLI_SORGU) {
 }
 
 // ─── BoardView (with sub-view switcher) ──────────────────────────────────────
+/**
+ * Kolon listesinin tekilleştirilmiş kopyası. İki yerde (ilk kurulum ve canlı
+ * olay) aynı kural — ikinci bir kopya yazılmasın diye tek fonksiyon.
+ */
+function tekKolonlar(cols) {
+  const seen = new Set();
+  return (cols || []).filter(col => {
+    if (seen.has(col.id)) return false;
+    seen.add(col.id);
+    return true;
+  });
+}
+
 function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, switching, initialSubView, onSubViewChange }) {
   const [subView, setSubView] = useBoardState(() => initialSubView || localStorage.getItem('stoa.boardSubView') || 'kanban');
   const darEkran = useDarEkran();
@@ -1012,16 +1025,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
   const [activeOverdue, setActiveOverdue] = useBoardState(false);
   const [activeMyTasks, setActiveMyTasks] = useBoardState(() => localStorage.getItem('stoa.filterMyTasks') === 'true');
   const [searchQuery, setSearchQuery] = useBoardState('');
-  const [columns, setColumns] = useBoardState(() => {
-    // Initial load: deduplicate from DATA.COLUMNS
-    const cols = DATA.COLUMNS || [];
-    const seen = new Set();
-    return cols.filter(col => {
-      if (seen.has(col.id)) return false;
-      seen.add(col.id);
-      return true;
-    });
-  });
+  const [columns, setColumns] = useBoardState(() => tekKolonlar(DATA.COLUMNS));
   const [isAddingColumn, setIsAddingColumn] = useBoardState(false);
   const [newColumnTitle, setNewColumnTitle] = useBoardState("");
   const [newColumnColor, setNewColumnColor] = useBoardState(COL_COLORS[0]);
@@ -1046,15 +1050,20 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
     if (initialColumnsSet.current) return; // Already initialized
     initialColumnsSet.current = true;
     
-    const newCols = DATA.COLUMNS || [];
-    const seen = new Set();
-    const dedupedCols = newCols.filter(col => {
-      if (seen.has(col.id)) return false;
-      seen.add(col.id);
-      return true;
-    });
-    setColumns(dedupedCols);
+    setColumns(tekKolonlar(DATA.COLUMNS));
   }, []); // Empty dependency — only run once on mount
+
+  // Canlı kolon değişikliği (kart #235). Pano kolonları KENDİ durumunda
+  // tutuyor ve o durum yalnızca açılışta doluyordu; başka hesabın açtığı
+  // kolon `board_columns` olayıyla DATA.COLUMNS'a yazılıyor ama pano eski
+  // kopyasını çizmeye devam ediyordu — kullanıcı F5 yapana kadar kolon yok
+  // (18 Eylül, sade tur 23). Olay app.jsx'te listeyi yazdıktan SONRA bu
+  // pencere olayını yayınlıyor; pano kopyasını buradan tazeliyor.
+  useBoardEf(() => {
+    const tazele = () => setColumns(tekKolonlar(window.DATA.COLUMNS));
+    window.addEventListener('stoa:kolonlarDegisti', tazele);
+    return () => window.removeEventListener('stoa:kolonlarDegisti', tazele);
+  }, []);
 
   const handleBoardDragOver = (e) => {
     const board = boardRef.current;

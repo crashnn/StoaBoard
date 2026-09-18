@@ -583,6 +583,9 @@ function App() {
       // Sunucu kolon LİSTESİNİ bütün gönderiyor; ekleme/düzenleme/silme/sıralama
       // için ayrı birleştirme mantığı yazmak dört ayrı kusur yeri olurdu.
       window.DATA.COLUMNS = columns || [];
+      // Pano kolonları kendi durumunda tutuyor (kart #235): liste yazıldıktan
+      // SONRA haber ver, yoksa pano eski kopyayı çizmeye devam eder.
+      window.dispatchEvent(new CustomEvent('stoa:kolonlarDegisti'));
       // Kolon silmek KARTLARI DA oynatıyor (sunucu onları ilk kolona taşıyor),
       // o yüzden görevler yeniden çekiliyor — tek kural, özel durum yok.
       // Başarısız olursa kolonlar yine de çizilsin diye liste tazeleniyor:

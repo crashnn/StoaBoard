@@ -235,3 +235,42 @@ describe('çekmece kolonları kartın projesinden geliyor (#154)', () => {
     assert.equal(kullanim, 1, `DATA.COLUMNS çekmecede ${kullanim} yerde okunuyor — yalnızca yedek olarak, tek yerde olmalı`);
   });
 });
+
+// ── Canlı kolon panoya YANSIYOR (kart #235, 18 Eylül) ──────────────────────
+//
+// KUSUR (sade tur 23, iki pencere, ekran görüntülü): B yeni kolon açtı, A'ya
+// bildirim geldi ama kolon GELMEDİ; F5 sonrası göründü. Olay sunucudan
+// geliyordu ve DATA.COLUMNS'a yazılıyordu — yukarıdaki test tam olarak bunu
+// ölçüyordu ve yeşildi. Pano ise kolonları KENDİ durumunda tutuyor, o durum
+// yalnızca açılışta doluyordu: yazılan liste hiç okunmuyordu. Bildirimi değil
+// KULLANIMI ölçmek gerekiyordu (CLAUDE.md, 18 Eylül dersi).
+
+describe('canlı kolon panonun kendi durumuna yansıyor (#235)', () => {
+  const K = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const APP235 = yorumsuzDosya(path.join(K, 'client', 'src', 'app.jsx'));
+  const BOARD235 = yorumsuzDosya(path.join(K, 'client', 'src', 'views', 'board.jsx'));
+  const OLAY = 'stoa:kolonlarDegisti';
+
+  test('kolon olayı listeyi yazdıktan SONRA panoya haber veriyor', () => {
+    const bas = APP235.indexOf("sock.on('board_columns'");
+    const blok = APP235.slice(bas, APP235.indexOf("sock.on('task_comment'", bas));
+    const yaz = blok.indexOf('window.DATA.COLUMNS = columns');
+    const haber = blok.indexOf(`window.dispatchEvent(new CustomEvent('${OLAY}'))`);
+    assert.ok(haber > 0, 'pano haberdar edilmiyor — kolon F5\'e kadar görünmez');
+    assert.ok(haber > yaz, 'haber listeyi yazmadan ÖNCE gidiyor — pano eski listeyi okur');
+  });
+
+  test('pano aynı olayı dinleyip KENDİ durumunu küresel listeden tazeliyor', () => {
+    const i = BOARD235.indexOf(`window.addEventListener('${OLAY}'`);
+    assert.ok(i > 0, 'pano kolon olayını dinlemiyor');
+    const govde = BOARD235.slice(BOARD235.lastIndexOf('useBoardEf(', i), BOARD235.indexOf('}, []);', i));
+    assert.match(govde, /setColumns\(tekKolonlar\(window\.DATA\.COLUMNS\)\)/,
+      'pano durumu küresel listeden tazelenmiyor');
+    assert.match(govde, new RegExp(`removeEventListener\\('${OLAY}'`), 'dinleyici sökülmüyor — her kurulumda birikir');
+  });
+
+  test('tekilleştirme tek kuraldan — açılış ve canlı olay aynı fonksiyonu kullanıyor', () => {
+    assert.equal((BOARD235.match(/new Set\(\);\s*return \(cols/g) || []).length, 1, 'tekilleştirme kopyalanmış');
+    assert.match(BOARD235, /useBoardState\(\(\) => tekKolonlar\(DATA\.COLUMNS\)\)/, 'açılış tekKolonlar kullanmıyor');
+  });
+});
