@@ -263,6 +263,24 @@ test('çizelge dar ekranda gizleniyor ama görünüm seçicide duruyor (kart #19
     + 'çizelge yine açılır, çok büyükse dizüstünde gereksiz gizlenir.',
   );
 
+  // 2b. YON de sart (18 Eylul 2026, kullanici gercek cihazda: "yan ekran
+  //     telefonda degisim olmuyor, ozellik kapali gibi"). #195'in notu ve
+  //     ekrandaki mesaj "yatay cevirince acilir" diyordu; ama Galaxy S25 Edge
+  //     YATAYDA da 768px altinda kaliyor, yani yalniz genislige bakan kural
+  //     verdigi sozu tutamiyordu. Kusur DIKEY dar ekrandi.
+  //
+  //     Olcut sorgu sabitine VE kancanin onu kullandigina bagli: sabitte
+  //     `orientation` olup kancanin baska bir sorgu kurmasi da kusuru geri
+  //     getirir.
+  const sorgu = kaynak.match(/const CIZELGE_GIZLI_SORGU = `([^`]*)`/);
+  assert.ok(sorgu, 'CIZELGE_GIZLI_SORGU sabiti yok — sorgu elle kurulmuş olabilir');
+  assert.match(sorgu[1], /orientation:\s*portrait/,
+    'çizelge yalnızca genişliğe göre gizleniyor — yatay telefonda da kapalı kalır');
+  assert.match(sorgu[1], /CIZELGE_MIN_GENISLIK/,
+    'sorgu eşik sabitini okumuyor; dar ekranın iki ayrı tanımı olur');
+  assert.match(kaynak, /function useDarEkran\(sorgu = CIZELGE_GIZLI_SORGU\)/,
+    'kanca yön şartlı sorguyu kullanmıyor');
+
   // 3. Gorunum secicisinde cizelge girisi hala var
   assert.match(
     kaynak, /id: 'timeline'/,

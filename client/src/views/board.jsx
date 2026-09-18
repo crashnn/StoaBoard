@@ -931,8 +931,22 @@ function TimelineView({ tasks, onOpenTask }) {
  * 768px yeni bir sayı değil: bu depoda telefon kırılımı olarak zaten üç
  * yerde kullanılıyor (`styles.css`). Yeni bir eşik icat etmek, dar ekran
  * tanımının iki ayrı cevabı olması demekti.
+ *
+ * YÖN DE ŞART (18 Eylül 2026, kullanıcı gerçek cihazda): "yan ekran
+ * telefonda değişim olmuyor, özellik kapalı gibi." #195'in kapanış notu
+ * "telefon yatay çevrilince çizelge açılıyor" diyordu ve mesaj da yatay
+ * çevirmeyi öneriyordu — ama Galaxy S25 Edge YATAYDA da 768px'in altında
+ * kalıyor (kanıt: yatayda da hamburger menü görünüyor, o yalnızca ≤768px'te
+ * çıkıyor). Yani yalnızca genişliğe bakan kural, verdiği sözü tutamıyordu.
+ *
+ * Kusurun kendisi DİKEY dar ekrandı (412px'te görev sütunu genişliği yiyor,
+ * zaman ekseni tek ay etiketine iniyordu). Yatay telefon ~750–900px ve
+ * kenar çubuğu gizli olduğu için bütün genişlik çizelgeye kalıyor. Kural
+ * artık ikisini birden istiyor: dar VE dikey. Eşik aynı kaldı, dar ekran
+ * tanımı tek.
  */
 const CIZELGE_MIN_GENISLIK = 768;
+const CIZELGE_GIZLI_SORGU = `(max-width: ${CIZELGE_MIN_GENISLIK}px) and (orientation: portrait)`;
 
 /**
  * Dar ekranda mı? `matchMedia` ile, CSS'le değil.
@@ -947,8 +961,7 @@ const CIZELGE_MIN_GENISLIK = 768;
  * yapacaksak, çalışan bir özelliği gizlemek yerine dar ekranda kötü
  * görünmesini seçiyoruz (geri dönüşü kullanıcının elinde).
  */
-function useDarEkran(esik = CIZELGE_MIN_GENISLIK) {
-  const sorgu = `(max-width: ${esik}px)`;
+function useDarEkran(sorgu = CIZELGE_GIZLI_SORGU) {
   const [dar, setDar] = useBoardState(
     () => (typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia(sorgu).matches
