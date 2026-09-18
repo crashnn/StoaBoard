@@ -43,6 +43,10 @@ export const AUDIT = {
   // Aktif alan tarayıcı oturumuyla ortak: bu kayıt "kullanıcının ekranındaki
   // alanı Claude değiştirdi" sorusunun tek cevabı.
   MCP_WORKSPACE_SWITCHED: 'mcp.workspace_switched',
+  // Güvenlik duvarı reddi (kart #262): bir araç çağrısı kurala ya da kotaya
+  // takıldı. Ayrıntıda yalnızca araç ve kural adı; girdi içeriği yazılmıyor.
+  // Kullanıcı kararı: retler burada durur, insanlar buradan bakar.
+  MCP_RULE_REFUSED: 'mcp.rule_refused',
   // Kişinin kendi ürettiği anahtarlar (Ayarlar → Claude bağlantısı). Ayrıntıda
   // anahtar kimliği ve öneki; ham anahtar da özeti de ASLA yazılmaz.
   MCP_TOKEN_CREATED: 'mcp.token_created',

@@ -64,6 +64,19 @@ import { currentMember, memberPermissions } from '../lib/workspace.js';
 import { callSelf } from '../lib/selfApi.js';
 import { recordAudit, AUDIT } from '../lib/audit.js';
 import {
+  gelistiriciMi,
+  aracKurali,
+  aracAcikMi,
+  bittiKolonuReddi,
+  aciklamaReddi,
+  KOTA_TABANI,
+  kotaCarpani,
+  bildirimSayisi,
+  kotaDene,
+  kotaReddi,
+  sunucuTalimatlari,
+} from '../lib/mcpKurallar.js';
+import {
   metinKimlik,
   kimlikleriMetinle,
   gorevOzeti,
@@ -94,7 +107,14 @@ export const mcpRouter = Router();
 // cevaplanamıyor. Yüzeyi değiştiren her commit'te bump et; `initialize`
 // yanıtındaki serverInfo.version dağıtım kanıtı olarak okunabilsin.
 // Sürüm geçmişi ve kırıcı değişiklikler: MCP-SURUMLER.md.
-const MCP_VERSION = '0.7.0';
+const MCP_VERSION = '0.8.0';
+
+/**
+ * Kota sayaçları — süreç ömrü boyunca, kullanıcı × kota türü. Her istekte
+ * yeniden kurulan sunucunun DIŞINDA durmak zorunda: içinde olsaydı her araç
+ * çağrısı temiz bir sayaçla başlardı ve kota hiçbir şeyi durdurmazdı.
+ */
+const KOTA_DEPOSU = new Map();
 
 /**
  * Araçların fiilen kullandığı izinler.
@@ -470,11 +490,72 @@ function altGorevYok(altlar, istenen) {
  * `req` yalnızca denetim kaydı için: yazma araçları IP ve istemci bilgisini
  * oradan okuyor (`recordAudit`).
  */
-function buildMcpServer(user, dil, req) {
+export function buildMcpServer(user, dil, req) {
+  // Geliştirici ekip (kart #262 karar 1) — muaf kuralların tek okuyucusu.
+  const gelistirici = gelistiriciMi(user?.slug);
+
   const server = new McpServer(
     { name: 'stoaboard', version: MCP_VERSION },
-    { capabilities: { tools: {} } },
+    // Talimat modele okutulur (yumuşak katman); güvenlik ona DAYANMIYOR.
+    { capabilities: { tools: {} }, instructions: sunucuTalimatlari(gelistirici) },
   );
+
+  // ── Güvenlik duvarı: tek kapı (kart #262) ──────────────────────────────
+  //
+  // `registerTool`un KENDİSİ sarılıyor, çağrı yerleri değil: bugün ya da
+  // yarın eklenen her araç bu kapıdan geçmek zorunda. Kural satırı olmayan
+  // araç kayıt anında hata fırlatıyor (kapalı başarısızlık); erişimi olmayan
+  // kullanıcı için araç hiç kaydedilmiyor — yüzeyde yok, denenemez.
+  // Kota her çağrıda, araç gövdesinden ÖNCE düşüyor.
+  const kaydetAsil = server.registerTool.bind(server);
+  let carpan = null; // rol kademesi — istek başına bir kez okunur
+  const kotaCarpaniniGetir = async () => {
+    if (carpan === null) {
+      const { member } = await aktifAlan(user);
+      const izinler = member ? memberPermissions(member) : [];
+      carpan = kotaCarpani({
+        gelistirici,
+        sahip: member?.role === 'owner',
+        gorevYonetir: izinler.includes('manage_tasks'),
+      });
+    }
+    return carpan;
+  };
+  server.registerTool = (ad, tanim, isleyici) => {
+    const satir = aracKurali(ad);
+    if (!aracAcikMi(satir, gelistirici)) return undefined;
+    return kaydetAsil(ad, tanim, async (girdi, ...geri) => {
+      if (satir.kota) {
+        const k = await kotaCarpaniniGetir();
+        const istekler = [[satir.kota, 1]];
+        // Başkasına bildirim düşüren alanlar (@bahsetme + atama) ayrıca sayılır.
+        const n = bildirimSayisi(satir, girdi);
+        if (n > 0) istekler.push(['bildirim', n]);
+        for (const [tur, adet] of istekler) {
+          const sinir = KOTA_TABANI[tur] * k;
+          const r = kotaDene(KOTA_DEPOSU, `${user.id}:${tur}`, adet, sinir);
+          if (!r.izin) return kuralReddi(ad, kotaReddi(tur, sinir, r.yenidenDeneSn));
+        }
+      }
+      return isleyici(girdi, ...geri);
+    });
+  };
+
+  /**
+   * Kural reddinin tek çıkışı: denetim kaydına yazar, modele engel döner.
+   * Kullanıcı kararı (6): retler denetim kaydına düşer, insanlar oradan
+   * bakar. Ayrıntıda yalnızca araç ve kural adı — girdi içeriği yazılmıyor.
+   */
+  async function kuralReddi(ad, redd) {
+    const { workspace } = await aktifAlan(user);
+    recordAudit(req, {
+      workspaceId: workspace?.id ?? null,
+      user,
+      action: AUDIT.MCP_RULE_REFUSED,
+      detail: { tool: ad, rule: redd.data.rule },
+    });
+    return hata(redd);
+  }
 
   const salt = { readOnlyHint: true };
   // Yazma araçlarının ipuçları; yıkıcılık ve tekrarlanabilirlik araç başına
@@ -1005,6 +1086,9 @@ function buildMcpServer(user, dil, req) {
       if (col !== undefined && !kolonlar.kolonlar.some((c) => c.id === col)) {
         return hata(kolonYok(kolonlar.kolonlar, col));
       }
+      // Kart doğrudan bitti kolonunda açılarak "Tamamlandı" kuralı atlanamaz.
+      const bittiRet = bittiKolonuReddi(user.slug, col !== undefined && kolonlar.kume.has(col));
+      if (bittiRet) return kuralReddi('create_task', bittiRet);
 
       const yanit = await callSelf(user, `/api/projects/${project_id}/tasks`, {
         method: 'POST',
@@ -1045,14 +1129,15 @@ function buildMcpServer(user, dil, req) {
         + 'eklenen kişiye bildirim gider. Etiketler de tam liste DEĞİL, '
         + 'add_labels / remove_labels ile verilir; slug projenin etiket '
         + 'kataloğunda yoksa hata döner ve hiçbir şey yazılmaz. '
-        + 'desc verilirse eski açıklamanın '
-        + 'yerine geçer. due ya da start için null tarihi siler. Görev aktif '
+        + 'desc DOLU bir açıklamanın üzerine yazamaz: yeni metin eskisiyle '
+        + 'başlamalı (sona ekleme); değilse 403 err_mcp_rule_desc_overwrite. '
+        + 'Kart ilerledikten sonraki gelişmeleri add_comment ile yaz. due ya da start için null tarihi siler. Görev aktif '
         + 'alanda değilse "bulunamadı" döner.',
       inputSchema: {
         workspace_id: kimlik('aktif alanın kimliği — whoami yanıtındaki workspace.id'),
         task_id: kimlik('list_tasks içindeki id'),
         title: z.string().trim().min(1).max(500).optional().describe('yeni başlık'),
-        desc: z.string().max(10000).optional().describe('yeni açıklama, düz metin — eskisinin yerine geçer'),
+        desc: z.string().max(10000).optional().describe('açıklama — boşsa yazılır, doluysa yalnızca eskisinin SONUNA eklenebilir'),
         priority: z.enum(['high', 'mid', 'low']).optional().describe('yeni öncelik'),
         due: TARIH.nullable().optional().describe('YYYY-MM-DD; null tarihi siler'),
         start: TARIH.nullable().optional().describe('YYYY-MM-DD; null tarihi siler'),
@@ -1076,6 +1161,9 @@ function buildMcpServer(user, dil, req) {
 
       const g = await aktifGorev(user, task_id);
       if (!g.ok) return hata(g.yanit);
+
+      const aciklamaRet = aciklamaReddi(user.slug, g.gorev.desc, desc);
+      if (aciklamaRet) return kuralReddi('update_task', aciklamaRet);
 
       const govde = {};
       if (title !== undefined) govde.title = title;
@@ -1173,7 +1261,9 @@ function buildMcpServer(user, dil, req) {
       title: B('move_task'),
       description:
         'Bir görevi aynı projede başka bir kolona taşır ("yapılıyor"a al, '
-        + '"tamamlandı"ya çek gibi). col hedef kolonun slug\'ıdır (list_columns '
+        + 'İncelemede\'ye al gibi). "tamamlandı" işaretli kolona taşıma geliştirici '
+        + 'ekip dışında 403 err_mcp_rule_done_column ile reddedilir — işin bittiğine '
+        + 'insan karar verir. col hedef kolonun slug\'ıdır (list_columns '
         + 'id). Kullanıcı açıkça istemediyse taşıma. workspace_id zorunludur ve '
         + 'AKTİF alanın kimliği olmalıdır; değilse 409 döner. Pano bir kolondan '
         + 'yalnızca belirli kolonlara geçişe izin veriyorsa (allowed_next) ve '
@@ -1207,6 +1297,10 @@ function buildMcpServer(user, dil, req) {
           task: { ...gorevDetayi(g.gorev, { bitisKolonlari: kolonlar.kume }), project_name: g.proje.name },
         }, kapi.workspace);
       }
+
+      // İki yön: bitti kolonuna girmek de oradan çıkmak da insanın kararı.
+      const bittiRet = bittiKolonuReddi(user.slug, kolonlar.kume.has(col), kolonlar.kume.has(once));
+      if (bittiRet) return kuralReddi('move_task', bittiRet);
 
       const yanit = await callSelf(user, `/api/tasks/${task_id}`, { method: 'PATCH', body: { col } });
       if (!yanit.ok) return hata(yanit);

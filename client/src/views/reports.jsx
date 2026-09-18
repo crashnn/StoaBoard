@@ -83,6 +83,13 @@ const ACTION_LABEL = {
   'mcp.subtask_updated': ['rep_act_mcp_sub_updated', 'Alt görev düzenlendi — MCP'],
   'mcp.subtask_deleted': ['rep_act_mcp_sub_deleted', 'Alt görev silindi — MCP'],
   'mcp.workspace_switched': ['rep_act_mcp_ws_switched', 'Aktif alan değişti — MCP'],
+  // Bu iki eylem kaydediliyordu ama etiketi yoktu — ekranda ham adıyla
+  // görünüyordu (kart #262 aile taraması). mcpKurallar.test.js artık her
+  // AUDIT eyleminin burada satırı olmasını istiyor.
+  'mcp.message_sent': ['rep_act_mcp_message', 'Mesaj gönderildi — MCP'],
+  'mcp.auth_failed': ['rep_act_mcp_auth_failed', 'Geçersiz MCP anahtarı denendi'],
+  // Güvenlik duvarı reddi (kart #262).
+  'mcp.rule_refused': ['rep_act_mcp_refused', 'Kural reddi — MCP'],
   // Kişinin Ayarlar'dan ürettiği ve iptal ettiği anahtarlar.
   'mcp.token_created': ['rep_act_mcp_token_created', 'MCP anahtarı oluşturuldu'],
   'mcp.token_revoked': ['rep_act_mcp_token_revoked', 'MCP anahtarı iptal edildi'],

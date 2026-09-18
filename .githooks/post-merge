@@ -1,0 +1,6 @@
+#!/bin/sh
+# git pull / merge sonrası: yapay zekâ kural dosyası yerel referansla aynı mı?
+# (kart #262 — kurallar esnetildiyse hemen görülsün, kim yaptıysa sorulsun.)
+# Birleştirmeyi engellemez, yalnızca uyarır. Referans .kural-referans/ içinde,
+# depoda değil. KURULUM: git config core.hooksPath .githooks (pre-push ile aynı).
+node server/scripts/kural-referans.mjs || true

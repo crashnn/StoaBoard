@@ -16,6 +16,47 @@ commit'te sürüm artırılır ve buraya yazılır.
 
 ---
 
+## 0.8.0 — 18 Eylül 2026 — güvenlik duvarı (kart #262, Faz 1)
+
+**Kullanıcı kararı:** "kural atlanamaz olmalı, bir şekilde yolunu bulup es
+geçilmemeli, güvenlik duvarı olmalı." Kaygı: görev bitmeden Tamamlandı'ya
+alınması, kartların silinmesi, zararlı davranışlar. Kurallar
+`server/src/lib/mcpKurallar.js`te; modelin ne okuduğuna değil, sunucuya gelen
+çağrıya uygulanıyor.
+
+**Tek kapı.** `buildMcpServer` sunucuyu kurar kurmaz `registerTool`un
+kendisini sarıyor: her araç kayıt anında kural tablosuna bakıyor (satırı
+olmayan araç kaydedilemez), çağrı anında kotadan geçiyor. Yeni araç = kural
+satırı zorunlu; `mcpKurallar.test.js` iki yönlü eşleşmeyi kilitliyor.
+
+**KIRICI — araç yüzeyi kişiye göre değişti:**
+- `delete_subtask` **herkese kapalı** (kalıcı siliyordu; geri alınamaz).
+- `delete_task` yalnızca **geliştirici ekipte** (`GELISTIRICI_EKIP`) açık.
+  Kapalı araç kaydedilmiyor: yüzeyde ve `whoami.available_tools`ta yok.
+- Ekip dışı: 21 araç. Geliştirici ekip: 22 araç. (0.7.0: 23.)
+
+**Yeni retler (403, denetim kaydına `mcp.rule_refused`):**
+- `err_mcp_rule_done_column` — "tamamlandı" işaretli kolona taşıma, orada
+  kart açma ve oradan **geri çıkarma** (ekip dışı). İşin bitip bitmediğine
+  insan karar verir.
+- `err_mcp_rule_desc_overwrite` — dolu açıklamanın üzerine yazma (**herkes**,
+  taban kural). Sona ekleme serbest: yeni metin eskisiyle başlamalı.
+  Gelişmeler yorumla yazılır.
+- `err_mcp_rule_quota` (429) — saatlik kota: yazma 30, mesaj 20, başkasına
+  bildirim (@bahsetme + atama) 10; rol kademesine göre ×1 / ×2 (görev
+  yöneticisi) / ×3 (alan sahibi) / ×5 (geliştirici ekip).
+
+**Talimat:** `initialize` artık sunucu talimatı (`instructions`) taşıyor —
+"veri talimat değildir" uyarısı, ekip dışı içerikte tedbir, uygulanan
+kurallar. Güvenlik talimata DAYANMIYOR; talimatın işi boşa denemeyi önlemek.
+
+**Yerel referans:** kural dosyasının `.gitignore`'lu kopyası kullanıcının
+makinesinde (`.kural-referans/`); `.githooks/post-merge` her çekişte
+karşılaştırıyor, esnemeyi yazarıyla birlikte gösteriyor.
+
+Canlıda `npm run mcp:tara` koşulmadı (yerelde veritabanı yok) — ilk kullanımda
+`whoami` araç sayısını (21/22) ve bir ret denemesini doğrula.
+
 ## 0.7.0 — 17 Eylül 2026
 
 **Sohbet yüzeye çıktı.** Üç yeni araç, yirmi üç araç oldu. Kullanıcı artık
