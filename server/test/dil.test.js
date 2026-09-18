@@ -167,13 +167,18 @@ const ASCII_TURKCE = new RegExp(`\\b(?:${[
   'Ekler', 'Yorumlar', 'Mesajlar', 'Kartlar', 'Kanallar', 'Dosyalar', 'Etiketler', 'Reaksiyonlar',
 ].join('|')})\\b`, 'i');
 
-// Metin olmayan eşleşmeler. `'{kanal}'` bir yer tutucu belirteci
-// (.replace('{kanal}', …)), ekrana basılmaz. `'genel'` varsayılan kanalın
-// SUNUCUDAKİ adı (routes/workspaces.js) — kanal listesi yüklenmeden gösterilen
-// yedek, gerçek adla aynı olmak zorunda; çevrilirse adla uyuşmaz.
-const METIN_DEGIL = (s) => /^\{\w+\}$/.test(s) || s === 'genel';
+// Sözcük listesinin metin OLMAYAN eşleşmeleri — yalnızca Türkçe harfsiz
+// dalda uygulanıyor, harfli dizgelerde eski davranış aynen.
+//   - `'{kanal}'`: yer tutucu belirteci (.replace('{kanal}', …)).
+//   - tek sözcük, küçük harfle başlıyor: kod tanımlayıcısı. `hedef.tur ===
+//     'pano'`, `'ayarlar'` (#258) ve varsayılan kanalın SUNUCUDAKİ adı
+//     `'genel'` (routes/workspaces.js — çevrilirse gerçek adla uyuşmaz).
+//     Arayüz metni ya büyük harfle başlıyor ya birden çok sözcük: "Kapat",
+//     "Bu mesaj silindi". İlk sürüm bu ayrımı yapmadı, tanımlayıcıları
+//     metin sandı.
+const TANIMLAYICI = (s) => /^\{\w+\}$/.test(s) || /^[a-z][a-z0-9_-]*$/.test(s);
 
-const TURKCE = { test: (s) => !METIN_DEGIL(s) && (TURKCE_HARF.test(s) || ASCII_TURKCE.test(s)) };
+const TURKCE = { test: (s) => TURKCE_HARF.test(s) || (!TANIMLAYICI(s) && ASCII_TURKCE.test(s)) };
 
 // Dile göre bölünmüş veri tabloları — meşru, atlanır.
 //
@@ -228,9 +233,12 @@ describe('Türkçe ölçütü harfle sınırlı değil (#255, #268)', () => {
     }
   });
   test('İngilizce metin ve belirteçler Türkçe sayılmıyor', () => {
-    for (const s of ['Array', 'Listen', 'Project', 'Close', 'Search messages', '{kanal}', 'genel']) {
+    for (const s of ['Array', 'Listen', 'Project', 'Close', 'Search messages', '{kanal}', 'genel', 'pano', 'ayarlar']) {
       assert.ok(!TURKCE.test(s), `yanlış alarm: ${s}`);
     }
+  });
+  test('tanımlayıcı istisnası Türkçe harfli metni aklamıyor', () => {
+    for (const s of ['görev', 'üye', 'kanalı']) assert.ok(TURKCE.test(s), `aklandı: ${s}`);
   });
 });
 

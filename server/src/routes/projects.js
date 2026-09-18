@@ -313,7 +313,7 @@ projectsRouter.post(
         // `who` şablonda kullanılmıyor (akış aktörü ayrı gösteriyor) ama
         // bildirim üreticisiyle ALAN KÜMESİ aynı kalmalı — sözleşme bunu
         // ölçüyor ve ayrışma sessiz kusura yol açıyor (bildirim.test.js).
-        buildNotificationText('column_added', { who: user.name, title }),
+        buildNotificationText('column_added', { who: user.name, title, project: projectId }),
       );
       return created;
     });
@@ -351,7 +351,7 @@ projectsRouter.post(
     for (const uye of digerUyeler) {
       await createAndPush(io, {
         userId: uye.userId,
-        text: buildNotificationText('column_added', { who: user.name, title }),
+        text: buildNotificationText('column_added', { who: user.name, title, project: projectId }),
         senderSlug: user.slug,
         workspaceId: access.project.workspaceId,
       });

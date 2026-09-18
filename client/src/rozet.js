@@ -35,11 +35,18 @@
  * karşılaştırılıyor: sunucu sayı, tarayıcı durumu yer yer dize taşıyor.
  * `tur` çağıranın çözdüğü bildirim türü (`notifType`); saf kalsın diye
  * burada çözülmüyor.
+ *
+ * KİŞİYE ÖZEL türler alandan bağımsız görünür (#258): katılma isteğinin
+ * onayı ve reddi, kullanıcının HENÜZ ÜYE OLMADIĞI alanın kimliğini taşıyor.
+ * Kullanıcı o sırada başka alanda olduğu için "isteğin onaylandı" haberi
+ * tam gerektiği anda gizleniyordu; onaylanan alana geçmenin yolu da oydu.
  */
+const KISIYE_OZEL = new Set(['message', 'dm_received', 'join_approved', 'join_rejected']);
+
 export function panelGorunur(n, wsId, tur) {
   if (!wsId) return true;
   if (!n || !n.workspace_id) return true;
-  return String(n.workspace_id) === String(wsId) || tur === 'message' || tur === 'dm_received';
+  return String(n.workspace_id) === String(wsId) || KISIYE_OZEL.has(tur);
 }
 
 /** Bir kullanıcı için tarayıcıdaki "son bakış" anahtarı. Kullanıcıya göre

@@ -637,7 +637,7 @@ function ClaudeConnectionSection() {
   );
 }
 
-function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersChange }) {
+function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersChange, ilkBolum, onBolumAcildi }) {
   const _t = (k, fb) => window.t?.(k) || fb;
 
   const me       = window.CURRENT_USER || DATA.MEMBERS[0] || {};
@@ -1095,6 +1095,16 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       root.scrollTo({ top: root.scrollTop + (elRect.top - rootRect.top) - 20, behavior: 'smooth' });
     }
   };
+
+  // Bildirimden gelindiyse o bölüme (#258: katılma isteği → bekleyen
+  // istekler). Bir kare sonra: bölümler ilk çizimde yerleşmiş olsun.
+  // Gidildikten sonra app temizliyor, sonraki açılış baştan başlıyor.
+  React.useEffect(() => {
+    if (!ilkBolum) return;
+    const k = requestAnimationFrame(() => { scrollToSection(ilkBolum); onBolumAcildi?.(); });
+    return () => cancelAnimationFrame(k);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ilkBolum]);
 
   // Scroll-spy — use getBoundingClientRect for accurate threshold
   React.useEffect(() => {

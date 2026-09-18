@@ -197,6 +197,32 @@ tuzaklar). Bedeli: başka cihazda rozet ilk kez tam sayıyla gelir; kabul edildi
 Depolama yoksa ya da fırlatıyorsa (gizli pencere) okuma 0 döner, yani rozet tam
 sayı gösterir: yokluk hâli gizleyerek değil göstererek hata yapıyor.
 
+### Tıklayınca nereye (#258, 19 Eylül 2026)
+
+"İlgili yere götürür" sözü tür başına yazılmamıştı: tıklama bir `if`
+merdiveniydi ve hedefi olmayan tür en alttaki "gönderene DM aç" yedeğine
+düşüyordu. Katılma isteğinin göndereni üye değil, DM açılamayınca genel
+kanala gidiliyordu. Artık **tür → hedef tablosu** `client/src/bildirimHedefi.js`:
+
+| Tür | Hedef |
+|---|---|
+| `dm_received` | gönderenle konuşma |
+| `message` (eski kayıt) | kanal, yoksa gönderen |
+| `mention` | kart, yoksa kanal, yoksa gönderen |
+| `task_assigned`, `comment_added` | kart |
+| `channel_added` | kanal |
+| `column_added` | o projenin panosu (`project` parametresi; eski kayıtta aktif pano) |
+| `join_request` | Ayarlar › bekleyen katılma istekleri |
+| `join_approved` | katılınan alana geçiş |
+| `join_rejected` | yok — yalnızca bilgi, satır tıklanamaz |
+
+Veri eksikse hedef `null`dır ve satır tıklanabilir **görünmez**; imleç ve ok
+aynı fonksiyondan okunuyor. Yeni bir bildirim türü eklersen tabloya hedefini
+yazmak zorundasın: `bildirim.test.js` sunucunun ürettiği türlerle tabloyu iki
+yönlü eşleştiriyor. `join_approved`/`join_rejected` panelde her alanda görünür
+(`rozet.js` `KISIYE_OZEL`) — üye olunmayan alanın kimliğini taşıdıkları için
+önceden tam gerektikleri anda gizleniyorlardı.
+
 **Yerleri:** saf çekirdek `client/src/rozet.js`; `app.jsx`'te beş sıfırlama
 noktası tek `rozetBakildi()` yardımcısına bağlandı; test `bildirim.test.js`
 son bloğu (mutasyonla doğrulandı: eşik yok sayılınca 2 test kırılıyor).

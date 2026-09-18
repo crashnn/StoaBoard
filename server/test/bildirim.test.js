@@ -55,7 +55,8 @@ const CLIENT = path.resolve(__dirname, '..', '..', 'client', 'src');
 
 const SOZLESME = new Map([
   ['channel_added', ['channel', 'who']],
-  ['column_added', ['title', 'who']],
+  // `project`: bildirime basınca o projenin panosuna gidilsin (#258).
+  ['column_added', ['project', 'title', 'who']],
   ['comment_added', ['preview', 'who']],
   ['dm_received', ['preview', 'who']],
   ['join_approved', ['workspace']],
@@ -465,6 +466,10 @@ describe('zil rozeti — son bakıştan beri gelen okunmamış', async () => {
     assert.equal(panelGorunur({ workspace_id: '15' }, 15, 'task_assigned'), true, 'dize/sayı farkı gizlememeli');
     assert.equal(panelGorunur({ workspace_id: null }, 15, 'info'), true);
     assert.equal(panelGorunur({ workspace_id: 14 }, 15, 'dm_received'), true);
+    // #258: onay/ret, üye olunmayan alanın kimliğini taşıyor — orada gizlenirse hiç görülmez.
+    assert.equal(panelGorunur({ workspace_id: 14 }, 15, 'join_approved'), true, 'katılma onayı başka alanda gizleniyor');
+    assert.equal(panelGorunur({ workspace_id: 14 }, 15, 'join_rejected'), true, 'katılma reddi başka alanda gizleniyor');
+    assert.equal(panelGorunur({ workspace_id: 14 }, 15, 'join_request'), false, 'istek alan sahibine, kendi alanında');
     assert.equal(panelGorunur({ workspace_id: 14 }, null, 'task_assigned'), true, 'aktif alan bilinmiyorsa süzme');
   });
 
@@ -947,5 +952,100 @@ describe('bildirim üreticileri — metin ortak kurucudan (#257)', () => {
     assert.match(eski, /^Ali seni/);
     const kotu = bildirimMetni('<strong><script>x</script></strong>', () => null);
     assert.ok(kotu.includes('&lt;script&gt;'), 'strong sökülürken başka etiket de söküldü ya da kaçmadı');
+  });
+});
+
+// ─── Bildirime basınca gidilecek yer (#258) ───────────────────────────────
+//
+// KUSUR (18 Eylül 2026, kullanıcı): "bildirime basınca A'da genel sohbete
+// attı beni." Tıklama bir `if` merdiveniydi; hedefi yazılmamış tür en alttaki
+// "gönderene DM" yedeğine düşüyordu. Katılma isteğinin göndereni üye değil,
+// `openChat` onunla DM açamayınca genel kanala gidiyordu.
+//
+// Artık tür → hedef TABLOSU (client/src/bildirimHedefi.js). Tür kümesi
+// yukarıdaki SOZLESME'den — o da kaynaktan doğrulanıyor — yani ikinci bir
+// liste yok: yeni bir bildirim türü hedef yazmadan eklenemez.
+describe('bildirim hedefi — tür → hedef tablosu (#258)', async () => {
+  const { HEDEFLER, bildirimHedefi } = await import('../../client/src/bildirimHedefi.js');
+  const hedefKaynak = yorumsuzDosya(path.join(CLIENT, 'bildirimHedefi.js'));
+  const panel = yorumsuzDosya(path.join(CLIENT, 'notifications.jsx'));
+  const app = yorumsuzDosya(path.join(CLIENT, 'app.jsx'));
+
+  // Sunucunun artık üretmediği ama veritabanında duran eski kayıt türleri.
+  const ESKI_TURLER = new Set(['message']);
+  const BILDIRIM_TURLERI = [...SOZLESME.keys()].filter((t) => !ETKINLIK.has(t) || IKI_AILE.has(t));
+
+  test('sunucunun ürettiği her bildirim türünün hedefi yazılmış — ve tersi', () => {
+    assert.ok(BILDIRIM_TURLERI.length >= 8, `tür kümesi boşalmış (${BILDIRIM_TURLERI.length})`);
+    const eksik = BILDIRIM_TURLERI.filter((t) => !Object.hasOwn(HEDEFLER, t));
+    assert.deepEqual(eksik, [], 'hedefi yazılmamış bildirim türü — bildirimHedefi.js HEDEFLER');
+    const fazla = Object.keys(HEDEFLER).filter((t) => !BILDIRIM_TURLERI.includes(t) && !ESKI_TURLER.has(t));
+    assert.deepEqual(fazla, [], 'tabloda sunucunun üretmediği tür (yazım hatası mı?)');
+  });
+
+  test('katılma isteği ve kolon gönderene DM açmıyor (kusurun kendisi)', () => {
+    const js = (o) => JSON.stringify(o);
+    assert.deepEqual(bildirimHedefi({ sender_slug: 'ali', workspace_id: 15, text: js({ type: 'join_request', who: 'Ali' }) }, 'join_request'),
+      { tur: 'ayarlar', bolum: 'join_requests' });
+    assert.deepEqual(bildirimHedefi({ sender_slug: 'ali', text: js({ type: 'column_added', title: 'QA', project: 7 }) }, 'column_added'),
+      { tur: 'pano', proje: '7' });
+    assert.deepEqual(bildirimHedefi({ sender_slug: 'ali', text: js({ type: 'column_added', title: 'QA' }) }, 'column_added'),
+      { tur: 'pano', proje: null }, 'eski kayıt: aktif projenin panosu');
+  });
+
+  test('her tür kendi hedefine; veri eksikse tıklanamaz, yedek yok', () => {
+    assert.deepEqual(bildirimHedefi({ workspace_id: 14 }, 'join_approved'), { tur: 'alan', alan: '14' });
+    assert.equal(bildirimHedefi({}, 'join_approved'), null);
+    assert.equal(bildirimHedefi({ sender_slug: 'ali', workspace_id: 14 }, 'join_rejected'), null, 'ret yalnızca bilgi');
+    assert.deepEqual(bildirimHedefi({ task_id: 5, chat_channel: 'genel' }, 'mention'), { tur: 'kart', kart: 5 });
+    assert.deepEqual(bildirimHedefi({ chat_channel: 'genel', message_id: 9 }, 'mention'), { tur: 'kanal', kanal: 'genel', mesaj: 9 });
+    assert.deepEqual(bildirimHedefi({ sender_slug: 'ali' }, 'mention'), { tur: 'dm', kisi: 'ali', mesaj: null });
+    assert.deepEqual(bildirimHedefi({ sender_slug: 'ali' }, 'message'), { tur: 'dm', kisi: 'ali', mesaj: null });
+    assert.equal(bildirimHedefi({}, 'dm_received'), null);
+    assert.equal(bildirimHedefi({ sender_slug: 'ali' }, 'channel_added'), null, 'kanalsız kanal bildirimi DM açmamalı');
+    assert.deepEqual(bildirimHedefi({ task_id: 3, sender_slug: 'ali' }, 'task_assigned'), { tur: 'kart', kart: 3 });
+    // Tabloda olmayan (eski düz metin) tür: kart ya da kanal, gönderen ASLA.
+    assert.equal(bildirimHedefi({ sender_slug: 'ali' }, 'info'), null, 'gönderen yedeği geri geldi');
+    assert.deepEqual(bildirimHedefi({ task_id: 3, sender_slug: 'ali' }, 'info'), { tur: 'kart', kart: 3 });
+    assert.equal(bildirimHedefi({ sender_slug: 'ali' }, 'toString'), null, 'prototipten kural');
+  });
+
+  test('panel tıklaması ve tıklanabilirlik aynı tablodan', () => {
+    const bas = panel.indexOf('const handleNotifClick');
+    const govde = panel.slice(bas, panel.indexOf('\n  };', bas));
+    assert.match(govde, /const hedef = bildirimHedefi\(n, /, 'tıklama tabloyu kullanmıyor');
+    assert.doesNotMatch(govde, /n\.sender_slug|n\.chat_channel|n\.task_id/, 'tıklama tabloyu atlayıp alanlara bakıyor');
+    assert.match(panel, /const gidilir = !!bildirimHedefi\(n, type\);/);
+    assert.match(panel, /cursor: gidilir \? 'pointer' : 'default'/, 'imleç başka koşuldan');
+    assert.match(panel, /\{gidilir && \(\s*<Icon name="arrowRight"/, 'ok başka koşuldan');
+    assert.doesNotMatch(panel, /\['dm_received','message','mention'/, 'eski tür listesi geri geldi');
+  });
+
+  test('tablonun ürettiği her hedef türü bir yerde karşılanıyor', () => {
+    const turler = [...new Set([...hedefKaynak.matchAll(/\btur: '(\w+)'/g)].map((m) => m[1]))];
+    assert.ok(turler.length >= 6, `hedef türleri okunamadı (${turler})`);
+    const pbas = panel.indexOf('const handleNotifClick');
+    const panelGovde = panel.slice(pbas, panel.indexOf('\n  };', pbas));
+    const abas = app.indexOf('const bildirimdenGit = async (hedef) =>');
+    assert.ok(abas >= 0, 'app.jsx bildirimdenGit yok');
+    const appGovde = app.slice(abas, app.indexOf('\n  };', abas));
+    for (const t of turler) {
+      const kosul = `hedef.tur === '${t}'`;
+      assert.ok(panelGovde.includes(kosul) || appGovde.includes(kosul), `'${t}' hedefini karşılayan yok`);
+    }
+    // Karşılanmayan hedef sessiz kalmıyor.
+    assert.match(appGovde, /window\.showToast\?\.\(window\.t\?\.\('notif_err_no_target'\)/);
+  });
+
+  test('Ayarlar hedefindeki bölüm gerçekten var ve iki panel de yönlendiriciyi alıyor', () => {
+    const ayar = yorumsuzDosya(path.join(CLIENT, 'views', 'settings.jsx'));
+    for (const [, bolum] of hedefKaynak.matchAll(/\bbolum: '(\w+)'/g)) {
+      assert.ok(ayar.includes(`data-nav-id="${bolum}"`), `Ayarlar'da '${bolum}' bölümü yok`);
+    }
+    assert.match(ayar, /if \(!ilkBolum\) return;[\s\S]{0,120}scrollToSection\(ilkBolum\)/, 'Ayarlar ilkBolum\'e kaymıyor');
+    const paneller = [...app.matchAll(/<NotifPanel[\s\S]*?\/>/g)].map((m) => m[0]);
+    assert.equal(paneller.length, 2);
+    for (const p of paneller) assert.match(p, /onGo=\{/, 'bir panel yönlendiriciyi almıyor');
+    assert.match(app, /<SettingsView [^>]*ilkBolum=\{ayarBolumu\}/);
   });
 });

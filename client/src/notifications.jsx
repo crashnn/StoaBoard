@@ -4,6 +4,7 @@ import React from 'react';
 import { Icon } from './icons.jsx';
 import { Avatar } from './shell.jsx';
 import { panelGorunur } from './rozet.js';
+import { bildirimHedefi } from './bildirimHedefi.js';
 import { API, renderNotifText, fmtTimeAgo, fmtAbsoluteDateTime } from './data.jsx';
 
 function _parseNotifType(text) {
@@ -49,7 +50,7 @@ function _notifCategory(n) {
   return 'other';
 }
 
-function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId, tweaks, setTweak, fullPage }) {
+function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, onGo, currentWsId, tweaks, setTweak, fullPage }) {
   const [tab, setTab]           = React.useState('all');
   // Tam ekranda tercihler acik baslar; ama dar ekranda alt alta dizildigi icin
   // ekranin yarisini kaplayip bildirimleri gormeyi engelliyordu — orada kapali baslasin.
@@ -188,52 +189,23 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
 
   const handleNotifClick = (n) => {
     markRead(n.id);
-    const type = n.type || _notifType(n.text);
-
-    // ── DM → open DM conversation ────────────────────────────────────────────
-    if (type === 'dm_received') {
-      onOpenChat?.(n.sender_slug || null, n.message_id || null);
-      return;
-    }
-
-    // ── Channel message → navigate to that channel ───────────────────────────
-    if (type === 'message') {
-      if (n.chat_channel) {
-        onOpenChat?.(null, n.message_id || null, n.chat_channel);
-      } else {
-        onOpenChat?.(n.sender_slug || null, n.message_id || null);
-      }
-      return;
-    }
-
-    // ── Chat mention (no task) → open channel or DM ──────────────────────────
-    if (type === 'mention' && !n.task_id) {
-      if (n.chat_channel) {
-        onOpenChat?.(null, n.message_id || null, n.chat_channel);
-      } else {
-        onOpenChat?.(n.sender_slug || null, n.message_id || null);
-      }
-      return;
-    }
-
-    // ── Task assignment / comment → open task on board ───────────────────────
-    if (n.task_id) {
-      const task = (window.__APP_TASKS__ || []).find(t => String(t.id) === String(n.task_id))
-                || (window.DATA?.tasks || []).find(t => String(t.id) === String(n.task_id));
+    // Hedef tablodan (bildirimHedefi.js, #258). null = gidilecek yer yok;
+    // satır zaten tıklanabilir görünmüyor, okundu işareti yeter.
+    const hedef = bildirimHedefi(n, n.type || _notifType(n.text));
+    if (!hedef) return;
+    if (hedef.tur === 'dm') { onOpenChat?.(hedef.kisi, hedef.mesaj); return; }
+    if (hedef.tur === 'kanal') { onOpenChat?.(null, hedef.mesaj, hedef.kanal); return; }
+    if (hedef.tur === 'kart') {
+      const task = (window.__APP_TASKS__ || []).find(t => String(t.id) === String(hedef.kart))
+                || (window.DATA?.tasks || []).find(t => String(t.id) === String(hedef.kart));
       if (task) { onOpenTask?.(task); return; }
-      if (window.__OPEN_TASK_BY_ID__) { window.__OPEN_TASK_BY_ID__(n.task_id); return; }
-    }
-
-    // ── Channel mention fallback ──────────────────────────────────────────────
-    if (n.chat_channel) {
-      onOpenChat?.(null, n.message_id || null, n.chat_channel);
+      // Aktif projede değilse kimlikle aç (başka proje, çöpteki kart —
+      // openTaskById kendi hatasını söylüyor).
+      window.__OPEN_TASK_BY_ID__?.(hedef.kart);
       return;
     }
-
-    // ── Sender slug fallback ──────────────────────────────────────────────────
-    if (n.sender_slug) {
-      onOpenChat?.(n.sender_slug, n.message_id || null);
-    }
+    // Uygulama düzeyi hedefler (Ayarlar bölümü, alan, proje panosu) app.jsx'te.
+    onGo?.(hedef);
   };
 
   // Aktif alanın bildirimleri + doğrudan mesajlar. Kural rozet.js'te; zil de
@@ -326,13 +298,15 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
             const sender = n.sender_slug
               ? (window.DATA?.MEMBERS || []).find(m => m.id === n.sender_slug)
               : null;
+            // Tıklanabilirlik, tıklamanın gittiği yerle AYNI tablodan (#258).
+            const gidilir = !!bildirimHedefi(n, type);
             return (
               <div
                 key={n.id}
                 className={`notif-item notif-type-${type}`}
                 data-unread={n.unread}
                 onClick={() => handleNotifClick(n)}
-                style={{ cursor: (n.task_id || n.sender_slug || n.chat_channel || ['dm_received','message','mention','task_assigned','comment_added'].includes(n.type || _notifType(n.text))) ? 'pointer' : 'default' }}
+                style={{ cursor: gidilir ? 'pointer' : 'default' }}
               >
                 {sender ? (
                   <Avatar member={sender} size="md" />
@@ -345,7 +319,7 @@ function NotifPanel({ open, onClose, socket, onOpenTask, onOpenChat, currentWsId
                   <div className="notif-text" dangerouslySetInnerHTML={{ __html: renderNotifText(n.text) }} />
                   <div className="notif-time" title={fmtAbsoluteDateTime(n.time) || ''}>{fmtTimeAgo(n.time)}</div>
                 </div>
-                {(n.task_id || n.sender_slug || n.chat_channel || ['dm_received','message','mention','task_assigned','comment_added'].includes(n.type || _notifType(n.text))) && (
+                {gidilir && (
                   <Icon name="arrowRight" size={11} style={{ color: 'var(--ink-faint)', flexShrink: 0, marginRight: 24 }} />
                 )}
                 <button

@@ -170,6 +170,9 @@ function App() {
   };
   const [notesCount, setNotesCount]       = useS(0);
   const [currentWsId, setCurrentWsId]   = useS(() => window.DATA?.WORKSPACE?.id || null);
+  // Ayarlar açılınca kaydırılacak bölüm (bildirimden gelindiğinde, #258).
+  // Ayarlar bölüme gidince temizliyor; yoksa sonraki her açılışta oraya atlardı.
+  const [ayarBolumu, setAyarBolumu]     = useS(null);
 
   const [unreadCounts, setUnreadCounts] = useS(() => {
     try { return JSON.parse(localStorage.getItem('stoa.unread') || '{}'); }
@@ -1240,6 +1243,32 @@ function App() {
   };
   window.__OPEN_TASK_BY_ID__ = (taskId) => openTaskById(taskId);
 
+  // Bildirimin uygulama düzeyi hedefleri (#258). HANGİ türün nereye gittiği
+  // bildirimHedefi.js'teki tabloda; burası yalnızca hedefe gitmeyi biliyor.
+  // Sohbet ve kart hedefleri panelde çözülüyor (onOpenChat / onOpenTask).
+  const bildirimdenGit = async (hedef) => {
+    setNotifOpen(false);
+    if (hedef.tur === 'ayarlar') {
+      setAyarBolumu(hedef.bolum);
+      setView('settings');
+      return;
+    }
+    if (hedef.tur === 'alan') {
+      if (String(currentWsId) !== String(hedef.alan)) await handleSwitchWorkspace(hedef.alan);
+      setView('board');
+      return;
+    }
+    if (hedef.tur === 'pano') {
+      // switchProject panoya kendisi geçiyor ve başarısızlığı söylüyor.
+      if (hedef.proje && String(currentProject?.id) !== String(hedef.proje)) { await switchProject(hedef.proje); return; }
+      setView('board');
+      return;
+    }
+    // Tabloya yeni bir hedef türü eklenip burası unutulduysa sessiz kalmasın.
+    console.error('bildirimdenGit: bilinmeyen hedef', hedef);
+    window.showToast?.(window.t?.('notif_err_no_target') || 'Bu bildirimin gideceği yer açılamadı.', 'error');
+  };
+
   const handleCmd = (action) => {
     if (action === 'goto:board-list') {
       localStorage.setItem('stoa.boardSubView', 'list');
@@ -1549,6 +1578,7 @@ function App() {
                 socket={socket}
                 onOpenTask={(task) => { setView('board'); setDrawerTask(task); }}
                 onOpenChat={(slug, msgId, channelSlug) => { openChat(slug, msgId, channelSlug); setView('chat'); }}
+                onGo={bildirimdenGit}
                 currentWsId={currentWsId}
                 tweaks={tweaks}
                 setTweak={setTweak}
@@ -1596,7 +1626,7 @@ function App() {
             )}
           </>
         )}
-        {view === 'settings' && <Lazy><SettingsView key={currentWsId || "ws"} tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={handleWsLogoChange} onMembersChange={setMembers} /></Lazy>}
+        {view === 'settings' && <Lazy><SettingsView key={currentWsId || "ws"} tweaks={tweaks} setTweak={setTweak} onLogout={handleLogout} onWsLogoChange={handleWsLogoChange} onMembersChange={setMembers} ilkBolum={ayarBolumu} onBolumAcildi={() => setAyarBolumu(null)} /></Lazy>}
         </ErrorBoundary>
       </div>
 
@@ -1644,6 +1674,7 @@ function App() {
         socket={socket}
         onOpenTask={(task) => { setNotifOpen(false); rozetBakildi(); setDrawerTask(task); }}
         onOpenChat={(slug, msgId, channelSlug) => { setNotifOpen(false); rozetBakildi(); openChat(slug, msgId, channelSlug); }}
+        onGo={(hedef) => { rozetBakildi(); bildirimdenGit(hedef); }}
         currentWsId={currentWsId}
         tweaks={tweaks}
         setTweak={setTweak}
