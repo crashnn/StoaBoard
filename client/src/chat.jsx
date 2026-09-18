@@ -295,12 +295,12 @@ function MsgContent({ msg, onImageClick }) {
             e.currentTarget.nextSibling && (e.currentTarget.nextSibling.style.display = 'flex');
           }}
         />
-        <div style={{ display: 'none', alignItems: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-dim)', color: 'var(--ink-muted)', fontSize: 12 }}>
+        <div className="chat-img-missing" style={{ display: 'none' }}>
           <Icon name="eyeOff" size={14} />
           <span>{msg.file_name || (window.t?.('chat_img_not_found')||'Görsel bulunamadı')}</span>
         </div>
         {msg.text && <div className="chat-bubble-text">{msg.text}</div>}
-        <div style={{ fontSize: 10, color: 'var(--ink-faint)', marginTop: 3 }}>{fmtMsgDateTime(msg)}</div>
+        <div className="chat-msg-meta">{fmtMsgDateTime(msg)}</div>
       </div>
     );
   }
@@ -309,7 +309,7 @@ function MsgContent({ msg, onImageClick }) {
       <div className="chat-media-wrap" onDoubleClick={() => openMedia('video', msg.file_url)}>
         <CustomVideoPlayer src={msg.file_url} />
         {msg.text && <div className="chat-bubble-text">{msg.text}</div>}
-        <div style={{ fontSize: 10, color: 'var(--ink-faint)', marginTop: 3 }}>{fmtMsgDateTime(msg)}</div>
+        <div className="chat-msg-meta">{fmtMsgDateTime(msg)}</div>
       </div>
     );
   }
@@ -318,9 +318,9 @@ function MsgContent({ msg, onImageClick }) {
       <div className="chat-file-attach">
         <Icon name="paperclip" size={14} />
         <a href={msg.file_url} target="_blank" rel="noreferrer" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {msg.file_name || 'Dosya'}
+          {msg.file_name || window.t?.('chat_file') || 'Dosya'}
         </a>
-        <div style={{ fontSize: 10, color: 'var(--ink-faint)', width: '100%', marginTop: 2 }}>{fmtMsgDateTime(msg)}</div>
+        <div className="chat-msg-meta">{fmtMsgDateTime(msg)}</div>
         {msg.text && <div className="chat-bubble-text" style={{ marginTop: 4 }}>{msg.text}</div>}
       </div>
     );

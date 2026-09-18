@@ -412,6 +412,8 @@ describe('sohbet balonunun içi rengini balondan alıyor', () => {
     'comment-mention',   // @bahsetme çipi; kart yorumlarında da kullanılıyor
     'chat-file-attach',  // dosya eki kartı
     'chat-bubble-text',  // medya mesajının altındaki metin
+    'chat-msg-meta',     // görsel/video/dosya mesajının tarih satırı (#210)
+    'chat-img-missing',  // görsel yüklenemeyince çıkan kutu (#210)
   ];
 
   const ICERIDE = /\.chat-(?:bubble|msg\.mine)\b[^,{]*\s+\.[\w-]+/;
@@ -493,14 +495,52 @@ describe('sohbet balonunun içi rengini balondan alıyor', () => {
     // Yukarıdaki taramaların HİÇBİRİ onu göremezdi — hepsi styles.css okuyor.
     // Çip sınıfa taşındı; bu test satır içi rengin geri gelmesini yasaklıyor.
     // Yalnızca RENK yasak: cursor, display gibi dinamik stiller serbest.
+    //
+    // KART #210 (18 Eylül 2026): bu test YILLARDIR KÖRDÜ. Desenleri
+    // `/style:s*{…}/` ve `/(?:…)s*:/` biçimindeydi — `\s` yazılırken ters
+    // eğik çizgi kaybolmuş (bir kabuk heredoc'u `\\`yi yutar). Hiçbir şeye
+    // eşleşmiyordu, her zaman yeşildi; JSX'in `style={{ … }}` biçimini zaten
+    // hiç aramıyordu. Tam o arada dosya ekinin, görselin ve videonun tarih
+    // satırı satır içi `var(--ink-faint)` taşıdı ve kullanıcı "ek okunamaz,
+    // iki tema için de" dedi. Kapsam artık balonun içini çizen fonksiyonlara
+    // bağlı (balon dışındaki arayüzde tema rengi meşru) ve desenin kör
+    // olmadığı ayrıca sınanıyor.
     const jsx = fs.readFileSync(path.join(KOK, 'client', 'src', 'chat.jsx'), 'utf8');
-    const suclu = [...jsx.matchAll(/style:s*{[^}]*}/g)]
-      .map((m) => m[0])
-      .filter((x) => /(?:background|borderColor|(?<!font)[cC]olor)s*:/.test(x))
-      .map((x) => x.replace(/s+/g, ' ').slice(0, 80));
+    const STIL = /style(?:=\{\{|:\s*\{)([^}]*)\}/g;
+    const RENK = /(?:background|borderColor|(?<!font)[cC]olor)\s*:/;
+    const govde = (ad) => {
+      const i = jsx.indexOf(`function ${ad}(`);
+      assert.notEqual(i, -1, `${ad} bulunamadı`);
+      return jsx.slice(i, jsx.indexOf('\nfunction ', i + 10));
+    };
+    // Kör değil: eski ihlalin kendisini tanıyor mu?
+    const ornek = "<div style={{ fontSize: 10, color: 'var(--ink-faint)' }}>x</div>";
+    assert.ok([...ornek.matchAll(STIL)].some((m) => RENK.test(m[1])), 'desen kör — eski ihlali bile tanımıyor');
+
+    const suclu = [];
+    for (const ad of ['RenderMsgText', 'MsgContent', 'ReplyPreview']) {
+      for (const m of govde(ad).matchAll(STIL)) {
+        if (RENK.test(m[1])) suclu.push(`${ad}: ${m[0].replace(/\s+/g, ' ').slice(0, 90)}`);
+      }
+    }
     assert.deepEqual(suclu, [],
-      'Sohbette satır içi renk stili var. CSS tarayan testler onu göremez; '
+      'Balonun içinde satır içi renk stili var. CSS tarayan testler onu göremez; '
       + 'sınıfa taşı ki balon rengini miras alsın ve denetlenebilsin.');
+  });
+
+  test('dosya eki satır kırıyor — ad ezilmiyor, tarih altta (#210)', () => {
+    // Kutucuk tek satırlık esnek kutuydu ve tarih %100 genişlik istiyordu:
+    // dosya adı sıfır genişliğe eziliyor, ekranda yalnızca tarih kalıyordu.
+    // Ayrıştırıcı kuralın önündeki yorumu seçiciye katıyor; karşılaştırmadan önce sök.
+    const secici = (k) => k.secici.replace(/\/\*[\s\S]*?\*\//g, '').trim();
+    const govdeler = kurallar().filter((k) => secici(k) === '.chat-file-attach').map((k) => k.govde).join(';');
+    assert.match(govdeler, /flex-wrap:\s*wrap/, 'ek kutucuğu satır kırmıyor — dosya adı ezilir');
+    const meta = kurallar().find((k) => secici(k) === '.chat-file-attach .chat-msg-meta');
+    assert.ok(meta && /width:\s*100%/.test(meta.govde), 'tarih ayrı satıra inmiyor');
+    // Adı olmayan dosyanın yedeği çeviriden geçmeli — "Dosya" Türkçe harf
+    // taşımadığı için dil.test.js onu göremiyor (#255 ailesi).
+    const jsx = fs.readFileSync(path.join(KOK, 'client', 'src', 'chat.jsx'), 'utf8');
+    assert.match(jsx, /\{msg\.file_name \|\| window\.t\?\.\('chat_file'\) \|\| 'Dosya'\}/, 'dosya adı yedeği çevrilmiyor');
   });
 });
 
