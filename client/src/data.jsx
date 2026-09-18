@@ -502,6 +502,9 @@ window.APP_I18N = {
     set_mem_remove:'Çıkar', set_mem_cancel:'İptal',
     set_mem_remove_title:'Üyeyi çıkar',
     set_mem_new_role:'Rol Oluştur', set_mem_role_name_ph:'Rol adı…',
+    // Varsayılan rol adları (kart #208) — yalnız tohum adıyla dokunulmamış
+    // roller gösterilirken çevriliyor (rolAdi.js).
+    role_default_admin:'Yönetici', role_default_editor:'Düzenleyici', role_default_viewer:'Görüntüleyici',
     // Settings — Labels
     set_lbl_title:'Etiketler', set_lbl_desc:'Görevleri kategorize etmek için etiketleri yönetin.',
     set_lbl_none:'Henüz etiket yok.', set_lbl_save:'Kaydet', set_lbl_cancel:'İptal',
@@ -656,6 +659,9 @@ window.APP_I18N = {
     list_due:'Bitiş', list_assignee:'Atanan', list_subtask:'Alt görev',
     // Chat
     chat_today:'Bugün', chat_yesterday:'Dün', chat_close:'Kapat (ESC)',
+    // Türkçe harf taşımadığı için dil taramasının görmediği metinler (#255 aile).
+    ui_close:'Kapat', ui_clear:'Temizle', chat_new_channel:'Yeni kanal', chat_channel_delete_failed:'Kanal silinemedi: ',
+    notes_save_shortcut:'Kaydet (Ctrl+S)',
     chat_create_channel:'Kanal Oluştur', chat_adding:'Ekleniyor…', chat_add:'Ekle',
     chat_perm_delete:'Kalıcı olarak sil',
     // Notifications
@@ -1428,6 +1434,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     set_mem_remove:'Remove', set_mem_cancel:'Cancel',
     set_mem_remove_title:'Remove member',
     set_mem_new_role:'New Role', set_mem_role_name_ph:'Role name…',
+    role_default_admin:'Admin', role_default_editor:'Editor', role_default_viewer:'Viewer',
     // Settings — Labels
     set_lbl_title:'Labels', set_lbl_desc:'Manage labels to categorize tasks.',
     set_lbl_none:'No labels yet.', set_lbl_save:'Save', set_lbl_cancel:'Cancel',
@@ -1582,6 +1589,8 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     list_due:'Due', list_assignee:'Assignee', list_subtask:'Subtask',
     // Chat
     chat_today:'Today', chat_yesterday:'Yesterday', chat_close:'Close (ESC)',
+    ui_close:'Close', ui_clear:'Clear', chat_new_channel:'New channel', chat_channel_delete_failed:'Could not delete channel: ',
+    notes_save_shortcut:'Save (Ctrl+S)',
     chat_create_channel:'Create Channel', chat_adding:'Adding…', chat_add:'Add',
     chat_perm_delete:'Delete permanently',
     // Notifications

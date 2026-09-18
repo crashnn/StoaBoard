@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Icon } from '../icons.jsx';
+import { rolAdi } from '../rolAdi.js';
 import { Avatar } from '../shell.jsx';
 import { API, fmtDate, fmtTimeAgo } from '../data.jsx';
 import { DefaultDropdown } from '../dropdown.jsx';
@@ -288,7 +289,7 @@ function RoleDropdown({ value, roles, onChange, disabled, onRoleCreated }) {
               {r.color && (
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
               )}
-              <span style={{ flex: 1 }}>{r.name}</span>
+              <span style={{ flex: 1 }}>{rolAdi(r.name, window.t)}</span>
               {r.id === value && <Icon name="check" size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
             </button>
           ))}
@@ -1154,7 +1155,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       </aside>
 
     <div className="settings-wrap" ref={scrollRef}>
-      <h1 style={{ display: 'none' }}>Ayarlar<em>.</em></h1>
+      <h1 style={{ display: 'none' }}>{window.t?.('nav_settings') || 'Ayarlar'}<em>.</em></h1>
 
       {/* ── Profile ── */}
       <div className="settings-section" data-nav-id="profile">
@@ -1495,7 +1496,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
               {roles.map(r => (
                 <div key={r.id} className="rol-item">
                   <span className="rol-item-dot" style={{ background: r.color }} />
-                  <span className="rol-item-name">{r.name}</span>
+                  <span className="rol-item-name">{rolAdi(r.name, window.t)}</span>
                   {r.is_default && <span className="rol-default-badge">{_t('set_rol_default','Varsayılan')}</span>}
                   <div className="rol-item-actions">
                     <button className="icon-btn" title={_t('set_rol_edit','Düzenle')} onClick={() => openRoleForm(r)}><Icon name="edit" size={13} /></button>
@@ -1696,7 +1697,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
           </div>
           <div className="settings-card settings-panel members-panel">
             {members.map(m => {
-              const workspaceRole = m.ws_role === 'owner' ? _t('set_mem_owner','Sahip') : (m.role_name || window.t?.('set_mem_member') || 'Üye');
+              const workspaceRole = m.ws_role === 'owner' ? _t('set_mem_owner','Sahip') : (rolAdi(m.role_name, window.t) || window.t?.('set_mem_member') || 'Üye');
               const profileRole = m.role && m.role !== workspaceRole ? ` · ${m.role}` : '';
               return (
               <div key={m.id} className="member-row">

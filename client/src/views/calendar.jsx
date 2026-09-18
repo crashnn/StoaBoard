@@ -779,7 +779,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
               <button
                 className="cal-side-clear"
                 onClick={(e) => { e.stopPropagation(); setSelectedDate(null); }}
-                title="Kapat"
+                title={window.t?.('ui_close') || 'Kapat'}
               >
                 <Icon name="x" size={11} />
               </button>

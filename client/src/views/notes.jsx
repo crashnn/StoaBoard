@@ -791,7 +791,7 @@ function NoteDetail({ note, members, tasks, workspaceTasks, onBack, onPatch, onD
             className="btn btn-primary btn-sm"
             onClick={() => doSave({ title, body })}
             disabled={saving || !isDirty}
-            title="Kaydet (Ctrl+S)"
+            title={window.t?.('notes_save_shortcut') || 'Kaydet (Ctrl+S)'}
           >
             {saving ? <><Icon name="clock" size={11} /> {window.t?.('notes_saving') || 'Kaydediliyor…'}</> : <><Icon name="check" size={11} /> {window.t?.('notes_save') || 'Kaydet'}</>}
           </button>

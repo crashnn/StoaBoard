@@ -3,6 +3,7 @@
 import React, { useState as useChatS, useEffect as useChatE, useRef as useChatRef, useCallback as useChatCb } from 'react';
 import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
+import { rolAdi } from './rolAdi.js';
 import { Avatar, AvatarStack } from './shell.jsx';
 
 // Sohbet taslakları: (alan + hedef) çifti başına metin, yanıt ve eklenmiş
@@ -434,8 +435,8 @@ function CreateChannelModal({ open, onClose, onCreated, allMembers, me }) {
     <div className="stoa-channel-modal-backdrop" onClick={onClose}>
       <div className="stoa-channel-modal" onClick={e => e.stopPropagation()}>
         <div className="stoa-channel-modal-head">
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Yeni Kanal</div>
-          <button className="icon-btn" onClick={onClose} title="Kapat" style={{ padding: 4 }}>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{window.t?.('chat_new_channel') || 'Yeni kanal'}</div>
+          <button className="icon-btn" onClick={onClose} title={window.t?.('ui_close') || 'Kapat'} style={{ padding: 4 }}>
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -625,7 +626,7 @@ function AddMemberModal({ open, onClose, channel, onAdded, allMembers, me }) {
           <div style={{ fontSize: 15, fontWeight: 600 }}>
             <span style={{ color: 'var(--ink-muted)', fontWeight: 400 }}>#{channel.name}</span> {window.t?.('chat_add_members_title')||'kanalına üye ekle'}
           </div>
-          <button className="icon-btn" onClick={onClose} title="Kapat" style={{ padding: 4 }}>
+          <button className="icon-btn" onClick={onClose} title={window.t?.('ui_close') || 'Kapat'} style={{ padding: 4 }}>
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -851,7 +852,7 @@ function ChannelSettingsModal({ open, onClose, channel, onUpdated, onDeleted, me
             <ChannelIconMark channel={{ ...channel, type, icon: channelIcon }} size={13} />
             {channel.name} {tx('chat_channel_settings_title', 'ayarları')}
           </div>
-          <button className="icon-btn" onClick={onClose} title="Kapat" style={{ padding: 4 }}>
+          <button className="icon-btn" onClick={onClose} title={window.t?.('ui_close') || 'Kapat'} style={{ padding: 4 }}>
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -1645,7 +1646,7 @@ function MediaGallery({ allMembers, onImageClick }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Media sub-tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--line)', padding: '0 12px' }}>
-        {[['general','Genel'],['dm','Direkt']].map(([k, label]) => (
+        {[['general', window.t?.('chat_tab_general') || 'Genel'], ['dm', window.t?.('chat_tab_dm') || 'Direkt']].map(([k, label]) => (
           <button key={k} onClick={() => setMediaTab(k)}
             style={{ padding: '8px 14px', fontSize: 12, fontWeight: mediaTab === k ? 600 : 400,
               color: mediaTab === k ? 'var(--accent)' : 'var(--ink-muted)',
@@ -1871,7 +1872,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
       if (activeChannel === id) setActiveChannel('general');
       window.showToast?.(`#${ch.name} ${window.t?.('chat_channel_removed')||'kanalı silindi'}`, 'info');
     } catch (e) {
-      window.showToast?.('Kanal silinemedi: ' + e.message, 'error');
+      window.showToast?.((window.t?.('chat_channel_delete_failed') || 'Kanal silinemedi: ') + e.message, 'error');
     }
   };
 
@@ -2971,7 +2972,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                 {leftListTab === 'channels' && (DATA.WORKSPACE?.can_create_channel || DATA.WORKSPACE?.is_owner || canManageChannels) && (
                   <button
                     className="icon-btn"
-                    title="Yeni kanal"
+                    title={window.t?.('chat_new_channel') || 'Yeni kanal'}
                     onClick={() => setAddChannelOpen(o => !o)}
                     style={{ padding: 2, color: 'var(--ink-muted)' }}
                   >
@@ -3439,7 +3440,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                 <button title={window.t?.('chat_fmt_italic')||'İtalik (Ctrl+I)'} data-fmt-active={activeFmtKey === 'italic'} onClick={() => wrapSelection('*', '*', '', 'italic')} className="chat-fmt-btn" style={{ fontStyle: 'italic' }}>I</button>
                 <button title={window.t?.('chat_fmt_code')||'Kod (Ctrl+E)'} data-fmt-active={activeFmtKey === 'code'} onClick={() => wrapSelection('`', '`', '', 'code')} className="chat-fmt-btn"><Icon name="code" size={12} /></button>
                 <span className="chat-fp-composer-sep" />
-                <button title="Dosya ekle" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                <button title={window.t?.('chat_attach') || 'Dosya ekle'} disabled={uploading} onClick={() => fileRef.current?.click()}>
                   {uploading ? <span style={{ fontSize: 11 }}>⏳</span> : <Icon name="paperclip" size={14} />}
                 </button>
                 <button title="Emoji" onClick={(e) => {
@@ -3586,7 +3587,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                                   borderRadius: m.role_color ? '4px' : '0',
                                   display: 'inline-block',
                                 }}>
-                                  {m.role_name || m.role}
+                                  {rolAdi(m.role_name || m.role, window.t)}
                                 </span>
                               ) : (
                                 <div style={{ fontSize: 10.5, color: 'var(--ink-faint)' }}>{_statusLabel(mStatus)}</div>
@@ -3773,7 +3774,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
               <Icon name="expand" size={13} />
             </button>
           )}
-          <button className="icon-btn" style={{ flexShrink: 0 }} onClick={onClose} title="Kapat">
+          <button className="icon-btn" style={{ flexShrink: 0 }} onClick={onClose} title={window.t?.('ui_close') || 'Kapat'}>
             <Icon name="x" size={14} />
           </button>
         </div>

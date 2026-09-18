@@ -133,7 +133,7 @@ export function TrashView({ tasks, onRestore, onPermanentDelete, canManageTasks,
               onChange={e => setSearch(e.target.value)}
             />
             {search && (
-              <button className="trash-search-clear" onClick={() => setSearch('')} title="Temizle">
+              <button className="trash-search-clear" onClick={() => setSearch('')} title={window.t?.('ui_clear') || 'Temizle'}>
                 <Icon name="x" size={11} />
               </button>
             )}

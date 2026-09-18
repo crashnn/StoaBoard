@@ -30,6 +30,9 @@ const AUTH_I18N = {
     subtitle_signup: 'Takımınla projelerini yönetmeye hemen başla.',
     tab_signin: 'Giriş yap', tab_signup: 'Kaydol',
     label_name: 'AD SOYAD', label_email: 'E-POSTA', label_password: 'PAROLA',
+    // Yer tutucu da dil verisi (kart #255): "sen@example.com" Türkçe harf
+    // taşımadığı için dil taraması onu Türkçe saymıyordu.
+    ph_email: 'sen@example.com',
     forgot_link: 'Unuttun mu?',
     checking: 'DOĞRULANIYOR…', btn_signin: 'GİRİŞ YAP', btn_signup: 'HESAP OLUŞTUR',
     no_account: 'Hesabın yok mu?', free_signup: 'Ücretsiz kaydol',
@@ -165,6 +168,7 @@ const AUTH_I18N = {
     subtitle_signup: 'Start managing your projects with your team right away.',
     tab_signin: 'Sign In', tab_signup: 'Sign Up',
     label_name: 'FULL NAME', label_email: 'EMAIL', label_password: 'PASSWORD',
+    ph_email: 'you@example.com',
     forgot_link: 'Forgot?',
     checking: 'VERIFYING…', btn_signin: 'SIGN IN', btn_signup: 'CREATE ACCOUNT',
     no_account: "Don't have an account?", free_signup: 'Sign up for free',
@@ -286,6 +290,7 @@ const AUTH_I18N = {
     subtitle_signup: 'Verwalten Sie Ihre Projekte sofort mit Ihrem Team.',
     tab_signin: 'Anmelden', tab_signup: 'Registrieren',
     label_name: 'VOR- UND NACHNAME', label_email: 'E-MAIL', label_password: 'PASSWORT',
+    ph_email: 'du@example.com',
     forgot_link: 'Vergessen?',
     checking: 'WIRD ÜBERPRÜFT…', btn_signin: 'ANMELDEN', btn_signup: 'KONTO ERSTELLEN',
     no_account: 'Noch kein Konto?', free_signup: 'Kostenlos registrieren',
@@ -324,6 +329,7 @@ const AUTH_I18N = {
     subtitle_signup: 'Empieza a gestionar tus proyectos con tu equipo ahora mismo.',
     tab_signin: 'Iniciar sesión', tab_signup: 'Registrarse',
     label_name: 'NOMBRE COMPLETO', label_email: 'CORREO ELECTRÓNICO', label_password: 'CONTRASEÑA',
+    ph_email: 'tu@example.com',
     forgot_link: '¿Olvidaste?',
     checking: 'VERIFICANDO…', btn_signin: 'INICIAR SESIÓN', btn_signup: 'CREAR CUENTA',
     no_account: '¿No tienes cuenta?', free_signup: 'Regístrate gratis',
@@ -362,6 +368,7 @@ const AUTH_I18N = {
     subtitle_signup: 'Начните управлять проектами вместе с командой прямо сейчас.',
     tab_signin: 'Войти', tab_signup: 'Регистрация',
     label_name: 'ИМЯ И ФАМИЛИЯ', label_email: 'ЭЛЕКТРОННАЯ ПОЧТА', label_password: 'ПАРОЛЬ',
+    ph_email: 'vy@example.com',
     forgot_link: 'Забыли?',
     checking: 'ПРОВЕРКА…', btn_signin: 'ВОЙТИ', btn_signup: 'СОЗДАТЬ АККАУНТ',
     no_account: 'Нет аккаунта?', free_signup: 'Зарегистрироваться бесплатно',
@@ -589,6 +596,10 @@ function AuthPage({ onSignIn }) {
       window.google.accounts.id.renderButton(googleBtnRef.current, {
         theme: 'outline', size: 'large', width: googleBtnRef.current.offsetWidth || 340,
         text: 'continue_with', logo_alignment: 'left',
+        // Düğmeyi Google çiziyor ve dilini tarayıcıdan/Google hesabından
+        // alıyordu: İngilizce arayüzde "Google ile devam edin" (kart #255).
+        // Sayfanın dili veriliyor; dil değişince sayfa zaten yenileniyor.
+        locale: lang,
       });
       return true;
     };
@@ -735,7 +746,7 @@ function AuthPage({ onSignIn }) {
                 {forgotError && <div className="error-msg">{forgotError}</div>}
                 <form className="auth-fields" onSubmit={handleForgotEmailSubmit}>
                   <div className="field"><label className="field-label">{t('label_email')}</label>
-                    <input className="glow-input" autoFocus type="email" placeholder="sen@example.com" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
+                    <input className="glow-input" autoFocus type="email" placeholder={t('ph_email')} value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
                   </div>
                   <button type="submit" className="auth-submit" disabled={forgotBusy}>{forgotBusy ? t('forgot_checking') : t('forgot_send')}</button>
                 </form>
@@ -802,7 +813,7 @@ function AuthPage({ onSignIn }) {
                   </div>
                 )}
                 <div className="field"><label className="field-label">{t('label_email')}</label>
-                  <input className="glow-input" type="email" placeholder="sen@example.com" value={form.email} onChange={set('email')} required />
+                  <input className="glow-input" type="email" placeholder={t('ph_email')} value={form.email} onChange={set('email')} required />
                 </div>
                 <div className="field">
                   <div className="password-header">
