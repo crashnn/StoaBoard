@@ -1542,7 +1542,8 @@ input, textarea, select, [contenteditable="true"] {
   letter-spacing: -0.01em;
   user-select: all; /* tek tıkla seçilsin — kopyalayıp yapıştırmak için var */
 }
-.drawer-crumbs .card-id { margin-left: 6px; }
+/* Numara hiç daralmaz: aranınca bulunmak için var, kısalmış hâli işe yaramaz. */
+.drawer-crumbs .card-id { margin-left: 6px; flex-shrink: 0; }
 
 .priority-pill {
   display: inline-flex;
@@ -2894,7 +2895,12 @@ input, textarea, select, [contenteditable="true"] {
   overflow: hidden;
 }
 .drawer-crumbs .sep { color: var(--ink-muted); flex-shrink: 0; }
-.drawer-crumbs > span:last-child {
+/* Yer daraldığında yalnızca METİN kırıntıları (proje, kolon) kısalır.
+   Eskiden kural `span:last-child`e yazılıydı: kart numarası açıkken son
+   eleman NUMARANIN kendisi oluyordu ve telefonda (‹ 1/26 › ve üç düğmeyle
+   dolu başlıkta) sıfır genişliğe eziliyordu — ayar açık, numara yok (#263).
+   Sıraya değil sınıfa bağlı: yeni bir kırıntı eklemek kuralı kaydırmaz. */
+.drawer-crumbs .crumb-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

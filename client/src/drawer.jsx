@@ -413,6 +413,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   // taşıma sessizce olmuyordu.
   const kolonlar = Array.isArray(detail?.columns) && detail.columns.length ? detail.columns : DATA.COLUMNS;
   const col = kolonlar.find(c => c.id === task.col) || { title_tr: task.col };
+  const projeAdi = (window.DATA?.PROJECTS || []).find(p => String(p.id) === String(task.project_id))?.name || null;
 
   // Kontrol listesi blokları gösterilmiyor ve geri saklanmıyor: yapılacaklar
   // aşağıdaki bölümde, alt görevlerden geliyor. Blok bir kez daha kaydedilseydi
@@ -1188,9 +1189,13 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
           <div className="drawer-grab" aria-hidden="true"><span /></div>
           <div className="drawer-head">
             <div className="drawer-crumbs">
-              <span>StoaBoard Web</span>
-              <span className="sep"><Icon name="chevronRight" size={11} /></span>
-              <span style={{ color: 'var(--ink)' }}>{col.title_tr}</span>
+              {/* Kartın KENDİ projesi (kart #263). Burada sabit "StoaBoard Web"
+                  yazıyordu: hangi projenin kartı açılırsa açılsın aynı ad.
+                  Proje bulunamazsa (liste henüz gelmedi) kırıntı atlanıyor —
+                  yanlış bir ad göstermektense hiç göstermemek. */}
+              {projeAdi && <span className="crumb-text">{projeAdi}</span>}
+              {projeAdi && <span className="sep"><Icon name="chevronRight" size={11} /></span>}
+              <span className="crumb-text" style={{ color: 'var(--ink)' }}>{col.title_tr}</span>
               {/* Kart numarası — Ayarlar → Görünüm → Geliştirici ile açılıyor.
                   Kırıntı satırının sonunda, çünkü çalışırken göz zaten orada. */}
               {tweaks.showCardIds && (
