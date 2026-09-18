@@ -1804,9 +1804,9 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
     // halde panel her açıldığında yazılmakta olan metin sıfırlanırdı.
     if (oncekiHedef.current === null) { oncekiHedef.current = yeni; return; }
     // Bu render'da yalnızca hedef değişti; text hâlâ ÖNCEKİ hedefin taslağı.
-    taslaklar.current.set(oncekiHedef.current, { text, replyTo, pendingFile });
+    taslaklar.set(oncekiHedef.current, { text, replyTo, pendingFile });
     oncekiHedef.current = yeni;
-    const kayit = taslaklar.current.get(yeni);
+    const kayit = taslaklar.get(yeni);
     setText(kayit?.text || '');
     setReplyTo(kayit?.replyTo || null);
     setPendingFile(kayit?.pendingFile || null);

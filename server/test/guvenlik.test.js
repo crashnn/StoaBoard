@@ -1500,6 +1500,27 @@ describe('sohbet taslağı — hedefe bağlı, alanlar arası taşınmaz', () =>
       'bileşen modül deposunu kullanmıyor');
     assert.ok(!/const taslaklar = useChatRef\(new Map/.test(src),
       'depo bileşen içine geri alınmış');
+
+    // BU SATIRI CANLI BİR ÇÖKME YAZDIRDI (18 Eylül 2026, kullanıcı gerçek
+    // cihazda). Yukarıdaki ölçütler depoyu BİLDİRİMİNDEN kilitliyordu ama
+    // KULLANIM YERLERİNE hiç bakmıyordu. Depo `useChatRef(new Map())`ten
+    // modül kapsamına taşınırken iki çağrı yeri `.current` ile kalmıştı:
+    //
+    //     taslaklar.current.set(...)   // <- Map değil, undefined
+    //
+    // Sonuç: sohbet HEDEFİ her değiştiğinde (DM'ye geçmek, kanaldan DM'ye
+    // dönmek) `Cannot read properties of undefined (reading 'set')` fırlıyor
+    // ve panel çöküyordu. Kullanıcı bunu "DM bozulmuş" diye bildirdi; o sırada
+    // panel `ErrorBoundary` dışında olduğu için ekran tamamen beyazlıyordu
+    // (#244 onu ayrıca kapattı).
+    //
+    // Ders: bir şeyin TÜRÜNÜ değiştirdiysen, bildirimini değil KULLANIMLARINI
+    // ölç. Bildirim tek satır, kullanım her yerde — ve bu depoda tekrar eden
+    // kusur sınıfının ta kendisi: aynı olgunun birden çok okuyucusu, biri
+    // güncellenmemiş (CLAUDE.md).
+    assert.ok(!/taslaklar\.current/.test(src),
+      'taslak deposuna hâlâ ref gibi erişiliyor (`taslaklar.current`) — depo '
+      + 'düz bir Map, `.current` undefined ve sohbet hedefi değişince panel çöker');
   });
 
   test('taslak diske yazılmıyor', () => {
