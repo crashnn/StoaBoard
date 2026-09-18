@@ -2896,6 +2896,11 @@ input, textarea, select, [contenteditable="true"] {
   min-width: 0;
 }
 .drawer-head-actions { margin-left: auto; display: flex; gap: 2px; flex-shrink: 0; }
+/* Kartlar arası geçiş (kart #246): ‹ 3/28 › — konum sayısı düğmelerin
+   arasında, çünkü "kaç kart kaldı" sorusunun cevabı geçişin yanında olmalı. */
+.drawer-nav { display: flex; align-items: center; gap: 0; margin-right: 6px; }
+.drawer-nav-pos { font-size: 11px; color: var(--ink-muted); font-variant-numeric: tabular-nums; padding: 0 2px; min-width: 34px; text-align: center; }
+.drawer-nav .icon-btn:disabled { opacity: 0.3; cursor: default; }
 
 .drawer-body {
   flex: 1;

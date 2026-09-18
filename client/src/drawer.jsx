@@ -14,7 +14,7 @@ import { paragraflaraBol } from './belge.js';
 // gömdüğü BAŞLANGIÇ tohumu, canlı durum değil. Oradan okunsaydı anahtar
 // açıldığında çekmece yeniden yükleme yapılana kadar eski değeri gösterirdi —
 // ekran bir şey, ayar başka bir şey derdi. Prop, iki tarafı aynı kaynağa bağlıyor.
-function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, onCreateTask, canManageTasks = true, pageMode = false, onOpenPage, tweaks = {} }) {
+function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, onCreateTask, canManageTasks = true, pageMode = false, onOpenPage, tweaks = {}, komsu = null, onKomsu = null }) {
   const [detail, setDetail]             = useDrawerState(null);
   const [newComment, setNewComment]     = useDrawerState('');
   const [submitting, setSubmitting]     = useDrawerState(false);
@@ -162,6 +162,49 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
     setStartVal(task?.start || '');
     setAssigneeDatesVal(task?.assignee_dates || {});
   }, [task?.id, task?.due, task?.start]);
+
+  // ── Kartlar arası geçiş (kart #246) ────────────────────────────────────
+  //
+  // Sol/sağ ok: bir alan düzenlenmiyorken bir önceki / sonraki karta geçer.
+  // Kullanıcının isteği ("seçili değilse bir yer, sol ok sağ ok"); düğmeler
+  // de ‹ › olduğu için tuşla düğme aynı yönü söylüyor. Düzenleme sırasında
+  // ok tuşu imleci taşır, karta dokunulmaz — aksi hâlde yorum yazarken imleci
+  // sola almak isteyen kullanıcı başka bir kartta bulurdu kendini.
+  useDrawerEffect(() => {
+    if (!open || !onKomsu) return undefined;
+    const duzenleniyor = () => {
+      const ae = document.activeElement;
+      return !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    };
+    const onKey = (e) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || duzenleniyor()) return;
+      if (e.key === 'ArrowLeft' && komsu?.onceki) { e.preventDefault(); onKomsu(komsu.onceki); }
+      else if (e.key === 'ArrowRight' && komsu?.sonraki) { e.preventDefault(); onKomsu(komsu.sonraki); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onKomsu, komsu?.onceki, komsu?.sonraki]);
+
+  // Yorum taslağı KARTA bağlı. Geçişte taslak, yazıldığı kartın adına
+  // saklanıyor; yeni kart kendi taslağıyla (yoksa boş) açılıyor. Tek bir
+  // `newComment` durumu kartla birlikte sıfırlanmasaydı A'da yazılan metin
+  // B'nin kutusunda dururdu ve bir "Gönder" onu yanlış karta yazardı.
+  // Bellekte, sayfa yenilenince gider — sohbet taslağıyla aynı ödün (diske
+  // yazmak ortak makinede başkasının ekranına düşürürdü).
+  const taslaklar = useDrawerRef(new Map());
+  const taslakSahibi = useDrawerRef(null);
+  useDrawerEffect(() => {
+    const yeni = task?.id ?? null;
+    const eski = taslakSahibi.current;
+    if (eski !== null && eski !== yeni) {
+      setNewComment((mevcut) => {
+        if (mevcut) taslaklar.current.set(String(eski), mevcut);
+        else taslaklar.current.delete(String(eski));
+        return yeni === null ? '' : (taslaklar.current.get(String(yeni)) || '');
+      });
+    }
+    taslakSahibi.current = yeni;
+  }, [task?.id]);
 
   // Fetch full task detail (doc + comments + subtasks) when drawer opens
   useDrawerEffect(() => {
@@ -1153,6 +1196,21 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
               )}
             </div>
             <div className="drawer-head-actions">
+              {onKomsu && komsu && komsu.toplam > 0 && (
+                <div className="drawer-nav" role="group" aria-label={window.t?.('drawer_nav') || 'Kolondaki kartlar'}>
+                  <button className="icon-btn" title={window.t?.('drawer_nav_prev') || 'Önceki kart (←)'}
+                    onClick={() => onKomsu(komsu.onceki)} disabled={!komsu.onceki}>
+                    <Icon name="chevronLeft" size={14} />
+                  </button>
+                  <span className="drawer-nav-pos" title={window.t?.('drawer_nav_pos') || 'Kolondaki sırası'}>
+                    {komsu.sira}/{komsu.toplam}
+                  </span>
+                  <button className="icon-btn" title={window.t?.('drawer_nav_next') || 'Sonraki kart (→)'}
+                    onClick={() => onKomsu(komsu.sonraki)} disabled={!komsu.sonraki}>
+                    <Icon name="chevronRight" size={14} />
+                  </button>
+                </div>
+              )}
               <button className="icon-btn" title={window.t('drawer_duplicate')} onClick={handleDuplicate} disabled={duplicating}>
                 <Icon name="copy" size={15} />
               </button>

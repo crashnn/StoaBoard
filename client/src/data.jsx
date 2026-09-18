@@ -812,6 +812,7 @@ window.APP_I18N = {
     // Drawer aliases
     drawer_duplicate:'Kopyala', drawer_minimize:'Küçült', drawer_fullscreen:'Tam ekran',
     drawer_delete:'Sil', drawer_cancel:'Vazgeç', drawer_close:'Kapat',
+    drawer_nav:'Kolondaki kartlar', drawer_nav_prev:'Önceki kart (←)', drawer_nav_next:'Sonraki kart (→)', drawer_nav_pos:'Kolondaki sırası',
     drawer_status:'Durum', drawer_priority:'Öncelik',
     drawer_assignee:'Atanan', drawer_assign_placeholder:'Ata…',
     drawer_dates:'Tarihler', drawer_labels:'Etiketler',
@@ -1729,6 +1730,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     // Drawer aliases
     drawer_duplicate:'Duplicate', drawer_minimize:'Minimize', drawer_fullscreen:'Fullscreen',
     drawer_delete:'Delete', drawer_cancel:'Cancel', drawer_close:'Close',
+    drawer_nav:'Cards in this column', drawer_nav_prev:'Previous card (←)', drawer_nav_next:'Next card (→)', drawer_nav_pos:'Position in column',
     drawer_status:'Status', drawer_priority:'Priority',
     drawer_assignee:'Assignee', drawer_assign_placeholder:'Assign…',
     drawer_dates:'Dates', drawer_labels:'Labels',

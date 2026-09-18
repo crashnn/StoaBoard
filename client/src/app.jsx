@@ -11,6 +11,7 @@ import { TaskDrawer } from './drawer.jsx';
 import { NotifPanel, NotifPrefRow, notifType } from './notifications.jsx';
 import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, panelGorunur } from './rozet.js';
 import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR } from './rota.js';
+import { komsuKartlar } from './komsu.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
 import { TweaksPanel } from './tweaks.jsx';
@@ -241,6 +242,18 @@ function App() {
       if (!kartId && window.history.state?.kartItildi) {
         bekleyenGeri.current = true;
         window.history.back();
+        return;
+      }
+
+      // Karttan karta geçiş (kart #246): kayıt DEĞİŞTİRİLİR, eklenmez. Aynı
+      // kolonda on kart gezip X'e basan kullanıcı panoya dönmeli; her geçiş
+      // kayıt ekleseydi geri tuşu onu kart kart geriye yürütürdü ve X'in
+      // back() çağrısı da panoya değil bir önceki karta düşerdi. Tek kayıt:
+      // "pano, kart". `kartItildi` korunuyor — doğrudan bağlantıyla gelinen
+      // kart geçişle "bizim eklediğimiz" kayda dönüşmez, back() siteden
+      // çıkarmaya devam ederdi.
+      if (kartId && yoldanDurum(simdiki)?.kart) {
+        window.history.replaceState({ kart: String(kartId), kartItildi: !!window.history.state?.kartItildi }, '', hedef);
         return;
       }
 
@@ -1238,6 +1251,13 @@ function App() {
   const openDrawer = (task) => setDrawerTask(task);
   const closeDrawer = () => setDrawerTask(null);
 
+  // Açık kartın aynı kolondaki komşuları (kart #246). Panodaki `tasks`
+  // dizisinden, panonun sırasıyla; kural `komsu.js`te. Çekmece ve tam sayfa
+  // kart aynı hesabı okuyor, geçiş de aynı durumu değiştiriyor — ikisi ayrı
+  // yoldan gitseydi biri güncellenip öteki eski kartta kalabilirdi.
+  const cekmeceKomsu = komsuKartlar(tasks, drawerTask);
+  const sayfaKomsu = komsuKartlar(tasks, taskPageTask);
+
   // Drawer kapandığında (kapat düğmesi ya da Escape — ikisi de drawerTask'i
   // null yapıyor) bir dönüş görünümü kayıtlıysa oraya dön. Raporlardan açılan
   // kart kapanınca panoda bırakmak yerine rapora geri getiriyor.
@@ -1433,6 +1453,8 @@ function App() {
                 onCreateTask={(newTask) => setTasks(prev => [newTask, ...prev])}
                 canManageTasks={canManageTasks}
                 tweaks={tweaks}
+                komsu={sayfaKomsu}
+                onKomsu={setTaskPageTask}
               />
             ) : null}
             {(view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') && (
@@ -1525,6 +1547,8 @@ function App() {
         canManageTasks={canManageTasks}
         onOpenPage={openTaskPage}
         tweaks={tweaks}
+        komsu={cekmeceKomsu}
+        onKomsu={openDrawer}
       />
       </ErrorBoundary>
       <ErrorBoundary key="modal">
