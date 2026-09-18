@@ -184,7 +184,7 @@ taskWorkLogsRouter.post(
     const taskId = parseInt(req.params.taskId, 10);
     const access = await loadTaskAccess(req, res, taskId);
     if (!access) return;
-    const { user, task, project } = access;
+    const { user, task } = access;
 
     const data = req.body || {};
     const minutes = parseDuration(data.minutes ?? data.duration ?? data.time);

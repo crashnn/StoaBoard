@@ -5,10 +5,10 @@ import { createRoot } from 'react-dom/client';
 import { io } from 'socket.io-client';
 import { Icon } from './icons.jsx';
 import { API, renderNotifText, htmlCoz } from './data.jsx';
-import { Avatar, Sidebar, Topbar, ToastContainer } from './shell.jsx';
+import { Sidebar, Topbar, ToastContainer } from './shell.jsx';
 import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
-import { NotifPanel, NotifPrefRow, notifType } from './notifications.jsx';
+import { NotifPanel, notifType } from './notifications.jsx';
 import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, panelGorunur } from './rozet.js';
 import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR } from './rota.js';
 import { komsuKartlar } from './komsu.js';
@@ -180,7 +180,6 @@ function App() {
   const canManageProjects = isOwner || myPerms.includes('manage_projects');
   const canManageChannels = isOwner || myPerms.includes('manage_channels');
   const canDeleteMessages = isOwner || myPerms.includes('delete_messages');
-  const canManageMembers = isOwner || myPerms.includes('manage_members');
   const canManageWorkspace = isOwner || myPerms.includes('manage_workspace');
 
   // Adres çubuğu ile ekranın eşitlenmesi.
@@ -475,7 +474,7 @@ function App() {
         return next;
       });
     });
-    sock.on('workspace_switched', ({ workspace_id }) => {
+    sock.on('workspace_switched', () => {
       API.bootstrap().then(data => {
         _applyBootstrap(data);
         setTasks(data.tasks || []);
@@ -1210,7 +1209,7 @@ function App() {
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
-  const handleSignIn = (extraData) => {
+  const handleSignIn = () => {
     API.bootstrap()
       .then((data) => {
         if (data.needs_workspace) {

@@ -1,6 +1,6 @@
 // Çöp Kutusu — soft-deleted tasks + notes, 30 gün içinde silinir veya geri alınabilir
 
-import React, { useState as useTrashState } from 'react';
+import { useState as useTrashState } from 'react';
 import { Icon } from '../icons.jsx';
 
 const DAYS_RETENTION = 30;

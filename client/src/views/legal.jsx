@@ -1,4 +1,4 @@
-import React, { useState as useS } from 'react';
+import { useState as useS } from 'react';
 
 // Fallback SVG logo in case PNG logo isn't available
 const StoaLogoSVG = ({ color = '#1a4a70', size = 40 }) => (

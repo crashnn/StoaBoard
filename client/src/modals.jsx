@@ -4,7 +4,6 @@ import React, { useState as useModalState, useEffect as useModalEffect, useRef a
 import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
 import { Avatar } from './shell.jsx';
-import { API } from './data.jsx';
 
 // ── Custom Date Picker ─────────────────────────────────────────────────────
 function DatePicker({ value, onChange, error }) {
@@ -206,7 +205,7 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates }) {
     setOpenFn(o => !o);
   };
 
-  React.useEffect(() => { if (defaultCol) setCol(defaultCol); }, [defaultCol, open]);
+  React.useEffect(() => { if (defaultCol) setCol(defaultCol); }, [defaultCol, open, setCol]);
   React.useEffect(() => {
     if (!open) {
       setTitle(''); setDesc(''); setLabels([]); setBusy(false); setTitleError(false); setDueError(false);
@@ -241,7 +240,7 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates }) {
       if (d.start || d.end) cleanAd[slug] = d;
     }
     try {
-      const created = await onCreate({
+      await onCreate({
         title: title.trim(), desc, col, priority,
         start: startDate || null, due: due || null,
         labels, assignees,

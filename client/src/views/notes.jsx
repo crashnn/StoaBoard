@@ -29,24 +29,6 @@ const NOTE_LABEL_TONES = () => {
   ];
 };
 
-function noteSlugify(s) {
-  return (s || '').toLowerCase()
-    .replace(/[çÇ]/g,'c').replace(/[ğĞ]/g,'g').replace(/[ıİ]/g,'i')
-    .replace(/[öÖ]/g,'o').replace(/[şŞ]/g,'s').replace(/[üÜ]/g,'u')
-    .replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
-}
-
-function useNoteDebounce(fn, delay) {
-  const fnRef = useNR(fn);
-  const tRef  = useNR(null);
-  useNE(() => { fnRef.current = fn; }, [fn]);
-  useNE(() => () => { if (tRef.current) clearTimeout(tRef.current); }, []);
-  return useNCB((...args) => {
-    if (tRef.current) clearTimeout(tRef.current);
-    tRef.current = setTimeout(() => fnRef.current(...args), delay);
-  }, [delay]);
-}
-
 // ── Markdown render (inline + block) ─────────────────────────────────────────
 
 function _mdInline(text) {
@@ -365,7 +347,7 @@ function MarkdownEditor({ body, onChange, onBlur, onKeyShortcut, disabled }) {
 
 // ── Label picker popover ────────────────────────────────────────────────────
 
-function NoteLabelChip({ label, onRemove, compact }) {
+function NoteLabelChip({ label, onRemove }) {
   return (
     <span className="tag" data-tone={label.tone || 'blue'} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       {label.name}
@@ -588,7 +570,7 @@ function NoteCard({ note, author, onOpen, onTogglePin, onArchive, onDelete, canE
 
 // ── Note detail / editor ────────────────────────────────────────────────────
 
-function NoteDetail({ note, members, tasks, workspaceTasks, currentUserId, isOwner, onBack, onPatch, onDelete, onLinkTask, onUnlinkTask, onOpenTask, canEdit }) {
+function NoteDetail({ note, members, tasks, workspaceTasks, onBack, onPatch, onDelete, onLinkTask, onUnlinkTask, onOpenTask, canEdit }) {
   const [title, setTitle]   = useNS(note.title || '');
   const [body, setBody]     = useNS(note.body || '');
   // Gövde listede gelmediği için sonradan (GET /api/notes/:id ile) düşüyor.

@@ -15,7 +15,7 @@ import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { hashPassword } from '../lib/password.js';
-import { userToDict, initialsFromName } from '../lib/user.js';
+import { initialsFromName } from '../lib/user.js';
 import * as onlineState from '../lib/onlineState.js';
 import { destroyUserSessions } from '../lib/sessionStore.js';
 import { kullanicininAnahtarlariniIptalEt } from '../lib/mcpTokenStore.js';

@@ -744,7 +744,6 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
     try { return JSON.parse(localStorage.getItem('stoa.shortcuts') || 'null') || {}; } catch { return {}; }
   });
   const [recordingId, setRecordingId] = React.useState(null);
-  const recordingRef = React.useRef(null);
 
   const getShortcutKeys = (id) => customShortcuts[id] || DEFAULT_SHORTCUTS.find(s => s.id === id)?.keys || [];
 
@@ -2125,16 +2124,6 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
         </div>
       </div>
     </div>
-    </div>
-  );
-}
-
-function SettingsToggle({ label, defaultOn }) {
-  const [on, setOn] = React.useState(defaultOn);
-  return (
-    <div className="tweak-toggle" onClick={() => setOn(!on)}>
-      {label && <span>{label}</span>}
-      <div className="toggle" data-on={on} />
     </div>
   );
 }

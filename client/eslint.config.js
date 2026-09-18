@@ -7,10 +7,10 @@
 // okumasında kaçtı, çünkü sebep yüz satır yukarıdaydı. Bu sınıfı test ve
 // derleme değil, yalnızca lint yakalar. Kural merdiveni: belge → test → lint.
 //
-// İki kural HATA (kanca push'u durdurur), iki kural UYARI (görünür, durdurmaz):
+// Üç kural HATA (kanca push'u durdurur), bir kural UYARI (görünür, durdurmaz):
 //   no-undef                   hata   — tanımsız değişken (5af4e75)
 //   react-hooks/rules-of-hooks hata   — koşullu/erken dönüşten sonra kanca (9843983)
-//   no-unused-vars             uyarı  — ölü ağırlık; mevcut kodda bulgu var, temizlenince hataya çekilir
+//   no-unused-vars             hata   — ölü ağırlık; 18 Eylül'de 45 bulgu temizlendi ve hataya çekildi (kart #153)
 //   react-hooks/exhaustive-deps uyarı — eksik bağımlılık; her bulgu gerçek hata değil
 //
 // Başka kural bilerek yok. Biçim kuralları (noktalı virgül, tırnak) bu deponun
@@ -40,12 +40,17 @@ export default [
       // js.configs.recommended'ın tamamı değil: yalnızca çalışmayı bozanlar.
       'no-undef': 'error',
       'react-hooks/rules-of-hooks': 'error',
-      'no-unused-vars': ['warn', {
+      'no-unused-vars': ['error', {
         // Bilerek kullanılmayan argüman/değişken alt çizgiyle işaretlenir.
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
         caughtErrors: 'none',
       }],
+      // Kalan dört bulgu bilerek uyarı: onClose / onWsSwitcherToggle üst
+      // bileşenden her render'da yeni geliyor (bağımlılığa eklemek dinleyiciyi
+      // her render'da yeniden kurar), initialDates.* ve saveShortcut ise
+      // "yalnızca açılışta sıfırla" etkilerinde — eklemek etkinin anlamını
+      // değiştirir. Uyarı görünür kalsın, durdurmasın.
       'react-hooks/exhaustive-deps': 'warn',
     },
   },
@@ -54,6 +59,6 @@ export default [
   {
     files: ['vite.config.js'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
-    rules: { 'no-undef': 'error', 'no-unused-vars': 'warn' },
+    rules: { 'no-undef': 'error', 'no-unused-vars': 'error' },
   },
 ];

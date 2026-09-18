@@ -25,15 +25,15 @@ const member = await time('workspaceMember (current)', () =>
   }),
 );
 
-const allMemberships = await time('all memberships', () =>
+await time('all memberships', () =>
   prisma.workspaceMember.findMany({ where: { userId: user.id }, include: { workspace: true } }),
 );
 
-const ws = await time('workspace + roles', () =>
+await time('workspace + roles', () =>
   prisma.workspace.findUnique({ where: { id: member.workspaceId }, include: { roles: true } }),
 );
 
-const wsMembers = await time('workspace members', () =>
+await time('workspace members', () =>
   prisma.workspaceMember.findMany({
     where: { workspaceId: member.workspaceId },
     include: { user: true, workspaceRole: true },
@@ -44,9 +44,9 @@ const projects = await time('projects', () =>
   prisma.project.findMany({ where: { workspaceId: member.workspaceId } }),
 );
 
-const channels = await time('channels + lastMessage', () => listAccessibleChannels(user));
-const canCreate = await time('canCreateChannel', () => userCanCreateChannel(user, member.workspaceId));
-const notesCount = await time('notesCount', () => countVisibleNotes(user, member.workspaceId));
+await time('channels + lastMessage', () => listAccessibleChannels(user));
+await time('canCreateChannel', () => userCanCreateChannel(user, member.workspaceId));
+await time('notesCount', () => countVisibleNotes(user, member.workspaceId));
 
 // Project-level
 if (projects.length) {

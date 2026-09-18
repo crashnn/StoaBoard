@@ -2,7 +2,6 @@
 
 import React, { useState as useChatS, useEffect as useChatE, useRef as useChatRef, useCallback as useChatCb } from 'react';
 import ReactDOM from 'react-dom';
-import { io } from 'socket.io-client';
 import { Icon } from './icons.jsx';
 import { Avatar, AvatarStack } from './shell.jsx';
 
@@ -277,17 +276,6 @@ function StatusDot({ status }) {
 }
 
 // ── Message bubble content ────────────────────────────────────────────────
-function chatToastPayload(msg, sender) {
-  return {
-    message: msg.text || msg.file_name || (window.t?.('chat_file')||'Dosya'),
-    meta: {
-      sender: sender?.name || msg.from || (window.t?.('chat_new_msg')||'Yeni mesaj'),
-      channel: msg.to ? (window.t?.('chat_direct_messages')||'Direkt mesaj') : (window.t?.('chat_team_channels')||'Genel kanal'),
-      time: msg.time || new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
-    },
-  };
-}
-
 function MsgContent({ msg, onImageClick }) {
   const openMedia = (kind, src) => {
     const handler = onImageClick;
@@ -1055,7 +1043,7 @@ function ChannelSettingsModal({ open, onClose, channel, onUpdated, onDeleted, me
 }
 
 // ── Pinned messages banner (above chat) ───────────────────────────────────
-function PinnedBanner({ pinned, allMembers, onJump, onUnpin, onClose }) {
+function PinnedBanner({ pinned, allMembers, onJump, onUnpin }) {
   const [expanded, setExpanded] = useChatS(false);
   if (!pinned || pinned.length === 0) return null;
   const ordered = [...pinned].sort((a, b) => {
@@ -1709,15 +1697,6 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   });
   const [emojiPicker, setEmojiPicker] = useChatS(null); // { msgId, x, y }
 
-  // Pinned messages (per channel) — localStorage
-  const [pinnedMsgs, setPinnedMsgs] = useChatS(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('stoa.pinned') || '[]').map(m => String(m.id || m))); }
-    catch { return new Set(); }
-  });
-  const [pinnedData, setPinnedData] = useChatS(() => {
-    try { return JSON.parse(localStorage.getItem('stoa.pinnedData') || '[]'); }
-    catch { return []; }
-  });
 
   // Full-page only state — left list filter, right detail panel tab, mobile right-panel toggle
   const [leftListTab, setLeftListTab] = useChatS('channels'); // channels | dms
@@ -1742,7 +1721,6 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   const [channels, setChannels] = useChatS(_initialChannels);
   const [activeChannel, setActiveChannel] = useChatS('general');
   const [addChannelOpen, setAddChannelOpen] = useChatS(false);
-  const [channelSettingsId, setChannelSettingsId] = useChatS(null); // for future use
   const [mentionTaskRef, setMentionTaskRef] = useChatS(null); // { id, title } set when navigating from a @mention
 
   // ── Taslak hedefe bağlı: alan/kanal/DM değişince taşınmaz ──────────────
@@ -2154,7 +2132,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
       }
     };
 
-    const onDmRead = ({ by, msg_ids }) => {
+    const onDmRead = ({ msg_ids }) => {
       setMessages(prev => prev.map(m =>
         msg_ids.includes(m.id) ? { ...m, is_read: true } : m
       ));
@@ -2230,29 +2208,13 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
       });
       if (activeChannel === slug) setActiveChannel('general');
 
-      // Remove pinned messages that belong to the deleted channel
-      setPinnedData(prev => {
-        const next = prev.filter(m => m.channel !== slug);
-        try { localStorage.setItem('stoa.pinnedData', JSON.stringify(next)); } catch {}
-        return next;
-      });
-      setPinnedMsgs(prev => {
-        // Rebuild from surviving pinnedData (use functional form after pinnedData update)
-        const survived = (() => {
-          try { return JSON.parse(localStorage.getItem('stoa.pinnedData') || '[]'); } catch { return []; }
-        })();
-        const next = new Set(survived.map(m => String(m.id)));
-        try { localStorage.setItem('stoa.pinned', JSON.stringify([...next])); } catch {}
-        return next;
-      });
-
       // Remove starred messages that belong to the deleted channel
       setStarredData(prev => {
         const next = prev.filter(m => m.channel !== slug);
         try { localStorage.setItem('stoa.starredData', JSON.stringify(next)); } catch {}
         return next;
       });
-      setStarredMsgs(prev => {
+      setStarredMsgs(() => {
         const survived = (() => {
           try { return JSON.parse(localStorage.getItem('stoa.starredData') || '[]'); } catch { return []; }
         })();
@@ -2937,7 +2899,6 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
         const headerHits = showHeaderSearchHits
           ? messages.filter(m => (m.text || m.file_name || '').toLowerCase().includes(headerSearch.toLowerCase()))
           : [];
-        const filteredMessages = messages; // header search dropdown, not filter
         // participant avatars (recent senders, max 4)
         const recentParticipants = [];
         const seenIds = new Set();

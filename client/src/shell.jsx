@@ -113,7 +113,6 @@ function Sidebar({
   currentStatus, onStatusChange,
   mobileOpen, onMobileClose,
   unreadCounts,
-  currentWsId,
   myTasksOpenCount,
   notifCount,
   onOpenNotifs,
@@ -125,8 +124,6 @@ function Sidebar({
   const statuses = onlineStatuses || new Map();
   const teamMembers = (membersProp || DATA.MEMBERS || []).filter(m => m.id !== me.id);
   const unreads = unreadCounts || {};
-  const generalKey = currentWsId ? `general_${currentWsId}` : 'general';
-  const generalUnread = unreads[generalKey] || 0;
   // Total chat unread = general + all DMs (excludes media tracker)
   const chatUnreadTotal = Object.entries(unreads).reduce((acc, [k, v]) => {
     if (k === 'media') return acc;

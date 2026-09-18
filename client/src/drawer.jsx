@@ -1,6 +1,6 @@
 // Task detail drawer — API-backed
 
-import React, { useState as useDrawerState, useEffect as useDrawerEffect, useRef as useDrawerRef } from 'react';
+import { useState as useDrawerState, useEffect as useDrawerEffect, useRef as useDrawerRef } from 'react';
 import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
 import { Avatar, AvatarStack } from './shell.jsx';
@@ -27,7 +27,6 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   const [assigneeOpen, setAssigneeOpen] = useDrawerState(false);
   const [confirmDelete, setConfirmDelete] = useDrawerState(false);
   const [mentionQuery, setMentionQuery] = useDrawerState(null);
-  const [mentionIdx, setMentionIdx]     = useDrawerState(0);
   const [duplicating, setDuplicating]   = useDrawerState(false);
 
   // ── Sürükle-kapat (yalnızca dokunmatik) ────────────────────────────────
@@ -117,7 +116,6 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   // ── Attachments ───────────────────────────────────────────────────────────
   const [attachments, setAttachments]   = useDrawerState([]);
   const [uploading, setUploading]       = useDrawerState(false);
-  const [uploadProgress, setUploadProgress] = useDrawerState(0);
   const [imagePreview, setImagePreview] = useDrawerState(null); // { url, name }
   const [editingAttId, setEditingAttId] = useDrawerState(null);
   const [editingAttName, setEditingAttName] = useDrawerState('');
@@ -233,7 +231,6 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   const handleFileUpload = async (file) => {
     if (!file || uploading) return;
     setUploading(true);
-    setUploadProgress(0);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -241,7 +238,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
       setAttachments(prev => [att, ...prev]);
       window.showToast?.(`"${att.file_name}" ${window.t?.('drawer_file_uploaded') || 'yüklendi'}.`, 'success');
     } catch (e) { window.showToast?.(e.message, 'error'); }
-    finally { setUploading(false); setUploadProgress(0); }
+    finally { setUploading(false); }
   };
 
   const handleDeleteAttachment = async (attId) => {
@@ -1268,7 +1265,6 @@ function DrawerDocBlock({ block, index, onUpdate, onEnter, onRemove, onConvert, 
   const [saved, setSaved] = useDrawerState(false);
   const [menuOpen, setMenuOpen] = useDrawerState(false);
   const [menuIdx, setMenuIdx] = useDrawerState(0);
-  const ref = useDrawerRef(null);
 
   // Liste: yalnızca çizim (faz 2'de düzenlenir).
   if (block.kind === 'ul') return <ul>{(block.items || []).map((it, i) => <li key={i}>{it}</li>)}</ul>;

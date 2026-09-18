@@ -70,7 +70,6 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
   const overdue = DATA.isOverdue(task.due, task.col);
   const me = window.CURRENT_USER?.id;
   const isAssignedToMe = me && (task.assignees || []).includes(me);
-  const meMember = isAssignedToMe ? DATA.MEMBERS.find(m => m.id === me) : null;
   const titleRef = useBoardRef(null);
   const [editing, setEditing] = useBoardState(false);
   const touchState = useBoardRef({ timer: null, startX: 0, startY: 0, moved: false });
@@ -630,7 +629,6 @@ function TimelineView({ tasks, onOpenTask }) {
   const rawMax = taskDates.length > 0 ? new Date(Math.max(...taskDates)) : new Date(today);
 
   const minOf = (a, b) => a.getTime() < b.getTime() ? a : b;
-  const maxOf = (a, b) => a.getTime() > b.getTime() ? a : b;
 
   let minDate, maxDate;
   if (zoom === 'day') {
@@ -714,7 +712,7 @@ function TimelineView({ tasks, onOpenTask }) {
   })();
 
   // Day cell label based on zoom level
-  const dayLabel = (d, i) => {
+  const dayLabel = (d) => {
     if (zoom === 'day') return (
       <>
         <div className="tl-day-wd">{DAYS_SHORT[d.getDay()]}</div>
@@ -812,7 +810,7 @@ function TimelineView({ tasks, onOpenTask }) {
           <div className="tl-header-days">
             {days.map((d, i) => (
               <div key={i} className="tl-day" data-today={i === todayIdx} data-weekend={d.getDay() === 0 || d.getDay() === 6}>
-                {dayLabel(d, i)}
+                {dayLabel(d)}
               </div>
             ))}
           </div>

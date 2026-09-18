@@ -3,7 +3,7 @@
 import React, { useState as useCalState, useMemo as useCalMemo, useCallback as useCalCb } from 'react';
 import ReactDOM from 'react-dom';
 import { Icon } from '../icons.jsx';
-import { Avatar, AvatarStack } from '../shell.jsx';
+import { AvatarStack } from '../shell.jsx';
 
 const CAL_MONTHS     = () => (window.t?.('cal_months') || 'Ocak,Şubat,Mart,Nisan,Mayıs,Haziran,Temmuz,Ağustos,Eylül,Ekim,Kasım,Aralık').split(',');
 const CAL_DAYS_SHORT = () => (window.t?.('cal_days_short') || 'Pzt,Sal,Çar,Per,Cum,Cmt,Paz').split(',');
@@ -23,12 +23,6 @@ const TR_FIXED_HOL = [
   [10, 29, 'Cumhuriyet Bayramı'],
 ];
 
-const TR_VAR_HOL = {
-  2024: ['2024-04-10','2024-04-11','2024-04-12','2024-06-17','2024-06-18','2024-06-19','2024-06-20'],
-  2025: ['2025-03-30','2025-03-31','2025-04-01','2025-06-06','2025-06-07','2025-06-08','2025-06-09'],
-  2026: ['2026-03-20','2026-03-21','2026-03-22','2026-05-27','2026-05-28','2026-05-29','2026-05-30'],
-  2027: ['2027-03-09','2027-03-10','2027-03-11','2027-05-16','2027-05-17','2027-05-18','2027-05-19'],
-};
 const TR_VAR_HOL_NAMES = {
   2024: { '2024-04-10':'Ramazan Bayramı','2024-04-11':'Ramazan Bayramı','2024-04-12':'Ramazan Bayramı',
           '2024-06-17':'Kurban Bayramı','2024-06-18':'Kurban Bayramı','2024-06-19':'Kurban Bayramı','2024-06-20':'Kurban Bayramı' },
@@ -351,7 +345,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
 
   // ── Mini calendar ─────────────────────────────────────────────────────────
   const [miniCursor, setMiniCursor] = useCalState(() => new Date());
-  React.useEffect(() => { setMiniCursor(new Date(year, month, 1)); }, [year, month]);
+  React.useEffect(() => { setMiniCursor(new Date(year, month, 1)); }, [year, month, setMiniCursor]);
 
   const miniY        = miniCursor.getFullYear();
   const miniM        = miniCursor.getMonth();
