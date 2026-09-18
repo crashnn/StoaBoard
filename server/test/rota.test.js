@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 import {
   GORUNUM_YOLLARI, durumdanYol, yoldanDurum, girisNoktasiMi,
   girisSonrasiKaydet, girisSonrasiOku, girisSonrasiSil, baslangicYolu,
+  projeyiHatirla, hatirlananProje,
 } from '../../client/src/rota.js';
 import { yorumsuzDosya } from './yardimcilar.js';
 
@@ -242,5 +243,94 @@ describe('rota — #248 app.jsx bağlantıları', () => {
       'misafir için /giris her zaman ekleniyor — geri tuşu döngüye girer');
     assert.match(b, /window\.history\[yaz\]\(\{\}, '', `\/giris\$\{window\.location\.search\}`\)/,
       'seçilen yöntem giriş adresini yazan çağrıda kullanılmıyor');
+  });
+});
+
+// ─── #256: seçili proje yenilemede / girişte / alan değişiminde unutulmasın ───
+//
+// KUSUR: istemci önyüklemeyi PROJESİZ çağırıyordu, sunucu da parametre yoksa
+// ilk projeyi seçiyordu. F5, giriş ve alan değiştirme kullanıcıyı her
+// seferinde Ana Proje'ye atıyordu (18 Eylül 2026, sade tur 23/25). Projesiz
+// çağrı BEŞ yerdeydi — biri düzelse dördü kalırdı; artık hepsi tek yardımcıdan.
+
+describe('rota — hatırlanan proje (#256)', () => {
+  test('alan başına ayrı tutuluyor, alan bilinmiyorsa son alanın projesi', () => {
+    const d = sahteDepo();
+    projeyiHatirla(15, 47, d);
+    projeyiHatirla('19', '52', d);
+    assert.equal(hatirlananProje(15, d), '47', 'alan 15 kendi projesini unuttu');
+    assert.equal(hatirlananProje(19, d), '52');
+    assert.equal(hatirlananProje(null, d), '52', 'açılışta son kullanılan alanın projesi gelmeli');
+    assert.equal(hatirlananProje(99, d), null, 'hiç girilmemiş alan için proje uydurulmamalı');
+  });
+
+  test('biçimsiz kimlik ne yazılıyor ne gönderiliyor', () => {
+    const d = sahteDepo();
+    for (const [a, p] of [[15, null], [15, undefined], [15, 'abc'], [null, 47], ['1;2', 47]]) {
+      projeyiHatirla(a, p, d);
+    }
+    assert.equal(hatirlananProje(15, d), null);
+    assert.equal(hatirlananProje(null, d), null, 'geçersiz yazma son alanı kaydetti');
+    // Depo kullanıcı denetiminde: elle bozulmuş değer sunucuya gitmez.
+    d.setItem('stoa.sonProje', JSON.stringify({ 15: '47 OR 1=1' }));
+    assert.equal(hatirlananProje(15, d), null);
+  });
+
+  test('projesiz alana geçmek son geçerli kaydı ezmiyor', () => {
+    // Projesi olmayan alanda önyükleme current_project: null döner. Yazma
+    // doğrulanmasaydı "son alan" boş bir kayda dönerdi ve okuma doğrulaması
+    // bunu örterdi — fark ancak SONRAKİ açılışta görünür (mutasyonla bulundu).
+    const d = sahteDepo();
+    projeyiHatirla(15, 47, d);
+    projeyiHatirla(19, null, d);
+    assert.equal(hatirlananProje(null, d), '47', 'geçersiz yazma son alanı ezdi');
+  });
+
+  test('bozuk kayıt siliniyor — her açılışta yeniden atılmıyor', () => {
+    const d = sahteDepo();
+    d.setItem('stoa.sonProje', '{bozuk');
+    assert.equal(hatirlananProje(15, d), null);
+    assert.equal(d.getItem('stoa.sonProje'), null, 'bozuk kayıt yerinde kaldı');
+    d.setItem('stoa.sonProje', '[1,2]');
+    assert.equal(hatirlananProje(0, d), null, 'dizi harita sayıldı');
+    projeyiHatirla(15, 47, d);
+    assert.equal(hatirlananProje(15, d), '47', 'bozuk kayıttan sonra yazma çalışmıyor');
+    // Dizi "harita gibi" de çalışır (anahtarlar sayı) — ama büyük bir alan
+    // kimliği diziyi o uzunluğa şişirir ve depoya binlerce `null` yazılır.
+    // Eşdeğer SANILAN mutant tam burada ayrışıyor.
+    d.setItem('stoa.sonProje', '[]');
+    projeyiHatirla(100000, 1, d);
+    assert.ok(d.getItem('stoa.sonProje').length < 100,
+      `dizi kayıt şişti: ${d.getItem('stoa.sonProje').length} karakter`);
+  });
+});
+
+describe('rota — #256 app.jsx bağlantıları', () => {
+  const govde = (bas, son) => {
+    const i = APP.indexOf(bas);
+    assert.notEqual(i, -1, `blok başı yok: ${bas}`);
+    return APP.slice(i, APP.indexOf(son, i + bas.length));
+  };
+
+  test('önyükleme yalnızca iki yoldan: hatırlanan proje ya da açık seçim', () => {
+    // Projesiz `API.bootstrap()` sunucuda ilk projeyi seçer — kusurun kendisi.
+    // Her çağrının argümanı sayılıyor: "en az bir doğru çağrı var" ölçütü,
+    // beş yerden birinin eski hâlde kalmasını kaçırırdı.
+    const argumanlar = [...APP.matchAll(/API\.bootstrap\(([^)]*\)?)\)/g)].map((m) => m[1]).sort();
+    assert.deepEqual(argumanlar, ['hatirlananProje(alanId)', 'projectId'],
+      `önyükleme çağrıları: ${argumanlar.join(' | ')}`);
+  });
+
+  test('kaydı tek yazan önyükleme uygulayıcısı', () => {
+    const b = govde('function _applyBootstrap(data) {', '\n  }\n');
+    assert.match(b, /projeyiHatirla\(data\.workspace\?\.id, data\.current_project\)/,
+      'önyükleme sonrası açık proje hatırlanmıyor');
+  });
+
+  test('alan değişiminde YENİ alanın projesi isteniyor', () => {
+    assert.match(govde('const handleSwitchWorkspace = async (wsId) => {', '\n  };\n'), /await onyukle\(wsId\)/,
+      'alan değiştirme hangi alana gidildiğini söylemiyor — eski alanın projesi gönderilir');
+    assert.match(govde("sock.on('workspace_switched'", '});'), /onyukle\(workspace_id\)/,
+      'soket alan değişimi olayın taşıdığı alanı kullanmıyor');
   });
 });

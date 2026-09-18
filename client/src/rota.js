@@ -167,3 +167,58 @@ export function baslangicYolu(adres, bekleyen) {
   if (yoldanDurum(p) || HUKUKI_YOLLAR.has(p)) return p;
   return bekleyen && yoldanDurum(bekleyen) ? normalle(bekleyen) : p;
 }
+
+// ── Hatırlanan proje (kart #256) ───────────────────────────────────────────
+//
+// KUSUR: seçili proje HİÇBİR YERDE kalıcı değildi. İstemci önyüklemeyi
+// projesiz çağırıyor, sunucu parametre yoksa ilk projeyi seçiyordu; F5,
+// giriş ve alan değiştirme kullanıcıyı her seferinde "Ana Proje"ye atıyordu
+// (18 Eylül 2026, kullanıcı: "fazladan üç harekete mal oldu"). #228'de
+// "proje bugünkü gibi hatırlanır" yazılmıştı — ölçülmemiş bir varsayımdı.
+//
+// ALAN BAŞINA tutuluyor: iki alanın projeleri birbirini ezmesin, alan
+// değiştirince o alanda en son bakılan proje açılsın. Tarayıcıda, sunucuda
+// değil: şema gerektirmiyor; cihazlar arası istenirse ayrı karar.
+//
+// Önyükleme cevabından ÖNCE aktif alan bilinmiyor; o yüzden "son alan" da
+// tutuluyor. Sunucu gelen proje kimliğini aktif alanla süzüyor (routes/api.js):
+// başka alanın ya da silinmiş bir projenin kimliği ilk projeye düşer, kâhin
+// açmaz. Burada doğrulama yalnızca biçim: sayı olmayan değer gönderilmez.
+
+const SON_PROJE = 'stoa.sonProje'; // { "<alanId>": "<projeId>" }
+const SON_ALAN = 'stoa.sonAlan';
+const KIMLIK = /^\d+$/;
+
+function projeHaritasi(depo) {
+  try {
+    const h = JSON.parse(depo.getItem(SON_PROJE) || '{}');
+    return h && typeof h === 'object' && !Array.isArray(h) ? h : {};
+  } catch {
+    // Bozuk kayıt sessizce yok sayılmıyor, SİLİNİYOR: yoksa her açılışta
+    // yeniden okunup yeniden atılırdı ve hiçbir proje hatırlanmazdı.
+    depo.removeItem(SON_PROJE);
+    return {};
+  }
+}
+
+/** Önyükleme sonrası: bu alanda açık olan projeyi yaz. Tek yazan _applyBootstrap. */
+export function projeyiHatirla(alanId, projeId, depo = globalThis.localStorage) {
+  const a = String(alanId ?? ''), p = String(projeId ?? '');
+  if (!KIMLIK.test(a) || !KIMLIK.test(p)) return;
+  const h = projeHaritasi(depo);
+  h[a] = p;
+  depo.setItem(SON_PROJE, JSON.stringify(h));
+  depo.setItem(SON_ALAN, a);
+}
+
+/**
+ * Önyüklemeye gönderilecek proje. Alan biliniyorsa (alan değiştirme) onun
+ * projesi, bilinmiyorsa (açılış, giriş) son kullanılan alanın projesi.
+ * Yoksa `null` — sunucu ilk projeyi seçer.
+ */
+export function hatirlananProje(alanId = null, depo = globalThis.localStorage) {
+  const a = String(alanId ?? depo.getItem(SON_ALAN) ?? '');
+  if (!KIMLIK.test(a)) return null;
+  const p = projeHaritasi(depo)[a];
+  return typeof p === 'string' && KIMLIK.test(p) ? p : null;
+}

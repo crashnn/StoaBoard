@@ -11,7 +11,8 @@ import { TaskDrawer } from './drawer.jsx';
 import { NotifPanel, notifType } from './notifications.jsx';
 import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, panelGorunur } from './rozet.js';
 import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR, hatirlananGorunumuOku,
-  girisSonrasiKaydet, girisSonrasiOku, girisSonrasiSil, baslangicYolu } from './rota.js';
+  girisSonrasiKaydet, girisSonrasiOku, girisSonrasiSil, baslangicYolu,
+  projeyiHatirla, hatirlananProje } from './rota.js';
 import { komsuKartlar } from './komsu.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
@@ -442,7 +443,7 @@ function App() {
   // ── Auth + bootstrap on mount ────────────────────────────────────────────
   useEf(() => {
     API.me()
-      .then(() => API.bootstrap())
+      .then(() => onyukle())
       .then((data) => {
         if (data.needs_workspace) {
           window.CURRENT_USER = data.user;
@@ -493,8 +494,9 @@ function App() {
         return next;
       });
     });
-    sock.on('workspace_switched', () => {
-      API.bootstrap().then(data => {
+    // Olay yeni alanın kimliğini taşıyor: o alanda en son açık proje gelsin.
+    sock.on('workspace_switched', ({ workspace_id } = {}) => {
+      onyukle(workspace_id).then(data => {
         _applyBootstrap(data);
         setTasks(data.tasks || []);
         setCurrentProject(data.current_project ? { id: data.current_project } : null);
@@ -846,7 +848,17 @@ function App() {
     setOnlineUsers(map);
   }
 
+  // Önyükleme her zaman buradan (kart #256). Proje kimliği gönderilmeyen
+  // önyükleme sunucuda İLK projeyi seçer: F5, giriş ve alan değiştirme
+  // kullanıcıyı her seferinde Ana Proje'ye atıyordu. Açık proje değiştirme
+  // (switchProject) kimliği zaten gönderiyor, o yol buradan geçmiyor.
+  function onyukle(alanId = null) {
+    return API.bootstrap(hatirlananProje(alanId));
+  }
+
   function _applyBootstrap(data) {
+    // Tek yazan: alan ve proje kimliği ancak cevaptan sonra birlikte kesin.
+    projeyiHatirla(data.workspace?.id, data.current_project);
     window.DATA.MEMBERS       = data.members       || [];
     setMembers(data.members || []);
     window.DATA.COLUMNS       = data.columns       || [];
@@ -891,7 +903,7 @@ function App() {
 
   // ── Workspace ready (after setup) ─────────────────────────────────────────
   const handleWorkspaceReady = () => {
-    API.bootstrap()
+    onyukle()
       .then((data) => {
         _applyBootstrap(data);
         setTasks(data.tasks || []);
@@ -909,7 +921,7 @@ function App() {
       await API.switchWorkspace(wsId);
       // Notify socket server to update rooms
       if (window.SOCKET) window.SOCKET.emit('switch_workspace', { workspace_id: wsId });
-      const data = await API.bootstrap();
+      const data = await onyukle(wsId);
       _applyBootstrap(data);
       setTasks(data.tasks || []);
       setCurrentProject(data.current_project ? { id: data.current_project } : null);
@@ -1228,7 +1240,7 @@ function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   const handleSignIn = () => {
-    API.bootstrap()
+    onyukle()
       .then((data) => {
         if (data.needs_workspace) {
           window.CURRENT_USER = data.user;
