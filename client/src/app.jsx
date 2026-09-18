@@ -14,6 +14,7 @@ import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR, hatirlananGoru
   girisSonrasiKaydet, girisSonrasiOku, girisSonrasiSil, baslangicYolu,
   projeyiHatirla, hatirlananProje } from './rota.js';
 import { komsuKartlar } from './komsu.js';
+import { katmanYoneticisi } from './katman.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
 import { TweaksPanel } from './tweaks.jsx';
@@ -65,6 +66,23 @@ function _playDing() {
   } catch (e) {}
 }
 
+/**
+ * Bir açılır katmanı geri tuşuna bağlar (kart #252). Katman açılınca geçmişe
+ * kayıt eklenir; geri tuşu katmanı kapatır, arayüzden kapanınca kayıt geri
+ * alınır. Kural katman.js'te, burada yalnızca React bağlantısı. `kapat` her
+ * çizimde değişebildiği için ref üzerinden çağrılıyor — etki yalnızca açılıp
+ * kapanmada yeniden kurulmalı.
+ */
+function useGeriKatmani(yonetici, acik, kapat) {
+  const kapatRef = useRef(kapat);
+  kapatRef.current = kapat;
+  useEf(() => {
+    if (!acik || !yonetici) return undefined;
+    const id = yonetici.ac(() => kapatRef.current());
+    return () => yonetici.kapandi(id);
+  }, [acik, yonetici]);
+}
+
 function App() {
   const [authed, setAuthed]                 = useS(false);
   const [loading, setLoading]               = useS(true);
@@ -95,6 +113,15 @@ function App() {
   const [taskReturnView, setTaskReturnView] = useS(null);
   const [taskPageTask, setTaskPageTask]     = useS(null);
   const [modalOpen, setModalOpen]           = useS(false);
+  // Yeni görev penceresi GERİ TUŞUYLA mı kapandı (kart #252): öyleyse yazılan
+  // başlık/açıklama taslak olarak saklanır; X ile bilerek kapatmak siler.
+  const [modalGeriKapandi, setModalGeriKapandi] = useS(false);
+  // Geri tuşu katmanları (kart #252) ve kendi back()'imiz yutulduktan sonra
+  // adres etkisini yeniden koşturan sayaç. Adres etkisinin bağımlılığı olduğu
+  // için etkiden ÖNCE tanımlı olmak zorunda.
+  const katmanlar = useRef(null);
+  if (!katmanlar.current) katmanlar.current = katmanYoneticisi(window.history);
+  const [adresTik, setAdresTik] = useS(0);
   const [modalCol, setModalCol]             = useS('todo');
   const [modalInitialDates, setModalInitialDates] = useS(null);
   const [cmdOpen, setCmdOpen]               = useS(false);
@@ -235,7 +262,9 @@ function App() {
       // döngüye girmiyor: popstate önce durumu adrese eşitliyor, bu etki de
       // eşitliği görüp çekiliyor. Ayrı bir "popstate'ten mi geldi" bayrağı
       // yok — öyle bir bayrak, etki çalışmadığı turda takılı kalırdı.
-      if (bekleyenGeri.current || bekleyenKart.current) return;
+      // Katmanın kendi back()'i yoldaysa yazma (kart #252): geç gelen back()
+      // yeni yazılan adresi silerdi. Yutulunca adresTik etkiyi yeniden koşturur.
+      if (bekleyenGeri.current || bekleyenKart.current || katmanlar.current.bekliyor()) return;
       const kartId = drawerTask?.id ?? taskPageTask?.id ?? null;
       const hedef = durumdanYol(view, kartId);
       const simdiki = window.location.pathname;
@@ -273,7 +302,7 @@ function App() {
         window.history.pushState(durum, '', hedef);
       }
     }
-  }, [view, authed, loading, drawerTask?.id, taskPageTask?.id]);
+  }, [view, authed, loading, drawerTask?.id, taskPageTask?.id, adresTik]);
 
   // Geri tuşunun beklenen dönüşü sürerken adres etkisi yazmıyor: back()
   // eşzamansız ve arada ikinci bir back() çağrılırsa kullanıcı bir ekran fazla
@@ -322,6 +351,12 @@ function App() {
 
   useEf(() => {
     const handlePop = () => {
+      // Katman işi mi (kart #252)? Kendi back()'imizse yut ve adresi yeniden
+      // eşitle; geri tuşu bir katmanı kapattıysa YÖNLENDİRME YAPMA — adres
+      // katman kaydının altındakiyle aynı.
+      const katman = katmanlar.current.popstate();
+      if (katman === 'yut') { setAdresTik((t) => t + 1); return; }
+      if (katman === 'kapatti') return;
       const path = window.location.pathname;
       bekleyenGeri.current = false;
       if (HUKUKI_YOLLAR.has(path)) {
@@ -345,6 +380,19 @@ function App() {
     window.addEventListener('popstate', handlePop);
     return () => window.removeEventListener('popstate', handlePop);
   }, []);
+  // ── Geri tuşu en üstteki katmanı kapatır (kart #252) ─────────────────────
+  // Her katman kendi kapatma yoluyla: arayüzdeki onClose ne yapıyorsa geri
+  // tuşu da onu yapmalı (bildirim paneli rozeti de "bakıldı" sayar).
+  useGeriKatmani(katmanlar.current, canManageTasks && modalOpen, () => {
+    setModalGeriKapandi(true); setModalOpen(false); setModalInitialDates(null);
+  });
+  useGeriKatmani(katmanlar.current, cmdOpen, () => setCmdOpen(false));
+  useGeriKatmani(katmanlar.current, notifOpen, () => { setNotifOpen(false); rozetBakildi(); });
+  useGeriKatmani(katmanlar.current, chatOpen, () => setChatOpen(false));
+  useGeriKatmani(katmanlar.current, mobileSidebarOpen, () => setMobileSidebarOpen(false));
+  // Pencere yeniden açılınca bayrak iner: sonraki X kapanışı taslak bırakmasın.
+  useEf(() => { if (modalOpen) setModalGeriKapandi(false); }, [modalOpen]);
+
   useEf(() => { document.documentElement.dataset.theme    = tweaks.theme;    }, [tweaks.theme]);
   useEf(() => { document.documentElement.dataset.accent   = tweaks.accent;   }, [tweaks.accent]);
   useEf(() => { document.documentElement.dataset.fontpair = tweaks.fontPair; }, [tweaks.fontPair]);
@@ -1584,7 +1632,7 @@ function App() {
       />
       </ErrorBoundary>
       <ErrorBoundary key="modal">
-      <AddTaskModal open={canManageTasks && modalOpen} onClose={() => { setModalOpen(false); setModalInitialDates(null); }} defaultCol={modalCol} onCreate={createTask} initialDates={modalInitialDates} />
+      <AddTaskModal open={canManageTasks && modalOpen} onClose={() => { setModalOpen(false); setModalInitialDates(null); }} defaultCol={modalCol} onCreate={createTask} initialDates={modalInitialDates} taslakKoru={modalGeriKapandi} />
       </ErrorBoundary>
       <ErrorBoundary key="palette">
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onAction={handleCmd} />

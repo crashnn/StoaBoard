@@ -152,7 +152,15 @@ function DatePicker({ value, onChange, error }) {
 export { DatePicker };
 
 // ── Add Task Modal ─────────────────────────────────────────────────────────
-function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates }) {
+/**
+ * Geri tuşuyla kapanan Yeni görev penceresinin yazılmış metni (kart #252).
+ * Modül kapsamında: pencere kapanınca durumu sıfırlanıyor, taslak bir sonraki
+ * açılışa kadar burada bekliyor. Yalnızca başlık ve açıklama — kullanıcının
+ * emek verdiği kısım; seçimler (kolon, tarih) kolayca yeniden yapılır.
+ */
+let yeniGorevTaslagi = null;
+
+function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, taslakKoru = false }) {
   const [title, setTitle]         = useModalState('');
   const [desc, setDesc]           = useModalState('');
   const [col, setCol]             = useModalState(defaultCol || 'todo');
@@ -208,11 +216,18 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates }) {
   React.useEffect(() => { if (defaultCol) setCol(defaultCol); }, [defaultCol, open, setCol]);
   React.useEffect(() => {
     if (!open) {
+      // Geri tuşuyla kapandıysa (kart #252) yazılan metin kaybolmasın. X ile
+      // bilerek kapatmak ya da görevi oluşturmak taslak bırakmaz.
+      if (taslakKoru && (title.trim() || desc.trim())) yeniGorevTaslagi = { title, desc };
       setTitle(''); setDesc(''); setLabels([]); setBusy(false); setTitleError(false); setDueError(false);
       setDue(''); setStartDate(''); setAssigneeDates({}); setShowPerAssignee(false);
       setChecklistItems([]); setChecklistInput('');
     }
     if (open) {
+      if (yeniGorevTaslagi) {
+        setTitle(yeniGorevTaslagi.title); setDesc(yeniGorevTaslagi.desc);
+        yeniGorevTaslagi = null;
+      }
       const me = window.CURRENT_USER;
       setAssignees(me ? [me.id] : []);
       if (initialDates?.start) setStartDate(initialDates.start);
