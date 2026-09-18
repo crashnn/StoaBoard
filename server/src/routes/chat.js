@@ -138,10 +138,17 @@ chatRouter.post(
         if (!canSee) continue;
 
         const preview = text.slice(0, 80) + (text.length > 80 ? '…' : '');
+        // Soket yoluyla AYNI alanlar (kart #200): gönderen, tür işareti ve
+        // mesaj kimliği. Önceden yalnızca soket yazıyordu. `chatChannel`
+        // VarChar(20) — slug değil tür ('dm' | 'general'), gerekçesi
+        // sockets/chat.js'te.
         await createAndPush(io, {
           userId: m.id,
           text: buildNotificationText('mention', { who: user.name, preview }),
+          senderSlug: user.slug,
           workspaceId,
+          chatChannel: receiver ? 'dm' : 'general',
+          messageId: msg.id,
         });
       }
     }

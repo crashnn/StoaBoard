@@ -1377,7 +1377,8 @@ describe('@bahsetme — kapsam kapısı iki yolda da var', () => {
 
     const soket = bahsetmeBlogu(SOKET);
     const soketKapi = soket.indexOf('mentionAllowed(');
-    const soketYazma = soket.indexOf('prisma.notification.create(');
+    // Soket yolu da artık createAndPush'tan yazıyor (kart #200, aşağıda).
+    const soketYazma = soket.indexOf('createAndPush(');
     assert.ok(soketKapi !== -1, 'soket: kapı yok');
     assert.ok(soketYazma !== -1, 'soket yolunda bildirim yazma çağrısı bulunamadı');
     assert.ok(soketKapi < soketYazma, 'soket: kapı bildirim yazıldıktan sonra geliyor');
@@ -1710,5 +1711,67 @@ describe('üyelik reddi var/yok kâhini açmıyor', () => {
     const cevre = src.slice(Math.max(0, i - 200), i);
     assert.ok(/status\(403\)/.test(cevre), 'süre kaydı izin reddi artık 403 dönmüyor');
     assert.ok(/hasPermission\(/.test(cevre), 'red izin kontrolüne bağlı değil');
+  });
+});
+
+// ─── Bildirim üreticisi TEK — soket yolu da createAndPush'tan geçiyor ────────
+//
+// KUSUR (kart #200, DEVIR 0-O): `sockets/chat.js` bildirimi doğrudan
+// `prisma.notification.create` ile yazıp elle emit ediyordu; e-posta gönderimi
+// (`dispatchEmail`) yalnızca `createAndPush` içinde. Yani REST'ten gelen bir
+// bahsetme posta üretiyordu, soketten gelen üretmiyordu. Asimetri SESSİZDİ:
+// kural görünmediği için kullanıcı bunu hata olarak bildiremezdi bile. Aynı
+// sınıf: "aynı olgunun iki yolu, yollar aynı şeyi yapmıyor". `read: false`
+// de (#193) yalnızca createAndPush'ta yazılıyordu — soket bildirimleri NULL
+// doğmaya devam ediyordu.
+
+describe('bildirim üreticisi tek — soket yolu da createAndPush (#200)', () => {
+  const REST = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'chat.js'));
+  const SOKET = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'sockets', 'chat.js'));
+
+  test('soket yolunda doğrudan bildirim yazması ve elle emit YOK', () => {
+    assert.doesNotMatch(SOKET, /prisma\.notification\.create\(/,
+      'sockets/chat.js bildirimi doğrudan yazıyor — e-posta ve read:false o yoldan çıkmaz');
+    assert.doesNotMatch(SOKET, /emit\(\s*'notification'/,
+      'sockets/chat.js bildirimi elle yayınlıyor — createAndPush zaten yayınlıyor, çift bildirim');
+    assert.doesNotMatch(SOKET, /notificationToDict/, 'elle yayın için serileştirici hâlâ içe aktarılıyor');
+  });
+
+  test('soketteki DM ve bahsetme bildirimleri createAndPush ile yazılıyor', () => {
+    const dm = SOKET.slice(SOKET.indexOf('if (receiver) {'), SOKET.indexOf('matchAll(MENTION_RE)'));
+    assert.match(dm, /await createAndPush\(io, \{/, 'DM bildirimi createAndPush üzerinden yazılmıyor');
+    const bahsetme = SOKET.slice(SOKET.indexOf('matchAll(MENTION_RE)'));
+    assert.match(bahsetme, /await createAndPush\(io, \{/, 'bahsetme bildirimi createAndPush üzerinden yazılmıyor');
+  });
+
+  test('iki yolun bahsetme bildirimi AYNI alanları taşıyor', () => {
+    // Alan kümesi ayrışırsa asimetri başka biçimde geri gelir (bildirimden
+    // mesaja gitmek tek yolda çalışır gibi).
+    const alanlar = (src) => {
+      const b = src.slice(src.indexOf('matchAll(MENTION_RE)'));
+      const c = b.slice(b.indexOf('createAndPush(io, {'), b.indexOf('});', b.indexOf('createAndPush(io, {')));
+      // Yalnızca en üst düzey alanlar: ilk alan satırının girintisindekiler.
+      // buildNotificationText'in kendi argümanları (who, preview) bir düzey
+      // içeride ve sayılmamalı — ilk yazımda sayıldı, test yanlış kırıldı.
+      const ilk = /^(\s+)\w+:/m.exec(c);
+      assert.ok(ilk, 'bildirim alanı bulunamadı');
+      const desen = new RegExp(`^${ilk[1]}(\\w+)(?::|,)`, 'gm');
+      return [...c.matchAll(desen)].map((m) => m[1]).sort();
+    };
+    const rest = alanlar(REST);
+    const soket = alanlar(SOKET);
+    assert.deepEqual(rest, soket, `REST ${rest} ≠ soket ${soket}`);
+    for (const alan of ['userId', 'text', 'senderSlug', 'workspaceId', 'messageId']) {
+      assert.ok(rest.includes(alan), `bahsetme bildiriminde ${alan} yok`);
+    }
+  });
+
+  test('chatChannel bir tür işareti, slug değil — sütun VarChar(20)', () => {
+    // Gerçek slug 80 karaktere kadar; yazılsaydı uzun adlı kanalda mesaj
+    // göndermek Prisma hatasıyla düşerdi.
+    for (const [ad, src] of [['REST', REST], ['soket', SOKET]]) {
+      const b = src.slice(src.indexOf('matchAll(MENTION_RE)'));
+      assert.match(b, /chatChannel: receiver \? 'dm' : 'general'/, `${ad}: chatChannel'a slug yazılıyor`);
+    }
   });
 });

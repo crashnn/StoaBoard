@@ -14,8 +14,8 @@
 
 import { prisma } from '../db.js';
 import * as onlineState from '../lib/onlineState.js';
-import { chatMessageToDict, notificationToDict } from '../lib/serializers.js';
-import { buildNotificationText } from '../lib/notifications.js';
+import { chatMessageToDict } from '../lib/serializers.js';
+import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { sessionMiddleware } from '../app.js';
 import { usersShareWorkspace, resolveWorkspaceId } from '../lib/workspace.js';
 import { userChannelRole, mentionAllowed } from '../lib/channels.js';
@@ -193,19 +193,24 @@ export function registerChatHandlers(io) {
         include: { sender: true, receiver: true },
       });
 
-      // DM bildirimi
+      // DM bildirimi — REST yoluyla AYNI üreticiden (kart #200).
+      //
+      // 18 Eylül 2026'ya kadar burası `prisma.notification.create` + elle
+      // emit yapıyordu; e-posta gönderimi yalnızca `createAndPush` içinde
+      // olduğu için soketten gelen bildirim posta üretmiyordu, REST'ten gelen
+      // üretiyordu. Aynı olay, iki sonuç — ve kural görünmediği için kullanıcı
+      // bunu hata olarak bildiremezdi bile. Artık yazma, soket yayını ve
+      // posta tek yerden çıkıyor; `read: false` da oradan geliyor (#193).
       if (receiver) {
-        const notif = await prisma.notification.create({
-          data: {
-            userId: receiver.id,
-            text: buildNotificationText('dm_received', {
-              who: user.name,
-              preview: (text || '').slice(0, 80),
-            }),
-            senderSlug: user.slug,
-          },
+        await createAndPush(io, {
+          userId: receiver.id,
+          text: buildNotificationText('dm_received', {
+            who: user.name,
+            preview: (text || '').slice(0, 80),
+          }),
+          senderSlug: user.slug,
+          workspaceId,
         });
-        io.to(`user_${receiver.id}`).emit('notification', notificationToDict(notif));
       }
 
       // @mention bildirimleri
@@ -240,23 +245,21 @@ export function registerChatHandlers(io) {
 
           {
             const preview = text.slice(0, 80) + (text.length > 80 ? '…' : '');
-            const mNotif = await prisma.notification.create({
-              data: {
-                userId: mentioned.id,
-                text: buildNotificationText('mention', {
-                  who: user.name,
-                  preview,
-                }),
-                senderSlug: user.slug,
-                workspaceId,
-                chatChannel: receiver ? 'dm' : 'general',
-                messageId: msg.id,
-              },
+            // Tek üretici (kart #200). `chatChannel` bir TÜR işareti
+            // ('dm' | 'general'), kanal slug'ı değil: sütun VarChar(20), slug
+            // 80'e kadar — gerçek slug yazmak uzun adlı kanalda mesaj
+            // göndermeyi kırardı. İstemci alanı okumuyor.
+            await createAndPush(io, {
+              userId: mentioned.id,
+              text: buildNotificationText('mention', {
+                who: user.name,
+                preview,
+              }),
+              senderSlug: user.slug,
+              workspaceId,
+              chatChannel: receiver ? 'dm' : 'general',
+              messageId: msg.id,
             });
-            io.to(`user_${mentioned.id}`).emit(
-              'notification',
-              notificationToDict(mNotif),
-            );
           }
         }
       }
