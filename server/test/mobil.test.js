@@ -207,3 +207,110 @@ describe('rapor tabloları — mobilde çakışmıyor (#243)', () => {
       'hücreler ızgara yerleşimini bırakmıyor');
   });
 });
+
+// ─── Sürükle-kapat: kartı yukarıdan aşağı çekerek kapat (#238) ─────────────
+//
+// İSTEK (17 Eylül 2026, kullanıcı): "kart açık iken kartı yukarıdan aşağı
+// çekince kartı küçültsün panoya atsın, sanırsam sadece mobilde işe yarar."
+//
+// NİÇİN: mobilde kart tam ekran açılıyor ve kapatmanın tek yolu sağ üstteki X
+// — başparmağın en zor ulaştığı köşe. Süs değil, erişilebilirlik işi. #233
+// (üst çubuğa ulaşılamıyordu) ve #228 (geri tuşu siteden atıyor) ile aynı
+// aile: "bu ekrandan nasıl çıkarım".
+//
+// Bu testler jestin VARLIĞINI ve kritik kısıtlarını kilitliyor. Sürüklemenin
+// kendisi (parmak hareketi → piksel) tarayıcı olayı gerektiriyor ve burada
+// ölçülemiyor; ölçülebilen her kısıt ayrı ayrı bağlanıyor.
+describe('sürükle-kapat — mobilde kartı aşağı çekerek kapatma (#238)', () => {
+  const DRAWER = fs.readFileSync(
+    path.join(KOK, 'client', 'src', 'drawer.jsx'), 'utf8',
+  ).replace(/\r\n/g, '\n');
+
+  const jestBloku = () => {
+    const bas = DRAWER.indexOf('const jestBitir');
+    assert.notEqual(bas, -1, 'jest bitiş işleyicisi bulunamadı');
+    return DRAWER.slice(bas, DRAWER.indexOf('\n  };', bas));
+  };
+
+  test('jest dokunmatik cihazla sınırlı', () => {
+    // Ölçüt `pointer: coarse`, ekran GENİŞLİĞİ değil — #233'te aynı karar
+    // verildi. Dar bir masaüstü penceresinde fareyle aşağı sürüklemek kapatma
+    // jesti değildir ve kaydırmayla çakışır.
+    const bas = DRAWER.indexOf('const dokunmatikMi');
+    assert.notEqual(bas, -1, 'dokunmatik ölçüsü yok');
+    const blok = DRAWER.slice(bas, DRAWER.indexOf('\n  );', bas));
+    assert.match(blok, /pointer:\s*coarse/,
+      'jest masaüstünde de kurulur — fare sürüklemesi kartı kapatır');
+
+    const basla = DRAWER.slice(DRAWER.indexOf('const jestBasla'), DRAWER.indexOf('const jestSurukle'));
+    assert.match(basla, /!dokunmatikMi\(\)/,
+      'ölçü hesaplanıyor ama jestin kurulmasına bağlanmamış');
+  });
+
+  test('İKİ eşik var — uzun sürükleme VE hızlı fiske', () => {
+    // Tek eşik ikisinden birini yanlış yorumlar: yavaş ama uzun sürükleme de,
+    // kısa ama hızlı fiske de "kapat" demektir. Yalnızca mesafeye bakmak
+    // fiskeyi görmez; yalnızca hıza bakmak dikkatli sürüklemeyi görmez.
+    const blok = jestBloku();
+    assert.match(blok, /innerHeight/,
+      'eşik ekran yüksekliğine göre değil — küçük ve büyük telefonda farklı davranır');
+    assert.match(blok, /j\.y \/ sure/,
+      'hız hesaplanmıyor; hızlı fiske kapatmaz');
+    assert.match(blok, /uzun \|\| fiske/,
+      'iki eşik birleştirilmemiş');
+  });
+
+  test('eşik altında kapanmıyor — geri yaylanıyor', () => {
+    // Ters yönlü kilit. Eşiksiz bir jest, kartı okumak için parmağını gezdiren
+    // kullanıcının altından kartı çeker.
+    const blok = jestBloku();
+    assert.match(blok, /if \(uzun \|\| fiske\) onClose\(\)/,
+      'kapatma koşulsuz çağrılıyor olabilir — her dokunuş kartı kapatır');
+  });
+
+  test('X düğmesi KALIYOR — jest onun yerine geçmiyor', () => {
+    // Görünmez bir jest olmayan bir jesttir ve klavyeyle gezen kullanıcının da
+    // bir yolu olmalı. Jest ekleniyor, alternatif kaldırılmıyor.
+    assert.match(DRAWER, /title=\{window\.t\('drawer_close'\)\}/,
+      'kapatma düğmesi kaldırılmış — dokunmatik olmayan kullanıcının çıkışı yok');
+  });
+
+  test('tutamak var ve yalnızca dokunmatikte görünüyor', () => {
+    assert.match(DRAWER, /className="drawer-grab"/, 'tutamak çubuğu yok');
+    const css = fs.readFileSync(CSS_YOL, 'utf8');
+
+    // Varsayım AÇIKÇA ölçülüyor: aşağıdaki `indexOf` ilk bloğu buluyor ve
+    // bugün tek blok var. İkinci bir `pointer: coarse` bloğu eklenirse ölçüt
+    // sessizce YANLIŞ yeri ölçmeye başlar — bugün tam bu tuzağa iki kez
+    // düşüldü (cokme.test.js ve burada).
+    const kacBlok = (css.match(/@media \(pointer: coarse\)/g) || []).length;
+    assert.equal(kacBlok, 1,
+      `${kacBlok} adet "pointer: coarse" bloğu var; aşağıdaki ölçüt yalnızca `
+      + 'ilkine bakıyor ve artık yanlış bloğu ölçüyor olabilir');
+
+    const bas = css.indexOf('@media (pointer: coarse)');
+    const blok = css.slice(bas, css.indexOf('\n}\n', bas));
+    // Seçici SINIRIYLA aranıyor. `/\.drawer-grab/` alt dize olarak
+    // `.drawer-grab-XX`i de eşliyordu ve aklama mutasyonu tam oradan kaçtı:
+    // seçiciyi yeniden adlandırmak testi kırmıyordu.
+    assert.match(blok, /\.drawer-grab\s*\{/,
+      'tutamak dokunmatik kuralına bağlı değil — masaüstünde de görünür ve '
+      + 'işaret ettiği jest orada yok');
+
+    // Varsayılan GİZLİ olmalı: medya kuralı onu açıyor, tersi değil.
+    assert.match(css, /\.drawer-grab \{ display: none; \}/,
+      'tutamak varsayılan olarak gizli değil');
+  });
+
+  test('tarayıcının kendi "sayfayı yenile" jesti kesiliyor', () => {
+    // Chrome Android'de en üstten aşağı çekmek sayfayı yeniler. Bu kural
+    // olmadan kullanıcı kartı kapatmaya çalışırken sayfa yenilenir ve yazdığı
+    // yorum gider — jestin kendisinden daha pahalı bir kusur.
+    const css = fs.readFileSync(CSS_YOL, 'utf8');
+    const bas = css.indexOf('.drawer-body {');
+    assert.notEqual(bas, -1, '.drawer-body kuralı yok');
+    const blok = css.slice(bas, css.indexOf('}', bas));
+    assert.match(blok, /overscroll-behavior-y:\s*contain/,
+      'kaydırma zinciri kesilmiyor — jest sayfayı yeniler');
+  });
+});

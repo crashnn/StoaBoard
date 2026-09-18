@@ -30,6 +30,84 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   const [mentionIdx, setMentionIdx]     = useDrawerState(0);
   const [duplicating, setDuplicating]   = useDrawerState(false);
 
+  // ── Sürükle-kapat (yalnızca dokunmatik) ────────────────────────────────
+  //
+  // İSTEK (17 Eylül 2026, kullanıcı): "kart açık iken kartı yukarıdan aşağı
+  // çekince kartı küçültsün panoya atsın, sanırsam sadece mobilde işe yarar."
+  //
+  // NİÇİN GEREKLİ: mobilde kart tam ekran açılıyor ve kapatmanın tek yolu sağ
+  // üstteki X — başparmağın en zor ulaştığı köşe. Telefon büyüdükçe daha da
+  // zor. Bu yüzden süs değil erişilebilirlik işi.
+  //
+  // KAPSAM DARALTILDI, bilinçli: jest BAŞLIK + TUTAMAK bölgesinden kuruluyor,
+  // kart gövdesinden değil. Gövdeden sürüklemeye izin vermek `scrollTop`
+  // izlemeyi gerektiriyor ve uzun kartlarda OKUMA ile jest sürekli çakışıyor:
+  // kullanıcı yukarı kaydırmak isterken kart kapanmaya başlıyor. Kullanıcının
+  // kendi ifadesi de "YUKARIDAN aşağı çekince" idi. Dar kural hem güvenli
+  // hem tarife sadık; genişletmek gerekirse sonradan yapılabilir, tersi
+  // (kullanıcıyı kartı okuyamaz hâle getirmek) geri alınması zor bir hata.
+  //
+  // X BUTONU KALIYOR. Jest onun yerine geçmiyor, yanına ekleniyor: görünmez
+  // bir jest, olmayan bir jesttir ve klavyeyle gezen kullanıcının da bir yolu
+  // olmalı.
+  const panelRef = useDrawerRef(null);
+  const jestRef = useDrawerRef(null);
+
+  const dokunmatikMi = () => (
+    typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)')?.matches
+  );
+
+  const jestBasla = (e) => {
+    // Ölçüt `pointer: coarse`, ekran GENİŞLİĞİ değil — #233'te aynı karar
+    // verildi: aranan şey "dokunmatik mi", "pencere dar mı" değil. Dar bir
+    // masaüstü penceresinde fare ile aşağı sürüklemek kapatma jesti değildir.
+    if (!dokunmatikMi() || e.touches?.length !== 1) return;
+    jestRef.current = { y0: e.touches[0].clientY, t0: Date.now(), y: 0 };
+  };
+
+  const jestSurukle = (e) => {
+    const j = jestRef.current;
+    const el = panelRef.current;
+    if (!j || !el || e.touches?.length !== 1) return;
+    // Yalnızca AŞAĞI. Yukarı sürükleme paneli tavana yapıştırmıyor; 0'da
+    // duruyor ki kullanıcı yanlışlıkla yukarı çekince bir şey "bozulmasın".
+    j.y = Math.max(0, e.touches[0].clientY - j.y0);
+    // Doğrudan DOM: sürükleme kare başına durum güncellemesi demek ve uzun bir
+    // kartın yeniden çizimi 60 kez/sn takılmaya yol açardı.
+    el.style.transition = 'none';
+    el.style.transform = `translateY(${j.y}px)`;
+  };
+
+  const jestBitir = () => {
+    const j = jestRef.current;
+    const el = panelRef.current;
+    jestRef.current = null;
+    if (!el) return;
+    // Satır içi stiller temizleniyor ki CSS geri alsın: açıkken
+    // `translateX(0)`, kapanırken geçiş animasyonu.
+    el.style.transition = '';
+    el.style.transform = '';
+    if (!j) return;
+
+    // İKİ EŞİK, çünkü iki farklı hareket de "kapat" demek: yavaş ama uzun
+    // sürükleme ve kısa ama hızlı fiske. Tek eşik ikisinden birini yanlış
+    // yorumlar.
+    const yukseklik = window.innerHeight || 800;
+    const sure = Math.max(1, Date.now() - j.t0);
+    const uzun = j.y > yukseklik * 0.25;
+    const fiske = j.y / sure > 0.6 && j.y > 60;
+    if (uzun || fiske) onClose();
+    // Eşiğin altındaysa hiçbir şey yapılmıyor: stil temizlendiği için panel
+    // CSS geçişiyle yerine yaylanıyor.
+  };
+
+  const jestOzellikleri = {
+    onTouchStart: jestBasla,
+    onTouchMove: jestSurukle,
+    onTouchEnd: jestBitir,
+    onTouchCancel: jestBitir,
+  };
+
   // ── Checklist (alt görevler) ───────────────────────────────────────────
   const [checkInput, setCheckInput]     = useDrawerState('');
   const [checkSaving, setCheckSaving]   = useDrawerState(false);
@@ -1050,31 +1128,42 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   return (
     <>
       <div className="drawer-overlay" data-open={open} onClick={onClose} />
-      <div className="drawer" data-open={open}>
-        <div className="drawer-head">
-          <div className="drawer-crumbs">
-            <span>StoaBoard Web</span>
-            <span className="sep"><Icon name="chevronRight" size={11} /></span>
-            <span style={{ color: 'var(--ink)' }}>{col.title_tr}</span>
-            {/* Kart numarası — Ayarlar → Görünüm → Geliştirici ile açılıyor.
-                Kırıntı satırının sonunda, çünkü çalışırken göz zaten orada. */}
-            {tweaks.showCardIds && (
-              <span className="card-id" title={window.t?.('board_card_id') || 'Kart numarası'}>
-                #{task.id}
-              </span>
-            )}
-          </div>
-          <div className="drawer-head-actions">
-            <button className="icon-btn" title={window.t('drawer_duplicate')} onClick={handleDuplicate} disabled={duplicating}>
-              <Icon name="copy" size={15} />
-            </button>
-            {onOpenPage && (
-              <button className="icon-btn drawer-fullscreen-btn" title={window.t('drawer_fullscreen')} onClick={() => onOpenPage(task)}>
-                <Icon name="expand" size={14} />
+      <div className="drawer" data-open={open} ref={panelRef}>
+        {/* Jest bölgesi başlığı da kapsıyor: kullanıcı çubuğu tam
+            yakalayamadığında başlıktan çekmesi de çalışsın. Başlıktaki
+            düğmeler etkilenmiyor — eşik hareket istiyor, dokunup bırakmak
+            jesti tetiklemiyor ve `preventDefault` çağrılmadığı için tıklama
+            olayları normal akıyor. */}
+        <div className="drawer-drag" {...jestOzellikleri}>
+          {/* Tutamak yalnızca dokunmatik cihazda görünüyor (CSS). Görünmez bir
+              jest, olmayan bir jesttir: kullanıcı çubuğu görünce çekilebildiğini
+              anlıyor. */}
+          <div className="drawer-grab" aria-hidden="true"><span /></div>
+          <div className="drawer-head">
+            <div className="drawer-crumbs">
+              <span>StoaBoard Web</span>
+              <span className="sep"><Icon name="chevronRight" size={11} /></span>
+              <span style={{ color: 'var(--ink)' }}>{col.title_tr}</span>
+              {/* Kart numarası — Ayarlar → Görünüm → Geliştirici ile açılıyor.
+                  Kırıntı satırının sonunda, çünkü çalışırken göz zaten orada. */}
+              {tweaks.showCardIds && (
+                <span className="card-id" title={window.t?.('board_card_id') || 'Kart numarası'}>
+                  #{task.id}
+                </span>
+              )}
+            </div>
+            <div className="drawer-head-actions">
+              <button className="icon-btn" title={window.t('drawer_duplicate')} onClick={handleDuplicate} disabled={duplicating}>
+                <Icon name="copy" size={15} />
               </button>
-            )}
-            {deleteBtn}
-            <button className="icon-btn" title={window.t('drawer_close')} onClick={onClose}><Icon name="x" size={15} /></button>
+              {onOpenPage && (
+                <button className="icon-btn drawer-fullscreen-btn" title={window.t('drawer_fullscreen')} onClick={() => onOpenPage(task)}>
+                  <Icon name="expand" size={14} />
+                </button>
+              )}
+              {deleteBtn}
+              <button className="icon-btn" title={window.t('drawer_close')} onClick={onClose}><Icon name="x" size={15} /></button>
+            </div>
           </div>
         </div>
 

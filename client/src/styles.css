@@ -2901,6 +2901,35 @@ input, textarea, select, [contenteditable="true"] {
   flex: 1;
   overflow-y: auto;
   padding: 24px 40px 60px;
+  /* Chrome Android'de en üstten aşağı çekmek "sayfayı yenile" demek ve
+     sürükle-kapat jestiyle çakışıyordu: kullanıcı kartı kapatmaya çalışırken
+     sayfa yenileniyor ve yazdığı yorum gidiyordu. `contain` kaydırma
+     zincirini bu kapta kesiyor (kart #238). */
+  overscroll-behavior-y: contain;
+}
+
+/* Sürükle-kapat tutamağı — yalnızca dokunmatik cihazda.
+   Masaüstünde jest yok (orada Esc ve X var, üstelik fareyle aşağı sürüklemek
+   kapatma anlamına gelmiyor), dolayısıyla çubuk da yok: işaret ettiği şey
+   olmayan bir gösterge yanıltıcıdır. */
+.drawer-grab { display: none; }
+.drawer-drag { flex-shrink: 0; }
+
+@media (pointer: coarse) {
+  .drawer-grab {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 2px;
+    /* Jest bölgesinde tarayıcının kendi kaydırma/yakınlaştırma yorumu
+       devreye girmesin; dokunuş doğrudan bize gelsin. */
+    touch-action: none;
+  }
+  .drawer-grab > span {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+  }
 }
 
 .doc-title {
