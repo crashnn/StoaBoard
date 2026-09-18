@@ -34,6 +34,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { yorumsuzDosya } from './yardimcilar.js';
+
 const KOK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CSS_YOL = path.join(KOK, 'client', 'src', 'styles.css');
 const CHAT_YOL = path.join(KOK, 'client', 'src', 'chat.jsx');
@@ -312,5 +314,90 @@ describe('sürükle-kapat — mobilde kartı aşağı çekerek kapatma (#238)', 
     const blok = css.slice(bas, css.indexOf('}', bas));
     assert.match(blok, /overscroll-behavior-y:\s*contain/,
       'kaydırma zinciri kesilmiyor — jest sayfayı yeniler');
+  });
+});
+
+// ─── Tam sayfa sohbet, dar ekran: liste ↔ konuşma (#240) ───────────────────
+//
+// KUSUR (18 Eylül 2026, kullanıcı gerçek cihazda): "yandan açılır menüden
+// sohbete geçip genele gidiyoruz ancak genelden DM'ye geçemiyoruz."
+//
+// Çökme DEĞİLDİ, eksik bir yoldu. 760px altında sol sütun (kanallar + DM'ler)
+// `display: none` idi ve onu açan hiçbir durum yoktu. "genel"deki geri düğmesi
+// ise sohbetten TAMAMEN çıkarıyordu (#233'te kaçış yolu olarak eklenmişti). DM'ye
+// yalnızca sohbetin DIŞINDAN gidilebiliyordu — kullanıcının saydığı çalışan üç
+// yol tam olarak bunlardı.
+//
+// Bir de ÖLÜ kural vardı: `.chat-fp-main-back` için bir geri düğmesi gösteriyordu
+// ama o öğe JSX'te hiç yoktu. Biri bu sorunu daha önce çözmeye çalışmış,
+// bağlanmamış — kuralın varlığı sorunun çözüldüğü izlenimini veriyordu.
+//
+// KURAL: konuşmadan geri → liste; liste satırı → konuşma; listenin üstünde
+// sohbetten çıkış. Sohbetin içinden HER ZAMAN bir çıkış var, bir adım uzakta.
+describe('tam sayfa sohbet — dar ekranda listeye ulaşılabiliyor (#240)', () => {
+  const JSX = yorumsuzDosya(CHAT_YOL).replace(/\r\n/g, '\n');
+
+  // Bir düğme bildiriminin gövdesi: sınıf adından bir sonraki `title=`e kadar.
+  const dugmeler = (sinif) => {
+    const yerler = [];
+    let i = JSX.indexOf(sinif);
+    while (i !== -1) {
+      yerler.push(JSX.slice(i, JSX.indexOf('title=', i)));
+      i = JSX.indexOf(sinif, i + 1);
+    }
+    return yerler;
+  };
+
+  test('dar ekranda liste açılabiliyor ve açıkken konuşma gizleniyor', () => {
+    const bas = CSS.indexOf('@media (max-width: 760px)');
+    assert.notEqual(bas, -1, '760px medya sorgusu bulunamadı');
+    const blok = CSS.slice(bas, CSS.indexOf('\n}\n', bas));
+    assert.match(blok, /\.chat-fp-grid\[data-mobil-liste="true"\] \.chat-fp-left\s*\{\s*display:\s*flex/,
+      'liste dar ekranda hiçbir koşulda görünmüyor — DM\'ye tam sayfa sohbetin içinden ulaşılamaz');
+    assert.match(blok, /\.chat-fp-grid\[data-mobil-liste="true"\] \.chat-fp-center\s*\{\s*display:\s*none/,
+      'liste açıkken konuşma gizlenmiyor — tek sütuna ikisi sığmaz');
+    assert.match(JSX, /className="chat-fp-grid" data-mobil-liste=\{mobilListe\}/,
+      'ızgara liste durumunu taşımıyor; CSS kuralı hiçbir zaman eşleşmez');
+  });
+
+  test('konuşmadan geri LİSTEYE dönüyor, sohbetten çıkarmıyor', () => {
+    // Çıkış düğmesi dışındaki her geri düğmesi. Ölçüt HER düğmeye bakıyor,
+    // ilk eşleşmeye değil — bugün `indexOf` ilk eşleşme tuzağına iki kez düşüldü.
+    const geriler = dugmeler('chat-fp-back-btn').filter((b) => !b.includes('chat-fp-exit-btn'));
+    assert.ok(geriler.length >= 2, `yalnızca ${geriler.length} geri düğmesi bulundu (DM + kanal bekleniyor)`);
+    for (const b of geriler) {
+      assert.match(b, /setMobilListe\(true\)/,
+        'bir geri düğmesi listeye dönmüyor — dar ekranda DM listesine ulaşılamaz');
+      assert.doesNotMatch(b, /onClick=\{onClose\}/,
+        'konuşmadaki geri düğmesi sohbetten çıkarıyor — liste atlanıyor');
+    }
+  });
+
+  test('listede HER ZAMAN bir çıkış var — kaçış yolu kaybolmadı', () => {
+    // #233'ün değişmezi: sohbetin içinden çıkış yolu olmalı. Geri düğmesi
+    // artık listeye dönüyor; çıkış listenin üstüne taşındı. Ölçüt sol sütunun
+    // İÇİNE bağlı: çıkış düğmesinin dosyada bir yerde olması yetmez.
+    const bas = JSX.indexOf('<aside className="chat-fp-left">');
+    assert.notEqual(bas, -1, 'sol sütun bulunamadı');
+    const sol = JSX.slice(bas, JSX.indexOf('</aside>', bas));
+    const cikis = sol.slice(sol.indexOf('chat-fp-exit-btn'), sol.indexOf('title=', sol.indexOf('chat-fp-exit-btn')));
+    assert.ok(sol.includes('chat-fp-exit-btn'), 'listede çıkış düğmesi yok — kullanıcı sohbette sıkışır');
+    assert.match(cikis, /onClick=\{onClose\}/, 'listedeki çıkış düğmesi sohbeti kapatmıyor');
+  });
+
+  test('liste satırları listeyi kapatıyor — kanal da DM de', () => {
+    // İkisi ayrı ayrı: yalnızca biri kapatırsa öteki satıra dokunan kullanıcı
+    // listede kalır ve seçtiği konuşmayı hiç görmez.
+    assert.match(JSX, /setActiveChannel\(slug\); setMobilListe\(false\);/,
+      'kanal satırı listeyi kapatmıyor');
+    assert.match(JSX, /openDm\(m\.id\); setMobilListe\(false\);/,
+      'DM satırı listeyi kapatmıyor');
+  });
+
+  test('ölü kural geri gelmedi', () => {
+    // Var olmayan bir öğeyi hedefleyen kural, sorunun çözüldüğü izlenimini
+    // veriyordu. Geri gelirse aynı yanılgı da geri gelir.
+    assert.doesNotMatch(CSS, /chat-fp-main-back/,
+      'JSX\'te karşılığı olmayan `.chat-fp-main-back` kuralı geri eklenmiş');
   });
 });

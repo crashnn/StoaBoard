@@ -6860,6 +6860,13 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   .chat-fp-grid:not(:has(.chat-fp-right)) { grid-template-columns: minmax(0, 1fr); }
   .chat-fp-left { display: none; }
   .chat-fp-back-btn { display: flex; }
+  /* İki panel: liste AÇIKKEN sol sütun görünür, konuşma gizlenir (kart #240).
+     Önceden liste burada koşulsuz gizliydi ve geri getiren bir yol yoktu —
+     dar ekranda DM'ye tam sayfa sohbetin içinden ulaşılamıyordu. Özgüllük
+     (0,3,0), yukarıdaki (0,1,0) gizleme kuralını eziyor. */
+  .chat-fp-grid[data-mobil-liste="true"] .chat-fp-left { display: flex; }
+  .chat-fp-grid[data-mobil-liste="true"] .chat-fp-center { display: none; }
+  .chat-fp-exit-btn { gap: 6px; width: auto; padding: 6px 8px; margin-bottom: 8px; align-self: flex-start; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -9720,9 +9727,6 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   /* Calendar week view: narrower cols so days don't get cramped */
   .cal-week-col { min-width: 92px; }
 
-  /* Chat full-page: when reduced to single column, give a back button
-     by surfacing the (existing but hidden on desktop) toggle */
-  .chat-fp-grid:not(:has(.chat-fp-left)) .chat-fp-main-back { display: inline-flex; }
 
   /* Settings cards: smaller padding, full-width controls */
   .settings-section { padding: 18px 0; gap: 12px; }

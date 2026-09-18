@@ -1721,6 +1721,11 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
 
   // Full-page only state — left list filter, right detail panel tab, mobile right-panel toggle
   const [leftListTab, setLeftListTab] = useChatS('channels'); // channels | dms
+  // Dar ekranda tam sayfa sohbet TEK SÜTUN: ya liste ya konuşma. Bu durum
+  // hangisinin göründüğünü söylüyor (kart #240, kullanıcı 18 Eylül: "genelden
+  // DM'ye geçemiyoruz"). Geniş ekranda etkisiz — CSS yalnızca 760px altında
+  // okuyor, orada liste zaten hep görünür.
+  const [mobilListe, setMobilListe] = useChatS(false);
   const [rightTab, setRightTab]       = useChatS('members');  // members | media | starred | pinned
   const [leftSearch, setLeftSearch]   = useChatS('');
   const [rightPanelOpen, setRightPanelOpen] = useChatS(true);
@@ -1957,6 +1962,8 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
         setDmWith(initialDmWith);
         setMessages([]);
         setTab('dm');
+        // Bildirimden açılan DM, liste panelinin arkasında kalmasın.
+        setMobilListe(false);
       }
       if (window.__CHAT_MENTION_TASK__) {
         setMentionTaskRef(window.__CHAT_MENTION_TASK__);
@@ -2928,10 +2935,26 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
           }
         }
         return (
-        <div className="chat-fp-grid">
+        <div className="chat-fp-grid" data-mobil-liste={mobilListe}>
           {/* ─── LEFT COLUMN ─── */}
           <aside className="chat-fp-left">
             <div className="chat-fp-left-pad">
+              {/* Listeden ÇIKIŞ — yalnızca dar ekranda görünür (sınıf masaüstünde
+                  gizli). Dün (#233, bd1e736) kanal görünümündeki geri düğmesi
+                  sohbetten çıkış olarak eklenmişti; o düğme artık LİSTEYE
+                  dönüyor, çıkış bir adım geriye buraya taşındı. Değişmeyen şey:
+                  sohbetin içinden her zaman bir çıkış yolu var. */}
+              {fullPage && onClose && (
+                <button
+                  className="icon-btn chat-fp-back-btn chat-fp-exit-btn"
+                  onClick={onClose}
+                  title={window.t?.('chat_exit') || 'Sohbetten çık'}
+                  aria-label={window.t?.('chat_exit') || 'Sohbetten çık'}
+                >
+                  <Icon name="chevronLeft" size={16} />
+                  <span>{window.t?.('chat_exit') || 'Sohbetten çık'}</span>
+                </button>
+              )}
               <div className="chat-fp-search">
                 <Icon name="search" size={13} />
                 <input
@@ -2986,7 +3009,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                         key={slug}
                         className="chat-fp-row"
                         data-active={!dmWith && activeChannel === slug}
-                        onClick={() => { setDmWith(null); setTab('general'); setActiveChannel(slug); }}
+                        onClick={() => { setDmWith(null); setTab('general'); setActiveChannel(slug); setMobilListe(false); }}
                       >
                         <div className="chat-fp-row-ic chat-fp-row-ic-channel">
                           <ChannelIconMark channel={ch} slug={slug} size={11} />
@@ -3050,7 +3073,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                       key={m.id}
                       className="chat-fp-row"
                       data-active={dmWith === m.id}
-                      onClick={() => openDm(m.id)}
+                      onClick={() => { openDm(m.id); setMobilListe(false); }}
                     >
                       <div style={{ position: 'relative', flexShrink: 0, display: 'flex' }}>
                         <Avatar member={m} size="sm" />
@@ -3084,7 +3107,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
             <div className="chat-fp-conv-head">
               {dmWith ? (
                 <>
-                  <button className="icon-btn chat-fp-back-btn" onClick={() => { setDmWith(null); setMessages([]); setTab('dm'); }} title={window.t?.('chat_back')||'Geri'}>
+                  <button className="icon-btn chat-fp-back-btn" onClick={() => { setDmWith(null); setMessages([]); setTab('dm'); setMobilListe(true); }} title={window.t?.('chat_back')||'Geri'}>
                     <Icon name="chevronLeft" size={16} />
                   </button>
                   <div style={{ position: 'relative', display: 'flex', flexShrink: 0 }}>
@@ -3117,12 +3140,19 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
 
                       Yalnızca tam ekran kipte: panel kipinde çerçevenin kendi
                       kapatması var, ikinci bir düğme gürültü olurdu. */}
-                  {fullPage && onClose && (
+                  {/* KUSUR (18 Eylül 2026, kullanıcı gerçek cihazda): "genelden
+                      DM'ye geçemiyoruz." Dar ekranda sol sütun (kanallar + DM'ler)
+                      display:none ve onu açan bir yol YOKTU; bu düğme ise
+                      sohbetten tamamen ÇIKARIYORDU. DM'ye yalnızca sohbetin
+                      dışından ulaşılabiliyordu. Artık konuşmadan geri LİSTEYE
+                      dönüyor; çıkış listenin üstünde. Bu düğme masaüstünde
+                      gizli (.chat-fp-back-btn), orada liste hep görünür. */}
+                  {fullPage && (
                     <button
                       className="icon-btn chat-fp-back-btn"
-                      onClick={onClose}
-                      title={window.t?.('chat_exit') || 'Sohbetten çık'}
-                      aria-label={window.t?.('chat_exit') || 'Sohbetten çık'}
+                      onClick={() => setMobilListe(true)}
+                      title={window.t?.('chat_back') || 'Geri'}
+                      aria-label={window.t?.('chat_back') || 'Geri'}
                     >
                       <Icon name="chevronLeft" size={16} />
                     </button>
