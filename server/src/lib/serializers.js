@@ -256,6 +256,9 @@ export function activityToDict(a) {
   const who = a.user?.name ? a.user.name.split(/\s+/)[0] : '';
   return {
     who,
+    // Kimlik. `who` ilk ada indirildiği için benzersiz değil; istemci
+    // avatarı ve tam adı bununla buluyor (kart #202). Kullanıcı silinmişse null.
+    user_slug: a.user?.slug || null,
     time: a.createdAt ? new Date(a.createdAt).toISOString() : '',
     text: a.text,
   };

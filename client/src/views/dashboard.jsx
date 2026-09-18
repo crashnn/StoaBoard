@@ -4,6 +4,7 @@ import { useState as useDashState, useEffect as useDashEffect, useRef as useDash
 import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
 import { fmtTimeAgo, renderActivityText } from '../data.jsx';
+import { sonGunlerdeTamamlanan } from '../sayim.js';
 
 function DashboardView({ tasks, onOpenTask, onView }) {
   const [teamSort, setTeamSort] = useDashState('open');
@@ -25,7 +26,6 @@ function DashboardView({ tasks, onOpenTask, onView }) {
   const inProgress = tasks.filter(t => !doneColIds.has(t.col)).length;
 
   const chartCols = DATA.COLUMNS || [];
-  const throughput = DATA.THROUGHPUT || [];
 
   // Panonun su anki dagilimi: her kolonda kac kart var.
   //
@@ -55,8 +55,14 @@ function DashboardView({ tasks, onOpenTask, onView }) {
   // Dunku MCP kusurunun tipatip aynisi: sunucu slug'i `id` adiyla veriyor,
   // tuketici `.slug` diye ariyor. Kusur kodun icinde degil, iki sozlesmenin
   // arasinda.
-  const doneColSlug = chartCols.find(c => c.is_done)?.id;
-  const weeklyDone = throughput.reduce((s, d) => s + (doneColSlug ? ((d.cols || {})[doneColSlug] || 0) : 0), 0);
+  //
+  // 18 Eylul 2026 (kart #202): sayi artik hareket gunlugunden degil kartlarin
+  // `completed_at` alanindan -- raporlarla AYNI tanim. Eski hesap bitis
+  // kolonunun basligina yapilan task_moved kayitlarini sayiyordu: yeniden
+  // acilip bitirileni iki kez, geri alinani yine de sayiyor, dogrudan bitiste
+  // acilani hic saymiyordu. Gerekce `sayim.js`in basinda. Ayrica ilk bitis
+  // kolonu yerine BUTUN bitis kolonlari sayiliyor (doneColIds).
+  const weeklyDone = sonGunlerdeTamamlanan(tasks, doneColIds, Date.now());
   const highPriority = tasks.filter(t => t.priority === 'high' && !doneColIds.has(t.col)).length;
 
   const getColColor = (col) => col?.is_done ? 'var(--status-green)' : (col?.color || 'var(--ink-faint)');
@@ -275,7 +281,12 @@ function DashboardView({ tasks, onOpenTask, onView }) {
         <div className="panel">
           <div className="panel-head">
             <div className="panel-title">{window.t('dash_upcoming')}</div>
-            <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => onView && onView('list')}>{window.t('dash_view_all')} <Icon name="arrowRight" size={12} /></button>
+            {/* 'list' diye bir GÖRÜNÜM yok — liste, panonun alt sekmesi. Eskiden
+                onView('list') çağrılıyordu; uygulamada karşılayan dal olmadığı
+                için içerik alanı BOŞ kalıyordu (kullanıcı 18 Eylül: 'tümünü gör
+                dediğimizde beyaz ekran atıyor'). Aynı ekrandaki istatistik
+                kartları zaten doğru yolu kullanıyordu; bu düğme kaçmıştı. */}
+            <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => { localStorage.setItem('stoa.boardSubView', 'list'); onView?.('board'); }}>{window.t('dash_view_all')} <Icon name="arrowRight" size={12} /></button>
           </div>
           <div className="panel-body" style={{ padding: '0 0 12px' }}>
             {(() => {
@@ -331,13 +342,20 @@ function DashboardView({ tasks, onOpenTask, onView }) {
                 <div>{window.t('dash_no_activity')}</div>
               </div>
             ) : (DATA.ACTIVITY || []).map((a, i) => {
-              const m = DATA.MEMBERS.find(m => m.name && m.name.startsWith(a.who));
+              // KİMLİKLE eşleşiyor, ad önekiyle değil (kart #202). Sunucu `who`yu
+              // İLK ADA indiriyor; alanda iki "Eray Atalay" varken ikisinin
+              // hareketi de "Eray" yazıyor ve ÖNEKLE bulunan AYNI avatarla
+              // gösteriliyordu — kimin yaptığı kayboluyordu. #235'teki
+              // bahsetme kusuruyla aynı sınıf: ilk ad benzersiz değil.
+              // Üye artık alanda değilse sunucunun verdiği ada düşülüyor.
+              const m = a.user_slug ? DATA.MEMBERS.find(mm => mm.id === a.user_slug) : null;
+              const ad = m?.name || a.who;
               return (
                 <div className="activity-item" key={i}>
                   <Avatar member={m || { initials: (a.who || '?')[0], color: 'var(--ink-faint)' }} size="sm" />
                   <div className="activity-body">
                     <div className="activity-text">
-                      <strong>{a.who}</strong> <span dangerouslySetInnerHTML={{ __html: renderActivityText(a.text) }} />
+                      <strong>{ad}</strong> <span dangerouslySetInnerHTML={{ __html: renderActivityText(a.text) }} />
                     </div>
                     <div className="activity-time">{fmtTimeAgo(a.time)}</div>
                   </div>
