@@ -5033,6 +5033,13 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   gap: 4px;
 }
 
+/* Kanal geçmişi kesimi notu (kart #119) — mesaj listesinin en üstünde,
+   sessiz: bilgi, uyarı değil. */
+.chat-history-note {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 12px; margin: 4px 0 8px;
+  font-size: 11.5px; color: var(--ink-muted);
+}
 .chat-empty {
   flex: 1;
   display: flex;

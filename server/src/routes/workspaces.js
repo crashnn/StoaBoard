@@ -459,17 +459,22 @@ workspacesRouter.post(
         where: { id: joinReq.userId },
         data: { currentWorkspaceId: joinReq.workspaceId },
       });
-      // 'general' kanalına üye ekle
-      const general = await tx.channel.findFirst({
-        where: { workspaceId: joinReq.workspaceId, slug: 'general' },
+      // Herkese açık BÜTÜN kanallara üye ekle (kart #119). Önceden yalnızca
+      // 'general' ekleniyordu; öteki herkese açık kanallar alan üyeliği
+      // üzerinden okunuyordu ve o yolda katılım anı yoktu — yeni üye eski
+      // kanalın bütün geçmişini görüyordu. Satır burada yazılınca kesim
+      // noktası (`joined_at`) kanal başına bu ana bağlanıyor.
+      const acikKanallar = await tx.channel.findMany({
+        where: { workspaceId: joinReq.workspaceId, type: 'public' },
+        select: { id: true },
       });
-      if (general) {
+      for (const kanal of acikKanallar) {
         await tx.channelMember.upsert({
           where: {
-            channelId_userId: { channelId: general.id, userId: joinReq.userId },
+            channelId_userId: { channelId: kanal.id, userId: joinReq.userId },
           },
           create: {
-            channelId: general.id,
+            channelId: kanal.id,
             userId: joinReq.userId,
             role: 'member',
           },

@@ -43,6 +43,86 @@ export function canManageChannel(role) {
   return role === 'owner' || role === 'admin';
 }
 
+// ── Kanal geçmişi kesimi (kart #119) ──────────────────────────────────────
+//
+// KARAR (kullanıcı, 18 Eylül 2026): "Alana yeni katılan birisi kanalın tüm
+// geçmişini okuyamamalı, o anda giriş yaptıktan sonra okumalıdır. ... bir
+// şirkete giriş yaptığında sana atadıkları e-posta hesabı ile eski geçmişi
+// göremiyoruz, o andan itibaren olan konuşmalar görünüyor."
+//
+// Kesim noktası KATILIM ANI; kanal başına ayar yok. Şema değişmedi:
+// `channel_members.joined_at` zaten var ve her kanal üyeliği açık bir satırla
+// kuruluyor (genel kanala onayda, herkese açık kanala kanal açılırken, özele
+// davette). Satırı olmayan tek durum, üye katıldıktan ÖNCE açılmış bir
+// herkese açık kanal — onay yolu yalnızca "genel"e ekliyordu. Orada yedek
+// ölçüt çalışma alanına katılım isteğinin zamanı; artık onay bütün herkese
+// açık kanallara satır yazıyor (workspaces.js), yedek eski üyeler için.
+//
+// Kaynak yoksa (kurucu, istek kaydı olmayan eski üye) başlangıç null =
+// kesim yok. Bu bir sessiz geçiş DEĞİL, kararın kendisi: kurucu ve ilk
+// üyeler geçmişin tamamına sahip; katılım anı olmayan birine uydurma bir
+// tarih dayatmak ya hiçbir şey göstermez ya rastgele bir yerden keser.
+//
+// DM'de kesim yok: iki taraf da baştan beri konuşmanın içinde.
+
+/**
+ * Saf: kullanıcının kanalda görebildiği geçmişin başlangıcı.
+ *
+ * @param {{ joinedAt?: Date|null }|null} uyelik kanal üyelik satırı
+ * @param {{ createdAt?: Date|null }|null} katilimIstegi onaylanmış alan katılım isteği
+ * @returns {Date|null} null = kesim yok
+ */
+export function gecmisBaslangici(uyelik, katilimIstegi) {
+  if (uyelik) return uyelik.joinedAt || null;
+  return katilimIstegi?.createdAt || null;
+}
+
+/** Saf: başlangıcı Prisma `where` parçasına çevirir. */
+export function gecmisSuzgeci(baslangic) {
+  return baslangic ? { createdAt: { gte: baslangic } } : {};
+}
+
+/**
+ * Kullanıcının kanalda görebildiği geçmişin başlangıcı — veritabanından.
+ * `channel` üyeleriyle (`members`) yüklenmiş olmalı.
+ */
+export async function kanalGecmisBaslangici(channel, userId) {
+  const uyelik = (channel.members || []).find((m) => m.userId === userId) || null;
+  if (uyelik) return gecmisBaslangici(uyelik, null);
+  const istek = channel.workspaceId
+    ? await prisma.workspaceJoinRequest.findFirst({
+        where: { workspaceId: channel.workspaceId, userId, status: 'approved' },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true },
+      })
+    : null;
+  return gecmisBaslangici(null, istek);
+}
+
+/**
+ * Kullanıcının çalışma alanında OKUYABİLDİĞİ kanal mesajları için Prisma
+ * koşulları — kanal başına kendi kesim noktasıyla. `OR` listesine konur.
+ *
+ * Çok kanallı okumalar (bütün sabitlenmişler, bütün medya) bunu kullanır.
+ * 18 Eylül 2026'ya kadar o iki okuma kanal üyeliğine HİÇ bakmıyordu: özel
+ * kanalın sabitlenmiş mesajı ve dosyaları alandaki herkese listeleniyordu.
+ * Koşul listesi yalnızca erişilebilir kanallardan kurulduğu için o sızıntı
+ * da burada kapanıyor.
+ *
+ * "genel" kanalının eski mesajları `channel = NULL` ile duruyor; o satırlar
+ * genel kanalın kesimine tabi.
+ */
+export async function okunabilirKanalKosullari(user) {
+  const kanallar = await listAccessibleChannels(user);
+  const kosullar = [];
+  for (const c of kanallar) {
+    const suzgec = gecmisSuzgeci(await kanalGecmisBaslangici(c, user.id));
+    kosullar.push({ channel: c.slug, ...suzgec });
+    if (c.slug === 'general') kosullar.push({ channel: null, ...suzgec });
+  }
+  return kosullar;
+}
+
 /**
  * Bahsedilen (@mention) kişiye bildirim gönderilmeli mi? Saf karar.
  *
@@ -135,6 +215,11 @@ export function channelToDict(channel, { currentUserId = null, includeMembers = 
       joined_at: m.joinedAt ? new Date(m.joinedAt).toISOString() : '',
     }));
   }
+  // Kesim noktası (kart #119): istemci "geçmiş şu tarihten itibaren" notunu
+  // buradan kuruyor. Yalnızca kesim varsa gelir; yokluğu "kesim yok" demek.
+  if (channel.gecmisBaslangici) {
+    data.history_from = new Date(channel.gecmisBaslangici).toISOString();
+  }
   if (channel.lastMessage) {
     const lm = channel.lastMessage;
     data.last_message = {
@@ -208,6 +293,13 @@ export async function listAccessibleChannels(user) {
   const byId = new Map();
   for (const c of [...pub, ...priv]) byId.set(c.id, c);
 
+  // Kesim noktası kanal başına (kart #119). Son mesaj önizlemesi de buna
+  // tabi: yeni üyenin kanal listesinde katılımından önceki bir mesajın
+  // önizlemesi görünürse kesim yalnızca görünüşte olur.
+  for (const c of byId.values()) {
+    c.gecmisBaslangici = await kanalGecmisBaslangici(c, user.id);
+  }
+
   // Her kanal için son mesajı tek raw SQL ile çek (DISTINCT ON kanal başına 1).
   // Sender adını workspace members'tan zaten biliyoruz; ekstra join gereksiz.
   const slugs = Array.from(byId.values()).map((c) => c.slug);
@@ -237,6 +329,8 @@ export async function listAccessibleChannels(user) {
         // r.channel slug, find channel by slug
         [...byId.values()].find((ch) => ch.slug === r.channel)?.id,
       );
+      // En yeni mesaj bile kesimden önceyse görünür mesaj yok: önizleme yok.
+      if (c && c.gecmisBaslangici && r.created_at && new Date(r.created_at) < c.gecmisBaslangici) continue;
       if (c) {
         const s = senderById.get(r.sender_id);
         c.lastMessage = {

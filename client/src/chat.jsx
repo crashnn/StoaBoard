@@ -1831,6 +1831,20 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   // Helper: find channel meta by slug (id)
   const _findCh = (slug) => channels.find(c => (c.slug || c.id) === slug);
 
+  // Kanal geçmişi kesimi notu (kart #119): sunucu `history_from` verdiyse
+  // kullanıcı katılımından öncesini görmüyor demektir. Not, "mesajlar nereye
+  // gitti?" sorusunu sormadan cevaplıyor; yokluğu "kesim yok" demek.
+  const gecmisNotu = (() => {
+    if (dmWith) return null;
+    const ham = _findCh(activeChannel || 'general')?.history_from;
+    if (!ham) return null;
+    const d = new Date(ham);
+    if (Number.isNaN(d.getTime())) return null;
+    const lang = localStorage.getItem('stoa.lang') || 'tr';
+    const tarih = d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    return `${window.t?.('chat_history_from') || 'Geçmiş, kanala katıldığın tarihten itibaren görünüyor:'} ${tarih}`;
+  })();
+
   // Active channel detail (incl. members list with roles) — for right-panel members tab + settings
   const [currentChannelDetail, setCurrentChannelDetail] = useChatS(null);
   const [addMemberOpen, setAddMemberOpen] = useChatS(false);
@@ -3260,6 +3274,12 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                   <button onClick={() => setMentionTaskRef(null)}><Icon name="x" size={12} /></button>
                 </div>
               )}
+              {gecmisNotu && (
+                <div className="chat-history-note" role="note">
+                  <Icon name="lock" size={11} />
+                  <span>{gecmisNotu}</span>
+                </div>
+              )}
               {messages.length === 0 && (
                 <div className="chat-empty">
                   {dmWith ? `${dmUser?.name || dmWith} ${window.t?.('chat_dm_start')||'ile sohbet başlat.'}` : (window.t?.('chat_general_first')||'Genel kanala ilk mesajı gönder.')}
@@ -3926,6 +3946,12 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                   <Icon name="listChecks" size={13} />
                   <span>{window.t?.('chat_mentioned_in')||'Bahsedildi:'} <strong>{mentionTaskRef.title}</strong></span>
                   <button onClick={() => setMentionTaskRef(null)}><Icon name="x" size={12} /></button>
+                </div>
+              )}
+              {gecmisNotu && (
+                <div className="chat-history-note" role="note">
+                  <Icon name="lock" size={11} />
+                  <span>{gecmisNotu}</span>
                 </div>
               )}
               {messages.length === 0 && (

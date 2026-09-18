@@ -25,6 +25,9 @@ import {
   parseHiddenFor,
   resolveChatTarget,
   mentionAllowed,
+  kanalGecmisBaslangici,
+  gecmisSuzgeci,
+  okunabilirKanalKosullari,
 } from '../lib/channels.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 
@@ -204,11 +207,14 @@ chatRouter.get(
     } else {
       const wsId = await resolveWorkspaceId(user);
       if (!wsId) return res.json([]);
+      // Genel kanalın satırı da okunuyor (kart #119): kesim noktası üyelik
+      // satırından geliyor. Satır yoksa (eski alan) genel için kesim yok,
+      // erişim kapısı eskisi gibi alan üyeliği.
+      const chRow = await prisma.channel.findFirst({
+        where: { workspaceId: wsId, slug: channel },
+        include: { members: true },
+      });
       if (channel !== 'general') {
-        const chRow = await prisma.channel.findFirst({
-          where: { workspaceId: wsId, slug: channel },
-          include: { members: true },
-        });
         // Kanal satırı yoksa istek reddedilir. Önceden kontrol tamamen
         // atlanıyordu: satırı olmayan bir slug'a mesaj yazılabiliyor ve
         // sonra herkes tarafından okunabiliyordu (hayalet kanal).
@@ -219,12 +225,13 @@ chatRouter.get(
           return res.status(403).json({ error: 'err_channel_forbidden', message: 'Bu kanala erişim yetkiniz yok' });
         }
       }
+      const gecmis = gecmisSuzgeci(chRow ? await kanalGecmisBaslangici(chRow, user.id) : null);
       const channelFilter =
         channel === 'general'
           ? { OR: [{ channel: 'general' }, { channel: null }] }
           : { channel };
       messages = await prisma.chatMessage.findMany({
-        where: { workspaceId: wsId, receiverId: null, ...channelFilter },
+        where: { workspaceId: wsId, receiverId: null, ...channelFilter, ...gecmis },
         orderBy: { createdAt: 'asc' },
         take: limit,
         include: MSG_INCLUDE,
@@ -414,16 +421,27 @@ chatRouter.get(
         receiverId: null,
       };
       if (scope === 'all') {
-        const live = await prisma.channel.findMany({
-          where: { workspaceId: wsId },
-          select: { slug: true },
-        });
-        const slugs = ['general', ...live.map((c) => c.slug)];
-        where.OR = [{ channel: null }, { channel: { in: slugs } }];
-      } else if (channel === 'general') {
-        where.OR = [{ channel: 'general' }, { channel: null }];
+        // Yalnızca okunabilir kanallar, her biri kendi kesimiyle (kart #119).
+        // 18 Eylül 2026'ya kadar alandaki BÜTÜN kanallar taranıyordu — özel
+        // kanalın sabitlenmiş mesajı üye olmayana da listeleniyordu.
+        where.OR = await okunabilirKanalKosullari(user);
+        if (where.OR.length === 0) return res.json([]);
       } else {
-        where.channel = channel;
+        const chRow = await prisma.channel.findFirst({
+          where: { workspaceId: wsId, slug: channel },
+          include: { members: true },
+        });
+        if (channel !== 'general') {
+          if (!chRow) {
+            return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
+          }
+          if (!(await userChannelRole(chRow, user.id))) {
+            return res.status(403).json({ error: 'err_channel_forbidden', message: 'Bu kanala erişim yetkiniz yok' });
+          }
+        }
+        Object.assign(where, gecmisSuzgeci(chRow ? await kanalGecmisBaslangici(chRow, user.id) : null));
+        if (channel === 'general') where.OR = [{ channel: 'general' }, { channel: null }];
+        else where.channel = channel;
       }
     }
 
@@ -463,25 +481,35 @@ chatRouter.get(
       });
     } else {
       const channelSlug = ((req.query.channel || '') + '').trim().toLowerCase() || null;
-      // Private kanal için üyelik kontrolü
-      if (channelSlug && channelSlug !== 'general') {
+      let channelFilter;
+      if (channelSlug) {
         const chRow = await prisma.channel.findFirst({
           where: { workspaceId: wsId, slug: channelSlug },
           include: { members: true },
         });
-        // Kanal satırı yoksa istek reddedilir. Önceden kontrol tamamen
-        // atlanıyordu: satırı olmayan bir slug'a mesaj yazılabiliyor ve
-        // sonra herkes tarafından okunabiliyordu (hayalet kanal).
-        if (!chRow) {
-          return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
+        if (channelSlug !== 'general') {
+          // Kanal satırı yoksa istek reddedilir. Önceden kontrol tamamen
+          // atlanıyordu: satırı olmayan bir slug'a mesaj yazılabiliyor ve
+          // sonra herkes tarafından okunabiliyordu (hayalet kanal).
+          if (!chRow) {
+            return res.status(404).json({ error: 'err_channel_not_found', message: 'Kanal bulunamadı' });
+          }
+          if (!(await userChannelRole(chRow, user.id))) {
+            return res.status(403).json({ error: 'err_channel_forbidden', message: 'Bu kanala erişim yetkiniz yok' });
+          }
         }
-        if (!(await userChannelRole(chRow, user.id))) {
-          return res.status(403).json({ error: 'err_channel_forbidden', message: 'Bu kanala erişim yetkiniz yok' });
-        }
+        channelFilter = {
+          channel: channelSlug,
+          ...gecmisSuzgeci(chRow ? await kanalGecmisBaslangici(chRow, user.id) : null),
+        };
+      } else {
+        // Kanal verilmediyse yalnızca okunabilir kanallar, kendi kesimleriyle
+        // (kart #119). Önceden alandaki bütün kanal dosyaları listeleniyordu,
+        // özel kanalınkiler dahil.
+        const kosullar = await okunabilirKanalKosullari(user);
+        if (kosullar.length === 0) return res.json([]);
+        channelFilter = { OR: kosullar };
       }
-      const channelFilter = channelSlug
-        ? { channel: channelSlug }
-        : {};
       messages = await prisma.chatMessage.findMany({
         where: {
           workspaceId: wsId,
