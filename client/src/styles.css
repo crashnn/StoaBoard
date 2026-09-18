@@ -7779,6 +7779,28 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
 .tl-undated {
   padding: 14px 20px 20px;
   border-top: 1px solid var(--line);
+  /* SINIRLI ve KENDİ İÇİNDE KAYIYOR (18 Eylül 2026, kullanıcı gerçek cihazda:
+     "çizelgeye kalan ekran çok dar, yukarı aşağı da yapamıyoruz").
+     Blok çizelgenin altında, aynı sütunda duruyor ve sınırı yoktu: içerik
+     kadar büyüyor, içeriğinin altına küçülemiyordu. 69 tarihsiz kartla bütün
+     alanı kaplıyor, çizelge (min-height: 0) SIFIRA sıkışıyor, taşan kısım da
+     kaydırılamıyordu. Yalnızca telefonda değil, kısa bir masaüstü penceresinde
+     de çizelgeyi eziyordu. Artık ekranın en fazla %30'unu alıyor. */
+  flex-shrink: 0;
+  max-height: 30vh;
+  max-height: 30dvh;
+  overflow-y: auto;
+}
+
+/* KISA EKRAN (yatay telefon, ~390px yükseklik): sabit üst çubuk, sekmeler ve
+   çizelge araç çubuğu yüksekliğin yarısını yiyor; kalan dar şeritte çizelge
+   kullanılamıyordu. Burada görünümün TAMAMI dikey kayıyor: çizelge ekranın
+   ~%75'ini alıyor, tarihsiz kartlar aşağıda kaydırarak ulaşılır. Tarihsiz
+   bloğun sınırı kalkıyor — kaydırma artık dış kapta. */
+@media (max-height: 500px) {
+  .timeline-view { overflow-y: auto; }
+  .timeline-grid { flex: none; height: 75vh; height: 75dvh; }
+  .tl-undated { max-height: none; overflow-y: visible; }
 }
 .tl-undated-title {
   display: flex;

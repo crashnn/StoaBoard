@@ -401,3 +401,32 @@ describe('tam sayfa sohbet — dar ekranda listeye ulaşılabiliyor (#240)', () 
       'JSX\'te karşılığı olmayan `.chat-fp-main-back` kuralı geri eklenmiş');
   });
 });
+
+// ─── Çizelge: tarihsiz blok çizelgeyi yemiyor (#195) ──────────────────────
+//
+// KUSUR (18 Eylül 2026, kullanıcı yatay telefonda): "çizelgeye kalan ekran
+// çok dar, yukarı aşağı da yapamıyoruz, dinamik değil." `.tl-undated` çizelgeyle
+// aynı sütunda, sınırsızdı: 69 tarihsiz kartla bütün alanı kaplıyor, çizelge
+// (min-height: 0) sıfıra sıkışıyor, taşan kısım kaydırılamıyordu.
+describe('çizelge — tarihsiz blok sınırlı, kısa ekranda görünüm kayıyor (#195)', () => {
+  const kural = (secici, bas = 0) => {
+    const i = CSS.indexOf(secici, bas);
+    assert.notEqual(i, -1, `${secici} bulunamadı`);
+    return CSS.slice(i, CSS.indexOf('}', i));
+  };
+
+  test('tarihsiz blok sınırlı ve kendi içinde kayıyor', () => {
+    const b = kural('.tl-undated {');
+    assert.match(b, /max-height:\s*30dvh/, 'tarihsiz blok sınırsız — çizelgeyi sıfıra sıkıştırır');
+    assert.match(b, /overflow-y:\s*auto/, 'tarihsiz blok kaymıyor — taşan kartlara ulaşılamaz');
+    assert.match(b, /flex-shrink:\s*0/, 'blok esnemeye açık; sınırı anlamsızlaşır');
+  });
+
+  test('kısa ekranda görünümün tamamı dikey kayıyor, çizelge yer alıyor', () => {
+    const bas = CSS.indexOf('@media (max-height: 500px)');
+    assert.notEqual(bas, -1, 'kısa ekran sorgusu yok — yatay telefonda çizelge dar şeritte kalır');
+    const blok = CSS.slice(bas, CSS.indexOf('\n}\n', bas));
+    assert.match(blok, /\.timeline-view\s*\{\s*overflow-y:\s*auto/, 'görünüm kısa ekranda kaymıyor');
+    assert.match(blok, /\.timeline-grid\s*\{[^}]*height:\s*75dvh/, 'çizelgeye kısa ekranda yer ayrılmıyor');
+  });
+});
