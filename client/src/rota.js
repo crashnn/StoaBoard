@@ -121,3 +121,49 @@ export function hatirlananGorunumuOku(depo = globalThis.localStorage) {
   if (altGorunum) depo.setItem('stoa.boardSubView', altGorunum);
   return gorunum;
 }
+
+// ── Girişten sonra dönülecek adres (kart #248, #228 devamı) ────────────────
+//
+// KUSUR: oturumu kapalı biri paylaşılan bir kart bağlantısıyla
+// (/pano/kart/193) gelince adres /giris yapılıyordu; giriş yapınca ilk yükleme
+// etkisi adreste kart GÖREMİYOR, bekleyen kartı siliyordu. Kullanıcı
+// hatırlanan ekrana düşüyor, paylaşılan bağlantının amacı boşa gidiyordu.
+//
+// Hedef bellekte değil `sessionStorage`da: giriş ekranında dil değiştirmek
+// sayfayı yeniliyor (views/auth.jsx switchLang, #192) ve bellekteki her şey
+// o anda kayboluyor. `localStorage` değil, çünkü hedef bu SEKMEYE ait —
+// sekme kapanınca ölmeli, yarın başka bir girişte beklenmedik bir kart
+// açılmamalı.
+//
+// Hedef yalnızca AÇILIŞTA yazılıyor, çıkışta değil: A çıkış yapınca ekrandaki
+// kartın adresi B'nin girişine taşınmasın. Okunurken yine doğrulanıyor —
+// depo kullanıcı denetiminde, tanınmayan bir yol hedef sayılmaz.
+
+const GIRIS_SONRASI = 'stoa.girisSonrasi';
+
+/** Açılış adresi uygulama içiyse hedef olarak yazar; değilse dokunmaz. */
+export function girisSonrasiKaydet(yol, depo = globalThis.sessionStorage) {
+  const p = normalle(yol);
+  if (yoldanDurum(p)) depo.setItem(GIRIS_SONRASI, p);
+}
+
+/** Bekleyen hedef (silmeden). Tanınmayan değer `null`. */
+export function girisSonrasiOku(depo = globalThis.sessionStorage) {
+  const deger = depo.getItem(GIRIS_SONRASI);
+  return deger && yoldanDurum(deger) ? normalle(deger) : null;
+}
+
+/** Hedef tek kullanımlık: oturum açılınca siliniyor. */
+export function girisSonrasiSil(depo = globalThis.sessionStorage) {
+  depo.removeItem(GIRIS_SONRASI);
+}
+
+/**
+ * Durumun kurulacağı yol. Adres kendisi bir yer söylüyorsa (uygulama içi ya
+ * da hukuki) o kazanır; söylemiyorsa (/giris, kök, tanınmayan) bekleyen hedef.
+ */
+export function baslangicYolu(adres, bekleyen) {
+  const p = normalle(adres);
+  if (yoldanDurum(p) || HUKUKI_YOLLAR.has(p)) return p;
+  return bekleyen && yoldanDurum(bekleyen) ? normalle(bekleyen) : p;
+}

@@ -10,7 +10,8 @@ import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
 import { NotifPanel, notifType } from './notifications.jsx';
 import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, panelGorunur } from './rozet.js';
-import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR, hatirlananGorunumuOku } from './rota.js';
+import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR, hatirlananGorunumuOku,
+  girisSonrasiKaydet, girisSonrasiOku, girisSonrasiSil, baslangicYolu } from './rota.js';
 import { komsuKartlar } from './komsu.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
@@ -75,7 +76,10 @@ function App() {
     // Adres bir görünümü söylüyorsa o kazanıyor (kart #228): yenilenen ya da
     // paylaşılan bağlantı doğru ekranı açmalı. Söylemiyorsa (kök, giriş,
     // tanınmayan adres) bugünkü gibi son ekran hatırlanıyor.
-    const adresten = yoldanDurum(path);
+    // Açılış adresi uygulama içiyse sekmeye hedef olarak yazılıyor (#248):
+    // misafirse adres birazdan /giris olacak ve kart ancak buradan bulunur.
+    girisSonrasiKaydet(path);
+    const adresten = yoldanDurum(baslangicYolu(path, girisSonrasiOku()));
     if (adresten) return adresten.gorunum;
 
     // Tek okuyucu (rota.js): eski 'list' göçü ve geçersiz kayıt orada.
@@ -210,8 +214,16 @@ function App() {
     } else if (!authed) {
       // Giriş ekranının adresi /giris: kök artık misafire vitrini veriyor
       // (app.js). Sorgu korunuyor ki ?join=KOD ve ?kayit=1 kaybolmasın.
-      if (window.location.pathname !== '/giris') {
-        window.history.pushState({}, '', `/giris${window.location.search}`);
+      //
+      // Hukuki sayfadan gelinmediyse kayıt DEĞİŞTİRİLİYOR, eklenmiyor (#248):
+      // misafirin gördüğü /pano/kart/193 değil giriş ekranı. Eklenseydi geri
+      // tuşu o adrese döner, adres yine /giris'e itilir ve misafir geri
+      // tuşuyla siteden bile çıkamazdı. Hukuki sayfadan gelen ise oraya geri
+      // dönebilmeli.
+      const simdiki = window.location.pathname;
+      if (simdiki !== '/giris') {
+        const yaz = HUKUKI_YOLLAR.has(simdiki) ? 'pushState' : 'replaceState';
+        window.history[yaz]({}, '', `/giris${window.location.search}`);
       }
     } else {
       localStorage.setItem('stoa.view', view);
@@ -272,7 +284,9 @@ function App() {
   // etkisinden ÖNCE çalışıyor ve o anda kart açık olmadığı için /pano/kart/5'i
   // /pano ile ezerdi — derin bağlantı kaybolurdu. Render sırasında dolu olunca
   // etki bekliyor.
-  const bekleyenKart = useRef(yoldanDurum(window.location.pathname)?.kart || null);
+  // Misafir kart bağlantısıyla geldiyse adres /giris olur; kart sekmedeki
+  // hedeften okunuyor (#248), yoksa giriş anında adres etkisi beklemez.
+  const bekleyenKart = useRef(yoldanDurum(baslangicYolu(window.location.pathname, girisSonrasiOku()))?.kart || null);
 
   // Adresteki kartı aç. Başarısızsa (silinmiş, erişim yok) adres panoya
   // çekiliyor — kullanıcı açılmayan bir kartın adresinde kalmasın.
@@ -288,13 +302,19 @@ function App() {
   // İlk yükleme: adres bir kart söylüyorsa, önyükleme bitince aç.
   useEf(() => {
     if (loading || !authed) return;
-    const adresten = yoldanDurum(window.location.pathname);
+    //
+    // Misafir kart adresiyle geldiyse adres artık /giris; hedef sekmede
+    // bekliyor (#248). Tek kullanımlık: okunur okunmaz siliniyor, yoksa
+    // sonraki bir girişte beklenmedik bir kart açılırdı.
+    const adresten = yoldanDurum(baslangicYolu(window.location.pathname, girisSonrasiOku()));
+    girisSonrasiSil();
+    // Görünüm de hedefe eşitleniyor: misafir girişten önce hukuki sayfayı açıp
+    // kapattıysa görünüm hatırlanan ekrana dönmüş olabilir.
+    if (adresten) setView(adresten.gorunum);
     if (adresten?.kart) {
       adrestekiKartiAc(adresten.kart);
     } else {
-      // Misafir kart adresiyle geldiyse giriş ekranı adresi /giris yaptı; kart
-      // artık adreste yok. Bekleyen kart temizlenmezse adres etkisi sonsuza
-      // kadar beklerdi.
+      // Bekleyen kart temizlenmezse adres etkisi sonsuza kadar beklerdi.
       bekleyenKart.current = null;
     }
   }, [loading, authed]);

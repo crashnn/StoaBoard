@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   GORUNUM_YOLLARI, durumdanYol, yoldanDurum, girisNoktasiMi,
+  girisSonrasiKaydet, girisSonrasiOku, girisSonrasiSil, baslangicYolu,
 } from '../../client/src/rota.js';
 import { yorumsuzDosya } from './yardimcilar.js';
 
@@ -132,7 +133,7 @@ describe('rota — app.jsx bağlantıları (#228)', () => {
   test('ilk yüklemede derin bağlantı ezilmiyor', () => {
     // Adres etkisi "kartı aç" etkisinden ÖNCE çalışıyor. Bekleyen kart
     // render sırasında adresten başlatılmazsa /pano/kart/5 /pano ile ezilir.
-    assert.match(APP, /const bekleyenKart = useRef\(yoldanDurum\(window\.location\.pathname\)\?\.kart \|\| null\);/,
+    assert.match(APP, /const bekleyenKart = useRef\(yoldanDurum\(baslangicYolu\(window\.location\.pathname, girisSonrasiOku\(\)\)\)\?\.kart \|\| null\);/,
       'bekleyen kart adresten başlatılmıyor — derin bağlantı ilk yüklemede kaybolur');
   });
 
@@ -142,5 +143,104 @@ describe('rota — app.jsx bağlantıları (#228)', () => {
     const onu = APP.slice(Math.max(0, bas - 200), bas);
     assert.match(onu, /if \(loading\) return;/,
       'yükleme kapısı kalkmış — giriş yapmış kullanıcı bir an /giris\'e itilir (#192)');
+  });
+});
+
+// ─── #248: misafir kart bağlantısıyla gelince girişten sonra o karta dönüş ───
+//
+// KUSUR: misafir /pano/kart/193 ile gelince adres /giris yapılıyordu; giriş
+// yapınca ilk yükleme etkisi adreste kart göremiyor, bekleyen kartı siliyordu.
+// Hedef sekmede (sessionStorage) tutuluyor: giriş ekranında dil değiştirmek
+// sayfayı yeniliyor ve bellekteki her şey kayboluyor.
+
+const sahteDepo = () => {
+  const m = new Map();
+  return {
+    getItem: (k) => (m.has(k) ? m.get(k) : null),
+    setItem: (k, v) => { m.set(k, String(v)); },
+    removeItem: (k) => { m.delete(k); },
+  };
+};
+
+describe('rota — girişten sonra dönülecek adres (#248)', () => {
+  test('yalnızca uygulama içi açılış adresi hedef olarak yazılıyor', () => {
+    for (const [yol, beklenen] of [['/pano/kart/193', '/pano/kart/193'], ['/raporlar', '/raporlar'], ['/pano/', '/pano']]) {
+      const d = sahteDepo();
+      girisSonrasiKaydet(yol, d);
+      assert.equal(girisSonrasiOku(d), beklenen, yol);
+    }
+    // Giriş, kök, hukuki ve tanınmayan adres hedef DEĞİL: /giris'te yenilenen
+    // sayfa bekleyen kartın üstüne yazmamalı.
+    for (const yol of ['/giris', '/', '/gizlilik-sartlari', '/xyz', '//evil.com/pano']) {
+      const d = sahteDepo();
+      d.setItem('stoa.girisSonrasi', '/pano/kart/7');
+      girisSonrasiKaydet(yol, d);
+      assert.equal(girisSonrasiOku(d), '/pano/kart/7', `${yol} bekleyen hedefi ezdi`);
+    }
+  });
+
+  test('okunan hedef doğrulanıyor — depo kullanıcı denetiminde', () => {
+    for (const bozuk of ['//evil.com', 'https://evil.com/pano', '/pano/kart/abc', '', 'javascript:alert(1)']) {
+      const d = sahteDepo();
+      d.setItem('stoa.girisSonrasi', bozuk);
+      assert.equal(girisSonrasiOku(d), null, `kabul edildi: ${bozuk}`);
+    }
+  });
+
+  test('hedef tek kullanımlık', () => {
+    const d = sahteDepo();
+    girisSonrasiKaydet('/pano/kart/5', d);
+    assert.equal(girisSonrasiOku(d), '/pano/kart/5', 'okumak silmemeli — açılışta iki kez okunuyor');
+    girisSonrasiSil(d);
+    assert.equal(girisSonrasiOku(d), null);
+  });
+
+  test('başlangıç yolu: adres bir yer söylüyorsa o, söylemiyorsa hedef', () => {
+    assert.equal(baslangicYolu('/giris', '/pano/kart/193'), '/pano/kart/193');
+    assert.equal(baslangicYolu('/', '/raporlar'), '/raporlar');
+    // Adres kendisi bir yer söylüyorsa bekleyen hedef onu EZMİYOR.
+    assert.equal(baslangicYolu('/sohbet', '/pano/kart/193'), '/sohbet');
+    assert.equal(baslangicYolu('/gizlilik-sartlari', '/pano/kart/193'), '/gizlilik-sartlari');
+    // Hedef yoksa ya da bozuksa adres olduğu gibi.
+    assert.equal(baslangicYolu('/giris', null), '/giris');
+    assert.equal(baslangicYolu('/giris', '//evil.com'), '/giris');
+  });
+});
+
+describe('rota — #248 app.jsx bağlantıları', () => {
+  const blok = (bas, son) => {
+    const i = APP.indexOf(bas);
+    assert.notEqual(i, -1, `blok başı yok: ${bas}`);
+    const j = APP.indexOf(son, i + bas.length);
+    assert.notEqual(j, -1, `blok sonu yok: ${son}`);
+    return APP.slice(i, j);
+  };
+
+  test('açılışta hedef yazılıyor ve görünüm ondan kuruluyor', () => {
+    const b = blok('const [view, setView]', 'const [tasks, setTasks]');
+    assert.match(b, /girisSonrasiKaydet\(path\)/, 'açılış adresi sekmeye yazılmıyor');
+    assert.match(b, /yoldanDurum\(baslangicYolu\(path, girisSonrasiOku\(\)\)\)/,
+      'görünüm bekleyen hedeften kurulmuyor — dil değişiminden sonra kart kaybolur');
+  });
+
+  test('oturum açılınca hedef okunup SİLİNİYOR ve kart açılıyor', () => {
+    const b = blok('if (loading || !authed) return;', '}, [loading, authed]);');
+    const oku = b.indexOf('yoldanDurum(baslangicYolu(window.location.pathname, girisSonrasiOku()))');
+    const sil = b.indexOf('girisSonrasiSil()');
+    const ac = b.indexOf('adrestekiKartiAc(adresten.kart)');
+    assert.ok(oku > 0, 'ilk yükleme hedefi okumuyor — girişten sonra kart açılmaz');
+    assert.ok(sil > oku, 'hedef okunduktan sonra silinmiyor — sonraki girişte beklenmedik kart açılır');
+    assert.ok(ac > oku, 'hedefteki kart açılmıyor');
+    assert.match(b, /if \(adresten\) setView\(adresten\.gorunum\);/, 'görünüm hedefe eşitlenmiyor');
+  });
+
+  test('misafirin /giris adresi uygulama adresinin YERİNE yazılıyor', () => {
+    // Eklenirse geri tuşu /pano/kart/193'e döner, adres yine /giris'e itilir:
+    // misafir geri tuşuyla siteden bile çıkamaz.
+    const b = blok('} else if (!authed) {', '} else {');
+    assert.match(b, /HUKUKI_YOLLAR\.has\(simdiki\) \? 'pushState' : 'replaceState'/,
+      'misafir için /giris her zaman ekleniyor — geri tuşu döngüye girer');
+    assert.match(b, /window\.history\[yaz\]\(\{\}, '', `\/giris\$\{window\.location\.search\}`\)/,
+      'seçilen yöntem giriş adresini yazan çağrıda kullanılmıyor');
   });
 });

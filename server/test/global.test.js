@@ -129,8 +129,10 @@ test('giriş ekranının adresi `authed` ile belirleniyor, ölü bir `view` değ
   // 3. Adres etkisi kimlik BİLİNMEDEN yazmamalı. Önyükleme sürerken `authed`
   //    false; o aralıkta adres yazılırsa giriş YAPMIŞ kullanıcı da bir an
   //    `/giris`e itilir ve geri tuşu onu giriş ekranına atar.
-  const i = kaynak.indexOf("window.history.pushState({}, '', `/giris");
-  assert.ok(i > 0, 'giriş adresini yazan pushState bulunamadı');
+  // Çapa yazılan ADRES, yazım yöntemi değil: #248'den beri hukuki sayfadan
+  // gelinmediyse replaceState, gelindiyse pushState — ikisi tek satırda.
+  const i = kaynak.indexOf('`/giris${window.location.search}`');
+  assert.ok(i > 0, 'giriş adresini yazan satır bulunamadı');
   const etkiBasi = kaynak.lastIndexOf('useEf(() => {', i);
   assert.ok(etkiBasi > 0, 'adres etkisinin başı bulunamadı');
   const etki = kaynak.slice(etkiBasi, i);
