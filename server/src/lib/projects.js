@@ -87,9 +87,13 @@ export async function nextTaskPosition(projectId, columnId) {
  * Aktivite log'u ekle (transaction yok — caller transaction içinden de çağırabilir).
  * Python _log_activity karşılığı.
  */
+// Satır kullanıcısıyla dönüyor: çağıran onu işlem kesinleşince
+// `etkinlikYayini` ile yayınlıyor (#259) ve activityToDict adı/slug'ı
+// kullanıcıdan okuyor.
 export async function logActivity(client, projectId, userId, text) {
   return client.activityLog.create({
     data: { projectId, userId, text },
+    include: { user: true },
   });
 }
 

@@ -2365,7 +2365,6 @@ window.DATA = {
   TASKS: [],
   NOTES: [],
   NOTIFICATIONS: [],
-  ACTIVITY: [],
   PROJECTS: [],
   WORKSPACE: {},
   WORKSPACES: [],

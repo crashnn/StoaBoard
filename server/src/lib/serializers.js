@@ -255,6 +255,9 @@ export function notificationToDict(n) {
 export function activityToDict(a) {
   const who = a.user?.name ? a.user.name.split(/\s+/)[0] : '';
   return {
+    // Satır kimliği: canlı eklenen hareket (#259) yeniden bağlanmada ya da
+    // önyüklemeyle çakışınca iki kez görünmesin; React anahtarı da bu.
+    id: a.id != null ? String(a.id) : null,
     who,
     // Kimlik. `who` ilk ada indirildiği için benzersiz değil; istemci
     // avatarı ve tam adı bununla buluyor (kart #202). Kullanıcı silinmişse null.

@@ -160,7 +160,9 @@ const SOZLESME = [
     ['id', 'unread', 'time', 'text', 'task_id', 'sender_slug', 'workspace_id',
       'chat_channel', 'message_id']],
   ['activityToDict', () => activityToDict({ user: KULLANICI, createdAt: new Date(), text: 'olay' }),
-    ['who', 'user_slug', 'time', 'text']],
+    // `id` (#259): canlı eklenen hareket tekilleştiriliyor. Tüketiciler:
+    // önyükleme (api.js), activity_new yayını (board.js), Ana Sayfa.
+    ['id', 'who', 'user_slug', 'time', 'text']],
   ['userToDict', () => userToDict(KULLANICI),
     ['id', 'name', 'role', 'initials', 'color', 'avatar_photo_url', 'status', 'away_timeout']],
   ['memberToDict', () => memberToDict(UYELIK),

@@ -21,7 +21,7 @@ import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { memberForWorkspace, hasPermission } from '../lib/workspace.js';
-import { panoYayini } from '../lib/board.js';
+import { panoYayini, etkinlikYayini } from '../lib/board.js';
 import {
   taskToDict,
   taskToDetailDict,
@@ -288,7 +288,7 @@ projectTasksRouter.post(
         }
       }
 
-      await logActivity(
+      const etkinlik = await logActivity(
         tx,
         projectId,
         user.id,
@@ -305,7 +305,7 @@ projectTasksRouter.post(
         toCol: col,
       });
 
-      return { task, notifsToPush };
+      return { task, notifsToPush, etkinlik };
     });
 
     // Notifs transaction dışında, çünkü createAndPush io.emit yapıyor.
@@ -320,6 +320,7 @@ projectTasksRouter.post(
     });
     const dict = taskToDict(full);
     panoYayini(io, 'task_created', project.workspaceId, { task: dict }, user.slug);
+    etkinlikYayini(io, project.workspaceId, created.etkinlik, user.slug);
     res.status(201).json(dict);
   }),
 );
@@ -419,6 +420,8 @@ tasksRouter.patch(
 
     // Column move (+ aktivite log + geçiş kaydı + ilerlemenin yeniden türetilmesi)
     let movedActivity = null;
+    // Yazılan hareket satırı — işlem kesinleşince yayınlanıyor (#259).
+    let tasinmaEtkinligi = null;
     let moveFromCol = null;
     let moveToCol = null;
     if ('col' in data) {
@@ -531,7 +534,7 @@ tasksRouter.patch(
       }
 
       if (movedActivity) {
-        await logActivity(tx, task.projectId, user.id, movedActivity);
+        tasinmaEtkinligi = await logActivity(tx, task.projectId, user.id, movedActivity);
       }
       // Geçiş kaydı: raporlamanın temel verisi. ActivityLog serbest metin ve
       // göreve bağlı değil; bu kayıt görev/kişi/kolon kırılımıyla sorgulanabilir
@@ -564,6 +567,7 @@ tasksRouter.patch(
     // Kolon değişimi de buradan geçiyor: taşıma ayrı bir uç değil, `col`
     // güncellemesi. Tek olay hepsini taşıyor.
     panoYayini(io, 'task_updated', project.workspaceId, { task: dict }, user.slug);
+    etkinlikYayini(io, project.workspaceId, tasinmaEtkinligi, user.slug);
     res.json(dict);
   }),
 );

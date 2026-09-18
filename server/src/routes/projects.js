@@ -18,7 +18,7 @@
 
 import { Router } from 'express';
 
-import { kolonlariYayinla } from '../lib/board.js';
+import { kolonlariYayinla, etkinlikYayini } from '../lib/board.js';
 import { kolonSlug } from '../lib/slug.js';
 
 import { prisma } from '../db.js';
@@ -294,6 +294,8 @@ projectsRouter.post(
       select: { slug: true },
     })).map((c) => c.slug));
 
+    // Yazılan hareket satırı — işlem kesinleşince yayınlanıyor (#259).
+    let kolonEtkinligi = null;
     const col = await prisma.$transaction(async (tx) => {
       const created = await tx.boardColumn.create({
         data: {
@@ -306,7 +308,7 @@ projectsRouter.post(
           isDone: Boolean(data.is_done),
         },
       });
-      await logActivity(
+      kolonEtkinligi = await logActivity(
         tx,
         projectId,
         user.id,
@@ -320,6 +322,7 @@ projectsRouter.post(
 
     const io = req.app.get('io');
     await kolonlariYayinla(io, access.project, user.slug);
+    etkinlikYayini(io, access.project.workspaceId, kolonEtkinligi, user.slug);
 
     // Kolon eklemek alanın ÖTEKİ üyelerine bildirim üretiyor — SESSİZCE.
     //

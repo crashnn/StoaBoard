@@ -6,7 +6,7 @@ import { Avatar, AvatarStack } from '../shell.jsx';
 import { fmtTimeAgo, renderActivityText } from '../data.jsx';
 import { sonGunlerdeTamamlanan } from '../sayim.js';
 
-function DashboardView({ tasks, onOpenTask, onView }) {
+function DashboardView({ tasks, etkinlik = [], onOpenTask, onView }) {
   const [teamSort, setTeamSort] = useDashState('open');
   const [teamSortOpen, setTeamSortOpen] = useDashState(false);
   const teamSortRef = useDashRef(null);
@@ -336,12 +336,12 @@ function DashboardView({ tasks, onOpenTask, onView }) {
             <div className="panel-title">{window.t('dash_activity')}</div>
           </div>
           <div className="panel-body">
-            {(DATA.ACTIVITY || []).length === 0 ? (
+            {etkinlik.length === 0 ? (
               <div className="dash-empty-state">
                 <Icon name="users" size={24} />
                 <div>{window.t('dash_no_activity')}</div>
               </div>
-            ) : (DATA.ACTIVITY || []).map((a, i) => {
+            ) : etkinlik.map((a, i) => {
               // KİMLİKLE eşleşiyor, ad önekiyle değil (kart #202). Sunucu `who`yu
               // İLK ADA indiriyor; alanda iki "Eray Atalay" varken ikisinin
               // hareketi de "Eray" yazıyor ve ÖNEKLE bulunan AYNI avatarla
@@ -351,7 +351,7 @@ function DashboardView({ tasks, onOpenTask, onView }) {
               const m = a.user_slug ? DATA.MEMBERS.find(mm => mm.id === a.user_slug) : null;
               const ad = m?.name || a.who;
               return (
-                <div className="activity-item" key={i}>
+                <div className="activity-item" key={a.id || i}>
                   <Avatar member={m || { initials: (a.who || '?')[0], color: 'var(--ink-faint)' }} size="sm" />
                   <div className="activity-body">
                     <div className="activity-text">

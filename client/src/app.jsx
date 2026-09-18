@@ -15,6 +15,7 @@ import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR, hatirlananGoru
   projeyiHatirla, hatirlananProje } from './rota.js';
 import { komsuKartlar } from './komsu.js';
 import { katmanYoneticisi } from './katman.js';
+import { etkinligeEkle } from './etkinlik.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
 import { TweaksPanel } from './tweaks.jsx';
@@ -173,6 +174,9 @@ function App() {
   // Ayarlar açılınca kaydırılacak bölüm (bildirimden gelindiğinde, #258).
   // Ayarlar bölüme gidince temizliyor; yoksa sonraki her açılışta oraya atlardı.
   const [ayarBolumu, setAyarBolumu]     = useS(null);
+  // Ana Sayfa hareket listesi (#259). Eskiden `window.DATA.ACTIVITY` idi:
+  // global değişince ekran yeniden çizilmiyor, canlı ekleme görünmezdi.
+  const [etkinlik, setEtkinlik]         = useS([]);
 
   const [unreadCounts, setUnreadCounts] = useS(() => {
     try { return JSON.parse(localStorage.getItem('stoa.unread') || '{}'); }
@@ -647,6 +651,15 @@ function App() {
         .catch(() => setTasks(prev => [...prev]));
     });
 
+    // Takım hareketleri (#259). YANKI ELENMİYOR, bilinçli olarak: yukarıdaki
+    // olaylarda eylemi yapanın ekranı iyimser güncellendi, burada güncellenmedi
+    // — hareket satırını sunucu kuruyor. Kendi taşıdığın kart da listede
+    // görünmeli. İki kez görünmesin diye tekilleştirme kimlikle (etkinlik.js).
+    sock.on('activity_new', ({ project_id, activity }) => {
+      if (!activity || String(project_id) !== String(window.CURRENT_PROJECT_ID)) return;
+      setEtkinlik(prev => etkinligeEkle(prev, activity));
+    });
+
     sock.on('task_comment', ({ task_id, actor }) => {
       if (!task_id || benimYankim(actor)) return;
       // Karttaki yorum sayacı. Açık çekmecenin kendi tazelemesi ayrı iş —
@@ -924,7 +937,7 @@ function App() {
     setIsOwner(!!(data.workspace?.is_owner));
     setWsLogoUrl(data.workspace?.logo_url || null);
     window.DATA.NOTIFICATIONS = data.notifications || [];
-    window.DATA.ACTIVITY      = data.activity      || [];
+    setEtkinlik(data.activity || []);
     window.CURRENT_USER       = data.user;
     window.CURRENT_PROJECT_ID = data.current_project;
     window.__CURRENT_WS_ID__  = data.workspace?.id || null;
@@ -1585,7 +1598,7 @@ function App() {
               />
             )}
             {!taskPageTask && view === 'calendar'  && <Lazy><CalendarView tasks={tasks} onOpenTask={openDrawer} onOpenModal={openModal} canCreateTasks={canManageTasks} /></Lazy>}
-            {!taskPageTask && view === 'dashboard' && <Lazy><DashboardView tasks={tasks} onOpenTask={openDrawer} onView={setView} /></Lazy>}
+            {!taskPageTask && view === 'dashboard' && <Lazy><DashboardView tasks={tasks} etkinlik={etkinlik} onOpenTask={openDrawer} onView={setView} /></Lazy>}
             {!taskPageTask && view === 'reports' && (
               <Lazy>
                 <ReportsView

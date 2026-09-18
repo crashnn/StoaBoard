@@ -89,7 +89,7 @@ describe('dashboard kaynakları doğru yere bağlı (#202)', () => {
   });
 
   test('etkinlik kişiyi kimliğiyle buluyor, ad önekiyle değil', () => {
-    const bas = DASH.indexOf('(DATA.ACTIVITY || []).map(');
+    const bas = DASH.indexOf('etkinlik.map(');
     assert.notEqual(bas, -1, 'etkinlik döngüsü bulunamadı');
     const blok = DASH.slice(bas, DASH.indexOf('activity-time', bas));
     assert.match(blok, /mm\.id === a\.user_slug/,

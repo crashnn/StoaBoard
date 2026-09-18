@@ -27,7 +27,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { panoYayini } from '../src/lib/board.js';
-import { yorumsuzDosya } from './yardimcilar.js';
+import { yorumsuzDosya, kaynakDosyalari } from './yardimcilar.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(__dirname, '..', 'src');
@@ -300,5 +300,93 @@ describe('"BEN" rozeti ve boşluğu aynı koşuldan (#268)', () => {
     assert.match(hepsi, /\.card\[data-ben="true"\] > \.card-tags/, 'etiket şeridi rozetin altına giriyor');
     assert.match(hepsi, /\.card\[data-ben="true"\] > \.card-title/, 'başlık rozetin altına giriyor');
     assert.doesNotMatch(hepsi, /data-mine/, 'boşluk yine data-mine\'a bağlı');
+  });
+});
+
+// Takım hareketleri canlı (#259). KUSUR (18 Eylül, sade tur 25): "A ile kart
+// taşıyınca takım hareketleri değişmedi … F5 attıktan sonra geldi." Liste
+// yalnızca önyüklemeden geliyordu ve `window.DATA.ACTIVITY` globalindeydi —
+// olay gelse bile global değişince ekran çizilmezdi. Üç şey ayrı ölçülüyor:
+// yayın kuralı, her hareket YAZARININ yayınlaması (işlem dışında), istemcinin
+// uygulaması.
+describe('takım hareketleri canlı (#259)', async () => {
+  const { etkinlikYayini } = await import('../src/lib/board.js');
+  const { etkinligeEkle, ETKINLIK_AZAMI } = await import('../../client/src/etkinlik.js');
+  const K = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const app = yorumsuzDosya(path.join(K, 'client', 'src', 'app.jsx'));
+
+  test('etkinlikYayini: alan odasına, projesi ve kimliğiyle', () => {
+    const io = sahteIo();
+    const satir = { id: 41, projectId: 7, text: '{}', createdAt: new Date(), user: { name: 'Eray Atalay', slug: 'eray' } };
+    assert.equal(etkinlikYayini(io, 15, satir, 'eray'), true);
+    assert.equal(io.cagrilar.length, 1);
+    const { oda, olay, govde } = io.cagrilar[0];
+    assert.equal(oda, 'ws_15');
+    assert.equal(olay, 'activity_new');
+    assert.equal(govde.project_id, '7');
+    assert.equal(govde.activity.id, '41', 'kimliksiz kayıt istemcide tekilleştirilemez');
+    assert.equal(govde.activity.user_slug, 'eray');
+    assert.equal(govde.actor, 'eray');
+    assert.equal(etkinlikYayini(sahteIo(), 15, null, 'eray'), false, 'satır yoksa yayın yok');
+  });
+
+  test('etkinligeEkle: başa, tekil, sunucuyla aynı sınır', () => {
+    const on = Array.from({ length: ETKINLIK_AZAMI }, (_, i) => ({ id: String(i) }));
+    const yeni = etkinligeEkle(on, { id: 'x' });
+    assert.equal(yeni[0].id, 'x');
+    assert.equal(yeni.length, ETKINLIK_AZAMI, 'liste sınırı aştı');
+    assert.equal(etkinligeEkle(on, { id: 3 }), on, 'aynı kimlik iki kez');
+    assert.equal(etkinligeEkle(on, { text: 'kimliksiz' }), on);
+    assert.deepEqual(etkinligeEkle(undefined, { id: 'a' }), [{ id: 'a' }]);
+    assert.equal(ETKINLIK_AZAMI, 10, 'sunucunun önyükleme sınırı (api.js take: 10) ile ayrıştı');
+  });
+
+  test('her hareket yazarı yayınlıyor — işlem kesinleştikten sonra', () => {
+    /** `{`den eşi olan `}`e kadar (yorumsuz kaynakta). */
+    const blokSonu = (src, ac) => {
+      let d = 0;
+      for (let i = ac; i < src.length; i += 1) {
+        if (src[i] === '{') d += 1;
+        else if (src[i] === '}') { d -= 1; if (d === 0) return i; }
+      }
+      return -1;
+    };
+    let yazar = 0;
+    for (const ad of ['tasks.js', 'projects.js']) {
+      const src = yorumsuzDosya(path.join(SRC, 'routes', ad));
+      const cagrilar = [...src.matchAll(/(\w+) = await logActivity\(/g)];
+      yazar += cagrilar.length;
+      assert.doesNotMatch(src, /[;{]\s*await logActivity\(/, `${ad}: hareket satırı yakalanmadan yazılıyor`);
+      const yayinlar = [...src.matchAll(/etkinlikYayini\(io, [^,]+, ([\w.]+), user\.slug\)/g)];
+      assert.equal(yayinlar.length, cagrilar.length, `${ad}: her hareket yazarına bir yayın düşmüyor`);
+      for (const y of yayinlar) {
+        const degisken = y[1].split('.').pop();
+        assert.ok(cagrilar.some((c) => c[1] === degisken), `${ad}: yayınlanan '${y[1]}' yazılan satır değil`);
+      }
+      for (const t of src.matchAll(/prisma\.\$transaction\(async \(tx\) => \{/g)) {
+        const ac = t.index + t[0].length - 1;
+        const govde = src.slice(ac, blokSonu(src, ac));
+        assert.doesNotMatch(govde, /etkinlikYayini\(/, `${ad}: yayın işlem içinde — geri alınırsa hayalet hareket`);
+      }
+    }
+    assert.equal(yazar, 3, 'hareket yazarı sayısı değişti (kart açma, taşıma, kolon) — yayını da ekle');
+    // Satır kullanıcısız dönerse yayındaki kayıt adsız/avatarsız çıkar.
+    const lib = yorumsuzDosya(path.join(SRC, 'lib', 'projects.js'));
+    const lb = lib.indexOf('export async function logActivity');
+    assert.match(lib.slice(lb, lib.indexOf('\n}', lb)), /include: \{ user: true \}/, 'logActivity kullanıcıyı döndürmüyor');
+  });
+
+  test('istemci: aktif projeye, yankı elenmeden, durumdan', () => {
+    const bas = app.indexOf("sock.on('activity_new'");
+    assert.ok(bas >= 0, 'activity_new dinlenmiyor');
+    const govde = app.slice(bas, app.indexOf('});', bas));
+    assert.match(govde, /String\(project_id\) !== String\(window\.CURRENT_PROJECT_ID\)/, 'başka projenin hareketi listeye giriyor');
+    assert.match(govde, /setEtkinlik\(prev => etkinligeEkle\(prev, activity\)\)/);
+    assert.doesNotMatch(govde, /benimYankim/, 'kendi hareketin görünmez olur — yankı burada iyimser uygulanmıyor');
+    assert.match(app, /setEtkinlik\(data\.activity \|\| \[\]\);/, 'önyükleme durumu doldurmuyor');
+    assert.match(app, /<DashboardView [^>]*etkinlik=\{etkinlik\}/);
+    for (const d of kaynakDosyalari(path.join(K, 'client', 'src'), /\.(jsx?|mjs)$/)) {
+      assert.doesNotMatch(yorumsuzDosya(d), /DATA\.ACTIVITY/, `${path.basename(d)}: global hareket listesi geri geldi — değişince çizilmez`);
+    }
   });
 });

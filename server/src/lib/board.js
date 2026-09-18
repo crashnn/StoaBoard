@@ -38,7 +38,33 @@
 
 import { prisma } from '../db.js';
 import { emitSafely } from './emit.js';
-import { columnToDict } from './serializers.js';
+import { columnToDict, activityToDict } from './serializers.js';
+
+/**
+ * Yeni hareket kaydını alanın odasına yayınlar (#259).
+ *
+ * KUSUR (18 Eylül 2026, sade tur 25): "A ile kart taşıyınca takım
+ * hareketleri değişmedi … F5 attıktan sonra geldi." Ana Sayfa'nın hareket
+ * listesi yalnızca önyüklemeden geliyordu, hiçbir olayla tazelenmiyordu.
+ *
+ * Kartın kendi olayından (task_updated) türetilmiyor: hareket metnini
+ * sunucu kuruyor (hangi kolona, hangi başlıkla) ve kaydın kimliği yalnızca
+ * burada var. İstemci aynı cümleyi ikinci kez kursaydı iki okuyucu olurdu.
+ *
+ * Çağıran bunu işlem KESİNLEŞTİKTEN SONRA yapar: içeride yayınlanan kayıt,
+ * işlem geri alınırsa var olmayan bir hareket olarak ekranda kalırdı.
+ * `project_id` gövdede: istemci yalnızca aktif projenin listesine ekliyor.
+ */
+export function etkinlikYayini(io, workspaceId, satir, actorSlug) {
+  if (!satir) return false;
+  return panoYayini(
+    io,
+    'activity_new',
+    workspaceId,
+    { project_id: String(satir.projectId), activity: activityToDict(satir) },
+    actorSlug,
+  );
+}
 
 /**
  * Pano olayını çalışma alanının odasına yayınlar.
