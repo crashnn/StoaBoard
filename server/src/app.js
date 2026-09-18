@@ -81,7 +81,24 @@ function loadIndexHtml() {
     if (config.isProduction) throw new Error('static/dist/index.html not found — run the client build first.');
     return '<html><body><pre>Dev mode: run "cd client && npm run build" first, then restart the server.</pre></body></html>';
   }
-  return fs.readFileSync(indexPath, 'utf8');
+  // Sayfayı sunan dağıtımın kimliği sayfanın içine gömülüyor (kart #201).
+  // İstemci bunu ölçüt alıyor: sonraki bir API yanıtı başka bir kimlik
+  // taşırsa sekme eski koddur. Ölçütün API'den değil SAYFADAN gelmesi şart —
+  // ilk API çağrısı dağıtımdan sonra düşerse ölçüt yeni, kod eski olurdu.
+  // Yalnızca TIRNAKLI belirteç: aynı satırda `window.__STOA_BUILD__` özellik
+  // adı da geçiyor ve düz `replace('__STOA_BUILD__')` ilk onu bulup değeri
+  // olduğu gibi bırakırdı — ilk yazımda tam bu oldu.
+  return fs.readFileSync(indexPath, 'utf8').replace("'__STOA_BUILD__'", `'${config.build}'`);
+}
+
+// index.html her zaman doğrulanarak alınmalı (kart #201): önceden yalnızca
+// zayıf ETag vardı ve tarayıcı sayfayı kendi sezgisiyle önbellekten
+// verebiliyordu — dağıtımdan sonra F5 bile eski paketi açabiliyordu.
+// `no-cache` "önbellekleme" değil "sormadan kullanma" demek; ETag ile
+// birlikte değişmemişse 304 döner, ağ maliyeti küçük.
+function sendIndex(res, html) {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.type('html').send(html);
 }
 
 export function createApp() {
@@ -134,6 +151,9 @@ export function createApp() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // Her yanıt dağıtım kimliğini taşır (kart #201); istemci sayfadaki
+    // ölçütle karşılaştırıp "yeni sürüm var, yenile" diyor.
+    res.setHeader('X-Stoa-Build', config.build);
     next();
   });
 
@@ -206,13 +226,13 @@ export function createApp() {
   app.get('/', (req, res) => {
     const oturumVar = Boolean(req.session?.userId);
     const davet = typeof req.query.join === 'string' && req.query.join.length > 0;
-    if (oturumVar || davet || !vitrinHtml) return res.type('html').send(indexHtml);
+    if (oturumVar || davet || !vitrinHtml) return sendIndex(res, indexHtml);
     res.type('html').send(vitrinHtml);
   });
 
   // Giriş ekranı: SPA. Oturum varsa da SPA gelir, istemci panoya geçer.
   app.get('/giris', (_req, res) => {
-    res.type('html').send(indexHtml);
+    sendIndex(res, indexHtml);
   });
 
   // --- OAuth keşif uçları: yok, ve bunu açıkça söyle ---
@@ -234,7 +254,7 @@ export function createApp() {
       res.status(404).json({ error: 'Not found' });
     } else {
       // SPA — bilinmeyen route'lar için index.html'i döndür
-      res.type('html').send(indexHtml);
+      sendIndex(res, indexHtml);
     }
   });
 

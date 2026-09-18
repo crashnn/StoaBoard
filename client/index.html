@@ -10,6 +10,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
+  // Sunucu sayfayı verirken dağıtım kimliğiyle değiştiriyor (kart #201).
+  // Vite geliştirme sunucusunda yer tutucu olduğu gibi kalır; istemci onu
+  // "ölçüt yok" sayar ve karşılaştırmaz.
+  window.__STOA_BUILD__ = '__STOA_BUILD__';
   window.__TWEAKS__ = {
     "theme": "cream",
     "accent": "navy",

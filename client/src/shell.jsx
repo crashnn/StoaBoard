@@ -25,7 +25,9 @@ function ToastContainer() {
     window.TOAST_LISTENER = (newToasts) => setToasts(newToasts);
     const interval = setInterval(() => {
       const now = Date.now();
-      window.TOAST_QUEUE = window.TOAST_QUEUE.filter(t => (now - (t._createdAt || now)) < 5000);
+      // Yapışkan bildirim (sürüm uyarısı, kart #201) kendiliğinden düşmez:
+      // beş saniyede kaybolan bir "yenile" uyarısı görülmeden gider.
+      window.TOAST_QUEUE = window.TOAST_QUEUE.filter(t => t.sticky || (now - (t._createdAt || now)) < 5000);
       if (window.TOAST_LISTENER) window.TOAST_LISTENER([...window.TOAST_QUEUE]);
     }, 400);
     return () => { clearInterval(interval); window.TOAST_LISTENER = null; };
@@ -38,6 +40,7 @@ function ToastContainer() {
 
   const handleClick = (toast) => {
     removeToast(toast.id);
+    if (toast.meta?.reload) { window.location.reload(); return; }
     if (toast.type === 'message' && window.__OPEN_CHAT__) {
       window.__OPEN_CHAT__(toast.meta?.dmWith || null, null, toast.meta?.channelSlug || null);
     }

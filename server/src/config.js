@@ -75,8 +75,16 @@ for (const uyari of mcpTokens.warnings) {
   else console.warn('[mcp] geçerli anahtar yok (STOA_MCP_TOKENS) — /mcp her isteği 401 ile reddedecek');
 }
 
+// Dağıtım kimliği (kart #201). Railway her dağıtımda commit özetini veriyor;
+// yoksa süreç başlangıç zamanı — yeniden başlatma da "yeni sürüm" sayılır,
+// zararsız (yenileyince aynı kod gelir). Sabit bir değer OLMAMALI: o zaman
+// hiçbir dağıtım fark edilmez ve kusur sessizce geri gelir.
+const build = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.STOA_BUILD || '').slice(0, 12)
+  || `t${Date.now().toString(36)}`;
+
 export const config = {
   isProduction,
+  build,
   port: parseInt(process.env.PORT || '5000', 10),
   secretKey: getSecretKey(),
   corsOrigins: splitOrigins(process.env.CORS_ORIGINS),

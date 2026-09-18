@@ -1,6 +1,7 @@
 // API client + DATA bootstrap
 
 import { bildirimMetni, etkinlikMetni, htmlCoz } from './bildirimMetni.js';
+import { surumOlcutu, yeniSurumVar } from './surum.js';
 
 const TR_MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -117,6 +118,28 @@ function renderActivityText(raw) {
 
 // ── API client ──────────────────────────────────────────────────────────────
 
+// ── Açık sekme dağıtımı fark ediyor (kart #201) ──────────────────────────
+//
+// 13 Eylül'de tek kaynak dağıtımından sonra açık bir sekme eski çekmeceyle
+// çalıştı ve dört işlemin dördü reddedildi; o gün kurtaran sunucunun ret
+// mesajıydı, tasarım değil. Ölçüt sayfanın içine gömülü dağıtım kimliği
+// (`window.__STOA_BUILD__`); her API yanıtı `X-Stoa-Build` taşıyor. İkisi
+// ayrışınca bir kez, kalıcı bir uyarı: "yeni sürüm var, yenile". Kendiliğinden
+// yenilemek YOK — kullanıcının yazdığı yorum ya da taslak giderdi.
+let surumUyarildi = false;
+export function surumKontrol(sunucuSurumu) {
+  const olcut = surumOlcutu(typeof window !== 'undefined' ? window.__STOA_BUILD__ : null);
+  if (surumUyarildi || !yeniSurumVar(olcut, sunucuSurumu)) return false;
+  surumUyarildi = true;
+  window.showToast?.({
+    message: window.t?.('app_new_version') || 'Yeni sürüm yayında — yenilemek için tıkla',
+    type: 'info',
+    sticky: true,
+    meta: { reload: true },
+  });
+  return true;
+}
+
 async function apiFetch(path, options = {}) {
   const opts = {
     ...options,
@@ -133,6 +156,7 @@ async function apiFetch(path, options = {}) {
     opts.body = JSON.stringify(opts.body);
   }
   const res = await fetch(path, opts);
+  surumKontrol(res.headers.get('X-Stoa-Build'));
   let data;
   try { data = await res.json(); } catch (_) { data = {}; }
   if (!res.ok) {
@@ -930,6 +954,7 @@ window.APP_I18N = {
     chat_channel_name_label:'Kanal adı',
     chat_media_empty:'Henüz paylaşılan medya yok.',
     chat_history_from:'Geçmiş, kanala katıldığın tarihten itibaren görünüyor:',
+    app_new_version:'Yeni sürüm yayında — yenilemek için tıkla',
     chat_media_photos:'Fotoğraflar', chat_media_videos:'Videolar', chat_media_files:'Dosyalar',
     chat_remove_channel_confirm:'kanalını silmek istediğinden emin misin?',
     chat_kick_member:'Kanaldan çıkar',
@@ -1849,6 +1874,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     chat_channel_name_label:'Channel name',
     chat_media_empty:'No shared media yet.',
     chat_history_from:'History is visible from the day you joined this channel:',
+    app_new_version:'A new version is live — click to reload',
     chat_media_photos:'Photos', chat_media_videos:'Videos', chat_media_files:'Files',
     chat_remove_channel_confirm:'Are you sure you want to delete channel',
     chat_kick_member:'Remove from channel',

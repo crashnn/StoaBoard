@@ -48,6 +48,7 @@ const BEKLENEN_DISARIDAN = new Set([
   'google',            // Google Sign-In betiği (index.html)
   // sunucudan gömülen, opsiyonel
   '__TWEAKS__',        // yoksa {} varsayılıyor — bilinçli
+  '__STOA_BUILD__',    // index.html'de atanıyor, sunucu değeri gömüyor (kart #201); yokluğu "ölçüt yok" — surum.test.js kilitliyor
 ]);
 
 function kaynakDosyalari(dir) {
