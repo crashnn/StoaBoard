@@ -405,7 +405,14 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   const members = (task.assignees || [])
     .map(id => DATA.MEMBERS.find(m => m.id === id))
     .filter(Boolean);
-  const col = DATA.COLUMNS.find(c => c.id === task.col) || { title_tr: task.col };
+  // Kolon listesi KARTIN projesinden (kart #154): ayrıntı sunucudan
+  // gelene kadar aktif projenin listesi (eski davranış), geldikten sonra
+  // kartın kendi projesininki. Rapordan ya da bildirimden açılan başka
+  // projenin kartında ad ham slug görünüyor, taşı menüsü yabancı kolonları
+  // sunuyordu — seçilirse sunucu kendi projesinde eşleşme aradığı için
+  // taşıma sessizce olmuyordu.
+  const kolonlar = Array.isArray(detail?.columns) && detail.columns.length ? detail.columns : DATA.COLUMNS;
+  const col = kolonlar.find(c => c.id === task.col) || { title_tr: task.col };
 
   // Kontrol listesi blokları gösterilmiyor ve geri saklanmıyor: yapılacaklar
   // aşağıdaki bölümde, alt görevlerden geliyor. Blok bir kez daha kaydedilseydi
@@ -572,7 +579,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
           </button>
           {statusOpen && canManageTasks && (
             <div className="custom-dropdown-menu">
-              {DATA.COLUMNS.map(c => (
+              {kolonlar.map(c => (
                 <button key={c.id} type="button" className={"custom-dropdown-item" + (c.id === task.col ? ' active' : '')}
                   onClick={() => { onMoveTask(task.id, c.id); setStatusOpen(false); }}>
                   {c.title_tr}

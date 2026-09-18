@@ -201,3 +201,37 @@ describe('istemci pano olaylarını dinliyor ve kendi yankısını eliyor', () =
       'kolon listesi uygulanmıyor');
   });
 });
+
+// ── Çekmece kolonları KARTIN projesinden (kart #154) ───────────────────────
+//
+// KUSUR (16 Eylül 2026): çekmece kolon adını ve "taşı" menüsünü aktif
+// projenin kolonlarından (DATA.COLUMNS) okuyordu. Rapor satırı ya da
+// bildirimden başka projenin kartı açılınca ad ham slug görünüyor, menü
+// yabancı kolonları sunuyordu; seçilince sunucu kendi projesinde eşleşme
+// aradığı için taşıma sessizce olmuyordu. Kolon listesi artık ayrıntıyla
+// birlikte sunucudan geliyor; çekmece varsa onu, yoksa eski listeyi okuyor.
+
+describe('çekmece kolonları kartın projesinden geliyor (#154)', () => {
+  const KOK154 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const TASKS = yorumsuzDosya(path.join(KOK154, 'server', 'src', 'routes', 'tasks.js'));
+  const DRAWER = yorumsuzDosya(path.join(KOK154, 'client', 'src', 'drawer.jsx'));
+
+  test('GET /tasks/:id kartın projesinin kolonlarını sırayla ekliyor', () => {
+    const i = TASKS.indexOf("tasksRouter.get(\n  '/:taskId',");
+    assert.notEqual(i, -1, 'GET /tasks/:id bulunamadı');
+    const b = TASKS.slice(i, TASKS.indexOf('tasksRouter.', i + 10));
+    assert.match(b, /where: \{ projectId: access\.task\.projectId \},\s+orderBy: \{ position: 'asc' \},/,
+      'kolonlar kartın projesinden sıralı okunmuyor');
+    assert.match(b, /columns: kolonlar\.map\(columnToDict\)/, 'kolonlar yanıta girmiyor');
+  });
+
+  test('çekmece ayrıntıdaki kolonları okuyor; ad da taşı menüsü de aynı listeden', () => {
+    assert.match(DRAWER, /const kolonlar = Array\.isArray\(detail\?\.columns\) && detail\.columns\.length \? detail\.columns : DATA\.COLUMNS;/,
+      'çekmece ayrıntıdaki kolon listesini kullanmıyor');
+    assert.match(DRAWER, /const col = kolonlar\.find\(c => c\.id === task\.col\)/, 'kolon adı hâlâ aktif projeden');
+    assert.match(DRAWER, /\{kolonlar\.map\(c => \(\s+<button key=\{c\.id\}/, 'taşı menüsü hâlâ aktif projeden');
+    // İki okuyucu kalmamalı: DATA.COLUMNS yalnızca yedek olarak, tek yerde.
+    const kullanim = (DRAWER.match(/DATA\.COLUMNS/g) || []).length;
+    assert.equal(kullanim, 1, `DATA.COLUMNS çekmecede ${kullanim} yerde okunuyor — yalnızca yedek olarak, tek yerde olmalı`);
+  });
+});

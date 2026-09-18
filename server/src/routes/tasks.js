@@ -27,6 +27,7 @@ import {
   taskToDetailDict,
   subtaskToDict,
   commentToDict,
+  columnToDict,
 } from '../lib/serializers.js';
 import {
   parseDate,
@@ -334,7 +335,16 @@ tasksRouter.get(
       include: TASK_FULL_INCLUDE,
     });
     if (access.denied) return;
-    res.json(taskToDetailDict(access.task));
+    // Kartın KENDİ projesinin kolonları ayrıntıyla birlikte gidiyor (kart
+    // #154). Çekmece kolon adını ve "taşı" menüsünü aktif projenin
+    // kolonlarından (DATA.COLUMNS) okuyordu; rapor satırı ya da bildirimden
+    // başka projenin kartı açılınca ad ham slug görünüyor, menü yabancı
+    // kolonları sunuyordu. Sunucu projeyi zaten biliyor — tek kaynak burası.
+    const kolonlar = await prisma.boardColumn.findMany({
+      where: { projectId: access.task.projectId },
+      orderBy: { position: 'asc' },
+    });
+    res.json({ ...taskToDetailDict(access.task), columns: kolonlar.map(columnToDict) });
   }),
 );
 
