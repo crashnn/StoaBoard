@@ -266,8 +266,10 @@
 [data-accent="slate"]      { --accent: var(--accent-slate); --accent-soft: oklch(50% 0.04 250 / 0.10); --accent-softer: oklch(50% 0.04 250 / 0.05); --accent-ink: oklch(35% 0.04 250); }
 [data-accent="indigo"]     { --accent: var(--accent-indigo); --accent-soft: oklch(52% 0.15 270 / 0.10); --accent-softer: oklch(52% 0.15 270 / 0.05); --accent-ink: oklch(38% 0.13 270); }
 [data-accent="plum"]       { --accent: var(--accent-plum); --accent-soft: oklch(50% 0.14 340 / 0.10); --accent-softer: oklch(50% 0.14 340 / 0.05); --accent-ink: oklch(35% 0.12 340); }
-/* Custom: --accent is set inline by JS; derivatives derive via color-mix */
+/* Ozel renk: JS ham degeri --accent-custom olarak veriyor (app.jsx); --accent
+   buradan turetiliyor ki koyu tema kurali ona dokunabilsin (kart #210). */
 [data-accent="custom"] {
+  --accent:        var(--accent-custom, var(--accent-navy));
   --accent-soft:   color-mix(in oklch, var(--accent) 10%, transparent);
   --accent-softer: color-mix(in oklch, var(--accent) 5%,  transparent);
   --accent-ink:    oklch(from var(--accent) calc(l - 0.12) c h);
@@ -293,6 +295,9 @@
 [data-theme="dark"][data-accent="indigo"]      { --accent: var(--accent-indigo); --accent-soft: oklch(70% 0.17 270 / 0.15); --accent-softer: oklch(70% 0.17 270 / 0.08); --accent-ink: #fff; }
 [data-theme="dark"][data-accent="plum"]        { --accent: var(--accent-plum); --accent-soft: oklch(70% 0.16 340 / 0.15); --accent-softer: oklch(70% 0.16 340 / 0.08); --accent-ink: #fff; }
 [data-theme="dark"][data-accent="custom"] {
+  /* Hazir renklerle ayni kural: koyu zeminde en az L %68. Kullanicinin secimi
+     zaten aciksa dokunulmuyor, koyuysa okunur duzeye cekiliyor. */
+  --accent:        oklch(from var(--accent-custom, var(--accent-navy)) max(l, 0.68) c h);
   --accent-soft:   color-mix(in oklch, var(--accent) 15%, transparent);
   --accent-softer: color-mix(in oklch, var(--accent) 8%,  transparent);
   --accent-ink:    #fff;

@@ -503,3 +503,37 @@ describe('sohbet balonunun içi rengini balondan alıyor', () => {
       + 'sınıfa taşı ki balon rengini miras alsın ve denetlenebilsin.');
   });
 });
+
+// ── Ozel vurgu rengi koyu temada da aciliyor (kart #210) ────────────────────
+//
+// KUSUR: hazir alti renk koyu temada bilerek aciliyor (L %68-72) ama "ozel
+// renk" secenegi `--accent`i JS ile satir ici yaziyordu ve CSS'in koyu tema
+// kurali ona hic dokunamiyordu. Koyu bir ozel renk koyu zeminde okunmuyordu.
+// Kural vardi, bir dalda uygulanmamisti. Cozum: JS ham degeri AYRI bir
+// degiskene (--accent-custom) yazar, --accent CSS'te ondan turetilir; koyu
+// temada acikligi en az 0.68'e ceken kural boylece ozel renge de uygulanir.
+
+describe('Ozel vurgu rengi — koyu temada da aciliyor (kart #210)', () => {
+  const APP = fs.readFileSync(path.join(KOK, 'client', 'src', 'app.jsx'), 'utf8');
+
+  test('JS ham rengi --accent-custom olarak veriyor, --accent olarak degil', () => {
+    assert.match(APP, /root\.style\.setProperty\('--accent-custom', tweaks\.accentHex\);/,
+      'ozel renk --accent-custom olarak verilmiyor — CSS kurali ona dokunamaz');
+    assert.doesNotMatch(APP, /setProperty\('--accent',/,
+      '--accent satir ici yaziliyor — koyu tema kurali ezilir');
+  });
+
+  test('acik temada --accent ham degerden turetiliyor', () => {
+    const blok = CSS.slice(CSS.indexOf('[data-accent="custom"] {'), CSS.indexOf('}', CSS.indexOf('[data-accent="custom"] {')));
+    assert.match(blok, /--accent:\s*var\(--accent-custom, var\(--accent-navy\)\);/,
+      'acik tema ozel renk blogu --accent turetmiyor');
+  });
+
+  test('koyu temada acikligi en az 0.68 — hazir renklerle ayni kural', () => {
+    const i = CSS.indexOf('[data-theme="dark"][data-accent="custom"] {');
+    assert.notEqual(i, -1);
+    const blok = CSS.slice(i, CSS.indexOf('}', i));
+    assert.match(blok, /--accent:\s*oklch\(from var\(--accent-custom, var\(--accent-navy\)\) max\(l, 0\.68\) c h\);/,
+      'koyu temada ozel renk acilmiyor — koyu secim koyu zeminde okunmaz');
+  });
+});

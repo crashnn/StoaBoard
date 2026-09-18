@@ -333,14 +333,18 @@ function App() {
   useEf(() => { document.documentElement.dataset.accent   = tweaks.accent;   }, [tweaks.accent]);
   useEf(() => { document.documentElement.dataset.fontpair = tweaks.fontPair; }, [tweaks.fontPair]);
   useEf(() => { document.documentElement.dataset.density  = tweaks.density;  }, [tweaks.density]);
-  // Custom accent: when accent === 'custom', apply the stored hex inline.
-  // Otherwise clear inline so preset/default CSS rules win.
+  // Özel vurgu rengi: seçilen hex `--accent-custom` olarak veriliyor, `--accent`
+  // olarak DEĞİL (kart #210). `--accent` doğrudan satır içi yazılınca CSS'in
+  // koyu tema kuralı ona hiç dokunamıyordu: hazır altı renk koyu zeminde
+  // açılıyor (L %68-72), özel renk olduğu gibi kalıyordu — koyu bir seçim
+  // koyu zeminde okunmuyordu. Ham değer ayrı değişkende durunca kural CSS'te
+  // tek yerden uygulanıyor (styles.css, [data-accent="custom"]).
   useEf(() => {
     const root = document.documentElement;
     if (tweaks.accent === 'custom' && tweaks.accentHex) {
-      root.style.setProperty('--accent', tweaks.accentHex);
+      root.style.setProperty('--accent-custom', tweaks.accentHex);
     } else {
-      root.style.removeProperty('--accent');
+      root.style.removeProperty('--accent-custom');
     }
   }, [tweaks.accent, tweaks.accentHex]);
 
