@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 18 Eylül 2026 öğlen, **ofis makinesinde** (5432 kapalı).
-En taze bölüm **0-AG**.
+**Son güncelleme:** 18 Eylül 2026 mesai sonu, **ofis makinesinde** (5432
+kapalı). En taze bölüm **0-AG** (öğleden sonra eki dahil).
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -97,21 +97,63 @@ açılmadı — bu cümlenin kendisi de ilk yazımda aynı tuzağa düştü). D�
 aracıyla doğrudan yapıldı. CLAUDE.md'nin "kaynak tarayan test yazarken
 kaçıştan kaçın" notu geçerli: karşılaştırmayı düz metinle yap.
 
+### Öğleden sonra eki (13:00–16:20) — iki oturum, kanal üstünden
+
+Testler **796 → 848**. Ev oturumu 13:20'de döndü; kullanıcı **"AI İletişim
+Kanalı - Köprü"** kanalını açtı ve kural koydu: **karta atanarak iş al,
+ikiniz de atanmışsanız durup bölüşün; her mesajda karşı tarafı @ ile an,
+gören hemen "ALINDI (msg id)" yazsın; ortak işi tek oturum yapsın.** Uzun
+kayıt #196'da, kısa koordinasyon kanalda. 16:12'de ev oturumu beklemeye
+alındı, işler ofiste.
+
+**Ofis (bu oturum):**
+
+| Commit | İş |
+|---|---|
+| `c6b8f0e` | **#201 açık sekme dağıtımı fark ediyor.** `X-Stoa-Build` her yanıtta; ölçüt SAYFAYA gömülü (`__STOA_BUILD__`, ilk API çağrısı dağıtımdan sonra düşerse ölçüt yeni/kod eski olurdu); index.html `no-cache`, tek `sendIndex`; kalıcı "yeni sürüm, yenile" bildirimi, kendiliğinden yenileme yok. Canlıda doğrulandı: `x-stoa-build` başlığı ve gömülü kimlik eşleşiyor. Tuzak: `replace('__STOA_BUILD__')` özellik adını buluyordu — tırnaklı belirteç |
+| `d4a4a37` | G turu bulgusu: `GET /chat/messages` `asc + take` ile EN ESKİ N'i seçiyordu; istemci limit vermediği için 100+ mesajlı kanal yeniden yüklemede yenileri hiç göstermezdi. `desc + take + reverse` |
+| `099588f` | **#153 lint 45+9 → 0+4**, `no-unused-vars` iki tarafta HATA (mutasyonla doğrulandı). Kalan 4 exhaustive-deps bilerek uyarı, gerekçe eslint.config.js'te |
+| `5b62bd6` | #218 kök `package-lock.json` (94 bayt, boş) silindi; sonraki dağıtım yeşil indi |
+| `a6eebaf` | #210 özel vurgu rengi koyu temada açılıyor: JS `--accent-custom` yazar, `--accent` CSS'te türetilir, koyu temada `max(l, 0.68)` |
+| `0aaa584` | #154 çekmece kolonları kartın KENDİ projesinden (`GET /tasks/:id` → `columns`); DATA.COLUMNS yalnızca yedek |
+| `3cfa5ec` | #215 `err_doc_checklist_retired` mesajı sunucuda `reqLang` ile iki dilde — uyumsuzluk reddi tanımı gereği eski pakete gider |
+| `819606b` | #119 eki: kesim notu yalnızca gerçekten gizlenen mesaj varsa (`history_hidden`, kanalın ilk mesajı < kesim). Mutasyon bir kaçak buldu: COALESCE dosya genelinde aranıyordu, GROUP BY kopyası aklıyordu |
+| `674c12f` | #250 kanal slug'ı (ev oturumundan devralındı): noktalı İ → i, ardışık tire tek. `tr-TR` BİLEREK yok ("AI" → "aı"). Mevcut slug'lara dokunulmadı (kullanıcı kararı) |
+| `cee3596` | **#245 aramada öneri.** Kullanıcı kararı: hareket kaydından türet, şema yok. Üç bölüm (son dokundukların / üzerindeki işler / hareketli 48 saat), kart yalnızca ilk uyduğu bölümde, bitmiş/çöpteki hiç girmez, NULL `is_done` bitmemiş. Uç `GET /workspaces/me/tasks/oneriler` (meTasksRouter, notes.js — api.js'e girilmedi, ev oradaydı). Saf kural `lib/oneri.js` |
+
+Kapanan/temizlenen kartlar: #234 (G turu koşuldu), #216 (ölçüldü, kusur
+değil: Prisma 5.22 çalışma zamanında `Json?` alana düz `null`ü kabul
+ediyor — MCP `create_task` bunu her gün yapıyor), #211 ve #125 (bayat,
+zaten yapılmıştı). #188'e durum notu (başlangıç varsayılanı `d064ff8` ile
+geldi, kalan soru karar).
+
+**Ev oturumu (aynı aralık):** `15e12e8` #202 ölü throughput hesabı silindi ·
+`7577a24` `stoa.view` tek okuyucu, hukuki sayfadan `'auth'` kalktı (yeni
+kilit `test/gezinme.test.js`: her `setView` hedefi çizilen bir görünüme
+varmalı) · `2f15346` #248 misafir kart adresiyle gelince girişten sonra o
+karta dönüş · `5c67ac9` #249 genel dışı kanalda "genel kanala yaz"
+demiyor · `8d46987` **#204 ikinci aşama**: aktif alan okurken yazılmıyor,
+`currentWorkspaceId` yalnızca `lib/workspace.js` içinde okunur
+(guvenlik.test.js kilitliyor). H turu (#247) A–C yapıldı, 16 kart
+Tamamlandı'ya; D (#201 sürüm uyarısı — bir sonraki dağıtımda) ve madde 18
+(#254) bekliyor.
+
 ### Kaldığı yer
 
+- **Ev oturumu BEKLEMEDE** (16:12), hiçbir karta atalı değil. Kanal
+  protokolü yukarıda; dönerse önce kanalı ve #196'yı okusun.
 - **Canlı doğrulama bekleyenler** (hepsi kartlarında adım adım yazılı):
   #228 geri tuşu (cihazda denenmedi), #195 çizelge (`c6704f7` sonrası),
   #240 mobil DM listesi, #238/#241/#242/#243, #119 (iki hesap gerekir), #200
   (e-posta), #246 (kullanıcı "geçiş yapıyor" dedi, altı adımın tamamı değil).
-- **G turu** (#234, MCP sohbet köprüsü) hâlâ koşulmadı. Bu oturum 23 aracı
-  GÖRÜYOR (0.7.0 dağıtımından sonra açıldı) — koşulabilir. F (mobil) 0-AF'de
-  fiilen koşuldu.
+- G turu koşuldu, #234 kapandı; bulgusu `d4a4a37`.
 - **Kullanıcı kararı bekleyenler:** #117 proje bazlı üyelik (çöp kutusu notu
   kartta), #131 blok düzenleyici (alt görev 130: Notion'da hangi bloklar),
   #199 veri onarımı (canlıda ölçüm gerekiyor, 5432), #198/#237 şema (elle
   SQL), #197 DNS, #203 GitHub faturalandırma.
-- **Ofis makinesinde alınabilir işler:** #201 açık sekme dağıtımı fark
-  etmiyor, #153 lint uyarıları (45 + 9), #124 uç testleri.
+- **Ofis makinesinde alınabilir işler:** #124 uç testleri, #213 MCP
+  pürüzleri, #208 roller iki dilli. #117/#118 çift atanmış — karar gelene
+  kadar atama kaldırılsın önerisi kanalda cevap bekliyor.
 - İncelemede'de **20'den fazla kart** birikti; süpürme turu bekliyor.
 - Ev oturumu 13:20'de dönerse: **#196'nın son yorumunu oku** — dosya listesi
   orada. DEVIR 0-AF'ye dokunulmadı; bayatlığı bu bölüm kapatıyor.
