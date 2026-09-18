@@ -327,6 +327,18 @@ gövdesi, fonksiyonun kendisi, kuralın süslü parantezi), sonra o blok içinde
 ara. Sayı kullanacaksan neyi saydığını yaz: "her dalda bir tane" ölçülebilir,
 "en az bir tane" ölçülemez.
 
+**Bir şeyin TÜRÜNÜ değiştirdiysen bildirimini değil KULLANIMLARINI ölç.**
+18 Eylül 2026: sohbet taslak deposu `useChatRef(new Map())`ten modül kapsamına
+taşındı. Test üç ölçütle bildirimi kilitliyordu (yeni biçim var mı, kullanılıyor
+mu, eski biçim geri gelmiş mi) ve üçü de yeşildi. İki çağrı yeri `.current` ile
+kalmıştı: `taslaklar.current.set(...)`. `.current` undefined, sohbet hedefi her
+değiştiğinde panel çöküyordu — DM tamamen kırıktı ve kimse fark etmedi, çünkü
+bildirim doğruydu. Bildirim tek satır, kullanım her yerde.
+
+Ölçüt artık kullanımı yasaklıyor: `taslaklar.current` kaynakta hiç geçmemeli.
+Bir alanın türünü değiştirirken sor: **eski türe göre yazılmış kaç okuyucu var**
+ve hangisi testin gördüğü yerde değil?
+
 Mutasyon turuna bir de **aklama denemesi** ekle: ölçütün aradığı metni dosyada
 bırak ama korumadığı bir yere taşı. Test yine kırılmalı. Kırılmıyorsa ölçüt
 metni arıyordur, davranışı değil (17 Eylül, `mobil.test.js`).

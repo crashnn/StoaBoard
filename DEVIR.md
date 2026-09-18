@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 17 Eylül 2026 akşamı, **ev makinesinde** (kullanıcı
-uzaktan bağlı; 5432 açık). En taze bölüm **0-AE**.
+**Son güncelleme:** 18 Eylül 2026 sabahı, **ev makinesinde** (kullanıcı
+uzaktan bağlı; 5432 açık). En taze bölüm **0-AF**.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,104 @@ uzaktan bağlı; 5432 açık). En taze bölüm **0-AE**.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AF. 17 Eylül gecesi – 18 Eylül sabahı — gerçek cihaz turu, on commit
+
+**Ev makinesi, kullanıcı telefonundan canlı test ediyor.** Testler
+**670 → 736**. On commit `main`e gitti, hepsi canlıda. Bu turun tamamı
+kullanıcının gerçek cihazda bulduğu kusurlardan doğdu.
+
+### Kapananlar
+
+| Commit | İş |
+|---|---|
+| `6ff93d4` | Yorumdaki @bahsetme kimseye ulaşmıyordu (#235'in bir parçası) |
+| `bfe5839` | Kart açıklaması tek paragrafa çöküyordu (#241) |
+| `a13fc0e` | Zildeki nokta ters mantıktaydı (#242) |
+| `5bdc969` | Denetim kaydında yazılar üst üste biniyordu (#243) |
+| `4ddc2f3` | **Pano gerçek zamanlı oldu** (#235) |
+| `d064ff8` | Kolon bildirimi (sessiz) + başlangıç tarihi varsayılanı |
+| `783300a` | Kaplama katmanı ErrorBoundary'ye alındı (#244) |
+| `960aa55` | Sarkan kart numaraları düzeltildi |
+| `a28b644` | Mobilde sürükle-kapat (#238) |
+| `2d2ba93` | **DM'ye geçince sohbet paneli çöküyordu** (#240) |
+
+### En önemli iki bulgu
+
+**1. Pano hiç gerçek zamanlı değildi** (#235). `routes/projects.js` ve
+`routes/tasks.js` TEK BİR soket olayı yayınlamıyordu, istemci de hiçbir pano
+olayı dinlemiyordu. Ürünün iddiası "gerçek zamanlı proje yönetimi"ydi ama
+gerçek zamanlı olan tek şey sohbetti.
+
+Kartta ofis oturumunun bıraktığı hipotez (`io` geçirilmiyor) ÖLÇÜLDÜ ve
+YANLIŞ çıktı: `io` her çağrı yerinde geçiyor, soket `user_<id>` odasına
+katılıyor. Kullanıcının cümlesi teşhisin kendisiydi: "kolon, comment F5 istiyor
+**görünmek** için" — eksik olan bildirim değil, NESNENİN KENDİSİYDİ.
+
+Yeni: `server/src/lib/board.js`, on bir yayın noktası, beş istemci dinleyicisi.
+**#117 (proje bazlı üyelik) geldiğinde `ws_` odası daraltılmalı** — dosyanın
+başında borç senedi olarak yazılı.
+
+**2. Bir panelin hatası bütün uygulamayı götürüyordu** (#244). `TaskDrawer`,
+`ChatPanel`, `NotifPanel`, `AddTaskModal`, `CommandPalette` — beşi de
+`ErrorBoundary` DIŞINDA render ediliyordu. `ErrorBoundary`nin kendi açıklaması
+bu kusuru birebir tarif ediyordu; ders 2 Eylül'de GÖRÜNÜMLER için öğrenilmiş,
+kaplama katmanı atlanmıştı.
+
+Aynı commit **hata metnini ekrana** yazdı. Bu, bir sonraki kusuru bir dakikada
+kapattı: kullanıcı raporları telefondan geliyor ve orada konsol açılamıyor.
+
+### #240 — kendi kusurum, kendi testimin kaçırdığı
+
+`chat.jsx:1807/1809` `taslaklar.current.set(...)` çağırıyordu. Taslak deposu
+17 Eylül'de (`354bd0c`) ref'ten MODÜL KAPSAMINA taşınmıştı; bildirim
+çevrilmiş, iki çağrı yeri `.current` ile kalmıştı.
+
+Etki yalnızca sohbet HEDEFİ değiştiğinde çalışıyor — kanaldan DM'ye, DM'den
+kanala. Yani **DM tamamen kırıktı**, yalnızca bahsetme yolu değil. Kullanıcı
+ikisini ayrı ayrı bildirdi, ikisi de aynı satırmış.
+
+Testim depoyu BİLDİRİMİNDEN kilitliyordu, kullanım yerlerine hiç bakmıyordu.
+Yeni ölçüt: `taslaklar.current` kaynakta hiç geçmemeli.
+
+**Ders, CLAUDE.md'ye eklenmeye değer:** bir şeyin TÜRÜNÜ değiştirdiysen
+bildirimini değil KULLANIMLARINI ölç.
+
+### Testin kendisi bu turda ALTI kez yanlış ölçtü
+
+Hepsini mutasyon buldu, hiçbirini test koşusu. Sayısı kayda değer çünkü
+CLAUDE.md'ye 17 Eylül'de eklenen "ölçüt koruduğu satıra bağlanmalı" kuralı
+tam bu ailenin kuralı ve yazıldıktan sonra bile altı kez düşüldü:
+
+1. `\r\n` dönüşümü — alt satırdaki `\r` dönüşümü onu örtüyordu
+2. iç içe parantez — `[^)]*` `req.app.get('io')`u geçemiyor
+3. kolon bildirimi — sözleşme testi haklı olarak susuyordu, koruyan test yoktu
+4. aynı blokta iki üretici — `logActivity` bildirimi akladı
+5. `indexOf` ilk eşleşme — panellerin görünüm içindeki kopyaları ölçülüyordu
+6. alt dize eşleşmesi — `/\.drawer-grab/` `.drawer-grab-XX`i de eşliyordu
+
+**Devralan için:** mutasyon turunu atlama. Bu turda yazılan testlerin üçte
+biri ilk hâlinde yanlış şeyi ölçüyordu.
+
+### Kaldığı yer
+
+- **#240 DOĞRULAMA BEKLİYOR** — düzeltme canlıda ama kullanıcı henüz denemedi.
+  Kanaldan DM'ye geçiş ve bahsetmeden DM açma, ikisi de sınanmalı.
+- **#238 sürükle-kapat** doğrulama bekliyor (tutamak çubuğu görünüyor mu,
+  eşik altında yaylanıyor mu).
+- **#241, #242, #243** gerçek cihaz doğrulaması bekliyor.
+- **#235** kartın son maddesi kapandı ama pano gerçek zamanlılığı iki hesapla
+  sınanmadı.
+- **F ve G turları** hâlâ koşulmadı (#234). G, MCP köprüsü — yeni sohbet ister.
+- **#228** mobil geri tuşu, üç karar bekliyor. **#239** app yönü (öneri: PWA,
+  ön koşulu #228).
+- Şema kartları **#237, #198, #191** ve **#199** veri onarımı — canlı veri
+  yazımı, önce DENEME çıktısı + kullanıcı onayı.
+- **#197** DNS — Railway kullanıcının değil.
+- İncelemede kolonunda **20'ye yakın kart** birikti; çoğu fiilen kapalı ama
+  Tamamlandı'ya taşınmadı. Bir süpürme turu panoyu dürüst tutar.
 
 ---
 
