@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 18 Eylül 2026 sabahı, **ev makinesinde** (kullanıcı
-uzaktan bağlı; 5432 açık). En taze bölüm **0-AF**.
+**Son güncelleme:** 18 Eylül 2026 öğlen, **ofis makinesinde** (5432 kapalı).
+En taze bölüm **0-AG**.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,106 @@ uzaktan bağlı; 5432 açık). En taze bölüm **0-AF**.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AG. 18 Eylül öğlen — ofis turu: kart geçişi, kanal geçmişi kesimi, tek bildirim üreticisi
+
+**Ofis makinesi, 5432 kapalı.** Ev oturumu 0-AF'yi 08:49'da yazdıktan sonra
+altı commit daha attı ve `56b5285`i push ettikten SONRA kotaya takıldı
+(13:20'de yeniliyor). Mahsur iş yoktu; **0-AF'nin "kaldığı yer" listesi o altı
+commit'i görmüyor**, güncel hâli aşağıda. Testler **768 → 796**, üç commit.
+
+### 0-AF'den sonra, ev oturumu (08:49–10:19)
+
+| Commit | İş |
+|---|---|
+| `b580127` | #240'ın kalan yolu: mobil tam sayfa sohbette DM listesine ulaşılamıyordu (sol sütun gizli, geri düğmesi çıkarıyordu). Mobilde iki panel: liste ↔ konuşma. Ölü CSS kuralı silindi |
+| `479a8e4` | #195 çizelge yatay telefonda kapalıydı: ölçüt genişlik değil "dar VE dikey" |
+| `c6704f7` | #195 tarihsiz blok çizelgeyi sıfıra sıkıştırıyordu (69 kart); en fazla 30dvh + kısa ekranda görünüm dikey kayıyor. Dürüst not: yatay telefonda "kullanılabilir", rahat değil |
+| `8d23490` | #202 dashboard denetimi: uydurma veri YOK ama tamamlanma tanımı raporlardan ayrışıyordu (hareket günlüğü vs `completed_at`); tek tanım `client/src/sayim.js` |
+| `56b5285` | **#228 görünüm başına adres.** Türkçe yollar, `/pano/kart/193`; geri tuşu kartı kapatır, siteden atmaz. `client/src/rota.js` saf, 15 test, 9/9 mutasyon |
+
+### Bu turda kapananlar (ofis)
+
+**`9670bf5` — #246 çekmecede kartlar arası geçiş.** Kullanıcı Backlog
+kartlarına yorum yazarken istedi: "ileri geri, çekmecedeki kart değişecek,
+tüm kolonların kendi içinde". Başlıkta `‹ 3/28 ›`, klavyede düz ← / →
+(kullanıcı "seçili değilse bir yer" dedi; bir alan düzenlenirken ok tuşu
+imleci taşır, karta dokunmaz). Kural saf: `client/src/komsu.js` — aynı kolon,
+aynı proje, `tasks` dizisinin sırası (Kanban da aynı diziyi aynı sırayla
+çiziyor). Kolon sonunda durur. **Yorum taslağı karta bağlı** — A'da yazıp
+B'ye geçince taslak A'da bekler. **Adres geçişte değiştiriliyor** (#228 ile
+uyum): on kart gezip X'e basınca geri tuşu panoya döner, bir önceki karta
+değil. 11 test, 12/12 mutasyon. **Kullanıcı canlıda denedi: "Geçiş yapıyor."**
+
+**`9bf8b58` — #119 kanal geçmişi kesimi.** Kart 15 Eylül'den beri karar
+bekliyordu; kullanıcı yorumla verdi: **katılım anından itibaren** (e-posta
+örneği). **Şema değişmedi** — `channel_members.joined_at` zaten var ve her
+kanal üyeliği açık satırla kuruluyor. Tek boşluk: üye katılmadan ÖNCE açılmış
+herkese açık kanal (onay yalnızca "genel"e ekliyordu). İki katman: yedek
+ölçüt onaylanmış katılım isteğinin zamanı; onay artık BÜTÜN herkese açık
+kanallara satır yazıyor. Kaynak yoksa (kurucu) kesim yok — kararın kendisi.
+DM'de kesim yok. **Beş okuma yolunun beşi** kesime bağlı: mesaj listesi,
+sabitlenmişler (tek + tümü), medya (tek + tümü), kanal listesindeki son mesaj
+önizlemesi. İstemcide sessiz not: "Geçmiş, kanala katıldığın tarihten
+itibaren görünüyor: 12 Eylül 2026".
+
+**Yol üstünde güvenlik kusuru:** `GET /chat/pinned?scope=all` ve kanalsız
+`GET /chat/media` kanal üyeliğine HİÇ bakmıyordu — özel kanalın sabitlenmiş
+mesajları ve dosyaları alandaki herkese listeleniyordu. Tek kanal yollarında
+kapı vardı, çok kanallı yollarda yoktu. Aynı commit'te kapandı;
+`okunabilirKanalKosullari(user)` yalnızca erişilebilir kanallardan kuruyor.
+13 test, 13/13 mutasyon.
+
+Push'tan önce ölçülen risk: `joined_at` değerleri Flask döneminden mi?
+Evet — aynı Neon veritabanı, şema introspect edilmiş (sütun adları birebir,
+`@db.Timestamp(6)`), yani katılım anları gerçek, taşınma tarihi değil.
+
+**`a042bb5` — #200 soket yolu bildirimi createAndPush'tan.** `sockets/chat.js`
+DM ve bahsetme bildirimini doğrudan `prisma.notification.create` ile yazıp
+elle emit ediyordu; e-posta yalnızca `createAndPush`ta. REST'ten gelen
+bahsetme posta üretiyordu, soketten gelen üretmiyordu. **#193'ün `read:
+false` düzeltmesi de soket yolunu kapsamıyordu** — soket bildirimleri NULL
+doğmaya devam ediyordu. İki yolun alan kümesi de eşitlendi. Tuzak:
+`chat_channel` sütunu `VarChar(20)`, slug 80'e kadar — gerçek slug yazmak
+uzun adlı kanalda mesaj göndermeyi kırardı; alan istemcide okunmuyor, tür
+işareti olarak kaldı. 4 test, 5/5 mutasyon.
+
+### Ortam tuzağı: Python mutasyon betiği cp1252'de sessizce ölüyor
+
+Mutasyon betikleri Python'da yazılıyor ve Windows konsolu cp1252. İlk
+"YAKALANDI ... kalktı" satırındaki **ı** harfi `UnicodeEncodeError` verdi;
+betik iki kez öldü, çıktı tamponda kaldığı için "bitti mi?" sorusuna cevap
+yoktu. Dosyalar `finally` ile geri geldi (zarar yok). Çözüm:
+`PYTHONIOENCODING=utf-8 python -u betik.py`. Bir de bu makinede tek test
+dosyası koşusu ~27 sn (node açılışı yavaş): 12 mutasyon ≈ 6 dk, arka planda
+koş, `until grep SONUC` ile bekle.
+
+Kaçış tuzağı bu turda **iki kez daha** ısırdı (Python yazma katmanı ters
+bölü-tırnak ve ters bölü-w kaçışlarını yuttu, test dosyası sözdizimi hatasıyla
+açılmadı — bu cümlenin kendisi de ilk yazımda aynı tuzağa düştü). Düzeltme Edit
+aracıyla doğrudan yapıldı. CLAUDE.md'nin "kaynak tarayan test yazarken
+kaçıştan kaçın" notu geçerli: karşılaştırmayı düz metinle yap.
+
+### Kaldığı yer
+
+- **Canlı doğrulama bekleyenler** (hepsi kartlarında adım adım yazılı):
+  #228 geri tuşu (cihazda denenmedi), #195 çizelge (`c6704f7` sonrası),
+  #240 mobil DM listesi, #238/#241/#242/#243, #119 (iki hesap gerekir), #200
+  (e-posta), #246 (kullanıcı "geçiş yapıyor" dedi, altı adımın tamamı değil).
+- **G turu** (#234, MCP sohbet köprüsü) hâlâ koşulmadı. Bu oturum 23 aracı
+  GÖRÜYOR (0.7.0 dağıtımından sonra açıldı) — koşulabilir. F (mobil) 0-AF'de
+  fiilen koşuldu.
+- **Kullanıcı kararı bekleyenler:** #117 proje bazlı üyelik (çöp kutusu notu
+  kartta), #131 blok düzenleyici (alt görev 130: Notion'da hangi bloklar),
+  #199 veri onarımı (canlıda ölçüm gerekiyor, 5432), #198/#237 şema (elle
+  SQL), #197 DNS, #203 GitHub faturalandırma.
+- **Ofis makinesinde alınabilir işler:** #201 açık sekme dağıtımı fark
+  etmiyor, #153 lint uyarıları (45 + 9), #124 uç testleri.
+- İncelemede'de **20'den fazla kart** birikti; süpürme turu bekliyor.
+- Ev oturumu 13:20'de dönerse: **#196'nın son yorumunu oku** — dosya listesi
+  orada. DEVIR 0-AF'ye dokunulmadı; bayatlığı bu bölüm kapatıyor.
 
 ---
 
