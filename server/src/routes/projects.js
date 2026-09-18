@@ -19,6 +19,7 @@
 import { Router } from 'express';
 
 import { kolonlariYayinla } from '../lib/board.js';
+import { kolonSlug } from '../lib/slug.js';
 
 import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
@@ -285,12 +286,19 @@ projectsRouter.post(
       select: { position: true },
     });
     const pos = last ? (last.position || 0) + 1 : 0;
+    // Adres projenin MEVCUT adresleriyle çakışmamalı (lib/slug.js, #251 aile
+    // taraması): şemada tekillik yok ve aynı adla ikinci kolon panoda
+    // görünmüyordu. "İ", kırpma (VarChar 60) ve noktalama da oradan.
+    const mevcutSluglar = new Set((await prisma.boardColumn.findMany({
+      where: { projectId },
+      select: { slug: true },
+    })).map((c) => c.slug));
 
     const col = await prisma.$transaction(async (tx) => {
       const created = await tx.boardColumn.create({
         data: {
           projectId,
-          slug: title.toLowerCase().replace(/\s+/g, '-'),
+          slug: kolonSlug(title, mevcutSluglar),
           title,
           titleTr: data.title_tr || title,
           color: data.color || 'oklch(55% 0.02 250)',

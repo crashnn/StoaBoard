@@ -36,13 +36,28 @@ export function userToDict(user) {
   };
 }
 
+/** Türkçe harflerin ASCII karşılığı — kullanıcı adresi bilerek yalnızca ASCII. */
+const TR_ASCII = {
+  ç: 'c', Ç: 'c', ğ: 'g', Ğ: 'g', ı: 'i', İ: 'i', ö: 'o', Ö: 'o', ş: 's', Ş: 's', ü: 'u', Ü: 'u',
+};
+
 /**
  * "Ali Veli" → "ali-veli" (sadece a-z, 0-9, tire)
  * Python karşılığı: register() içindeki slug üretimi
+ *
+ * KUSUR (kart #251, 18 Eylül 2026): Türkçe harfler Latin karşılığına
+ * ÇEVRİLMİYOR, SİLİNİYORDU — "Ayşe Iğdır" → "aye-idr", "İsmail Öztürk" →
+ * "ismail-ztrk". Adres @bahsetmede ve MCP'de (atama, list_members) kişinin
+ * adı yerine geçiyor; Türkçe adlı yeni üye tahmin edilemez bir adla
+ * anılıyordu. Harf çevirisi silmeden ÖNCE; ardışık tire tek tireye iner.
+ * Kanal adresinden (#250) farkı: kullanıcı adresi bilerek ASCII.
+ * Yalnızca YENİ kayıtlar etkilenir — mevcut adresler bahsetme, atama ve MCP
+ * anahtar izi taşıyor, dokunulmuyor.
  */
 export function slugify(name) {
-  const base = (name || '').toLowerCase().replace(/\s+/g, '-');
-  const cleaned = base.replace(/[^a-z0-9-]/g, '');
+  const cevrilmis = String(name || '').replace(/[çÇğĞıİöÖşŞüÜ]/g, (h) => TR_ASCII[h]);
+  const base = cevrilmis.toLowerCase().replace(/\s+/g, '-');
+  const cleaned = base.replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
   return cleaned || 'user';
 }
 
