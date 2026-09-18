@@ -82,3 +82,42 @@ export function girisNoktasiMi(yol) {
   if (p === '/' || p === '/giris') return true;
   return !yoldanDurum(p) && !HUKUKI_YOLLAR.has(p);
 }
+
+// ── Hatırlanan görünüm: `stoa.view`in TEK okuyucusu ────────────────────────
+//
+// KUSUR (18 Eylül 2026): kayıtlı görünüm üç yerde okunuyordu — başlangıç
+// durumu, geri tuşu (popstate) ve hukuki sayfanın kapat düğmesi. Eski `list`
+// kaydını panoya çeviren göçü yalnızca ilki yapıyordu; diğer ikisi ham değeri
+// `setView`e veriyordu. Var olmayan bir görünüm hiçbir dalı çizmez: ekran
+// boş kalır. Dashboard'daki "Tümünü gör" (onView('list')) aynı sınıftı.
+//
+// Daha kötüsü: oturumsuz kullanıcı hukuki sayfayı kapatınca görünüm 'auth'
+// yapılıyordu. Böyle bir görünüm yok — giriş ekranını `authed` bayrağı açar.
+// Kullanıcı giriş yapınca (`handleSignIn` sayfayı yenilemiyor) içerik alanı
+// BOŞ kalıyor, adres efekti de 'auth'u diske yazdığı için her yenilemede
+// yine boş açılıyordu.
+//
+// Karar: kayıtlı değer ancak GERÇEK bir görünümse kabul edilir, değilse pano.
+// Hukuki sayfalar da hatırlanmaz — kapatınca oraya geri dönülmez.
+
+/** Kayıtlı değer → { gorunum, altGorunum }. Saf. */
+export function hatirlananGorunum(kayit) {
+  // Eski sürümlerde liste ayrı bir görünümdü; artık panonun alt görünümü.
+  if (kayit === 'list') return { gorunum: 'board', altGorunum: 'list' };
+  // `in` değil `hasOwn`: 'toString' gibi bir kayıt prototipten geçmesin.
+  if (typeof kayit === 'string' && Object.hasOwn(GORUNUM_YOLLARI, kayit)) {
+    return { gorunum: kayit, altGorunum: null };
+  }
+  return { gorunum: 'board', altGorunum: null };
+}
+
+/**
+ * Depodan okuyup görünüm adı döner; eski `list` kaydında alt görünümü de
+ * yazar. Uygulamada `stoa.view` başka hiçbir yerde okunmamalı
+ * (server/test/gezinme.test.js kilitliyor).
+ */
+export function hatirlananGorunumuOku(depo = globalThis.localStorage) {
+  const { gorunum, altGorunum } = hatirlananGorunum(depo.getItem('stoa.view'));
+  if (altGorunum) depo.setItem('stoa.boardSubView', altGorunum);
+  return gorunum;
+}

@@ -10,7 +10,7 @@ import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
 import { NotifPanel, notifType } from './notifications.jsx';
 import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, panelGorunur } from './rozet.js';
-import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR } from './rota.js';
+import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR, hatirlananGorunumuOku } from './rota.js';
 import { komsuKartlar } from './komsu.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
@@ -78,13 +78,8 @@ function App() {
     const adresten = yoldanDurum(path);
     if (adresten) return adresten.gorunum;
 
-    const stored = localStorage.getItem('stoa.view') || 'board';
-    // Legacy: 'list' view migrated to 'board' with list sub-view
-    if (stored === 'list') {
-      localStorage.setItem('stoa.boardSubView', 'list');
-      return 'board';
-    }
-    return stored;
+    // Tek okuyucu (rota.js): eski 'list' göçü ve geçersiz kayıt orada.
+    return hatirlananGorunumuOku();
   });
   const [tasks, setTasks]                   = useS([]);
   const [currentProject, setCurrentProject] = useS(null);
@@ -323,7 +318,7 @@ function App() {
           setTaskPageTask(null);
         }
       } else {
-        setView(localStorage.getItem('stoa.view') || 'board');
+        setView(hatirlananGorunumuOku());
       }
     };
     window.addEventListener('popstate', handlePop);

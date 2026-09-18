@@ -1,4 +1,5 @@
 import { useState as useS } from 'react';
+import { hatirlananGorunumuOku } from '../rota.js';
 
 // Fallback SVG logo in case PNG logo isn't available
 const StoaLogoSVG = ({ color = '#1a4a70', size = 40 }) => (
@@ -51,15 +52,13 @@ export function LegalPage({ type, onViewChange, authed }) {
     }));
   });
 
+  // Oturum olsun olmasın aynı hedef: hatırlanan görünüm. Oturumsuzken o
+  // görünüm çizilmez, giriş ekranı açılır (`authed` bayrağı) — ve giriş
+  // yapılınca kullanıcı GERÇEK bir görünümde uyanır. Eskiden burada
+  // onViewChange('auth') vardı; öyle bir görünüm yok, girişten sonra ekran
+  // boş kalıyordu (rota.js, "Hatırlanan görünüm").
   const handleClose = () => {
-    if (authed) {
-      // Return to main dashboard view or whatever is stored in local storage
-      const stored = localStorage.getItem('stoa.view') || 'board';
-      onViewChange(stored === 'gizlilik-sartlari' || stored === 'hizmet-sartlari' ? 'board' : stored);
-    } else {
-      // When unauthenticated, refresh or reset view back to auth view
-      onViewChange('auth');
-    }
+    onViewChange(hatirlananGorunumuOku());
   };
 
   const isPrivacy = type === 'gizlilik-sartlari';
