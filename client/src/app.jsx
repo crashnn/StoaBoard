@@ -10,6 +10,7 @@ import { AddTaskModal } from './modals.jsx';
 import { TaskDrawer } from './drawer.jsx';
 import { NotifPanel, NotifPrefRow, notifType } from './notifications.jsx';
 import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, panelGorunur } from './rozet.js';
+import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR } from './rota.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
 import { TweaksPanel } from './tweaks.jsx';
@@ -69,6 +70,12 @@ function App() {
     const path = window.location.pathname;
     if (path === '/gizlilik-sartlari') return 'gizlilik-sartlari';
     if (path === '/hizmet-sartlari') return 'hizmet-sartlari';
+
+    // Adres bir görünümü söylüyorsa o kazanıyor (kart #228): yenilenen ya da
+    // paylaşılan bağlantı doğru ekranı açmalı. Söylemiyorsa (kök, giriş,
+    // tanınmayan adres) bugünkü gibi son ekran hatırlanıyor.
+    const adresten = yoldanDurum(path);
+    if (adresten) return adresten.gorunum;
 
     const stored = localStorage.getItem('stoa.view') || 'board';
     // Legacy: 'list' view migrated to 'board' with list sub-view
@@ -213,17 +220,96 @@ function App() {
       }
     } else {
       localStorage.setItem('stoa.view', view);
-      if (['/gizlilik-sartlari', '/hizmet-sartlari', '/giris'].includes(window.location.pathname)) {
-        window.history.pushState({}, '', '/');
+      // ── Görünüm başına adres (kart #228) ──────────────────────────────
+      //
+      // Adres DURUMDAN türetiliyor ve durum adresle zaten eşleşiyorsa hiçbir
+      // şey yazılmıyor. Geri/ileri tuşundan gelen değişiklik bu yüzden
+      // döngüye girmiyor: popstate önce durumu adrese eşitliyor, bu etki de
+      // eşitliği görüp çekiliyor. Ayrı bir "popstate'ten mi geldi" bayrağı
+      // yok — öyle bir bayrak, etki çalışmadığı turda takılı kalırdı.
+      if (bekleyenGeri.current || bekleyenKart.current) return;
+      const kartId = drawerTask?.id ?? taskPageTask?.id ?? null;
+      const hedef = durumdanYol(view, kartId);
+      const simdiki = window.location.pathname;
+      if (simdiki === hedef) return;
+
+      // Kart ARAYÜZDEN kapandı (X, Esc, silme) ve o kaydı BİZ ekledik: geri
+      // git. Yoksa adres /pano'ya itilir, geçmiş "pano, kart, pano" olur ve
+      // bir sonraki geri tuşu az önce kapatılan kartı YENİDEN açar.
+      // Karta doğrudan bağlantıyla gelinmişse kaydı biz eklemedik; geri gitmek
+      // siteden çıkarırdı — o zaman yalnızca adres değiştiriliyor.
+      if (!kartId && window.history.state?.kartItildi) {
+        bekleyenGeri.current = true;
+        window.history.back();
+        return;
+      }
+
+      const durum = kartId ? { kart: String(kartId), kartItildi: true } : {};
+      if (girisNoktasiMi(simdiki)) {
+        // Kök, giriş ve tanınmayan adresler DEĞİŞTİRİLİR, eklenmez: yoksa geri
+        // tuşu kullanıcıyı bir kez daha `/`ye ya da giriş ekranına götürür.
+        window.history.replaceState(kartId ? { kart: String(kartId) } : {}, '', hedef);
+      } else {
+        window.history.pushState(durum, '', hedef);
       }
     }
-  }, [view, authed, loading]);
+  }, [view, authed, loading, drawerTask?.id, taskPageTask?.id]);
+
+  // Geri tuşunun beklenen dönüşü sürerken adres etkisi yazmıyor: back()
+  // eşzamansız ve arada ikinci bir back() çağrılırsa kullanıcı bir ekran fazla
+  // geri gider. Aynı şekilde adresten açılmayı bekleyen kart varken de yazmıyor
+  // — kart sunucudan gelene kadar durum "pano, kart yok" görünür ve etki
+  // adresi /pano'ya ezerdi.
+  const bekleyenGeri = useRef(false);
+  // Adresten BAŞLATILIYOR, etkiden değil: ilk yüklemede adres etkisi "kartı aç"
+  // etkisinden ÖNCE çalışıyor ve o anda kart açık olmadığı için /pano/kart/5'i
+  // /pano ile ezerdi — derin bağlantı kaybolurdu. Render sırasında dolu olunca
+  // etki bekliyor.
+  const bekleyenKart = useRef(yoldanDurum(window.location.pathname)?.kart || null);
+
+  // Adresteki kartı aç. Başarısızsa (silinmiş, erişim yok) adres panoya
+  // çekiliyor — kullanıcı açılmayan bir kartın adresinde kalmasın.
+  const adrestekiKartiAc = (kartId) => {
+    bekleyenKart.current = kartId;
+    const ac = window.__OPEN_TASK_BY_ID__;
+    Promise.resolve(ac ? ac(kartId) : false).then((acildi) => {
+      bekleyenKart.current = null;
+      if (!acildi) window.history.replaceState({}, '', durumdanYol('board'));
+    });
+  };
+
+  // İlk yükleme: adres bir kart söylüyorsa, önyükleme bitince aç.
+  useEf(() => {
+    if (loading || !authed) return;
+    const adresten = yoldanDurum(window.location.pathname);
+    if (adresten?.kart) {
+      adrestekiKartiAc(adresten.kart);
+    } else {
+      // Misafir kart adresiyle geldiyse giriş ekranı adresi /giris yaptı; kart
+      // artık adreste yok. Bekleyen kart temizlenmezse adres etkisi sonsuza
+      // kadar beklerdi.
+      bekleyenKart.current = null;
+    }
+  }, [loading, authed]);
 
   useEf(() => {
     const handlePop = () => {
       const path = window.location.pathname;
-      if (path === '/gizlilik-sartlari' || path === '/hizmet-sartlari') {
+      bekleyenGeri.current = false;
+      if (HUKUKI_YOLLAR.has(path)) {
         setView(path.slice(1));
+        return;
+      }
+      const adresten = yoldanDurum(path);
+      if (adresten) {
+        setView(adresten.gorunum);
+        if (adresten.kart) {
+          adrestekiKartiAc(adresten.kart);
+        } else {
+          // Geri tuşu kartı KAPATIYOR — kararın kendisi.
+          setDrawerTask(null);
+          setTaskPageTask(null);
+        }
       } else {
         setView(localStorage.getItem('stoa.view') || 'board');
       }
@@ -1021,7 +1107,7 @@ function App() {
   // kolonlarını sunar — seçilirse kart yanlış kolona yazılır. Çekmeceye
   // karta özel kolon listesi taşımak doğru çözüm ama daha geniş bir iş.
   const openTaskById = async (taskId, returnView = null) => {
-    if (!taskId) return;
+    if (!taskId) return false;
     // Fast path: task is in the current project's list
     const local = tasks.find(x => String(x.id) === String(taskId));
     if (local) {
@@ -1029,7 +1115,7 @@ function App() {
       setDrawerTask(local);
       setNotifOpen(false);
       setView('board');
-      return;
+      return true;
     }
     // Slow path: fetch from backend; switch project if needed
     try {
@@ -1038,7 +1124,7 @@ function App() {
       // dönmek tıklamayı yine hiçbir şey yapmaz hâle getirirdi.
       if (!detail) {
         window.showToast?.(window.t?.('app_err_task_missing') || 'Görev bulunamadı — silinmiş ya da erişiminiz yok.', 'error');
-        return;
+        return false;
       }
       const targetProjectId = detail.project_id;
       const inCurrentProject = currentProject && String(currentProject.id) === String(targetProjectId);
@@ -1053,8 +1139,10 @@ function App() {
         setView('board');
       }
       setNotifOpen(false);
+      return true;
     } catch (e) {
       window.showToast?.((window.t?.('app_err_open_task') || 'Görev açılamadı: ') + (e.message || ''), 'error');
+      return false;
     }
   };
   window.__OPEN_TASK_BY_ID__ = (taskId) => openTaskById(taskId);
