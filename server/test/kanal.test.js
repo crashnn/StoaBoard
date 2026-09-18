@@ -82,3 +82,20 @@ describe('sohbet — kanal adı boş durum ve yazma kutusunda (#249)', () => {
     }
   });
 });
+
+// Mesaj silme iyimser: ekrandan önce kalkıyor. Sunucu reddettiğinde yalnızca
+// console.error vardı — kullanıcı silindi sanıyor, mesaj öbür herkeste
+// duruyordu (#268 aile, sessiz başarısızlık). Ölçüt `catch` gövdesine bağlı:
+// mesaj geri konmalı VE kullanıcıya söylenmeli.
+describe('mesaj silinemezse geri geliyor ve söyleniyor (#268 aile)', () => {
+  test('handleDeleteMessage hatası sessiz değil', () => {
+    const bas = CHAT.indexOf('const handleDeleteMessage = async');
+    assert.ok(bas >= 0, 'handleDeleteMessage bulunamadı');
+    const govde = CHAT.slice(bas, CHAT.indexOf('\n  };', bas));
+    const c = govde.indexOf('catch (e) {');
+    assert.ok(c >= 0, 'API hatası yakalanmıyor');
+    const yakala = govde.slice(c);
+    assert.match(yakala, /setMessages\(/, 'hata sonrası mesaj geri konmuyor');
+    assert.match(yakala, /window\.showToast\?\.\(\(window\.t\?\.\('chat_msg_delete_failed'\)/, 'hata kullanıcıya söylenmiyor');
+  });
+});

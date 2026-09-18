@@ -274,3 +274,31 @@ describe('canlı kolon panonun kendi durumuna yansıyor (#235)', () => {
     assert.match(BOARD235, /useBoardState\(\(\) => tekKolonlar\(DATA\.COLUMNS\)\)/, 'açılış tekKolonlar kullanmıyor');
   });
 });
+
+// "BEN" rozeti ile ona yer açan boşluk (#268). Rozet mutlak konumlu, üst
+// satırın üstüne biniyor. Boşluk `data-mine`dan okunuyordu (`&& !isDone`),
+// rozet ise yalnızca `isAssignedToMe`den: bitmiş kartta rozet kaldı, boşluk
+// gitti, başlık rozetin altına girdi. Aynı olgunun iki okuyucusu — ölçüt
+// ikisinin AYNI ifadeden okuduğu.
+describe('"BEN" rozeti ve boşluğu aynı koşuldan (#268)', () => {
+  const K = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const board = yorumsuzDosya(path.join(K, 'client', 'src', 'views', 'board.jsx'));
+  const css = yorumsuzDosya(path.join(K, 'client', 'src', 'styles.css'));
+
+  test('rozet ve data-ben aynı ifadeyi okuyor', () => {
+    const rozet = /\{([^{}]+?) && \(\s*<div className="card-ben">/.exec(board);
+    const alan = /data-ben=\{([^{}]+)\}/.exec(board);
+    assert.ok(rozet, 'rozet bulunamadı');
+    assert.ok(alan, 'data-ben yok — rozetin boşluğu neye bağlı?');
+    assert.equal(alan[1].trim(), rozet[1].trim(), 'rozet ile boşluk farklı koşuldan okuyor');
+  });
+
+  test('boşluk data-ben kuralında, üst satırın iki biçimine de', () => {
+    const kural = /([^{}]+)\{\s*padding-right:\s*\d+px;\s*\}/g;
+    const secenler = [...css.matchAll(kural)].map((m) => m[1]).filter((s) => /\.card\[data-(?:ben|mine)="true"\]/.test(s));
+    const hepsi = secenler.join(',');
+    assert.match(hepsi, /\.card\[data-ben="true"\] > \.card-tags/, 'etiket şeridi rozetin altına giriyor');
+    assert.match(hepsi, /\.card\[data-ben="true"\] > \.card-title/, 'başlık rozetin altına giriyor');
+    assert.doesNotMatch(hepsi, /data-mine/, 'boşluk yine data-mine\'a bağlı');
+  });
+});

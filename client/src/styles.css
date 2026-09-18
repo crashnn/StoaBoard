@@ -1485,7 +1485,18 @@ input, textarea, select, [contenteditable="true"] {
 .tag[data-tone="cyan"]    { color: var(--status-cyan);    background: oklch(60% 0.10 210 / 0.08);  border-color: oklch(60% 0.10 210 / 0.25); }
 .tag[data-tone="pink"]    { color: var(--status-pink);    background: oklch(60% 0.14 350 / 0.08);  border-color: oklch(60% 0.14 350 / 0.25); }
 
-.card[data-mine="true"] .card-title { padding-right: 32px; }
+/* "BEN" rozeti ve ona yer açan boşluk. Boşluk `data-ben`e bağlı, `data-mine`a
+   DEĞİL: data-mine bitmiş kartta kapanıyor, rozet kapanmıyor (#268). Üst satır
+   etiket şeridi de olabilir, başlık da — ikisi de boşluk alıyor. */
+.card-ben {
+  position: absolute; top: 7px; right: 8px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
+  padding: 1px 5px; border-radius: 4px;
+  background: var(--accent); color: white;
+  line-height: 1.6; pointer-events: none;
+}
+.card[data-ben="true"] > .card-tags,
+.card[data-ben="true"] > .card-title { padding-right: 36px; }
 .card-title {
   font-size: 13.5px;
   font-weight: 500;

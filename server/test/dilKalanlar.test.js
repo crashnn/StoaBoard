@@ -68,45 +68,10 @@ describe('varsayılan rol adları gösterilirken çevriliyor (#208)', () => {
   });
 });
 
-describe('Türkçe harfsiz Türkçe metin çeviriden geçiyor (#255 aile)', () => {
-  // dil.test.js metni ancak Türkçe HARF taşıyorsa görüyor. Aile taramasında
-  // (18 Eylül) çıkanlar: title="Kapat" (5 yer), "Yeni Kanal", "Dosya ekle",
-  // "Kaydet (Ctrl+S)", "Temizle", sekme adları "Genel/Direkt", 'Kanal
-  // silinemedi', gizli <h1>Ayarlar, ve #210'da 'Dosya'. Sözcük listesi bu
-  // taramanın sözcükleri; öznitelik değerinde ve JSX metninde yasak — anahtar +
-  // yedek biçimi ({window.t?.('k') || 'Kapat'}) zaten bu kalıplara uymuyor.
-  const SOZCUK = ['Dosya', 'Kapat', 'Kaydet', 'Sil', 'Ara', 'Gonder', 'Evet', 'Tamam', 'Geri', 'Yeni',
-    'Ekle', 'Kanal', 'Mesaj', 'Yorum', 'Etiket', 'Tarih', 'Proje', 'Liste', 'Tablo', 'Takvim', 'Notlar',
-    'Ayarlar', 'Profil', 'Genel', 'Direkt', 'Devam', 'Kart', 'Bildirim', 'Sohbet', 'Pano', 'Temizle',
-    'Yenile', 'Kopyala', 'Taslak', 'Gizle', 'Goster'];
-  const S = SOZCUK.join('|');
-  const OZNITELIK = new RegExp(`\\b(?:title|placeholder|aria-label)="([^"]*\\b(?:${S})\\b[^"]*)"`, 'g');
-  const JSX_METIN = new RegExp(`>\\s*([^<>{}]*\\b(?:${S})\\b[^<>{}]*?)\\s*<`, 'g');
-  const MUAF = new Set(['legal.jsx']); // hukuki metin — dil kuralından bilinçli muaf (CLAUDE.md)
-
-  test('tarama kör değil', () => {
-    assert.ok(OZNITELIK.test('<button title="Kapat">'));
-    OZNITELIK.lastIndex = 0;
-    assert.ok(JSX_METIN.test('<div>Yeni Kanal</div>'));
-    JSX_METIN.lastIndex = 0;
-  });
-
-  test('istemcide çevrilmemiş Türkçe öznitelik ya da JSX metni yok', async () => {
-    const { kaynakDosyalari } = await import('./yardimcilar.js');
-    const bulgular = [];
-    for (const d of kaynakDosyalari(ISTEMCI, /\.jsx$/)) {
-      const ad = path.basename(d);
-      if (MUAF.has(ad)) continue;
-      const src = yorumsuzDosya(d);
-      for (const re of [OZNITELIK, JSX_METIN]) {
-        for (const m of src.matchAll(re)) {
-          bulgular.push(`${path.relative(ISTEMCI, d)}:${src.slice(0, m.index).split('\n').length}  ${m[1].trim().slice(0, 50)}`);
-        }
-      }
-    }
-    assert.deepEqual(bulgular, [], `çevrilmemiş Türkçe metin:\n${bulgular.join('\n')}`);
-  });
-});
+// Türkçe harfsiz Türkçe metin (#255 aile, #268): bu dosyada ayrı bir tarayıcı
+// vardı; dil.test.js'in meşru kalıplarını (yedek, sözlük bloğu, kardeş alan)
+// bilmediği için genişletilince gürültü çıkardı. Ölçüt artık dil.test.js'teki
+// tek tarayıcıda: TURKCE, harfin yanında Türkçe sözcükleri de sayıyor.
 
 describe('giriş ekranı sayfanın dilinde (#255)', () => {
   const auth = oku(ISTEMCI, 'views', 'auth.jsx');

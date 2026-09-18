@@ -129,6 +129,7 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
       data-done={isDone}
       data-overdue={overdue && !isDone}
       data-mine={isAssignedToMe && !isDone}
+      data-ben={isAssignedToMe}
       data-show-progress={tweaks.showProgress}
       data-show-tags={tweaks.showTags}
       style={{ position: 'relative' }}
@@ -139,14 +140,12 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
       onTouchMove={canManageTasks ? handleTouchMove : undefined}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Rozet mutlak konumlu, üst satırın üstüne biniyor; yeri `data-ben`
+          açıyor. İkisi AYNI koşuldan okunmalı: boşluk eskiden `data-mine`dan
+          geliyordu (`&& !isDone`), rozet ise bitmiş kartta da çiziliyordu —
+          bitmiş kartın başlığı rozetin altına giriyordu. */}
       {isAssignedToMe && (
-        <div style={{
-          position: 'absolute', top: 7, right: 8,
-          fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
-          padding: '1px 5px', borderRadius: 4,
-          background: 'var(--accent)', color: 'white',
-          lineHeight: 1.6, pointerEvents: 'none',
-        }}>BEN</div>
+        <div className="card-ben">{window.t?.('board_me_badge') || 'BEN'}</div>
       )}
       {(task.labels || []).length > 0 && (
         <div className="card-tags">
@@ -515,9 +514,9 @@ function TableView({ tasks, onOpenTask, onMoveTask, canManageTasks }) {
             <th style={{ width: 56 }}>{window.t('list_days')}</th>
             <th style={{ width: 100 }}>{window.t('list_progress')}</th>
             <SortHead k="priority" w={90}>{window.t('list_priority')}</SortHead>
-            <th style={{ width: 40 }} title="Ekler"><Icon name="paperclip" size={11} /></th>
-            <th style={{ width: 40 }} title="Yorumlar"><Icon name="msg" size={11} /></th>
-            <th style={{ width: 40 }} title="Reaksiyon"><Icon name="smile" size={11} /></th>
+            <th style={{ width: 40 }} title={window.t?.('board_col_attachments') || 'Ekler'}><Icon name="paperclip" size={11} /></th>
+            <th style={{ width: 40 }} title={window.t?.('board_col_comments') || 'Yorumlar'}><Icon name="msg" size={11} /></th>
+            <th style={{ width: 40 }} title={window.t?.('board_col_reactions') || 'Reaksiyonlar'}><Icon name="smile" size={11} /></th>
           </tr>
         </thead>
         <tbody>

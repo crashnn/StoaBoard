@@ -1986,7 +1986,7 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       <div className="settings-section" data-nav-id="language">
         <div>
           <h3>{_t('set_language','Dil & Bölge')}</h3>
-          <p className="desc">Yerel ayarlar.</p>
+          <p className="desc">{_t('set_lng_desc', 'Yerel ayarlar.')}</p>
         </div>
         <div className="settings-card settings-panel">
           <div className="tweak-group">

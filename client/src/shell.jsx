@@ -477,7 +477,7 @@ function NavItem({ icon, label, sub, badge, badgeUnread, active, onClick, onMobi
     <div className="nav-item" data-active={!!active} onClick={bas} title={sub}>
       <Icon name={icon} size={16} />
       <span className="sidebar-label">{label}</span>
-      {badge && <span className="nav-badge" data-new={badge === 'Yeni' || !!badgeUnread}>{badge}</span>}
+      {badge && <span className="nav-badge" data-new={!!badgeUnread}>{badge}</span>}
     </div>
   );
 }

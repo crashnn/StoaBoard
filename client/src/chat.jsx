@@ -355,8 +355,8 @@ function ReplyPreview({ reply, mine, onClose, onJump, compact = false }) {
     >
       <div className="chat-reply-bar" />
       <div className="chat-reply-body">
-        <div className="chat-reply-sender">{reply.sender || 'Mesaj'}</div>
-        <div className="chat-reply-text">{reply.text || 'Mesaj'}</div>
+        <div className="chat-reply-sender">{reply.sender || window.t?.('chat_message') || 'Mesaj'}</div>
+        <div className="chat-reply-text">{reply.text || window.t?.('chat_message') || 'Mesaj'}</div>
       </div>
       {onClose && (
         <button className="chat-reply-close" onClick={(e) => { e.stopPropagation(); onClose(); }}>
@@ -448,7 +448,7 @@ function CreateChannelModal({ open, onClose, onCreated, allMembers, me }) {
               <span style={{ color: 'var(--ink-faint)' }}>#</span>
               <input
                 autoFocus
-                placeholder="ornek-kanal"
+                placeholder={window.t?.('chat_channel_slug_ph') || 'ornek-kanal'}
                 value={name}
                 onChange={e => setName(e.target.value)}
                 maxLength={60}
@@ -824,7 +824,7 @@ function ChannelSettingsModal({ open, onClose, channel, onUpdated, onDeleted, me
     if (!isOwner || isDefault) return;
     const ok = await askConfirm({
       title: tx('chat_delete_channel', 'Kanalı Sil'),
-      message: `#${channel.name} kanalını silmek istediğinize emin misiniz?`,
+      message: `#${channel.name} ${tx('chat_remove_channel_confirm', 'kanalını silmek istediğinize emin misiniz?')}`,
       hint: tx('chat_delete_channel_hint', 'Bu işlem geri alınamaz. Kanaldaki tüm mesajlar silinecektir.'),
       confirmText: tx('chat_perm_delete', 'Kalıcı Olarak Sil'),
       cancelText: tx('app_cancel', 'İptal'),
@@ -2544,7 +2544,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
     const id = String(msg.id);
     // Only persisted (non-temp) messages can be pinned server-side
     if (msg._temp || id.startsWith('temp_')) {
-      window.showToast?.('Mesaj kaydedildikten sonra sabitleyebilirsin.', 'info');
+      window.showToast?.(window.t?.('chat_pin_after_save') || 'Mesaj kaydedildikten sonra sabitleyebilirsin.', 'info');
       return;
     }
     // Optimistic UI
@@ -2627,12 +2627,30 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
 
   const handleDeleteMessage = async (msgId, scope) => {
     setDeleteMenu(null);
+    // İyimser: mesaj önce ekrandan kalkıyor. Sunucu reddederse geri konmalı ve
+    // söylenmeli — önceden yalnızca konsola yazılıyordu; kullanıcı silindi
+    // sanıyor, mesaj öbür herkeste duruyordu (#268 aile).
+    const sira = messages.findIndex(m => String(m.id) === String(msgId));
+    const eski = messages[sira];
     if (scope === 'self') {
       setMessages(prev => prev.filter(m => String(m.id) !== String(msgId)));
     } else {
       setMessages(prev => prev.map(m => String(m.id) === String(msgId) ? { ...m, deleted: true, text: '', file_url: undefined } : m));
     }
-    try { await API.deleteChatMessage(msgId, scope); } catch (e) { console.error('Mesaj silinemedi:', e.message); }
+    try { await API.deleteChatMessage(msgId, scope); } catch (e) {
+      if (eski) {
+        setMessages(prev => {
+          const i = prev.findIndex(m => String(m.id) === String(msgId));
+          if (i >= 0) return prev.map((m, j) => (j === i ? eski : m));
+          // 'self' kapsamında satır listeden çıkmıştı: eski yerine. Yeni gelen
+          // mesajlar sona eklendiği için sıra hâlâ geçerli.
+          const s = [...prev];
+          s.splice(Math.min(sira, s.length), 0, eski);
+          return s;
+        });
+      }
+      window.showToast?.((window.t?.('chat_msg_delete_failed') || 'Mesaj silinemedi: ') + e.message, 'error');
+    }
   };
 
 
@@ -2966,8 +2984,8 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
               <div className="chat-fp-list-sub" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span>
                   {leftListTab === 'channels'
-                    ? `${DATA.WORKSPACE?.name || 'Atlas'} · ${channels.length} kanal`
-                    : 'Direkt Mesajlar'}
+                    ? `${DATA.WORKSPACE?.name || 'Atlas'} · ${channels.length} ${window.t?.('chat_channels_word') || 'kanal'}`
+                    : (window.t?.('nav_dms') || 'Direkt Mesajlar')}
                 </span>
                 {leftListTab === 'channels' && (DATA.WORKSPACE?.can_create_channel || DATA.WORKSPACE?.is_owner || canManageChannels) && (
                   <button
@@ -3175,7 +3193,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
               <div style={{ position: 'relative' }}>
                 <button
                   className="icon-btn"
-                  title="Mesajlarda ara"
+                  title={window.t?.('chat_search_in_msgs') || 'Mesajlarda ara'}
                   onClick={() => setHeaderSearchOpen(o => !o)}
                   style={{ color: headerSearchOpen ? 'var(--accent)' : 'var(--ink-muted)' }}
                 >
@@ -3185,7 +3203,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                   <div className="chat-fp-header-search">
                     <input
                       autoFocus
-                      placeholder="Mesajlarda ara..."
+                      placeholder={window.t?.('chat_search_in_msgs_ph') || 'Mesajlarda ara...'}
                       value={headerSearch}
                       onChange={e => setHeaderSearch(e.target.value)}
                     />
@@ -3208,7 +3226,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                                     <strong>{sender?.name || m.from}</strong>
                                     <span>{fmtMsgTime(m)}</span>
                                   </div>
-                                  <div className="chat-fp-hit-text">{(m.text || m.file_name || 'Dosya').slice(0, 80)}</div>
+                                  <div className="chat-fp-hit-text">{(m.text || m.file_name || window.t?.('chat_file') || 'Dosya').slice(0, 80)}</div>
                                 </div>
                               );
                             })}
@@ -3295,7 +3313,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                             <ReplyPreview reply={msg.reply_to} mine={isMine} compact onJump={scrollToMessage} />
                           )}
                           {msg.deleted
-                            ? <span style={{ fontStyle: 'italic', color: 'var(--ink-faint)', fontSize: 12 }}>Bu mesaj silindi</span>
+                            ? <span style={{ fontStyle: 'italic', color: 'var(--ink-faint)', fontSize: 12 }}>{window.t?.('chat_deleted_msg') || 'Bu mesaj silindi'}</span>
                             : <MsgContent msg={{ ...msg, _onMentionClick: handleMentionClick }} onImageClick={setLightbox} />
                           }
                           {starredMsgs.has(String(msg.id)) && (
@@ -3312,7 +3330,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                               className="chat-fp-hover-actions"
                               data-mine={isMine}
                             >
-                              <button title="Reaksiyon" onClick={(e) => openEmojiPicker(e, msg.id)}>
+                              <button title={window.t?.('chat_add_reaction') || 'Reaksiyon ekle'} onClick={(e) => openEmojiPicker(e, msg.id)}>
                                 <Icon name="smile" size={14} />
                               </button>
                               <button title="Cevapla" onClick={() => replyToMessage(msg)}>
@@ -3972,7 +3990,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                             <ReplyPreview reply={msg.reply_to} mine={isMine} compact onJump={scrollToMessage} />
                           )}
                           {msg.deleted
-                            ? <span style={{ fontStyle: 'italic', color: 'var(--ink-faint)', fontSize: 12 }}>Bu mesaj silindi</span>
+                            ? <span style={{ fontStyle: 'italic', color: 'var(--ink-faint)', fontSize: 12 }}>{window.t?.('chat_deleted_msg') || 'Bu mesaj silindi'}</span>
                             : <MsgContent msg={{ ...msg, _onMentionClick: handleMentionClick }} onImageClick={setLightbox} />
                           }
                           {starredMsgs.has(String(msg.id)) && (
@@ -3994,7 +4012,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                             <button
                               className="chat-msg-react-btn"
                               onClick={(e) => openEmojiPicker(e, msg.id)}
-                              title="Reaksiyon ekle"
+                              title={window.t?.('chat_add_reaction') || 'Reaksiyon ekle'}
                             >
                               😊
                             </button>

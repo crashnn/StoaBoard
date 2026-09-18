@@ -148,7 +148,32 @@ const DEKORATIF = new Set([
   'Türkçe',
 ]);
 
-const TURKCE = /[çğıöşüÇĞİÖŞÜ]/;
+const TURKCE_HARF = /[çğıöşüÇĞİÖŞÜ]/;
+
+// Türkçe harf taşımayan Türkçe metin. Ölçüt yalnızca harf olduğunda
+// "Kapat", "Yeni kanal", "Bu mesaj silindi", "BEN" rozeti görünmüyordu —
+// 18 Eylül'de on beşten fazlası bu yoldan kaçmış bulundu (#255, #268).
+// Sözcük sınırıyla ve harf büyüklüğünden bağımsız: "Mesaj" cümle içinde
+// küçük harfle geçiyor. Önce dilKalanlar.test.js'te ayrı bir tarayıcı
+// vardı; buradaki meşru kalıpları (yedek, sözlük bloğu, kardeş alan)
+// bilmediği için gürültü çıkardı. Tek tarayıcı, genişletilmiş ölçüt.
+const ASCII_TURKCE = new RegExp(`\\b(?:${[
+  'Dosya', 'Kapat', 'Kaydet', 'Sil', 'Silindi', 'Ara', 'Gonder', 'Evet', 'Tamam', 'Geri', 'Yeni',
+  'Ekle', 'Kanal', 'Mesaj', 'Mesajlarda', 'Yorum', 'Etiket', 'Tarih', 'Proje', 'Liste', 'Tablo',
+  'Takvim', 'Notlar', 'Ayarlar', 'Profil', 'Genel', 'Direkt', 'Devam', 'Kart', 'Bildirim', 'Sohbet',
+  'Pano', 'Temizle', 'Yenile', 'Kopyala', 'Taslak', 'Gizle', 'Goster', 'Ben', 'Reaksiyon', 'Yerel',
+  // Çoğullar ayrı yazılıyor, ek kuralı yok: `Ara\w*` "Array"i, `Liste\w*`
+  // "Listen"ı yakalardı. title="Yorumlar" ve "Ekler" tam bu yüzden kaçmıştı.
+  'Ekler', 'Yorumlar', 'Mesajlar', 'Kartlar', 'Kanallar', 'Dosyalar', 'Etiketler', 'Reaksiyonlar',
+].join('|')})\\b`, 'i');
+
+// Metin olmayan eşleşmeler. `'{kanal}'` bir yer tutucu belirteci
+// (.replace('{kanal}', …)), ekrana basılmaz. `'genel'` varsayılan kanalın
+// SUNUCUDAKİ adı (routes/workspaces.js) — kanal listesi yüklenmeden gösterilen
+// yedek, gerçek adla aynı olmak zorunda; çevrilirse adla uyuşmaz.
+const METIN_DEGIL = (s) => /^\{\w+\}$/.test(s) || s === 'genel';
+
+const TURKCE = { test: (s) => !METIN_DEGIL(s) && (TURKCE_HARF.test(s) || ASCII_TURKCE.test(s)) };
 
 // Dile göre bölünmüş veri tabloları — meşru, atlanır.
 //
@@ -195,6 +220,19 @@ function jsxDosyalari(dir) {
     return e.isFile() && e.name.endsWith('.jsx') ? [p] : [];
   });
 }
+
+describe('Türkçe ölçütü harfle sınırlı değil (#255, #268)', () => {
+  test('Türkçe harfsiz Türkçe metin Türkçe sayılıyor', () => {
+    for (const s of ['Kapat', 'Bu mesaj silindi', 'BEN', 'Yorumlar', 'Yeni kanal', 'Dosya ekle']) {
+      assert.ok(TURKCE.test(s), `görülmedi: ${s}`);
+    }
+  });
+  test('İngilizce metin ve belirteçler Türkçe sayılmıyor', () => {
+    for (const s of ['Array', 'Listen', 'Project', 'Close', 'Search messages', '{kanal}', 'genel']) {
+      assert.ok(!TURKCE.test(s), `yanlış alarm: ${s}`);
+    }
+  });
+});
 
 describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
   test('sözlük anahtarı olmayan Türkçe metin yok', () => {
@@ -301,6 +339,24 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
           }
         }
         ekle(m.index, metin);
+      }
+
+      // 3. Şablon dizgelerinin SABİT parçaları. Yukarıdaki ayrıştırma yalnızca
+      // ' ve " tanıyor; `${n} kanal` taramaya hiç girmiyordu (#268 aile).
+      // İfade parçaları (${…}) atılıyor — orada kod var, metin değil; içindeki
+      // yedekler zaten 2. adımda ' ile görülüyor.
+      for (const m of src.matchAll(/`((?:[^`\\]|\\.)*)`/g)) {
+        const sabit = m[1].replace(/\$\{(?:[^{}]|\{[^{}]*\})*\}/g, ' ');
+        if (!TURKCE.test(sabit)) continue;
+        if (!/[a-zçğıöşü]{2}/i.test(sabit)) continue;
+        // Eşleşme bir düzenli ifadedeki ters tırnaktan kayarsa iki şablon
+        // arasındaki KOD yakalanıyor; 1. adımdaki kod belirtisi süzgeci.
+        if (/[;=]|=>/.test(sabit)) continue;
+        // Yedek konumu, 2. adımdaki bitişiklik kuralı: hemen solda sözlükte
+        // olan bir anahtar — `t?.('k') || \`…\`` ya da `T('k', \`…\`)`.
+        const sol = /'([a-z0-9_]+)'\s*\)?\s*(?:\|\||,)\s*$/.exec(src.slice(Math.max(0, m.index - 80), m.index));
+        if (sol && sozluk.has(sol[1])) continue;
+        ekle(m.index, sabit);
       }
     }
 
