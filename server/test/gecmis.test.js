@@ -149,3 +149,19 @@ describe('kanal geçmişi kesimi — okuma yolları', () => {
     assert.equal(sayi, 2, `kesim notu ${sayi} yerde çiziliyor, iki mesaj listesi var`);
   });
 });
+
+describe('mesaj listesi — limit EN YENİ N mesajı seçiyor', () => {
+  // MCP G turunda bulundu (18 Eylül 2026): `list_messages limit=1` en eski
+  // mesajı döndürdü. REST `asc + take` yapıyordu; istemci limit vermediği
+  // için yüzden fazla mesajlı kanal yeniden yüklenince en eski yüz geliyordu.
+  test('iki dalda da sorgu desc, sonuç eskiden yeniye çevriliyor', () => {
+    const bas = CHAT.indexOf("chatRouter.get(\n  '/messages',");
+    assert.notEqual(bas, -1, 'GET /messages bulunamadı');
+    const b = CHAT.slice(bas, CHAT.indexOf('chatRouter.', bas + 10));
+    const sorgular = [...b.matchAll(/orderBy: \{ createdAt: '(\w+)' \},\s+take: limit,/g)].map((m) => m[1]);
+    assert.deepEqual(sorgular, ['desc', 'desc'], 'DM ya da kanal dalı hâlâ asc + take: limit en eski N mesajı seçer');
+    const ters = b.indexOf('messages.reverse();');
+    assert.notEqual(ters, -1, 'sonuç eskiden yeniye çevrilmiyor — ekran ters sırada çizer');
+    assert.ok(ters < b.indexOf('const out = [];'), 'çevirme, çıktı kurulduktan sonra geliyor');
+  });
+});

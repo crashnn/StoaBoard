@@ -207,7 +207,7 @@ chatRouter.get(
             { senderId: other.id, receiverId: user.id },
           ],
         },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         include: MSG_INCLUDE,
       });
@@ -239,11 +239,20 @@ chatRouter.get(
           : { channel };
       messages = await prisma.chatMessage.findMany({
         where: { workspaceId: wsId, receiverId: null, ...channelFilter, ...gecmis },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         include: MSG_INCLUDE,
       });
     }
+
+    // EN YENİ N mesaj, eskiden yeniye (18 Eylül 2026, MCP G turunda bulundu).
+    // Önceden `asc` + `take` idi: limit en ESKİ N mesajı seçiyordu. İstemci
+    // limit vermiyor (varsayılan 100), yani yüzden fazla mesajı olan bir
+    // kanal yeniden yüklenince en eski yüz mesaj geliyor, en yeniler hiç
+    // gelmiyordu; MCP'de `limit: 1` de "ilk mesaj" demekti. Sorgu artık en
+    // yeni N'i alıyor, sıra burada eskiden yeniye çevriliyor — ekran ve
+    // araçlar aynı sırayı bekliyor.
+    messages.reverse();
 
     const out = [];
     for (const m of messages) {
