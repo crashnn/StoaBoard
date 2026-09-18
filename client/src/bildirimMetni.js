@@ -69,7 +69,19 @@ export function bildirimMetni(raw, ceviri) {
   }
   // Çevrilemeyen gövde de kaçışlanır. Eskiden burası `return raw` idi ve
   // serbest metin doğrudan HTML olarak basılıyordu.
-  return htmlKacir(raw);
+  return htmlKacir(eskiEtiketleriSok(raw));
+}
+
+/**
+ * Kart #257 öncesinden kalan kayıtlar: kart yorumu bahsetmesi metne elle
+ * `<strong>…</strong>` gömüyordu ve bu satırlar veritabanında duruyor. Kaçış
+ * onları ekranda harfiyen "<strong>" olarak gösteriyordu. YALNIZCA bu iki
+ * etiket sökülüyor, sonra her şey yine kaçışlanıyor: başka hiçbir etiket
+ * (örn. `<script>`) sökülmüyor, kaçışlı görünmeye devam ediyor — genel bir
+ * "etiket temizleyici" XSS testlerinin ölçtüğü davranışı değiştirirdi.
+ */
+function eskiEtiketleriSok(raw) {
+  return String(raw ?? '').replace(/<\/?strong>/g, '');
 }
 
 /** Etkinlik akışı için aynısı — `activity_` önekli anahtarlarla. */

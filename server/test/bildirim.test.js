@@ -883,3 +883,69 @@ describe('zil göstergesi — nokta gerçek okunmamışa bağlı (#242)', () => 
       'köprünün karşı ucu yok — panelin bildirdiği sayı hiçbir yere gitmiyor');
   });
 });
+
+// ─── Kart #257: bildirim metni yalnızca ortak kurucudan ─────────────────────
+//
+// KUSUR (18 Eylül 2026, sade tur 26, ekran görüntülü): kart yorumundaki
+// bahsetme bildirimi metne elle HTML gömüyordu — "<strong>Eray Atalay -
+// 2</strong> seni bir görev yorumunda bahsetti". Bildirimler 0-P'den beri düz
+// metin basıldığı için etiket toast'ta ve listede harfiyen görünüyordu; metin
+// de çeviriden geçmiyordu. Aile taraması: 15 üreticiden 13'ü
+// buildNotificationText kullanıyordu, biri bu satırdı, biri bilinçli serbest
+// metin ucu. Aynı taramada e-posta tarafının `mention` türünü hiç
+// tanımadığı çıktı: sohbet bahsetmesi postaları BOŞ gövdeyle gidiyordu.
+
+import { bildirimMetni } from '../../client/src/bildirimMetni.js';
+import { emailableTypes } from '../src/lib/mailer.js';
+
+describe('bildirim üreticileri — metin ortak kurucudan (#257)', () => {
+  // Bilinçli istisna: POST /api/notifications serbest metin ucu — metni
+  // kullanıcı yazıyor, istemci kaçışlıyor (bildirimMetni.js).
+  const SERBEST_METIN = new Set(['routes/notifications.js']);
+
+  test('her bildirim üreticisinin text alanı buildNotificationText', () => {
+    const bulgular = [];
+    let sayac = 0;
+    for (const dosya of [...kaynakDosyalari(path.join(SRC, 'routes'), /\.js$/), ...kaynakDosyalari(path.join(SRC, 'sockets'), /\.js$/)]) {
+      const ad = path.relative(SRC, dosya).split(path.sep).join('/');
+      const src = yorumsuzDosya(dosya);
+      for (const m of src.matchAll(/createAndPush\(|notifsToPush\.push\(\{|notificationsToCreate\.push\(\{/g)) {
+        const pencere = src.slice(m.index, m.index + 600);
+        const t = /\btext(\s*:\s*|\s*,)/.exec(pencere);
+        if (!t) continue;
+        sayac++;
+        const deger = pencere.slice(t.index + t[0].length).trimStart();
+        const kurucu = deger.startsWith('buildNotificationText(');
+        const serbest = SERBEST_METIN.has(ad) && /^,|^$/.test(t[1].trim());
+        if (!kurucu && !serbest) bulgular.push(`${ad}: text: ${deger.slice(0, 50)}`);
+      }
+    }
+    assert.ok(sayac >= 10, `yalnızca ${sayac} üretici bulundu — tarama kör olabilir`);
+    assert.deepEqual(bulgular, [], `elle yazılmış bildirim metni:\n${bulgular.join('\n')}`);
+  });
+
+  test('kart yorumu bahsetmesi sohbet bahsetmesiyle aynı tür', () => {
+    const tasks = yorumsuzDosya(path.join(SRC, 'routes', 'tasks.js'));
+    assert.match(tasks, /text: buildNotificationText\('mention', \{ who: user\.name, preview: text\.slice\(0, 80\) \}\)/);
+    assert.doesNotMatch(tasks, /<strong>/, 'tasks.js yine HTML gömüyor');
+  });
+
+  test('posta türü listesindeki her türün dolu gövdesi var', () => {
+    for (const tur of emailableTypes()) {
+      const r = renderNotification(buildNotificationText(tur, { who: 'Ali', preview: 'selam', task: 'Kart', col: 'X' }));
+      assert.equal(r.type, tur);
+      assert.ok(r.body.trim().length > 0, `${tur} postası BOŞ gövdeyle gider`);
+    }
+    const m = renderNotification(buildNotificationText('mention', { who: 'Ali', preview: 'selam' }));
+    assert.match(m.body, /Ali/);
+    assert.match(m.body, /selam/);
+  });
+
+  test('eski <strong> kayıtları ekranda etiketsiz, başka etiket yine kaçışlı', () => {
+    const eski = bildirimMetni('<strong>Ali</strong> seni bir görev yorumunda bahsetti: selam', () => null);
+    assert.ok(!/strong/.test(eski), `eski kayıt etiketiyle görünüyor: ${eski}`);
+    assert.match(eski, /^Ali seni/);
+    const kotu = bildirimMetni('<strong><script>x</script></strong>', () => null);
+    assert.ok(kotu.includes('&lt;script&gt;'), 'strong sökülürken başka etiket de söküldü ya da kaçmadı');
+  });
+});

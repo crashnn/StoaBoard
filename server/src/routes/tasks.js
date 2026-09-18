@@ -839,11 +839,15 @@ tasksRouter.post(
         if (kisi.id === user.id || notified.has(kisi.id)) continue;
         notifsToPush.push({
           userId: kisi.id,
-          // Metin bilerek JSON değil: `renderNotification` switch'inde
-          // `mention` diye bir dal yok; JSON verilirse `default`a düşer ve
-          // gövdesi boş bildirim çıkar. Düz metin dalı onu "Sizden
-          // bahsedildi" diye işliyor ve HTML'i temizliyor.
-          text: `<strong>${user.name}</strong> seni bir görev yorumunda bahsetti: ${text.slice(0, 80)}`,
+          // Sohbet bahsetmesiyle AYNI tür (kart #257). Eskiden burada elle
+          // yazılmış HTML vardı (`<strong>${user.name}</strong> seni bir görev
+          // yorumunda bahsetti: …`) ve gerekçesi "istemcide `mention` dalı yok"
+          // idi — o gerekçe eskidi: istemci artık `notif_<tür>` şablonuyla
+          // çeviriyor. Bildirimler 0-P'den beri düz metin basıldığı için etiket
+          // ekranda harfiyen görünüyordu, metin de çeviriden geçmiyordu.
+          // Aynı tür olması zil sekmesini, sesi, toast'ı ve e-postayı tek
+          // kurala bağlıyor; kart bağlamı `taskId`de.
+          text: buildNotificationText('mention', { who: user.name, preview: text.slice(0, 80) }),
           taskId,
           senderSlug: user.slug,
           workspaceId: project.workspaceId,

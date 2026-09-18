@@ -85,8 +85,14 @@ export function emailableTypes() {
  * Bildirim gövdesini insan okuyabilir Türkçeye çevir.
  *
  * İstemci tarafı bu JSON'u i18n ile çiziyor; posta için sunucuda ayrı bir
- * karşılık gerekiyor. Mention bildirimleri JSON değil düz HTML string olarak
- * üretiliyor, o yüzden parse başarısız olursa etiketler temizlenip kullanılır.
+ * karşılık gerekiyor. JSON olmayan gövde (kart #257 öncesi eski kayıtlar,
+ * serbest metin ucu) etiketleri temizlenip bahsetme olarak kullanılır.
+ *
+ * `mention` dalı 18 Eylül 2026'ya kadar YOKTU: sohbet bahsetmeleri JSON
+ * `mention` türüyle üretiliyor ve `default`a düşüp BOŞ gövdeli posta
+ * oluyordu — oysa `mention` varsayılan posta türlerinden biri. Kart
+ * bahsetmesi de #257'de aynı türe geçti. Test: posta türü listesindeki her
+ * türün burada dolu gövdeli bir dalı olmalı (bildirim.test.js).
  */
 export function renderNotification(text) {
   let parsed = null;
@@ -100,6 +106,12 @@ export function renderNotification(text) {
     return { type: 'mention', title: 'Sizden bahsedildi', body: plain };
   }
   switch (parsed.type) {
+    case 'mention':
+      return {
+        type: 'mention',
+        title: 'Sizden bahsedildi',
+        body: `${parsed.who || 'Bir takım arkadaşınız'} sizden bahsetti: ${parsed.preview || ''}`.trim(),
+      };
     case 'task_assigned':
       return {
         type: 'task_assigned',
