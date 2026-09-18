@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { gecmisBaslangici, gecmisSuzgeci } from '../src/lib/channels.js';
+import { gecmisBaslangici, gecmisSuzgeci, slugifyChannel } from '../src/lib/channels.js';
 import { yorumsuzDosya } from './yardimcilar.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -179,5 +179,26 @@ describe('mesaj listesi — limit EN YENİ N mesajı seçiyor', () => {
     const ters = b.indexOf('messages.reverse();');
     assert.notEqual(ters, -1, 'sonuç eskiden yeniye çevrilmiyor — ekran ters sırada çizer');
     assert.ok(ters < b.indexOf('const out = [];'), 'çevirme, çıktı kurulduktan sonra geliyor');
+  });
+});
+
+// ── Kanal slug'ı Türkçe İ ve ardışık tire (kart #250) ───────────────────────
+//
+// "AI İletişim Kanalı - Köprü" → "ai-i-letişim-kanalı---köprü" olmuştu.
+// `toLowerCase()` yerel ayarsız İ'yi i + birleşik nokta yapıyor, nokta tireye
+// dönüyordu; ardışık tireler de sıkıştırılmıyordu. tr-TR yerel ayarı BİLEREK
+// kullanılmıyor: "AI"daki I'yı "ı" yapar. Yalnızca noktalı İ kesin.
+describe('kanal slug — Türkçe İ ve ardışık tire (#250)', () => {
+  test('noktalı İ i oluyor, birleşik nokta kalmıyor', () => {
+    assert.equal(slugifyChannel('AI İletişim Kanalı - Köprü'), 'ai-iletişim-kanalı-köprü');
+    assert.equal(slugifyChannel('İş'), 'iş');
+  });
+  test('büyük I ASCII i kalıyor — tr-TR ile "aı" olmuyor', () => {
+    assert.equal(slugifyChannel('AI'), 'ai');
+  });
+  test('ardışık ayırıcılar tek tire; baş/son tire yok; Türkçe küçük harfler korunuyor', () => {
+    assert.equal(slugifyChannel('Ürün -- Tasarım'), 'ürün-tasarım');
+    assert.equal(slugifyChannel('  --a--  '), 'a');
+    assert.equal(slugifyChannel('çğıöşü'), 'çğıöşü');
   });
 });

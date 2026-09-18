@@ -10,12 +10,32 @@ import { resolveWorkspaceId, usersShareWorkspace } from './workspace.js';
 const CHANNEL_SLUG_STRIP = /[^a-z0-9\-_çğıöşü]+/g;
 
 /**
- * Python _slugify_channel karşılığı: lower, allowed harfler/digits/-/_,
- * Turkish karakterleri korur; geri kalan ardışıkları '-' yapar.
+ * Kanal adından slug: küçük harf, izinli harf/rakam/-/_, Türkçe harfler
+ * korunur, geri kalan her şey tek tireye.
+ *
+ * KUSUR (kart #250, 18 Eylül 2026): "AI İletişim Kanalı - Köprü" →
+ * "ai-i-letişim-kanalı---köprü". İki sebep:
+ *   1. `toLowerCase()` yerel ayarsız: "İ" → "i" + U+0307 (birleşik nokta);
+ *      nokta izinli olmadığı için tireye dönüyordu → "i-letişim".
+ *   2. Ardışık tireler sıkıştırılmıyordu → " - " → "---".
+ *
+ * İ AÇIKÇA i'ye çevriliyor, `toLocaleLowerCase('tr-TR')` KULLANILMIYOR:
+ * Türkçe yerel ayar "AI"daki büyük I'yı "ı" yapar ("aı-iletişim") — kanal
+ * adlarında İngilizce kısaltma ve Türkçe kelime yan yana geliyor ve büyük
+ * I'nın hangisi olduğu addan bilinemez. I → i (ASCII) seçildi: İngilizce
+ * kısaltmalar doğru, Türkçe büyük I'lı kelimeler ("DIŞ" → "diş") okunur
+ * kalıyor; yalnızca noktalı İ kesin, o düzeltiliyor.
+ *
+ * Yalnızca YENİ kanallar etkilenir; mevcut slug'lara dokunulmuyor (MCP ve
+ * adresler o slug'ı taşıyor, değiştirmek canlı veri işi — kullanıcı kararı).
  */
 export function slugifyChannel(name) {
-  const raw = (name || '').trim().toLowerCase();
-  return raw.replace(CHANNEL_SLUG_STRIP, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+  const raw = (name || '').trim().replace(/İ/g, 'i').toLowerCase();
+  return raw
+    .replace(CHANNEL_SLUG_STRIP, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
 }
 
 /**
