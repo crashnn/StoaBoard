@@ -24,6 +24,7 @@ import {
   hasPermission,
   memberForWorkspace,
   memberToDict,
+  resolveWorkspaceId,
   userPrivateDict,
 } from '../lib/workspace.js';
 import {
@@ -168,7 +169,8 @@ apiRouter.get(
 
     const workspacesList = allMemberships.map((wm) => {
       const wd = workspaceToDict(wm.workspace);
-      wd.is_current = wm.workspaceId === user.currentWorkspaceId;
+      // Çözülmüş üyelikten (kart #204) — sütundan değil.
+      wd.is_current = wm.workspaceId === member.workspaceId;
       wd.is_owner = wm.role === 'owner';
       return wd;
     });
@@ -394,14 +396,17 @@ apiRouter.put(
     }
 
     // role_title workspace-specific: membership varsa orada saklanır
+    // Aktif alan ÇÖZÜLMÜŞ kimlikten (kart #204): sütun ham okunursa bayat bir
+    // değerde unvan sessizce hiçbir yere yazılmıyordu.
     let wmUpdate = null;
-    if (typeof data.role_title === 'string' && user.currentWorkspaceId) {
-      const wm = await memberForWorkspace(user.id, user.currentWorkspaceId);
+    const aktifWs = typeof data.role_title === 'string' ? await resolveWorkspaceId(user) : null;
+    if (aktifWs) {
+      const wm = await memberForWorkspace(user.id, aktifWs);
       if (wm) {
         wmUpdate = await prisma.workspaceMember.update({
           where: {
             workspaceId_userId: {
-              workspaceId: user.currentWorkspaceId,
+              workspaceId: aktifWs,
               userId: user.id,
             },
           },

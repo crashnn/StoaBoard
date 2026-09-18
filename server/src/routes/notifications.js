@@ -13,7 +13,7 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { notificationToDict } from '../lib/serializers.js';
 import { createAndPush } from '../lib/notifications.js';
-import { usersShareWorkspace } from '../lib/workspace.js';
+import { resolveWorkspaceId, usersShareWorkspace } from '../lib/workspace.js';
 
 export const notificationsRouter = Router();
 
@@ -130,13 +130,16 @@ notificationsRouter.post(
     //
     // Kapı kapalı başarısızlık: aktif alan yoksa, kimlik sayı değilse ya da
     // taraflardan biri üye değilse `usersShareWorkspace` false döner.
+    // Aktif alan ÇÖZÜLMÜŞ kimlikten (kart #204): ham sütun bayatsa kapı
+    // yanlış alana bakar, bildirim de yanlış alana yazılırdı.
+    const aktifWs = await resolveWorkspaceId(user);
     const hedefHam = data.user_id;
     const targetId = (hedefHam === undefined || hedefHam === null || hedefHam === '')
       ? user.id
       : Number(hedefHam);
     if (targetId !== user.id) {
       const paylasiyor = Number.isInteger(targetId)
-        && await usersShareWorkspace(user.id, targetId, user.currentWorkspaceId);
+        && await usersShareWorkspace(user.id, targetId, aktifWs);
       if (!paylasiyor) {
         return res.status(403).json({
           error: 'err_not_workspace_member',
@@ -149,7 +152,7 @@ notificationsRouter.post(
     const notif = await createAndPush(io, {
       userId: targetId,
       text,
-      workspaceId: user.currentWorkspaceId,
+      workspaceId: aktifWs,
     });
     res.status(201).json(notificationToDict(notif));
   }),

@@ -55,23 +55,33 @@ export async function currentMember(user) {
     include: { workspaceRole: true },
     orderBy: { workspaceId: 'asc' },
   });
-  if (m) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { currentWorkspaceId: m.workspaceId },
-    });
-    user.currentWorkspaceId = m.workspaceId; // local mutation, frontend için
-  }
+  // OKURKEN YAZMIYOR (kart #204, ikinci aşama). 18 Eylül 2026'ya kadar geri
+  // düşüşün sonucu sütuna yazılıyordu: salt okuma sayılan bir çağrı (whoami,
+  // önyükleme) aktif alanı kalıcı olarak değiştirebiliyordu ve MCP ile
+  // tarayıcı aynı sütunu paylaştığı için biri ötekinin alanını kaydırıyordu.
+  // Sıralama birinci aşamada geldiği için yazmaya gerek kalmadı: aynı
+  // kullanıcı her istekte AYNI geri düşüşe varıyor. Sütun yalnızca açık
+  // eylemlerle (alan değiştir, kur, katıl) yazılıyor.
+  //
+  // Nesne üzerindeki atama kalıcı değil, yalnızca bu isteğin içinde tutarlılık
+  // için: aynı istekte sonradan çağrılan resolveWorkspaceId aynı alanı görsün.
+  if (m) user.currentWorkspaceId = m.workspaceId;
   return m;
 }
 
 /**
  * Aktif workspace id'sini döner. Python _resolve_workspace_id karşılığı.
+ *
+ * Sütunu HAM döndürmüyor, üyeliği her seferinde doğruluyor (kart #204).
+ * Eskiden sütun doluysa kontrolsüz dönüyordu; üyelikten çıkarılmış bir alanı
+ * gösteren bayat sütun, currentMember onu yazarak onarana kadar kullanıcıyı
+ * o alana yönlendiriyordu. Onarım (yazma) kalktığı için bu kısayol artık
+ * kalıcı bir 403 döngüsü olurdu. Bedeli çağrı başına bir birincil anahtar
+ * sorgusu.
  */
 export async function resolveWorkspaceId(user) {
-  if (user.currentWorkspaceId) return user.currentWorkspaceId;
   const m = await currentMember(user);
-  return m?.workspaceId || null;
+  return m?.workspaceId ?? null;
 }
 
 /**

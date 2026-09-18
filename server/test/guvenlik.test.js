@@ -1573,21 +1573,88 @@ describe('aktif alan çözümü — tek kaynak, deterministik', () => {
       .map((yol) => path.relative(SRC_DIZIN, yol));
   }
 
-  test('okurken onaran mantık yalnızca lib/workspace.js içinde', () => {
+  // İKİNCİ AŞAMA (18 Eylül 2026): okurken onarma TAMAMEN kalktı — tek kaynak
+  // bile artık sütuna yazmıyor. Birinci aşamada bu test "kopya yalnızca
+  // lib/workspace.js'te" diyordu; şimdi "hiçbir yerde".
+  test('okurken onaran mantık hiçbir yerde yok — tek kaynak da yazmıyor', () => {
     assert.deepEqual(
       kopyalar(),
-      [IZINLI],
-      'Aktif alan çözümünün bir kopyası daha var. Üç kopya 17 Eylül 2026\'da '
-      + 'teke indirildi; dördüncüsünü yazmak yerine currentMember ya da '
-      + 'resolveWorkspaceId çağır.',
+      [],
+      'Aktif alan çözümü yine okurken sütuna yazıyor. Salt okuma bir çağrı '
+      + '(whoami, önyükleme) aktif alanı kalıcı olarak kaydırabilir; MCP ile '
+      + 'tarayıcı aynı sütunu paylaşıyor. Sütun yalnızca açık eylemlerle '
+      + '(alan değiştir, kur, katıl) yazılır.',
     );
   });
 
-  test('tarama gerçekten o dosyayı buluyor (kör değil)', () => {
-    // İlk test "hiçbir dosya eşleşmiyor" hâlinde de yeşil kalırdı ve hiçbir
-    // şeyi korumazdı. Bu depoda üç tarama testi ilk hâlinde tam olarak
-    // böyleydi.
-    assert.ok(kopyalar().includes(IZINLI), 'tarama tek kaynağı bile göremiyor — desen bozuk');
+  test('tarama kör değil — iki imzayı da ayrı ayrı görüyor', () => {
+    // "hiçbir dosya eşleşmiyor" beklentisi, desenlerden biri bozulsa da yeşil
+    // kalırdı. İki imza AYRI ayrı gerçek birer dosyada görülmeli: geri düşüş
+    // sorgusu tek kaynakta, sütun yazması açık alan değiştirme ucunda.
+    const tum = kaynakDosyalari(SRC_DIZIN, /\.js$/);
+    const gorenler = (desen) => tum
+      .filter((yol) => desen.test(yorumsuzDosya(yol)))
+      .map((yol) => path.relative(SRC_DIZIN, yol));
+    assert.ok(gorenler(HERHANGI_UYELIK).includes(IZINLI), 'geri düşüş sorgusu tek kaynakta bile görülmüyor — desen bozuk');
+    assert.ok(gorenler(AKTIF_ALAN_YAZ).includes(path.join('routes', 'workspaces.js')),
+      'alan değiştirme ucundaki sütun yazması görülmüyor — yazma deseni bozuk');
+  });
+
+  test('sütunu yalnızca AÇIK eylemler yazıyor — izin listesi', () => {
+    // Yukarıdaki kopya taraması yalnızca "geri düşüş sorgusu + yazma" aynı
+    // dosyadaysa yakalar. Onarımı ÇAĞIRANA taşımak (önyüklemede currentMember'ın
+    // arkasından sütuna yazmak) o taramadan kaçar; mutasyon turunda tam olarak
+    // böyle kaçtı. Yazanlar listeye bağlı: yeni bir yazan eklemek, buraya
+    // NİÇİN açık bir kullanıcı eylemi olduğunu yazmayı gerektirir.
+    const IZINLI_YAZANLAR = [
+      path.join('routes', 'workspaces.js'), // alan kur, katılma isteği onayı, alan değiştir
+      path.join('sockets', 'chat.js'),      // sohbetten alan değiştir
+    ].sort();
+    const yazanlar = kaynakDosyalari(SRC_DIZIN, /\.js$/)
+      .filter((yol) => AKTIF_ALAN_YAZ.test(yorumsuzDosya(yol)))
+      .map((yol) => path.relative(SRC_DIZIN, yol))
+      .sort();
+    assert.deepEqual(yazanlar, IZINLI_YAZANLAR,
+      'aktif alan sütununa izin listesi dışında yazılıyor — okurken onarma geri mi geldi?');
+  });
+
+  test('resolveWorkspaceId sütunu ham döndürmüyor, üyeliği doğruluyor', () => {
+    // Onarım kalkınca "sütun doluysa onu dön" kısayolu kalıcı bir 403 döngüsü
+    // olur: üyelikten çıkarılmış bir alanı gösteren bayat sütun artık hiç
+    // düzelmez ve kullanıcı her istekte o alana yönlendirilir.
+    const src = yorumsuzDosya(path.join(SRC_DIZIN, 'lib', 'workspace.js'));
+    const bas = src.indexOf('export async function resolveWorkspaceId');
+    assert.ok(bas !== -1, 'resolveWorkspaceId bulunamadı');
+    const govde = src.slice(bas, src.indexOf('\n}\n', bas));
+    assert.match(govde, /await currentMember\(user\)/, 'resolveWorkspaceId üyeliği doğrulamıyor');
+    assert.doesNotMatch(govde, /return user\.currentWorkspaceId/,
+      'resolveWorkspaceId sütunu ham döndürüyor — bayat alan kalıcı 403 döngüsüne girer');
+  });
+
+  test('aktif alan sütunu lib/workspace.js dışında OKUNMUYOR', () => {
+    // Aynı olgunun birden çok okuyucusu. Sütunu ham okuyan dört yer vardı
+    // (önyükleme is_current, profil unvanı, bildirim kapısı, /workspaces/mine);
+    // bugüne kadar doğru çalışmaları currentMember'ın onarmasına bağlıydı.
+    // Onarım kalkınca bayat değerde sessizce yanlış davranırlardı. Aktif alan
+    // resolveWorkspaceId ya da currentMember'dan alınır.
+    //
+    // Okuma = NESNE ANAHTARI OLMAYAN her geçiş. Anahtar: önünde `{` ya da `,`,
+    // arkasında `:` (`data: { currentWorkspaceId: x }`) — onlar üstteki yazan
+    // izin listesine takılıyor. Geri kalan her şey okuma: `user.currentWorkspaceId`
+    // ve yapı bozma (`const { currentWorkspaceId } = user`).
+    //
+    // İki ara sürüm de mutasyon turunda delindi: yalnızca noktalı erişime
+    // bakan desen yapı bozmayı kaçırdı; "arkasından `:` gelmesin" diyen desen
+    // de üçlü ifadedeki okumayı (`? user.currentWorkspaceId : null`) kaçırdı —
+    // oradaki `:` anahtarın değil, üçlü ifadenin.
+    const HAM_OKUMA = /(?<![{,]\s*)\bcurrentWorkspaceId\b|\bcurrentWorkspaceId\b(?!\s*:)/;
+    const ham = kaynakDosyalari(SRC_DIZIN, /\.js$/)
+      .filter((yol) => path.relative(SRC_DIZIN, yol) !== IZINLI)
+      .filter((yol) => HAM_OKUMA.test(yorumsuzDosya(yol)))
+      .map((yol) => path.relative(SRC_DIZIN, yol));
+    assert.deepEqual(ham, [], `aktif alan sütunu ham okunuyor: ${ham.join(', ')}`);
+    assert.match(yorumsuzDosya(path.join(SRC_DIZIN, IZINLI)), HAM_OKUMA,
+      'desen tek kaynakta bile eşleşmiyor — ölçüt kör');
   });
 
   test('geri düşüş deterministik — findFirst sırasız değil', () => {

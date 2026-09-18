@@ -34,6 +34,7 @@ import {
   memberForWorkspace,
   memberToDict,
   hasPermission,
+  resolveWorkspaceId,
 } from '../lib/workspace.js';
 import { workspaceRoleToDict, taskToDict } from '../lib/serializers.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
@@ -561,6 +562,10 @@ workspacesRouter.get(
       where: { userId: user.id },
       include: { workspace: true },
     });
+    // Aktif işareti ÇÖZÜLMÜŞ kimlikten (kart #204). Sütun artık okurken
+    // onarılmadığı için bayat olabilir; ham karşılaştırma o durumda HİÇBİR
+    // alanı aktif göstermezdi.
+    const aktifWs = await resolveWorkspaceId(user);
     res.json(
       memberships.map((m) => ({
         id: m.workspace.id,
@@ -568,7 +573,7 @@ workspacesRouter.get(
         slug: m.workspace.slug,
         owner_id: m.workspace.ownerId,
         logo_url: m.workspace.logoUrl,
-        is_current: m.workspaceId === user.currentWorkspaceId,
+        is_current: m.workspaceId === aktifWs,
         is_owner: m.role === 'owner',
       })),
     );
