@@ -97,3 +97,23 @@ describe('sürüm — bağlantılar', () => {
     assert.match(b, /if \(toast\.meta\?\.reload\) \{ window\.location\.reload\(\); return; \}/, 'yenile bildirimi tıklanınca yenilemiyor');
   });
 });
+
+// ── Eski sekmeye giden uyumsuzluk reddi sunucuda iki dilde (kart #215) ─────
+//
+// Normalde çeviri istemcide tek noktada (apiFetch sözlükten geçiriyor). Ama
+// "paketin eski" diyen bir red, tanımı gereği sözlüğünde o kod OLMAYAN bir
+// istemciye gidiyor — 13 Eylül'de err_doc_checklist_retired İngilizce
+// arayüzde Türkçe çıktı. O mesajlar sunucuda, isteğin dilinde kurulmalı.
+describe('uyumsuzluk reddi — mesaj sunucuda iki dilde (#215)', () => {
+  const TASKS = yorumsuzDosya(path.join(KOK, 'server', 'src', 'routes', 'tasks.js'));
+
+  test('err_doc_checklist_retired mesajı reqLang ile seçiliyor, iki dil de var', () => {
+    const i = TASKS.indexOf("error: 'err_doc_checklist_retired',");
+    assert.notEqual(i, -1, 'red kaybolmuş');
+    const b = TASKS.slice(Math.max(0, i - 200), i + 400);
+    assert.match(b, /const en = reqLang\(req\) === 'en';/, 'mesaj isteğin diline bakmıyor');
+    assert.match(b, /message: en\s*\? 'To-do items are now stored as subtasks; reload the page and try again'\s*: 'Yapılacaklar artık alt görev olarak saklanıyor; sayfayı yenileyip yeniden deneyin'/,
+      'iki dilli mesaj yok — eski İngilizce sekme Türkçe görür');
+  });
+});
+

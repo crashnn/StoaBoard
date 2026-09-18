@@ -389,9 +389,17 @@ tasksRouter.patch(
       // gövdeyi bugün yalnızca dağıtımdan önce açılmış bir sekme gönderir;
       // ayıklansaydı o kullanıcının işaretledikleri hata vermeden kaybolurdu.
       if (docKontrolListesiVarMi(data.doc)) {
+        // Mesaj SUNUCUDA, isteğin dilinde kuruluyor (kart #215). Normalde
+        // çeviri istemcide tek noktada yapılır ve bu doğru; ama bu red TANIMI
+        // GEREĞİ eski pakete gidiyor — sözlüğünde bu kod olmayan bir istemciye.
+        // Tam da çevirinin çalışamayacağı durum: 13 Eylül'de İngilizce arayüzde
+        // Türkçe çıktı. `X-Stoa-Lang` başlığını eski paket de gönderiyor.
+        const en = reqLang(req) === 'en';
         return res.status(400).json({
           error: 'err_doc_checklist_retired',
-          message: 'Yapılacaklar artık alt görev olarak saklanıyor; sayfayı yenileyip yeniden deneyin',
+          message: en
+            ? 'To-do items are now stored as subtasks; reload the page and try again'
+            : 'Yapılacaklar artık alt görev olarak saklanıyor; sayfayı yenileyip yeniden deneyin',
         });
       }
       // Tür ve boyut denetimi (lib/doc.js): çekmece 15 Eylül'den beri blok
