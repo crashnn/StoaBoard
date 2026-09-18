@@ -22,9 +22,13 @@
 //      kullanıcıya olduğu gibi gösteriliyor.
 //   2. E-POSTA (mailer.js `renderNotification`): türe göre `who`, `task`,
 //      `preview`, `col` okuyor; tanımadığı türde gövdeyi boş bırakıyor.
-//   3. THROUGHPUT (lib/throughput.js): `task_moved` etkinlik kayıtlarından
-//      `parsed.col` okuyup kolon BAŞLIĞIYLA eşleştiriyor. Üretici oraya slug
-//      yazsa eşleşme tamamen kaçar ve akış raporu **sessizce boşalır**.
+//   3. ETKİNLİK AKIŞI (dashboard "Takım hareketleri"): `task_moved` kaydındaki
+//      `col`u OLDUĞU GİBİ ekrana basıyor ("… kartını <col>'ye taşıdı"). Üretici
+//      oraya slug yazsa kullanıcı "doing" gibi bir kimlik görür.
+//      (18 Eylül 2026'ya kadar burada lib/throughput.js de vardı — `col`u
+//      kolon başlığıyla eşleştirip "bu hafta tamamlanan" sayıyordu. Kart #202
+//      denetiminde raporlardan AYRIŞAN ikinci bir "tamamlandı" tanımı olduğu
+//      görüldü ve silindi; dashboard artık completed_at'ten sayıyor.)
 //
 // Üç okuyucunun üçü de aynı olguyu okuyor ve hiçbiri ötekini görmüyor: bu
 // deponun tekrar eden kusur sınıfı (CLAUDE.md). Test üreticiyi kilitliyor ve
@@ -285,37 +289,35 @@ describe('bildirim metni — e-posta gerçek üretici çıktısını okuyor', ()
   });
 });
 
-// ─── 4. Throughput dikişi ──────────────────────────────────────────────────
+// ─── 4. Etkinlik akışı: task_moved kolonu okunur yazıyor ────────────────────
 
-describe('bildirim metni — akış raporu dikişi', () => {
+describe('bildirim metni — task_moved kolonu insan okur', () => {
   const tasksSrc = yorumsuzDosya(path.join(SRC, 'routes', 'tasks.js'));
-  const throughputSrc = yorumsuzDosya(path.join(SRC, 'lib', 'throughput.js'));
 
   test('task_moved kolon BAŞLIĞI yazıyor, slug değil', () => {
-    // DİKİŞ. throughput.js `parsed.col` değerini kolon başlıklarından kurulmuş
-    // bir haritada arıyor (title ve titleTr, küçük harfe indirilmiş). Üretici
-    // buraya slug yazsa eşleşme tamamen kaçar, hiçbir gün sayılmaz ve rapor
-    // SESSİZCE boşalır — istisna yok, sıfır dolu bir grafik var.
+    // Etkinlik şablonu (`activity_task_moved`) `{col}`u olduğu gibi basıyor:
+    // "… kartını <col>'ye taşıdı". Üretici slug yazsa kullanıcı "doing" gibi
+    // bir kimlik görür. Bu kural ilk olarak lib/throughput.js için yazılmıştı
+    // (başlıkla eşleştiriyordu); o dosya 18 Eylül'de silindi (kart #202), kural
+    // etkinlik akışı için hâlâ geçerli.
     assert.ok(
       /col:\s*newCol\.titleTr\s*\|\|\s*newCol\.title/.test(tasksSrc),
-      'task_moved kaydındaki `col` artık kolon başlığı değil. throughput.js '
-      + 'başlıkla eşleştiriyor; akış raporu sessizce boşalır.',
+      'task_moved kaydındaki `col` artık kolon başlığı değil — etkinlik akışı '
+      + 'kullanıcıya kolon kimliğini gösterir.',
     );
     assert.ok(
       !/col:\s*newCol\.slug/.test(tasksSrc),
-      'task_moved kaydına slug yazılıyor — throughput.js bunu eşleştiremez.',
+      'task_moved kaydına slug yazılıyor — etkinlik akışında ham kimlik görünür.',
     );
   });
 
-  test('throughput hâlâ başlıkla eşleştiriyor — dikişin öteki ucu', () => {
-    // Üstteki test üreticiyi kilitliyor; bu da tüketicinin aynı varsayımda
-    // kaldığını. İkisinden biri değişirse hangi tarafın kaydığı görünür olur.
-    assert.ok(/titleToSlug/.test(throughputSrc), 'başlık→slug haritası kalkmış');
-    assert.ok(/parsed\.col/.test(throughputSrc), 'throughput artık col okumuyor');
-    assert.ok(
-      /task_moved/.test(throughputSrc),
-      'throughput task_moved kayıtlarını süzmüyor — tür adı değişmiş olabilir',
-    );
+  test('"tamamlandı"nın ikinci tanımı geri gelmedi', () => {
+    // Hareket günlüğünden tamamlanma sayan hesap raporlardan AYRIŞIYORDU
+    // (yeniden bitirileni iki kez, geri alınanı yine de sayıyordu). Silindi;
+    // geri gelirse iki tanım yine ayrışır. Bootstrap onu hesaplamamalı.
+    const api = yorumsuzDosya(path.join(SRC, 'routes', 'api.js'));
+    assert.doesNotMatch(api, /throughput/i,
+      'bootstrap yine throughput hesaplıyor — tamamlanmanın raporlardan ayrışan ikinci tanımı');
   });
 });
 

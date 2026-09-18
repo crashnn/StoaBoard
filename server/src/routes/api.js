@@ -42,7 +42,6 @@ import {
   userCanCreateChannel,
 } from '../lib/channels.js';
 import { countVisibleNotes } from '../lib/notes.js';
-import { throughputForProject } from '../lib/throughput.js';
 import { avatarUpload, storeFile } from '../lib/uploads.js';
 
 export const apiRouter = Router();
@@ -257,7 +256,6 @@ apiRouter.get(
         tasks: [],
         notifications: [],
         activity: [],
-        throughput: [],
       });
     }
 
@@ -270,8 +268,16 @@ apiRouter.get(
     }
     if (!project) project = projects[0];
 
-    // Projeye ait sorgular — hepsi paralel (throughput dahil)
-    const [columns, labels, tasks, notifs, activity, throughput] = await Promise.all([
+    // Projeye ait sorgular — hepsi paralel.
+    //
+    // `throughput` 18 Eylül 2026'da KALDIRILDI (kart #202). Hareket günlüğünden
+    // "bitiş kolonuna taşınma" sayıyordu ve tek okuyucusu dashboard'du;
+    // dashboard artık tamamlanmayı raporlarla AYNI kaynaktan, kartın
+    // `completed_at`inden sayıyor (client/src/sayim.js). Okunmayan hesap her
+    // açılışta bir sorgu harcıyordu — ve daha kötüsü, "tamamlandı"nın ikinci,
+    // ayrışan bir tanımı olarak depoda duruyordu: yarın biri onu yeniden
+    // okumaya başlasa iki tanım yine ayrışırdı. Silmek, onu imkânsız kılıyor.
+    const [columns, labels, tasks, notifs, activity] = await Promise.all([
       prisma.boardColumn.findMany({
         where: { projectId: project.id },
         orderBy: { position: 'asc' },
@@ -299,7 +305,6 @@ apiRouter.get(
         include: { user: true },
         take: 10,
       }),
-      throughputForProject(project.id),
     ]);
 
     const labelsMap = {};
@@ -333,7 +338,6 @@ apiRouter.get(
       tasks: tasks.map(taskToDict),
       notifications: notifs.map(notificationToDict),
       activity: activity.map(activityToDict),
-      throughput,
     });
   }),
 );

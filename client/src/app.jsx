@@ -844,7 +844,6 @@ function App() {
     setWsLogoUrl(data.workspace?.logo_url || null);
     window.DATA.NOTIFICATIONS = data.notifications || [];
     window.DATA.ACTIVITY      = data.activity      || [];
-    window.DATA.THROUGHPUT    = data.throughput    || [];
     window.CURRENT_USER       = data.user;
     window.CURRENT_PROJECT_ID = data.current_project;
     window.__CURRENT_WS_ID__  = data.workspace?.id || null;

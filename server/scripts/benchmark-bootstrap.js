@@ -2,7 +2,6 @@
 import { prisma } from '../src/db.js';
 import { listAccessibleChannels, userCanCreateChannel } from '../src/lib/channels.js';
 import { countVisibleNotes } from '../src/lib/notes.js';
-import { throughputForProject } from '../src/lib/throughput.js';
 
 const user = await prisma.user.findUnique({ where: { id: 1 } }); // efe-kapan
 console.log('User:', user.email, 'ws:', user.currentWorkspaceId);
@@ -83,7 +82,6 @@ if (projects.length) {
       take: 10,
     }),
   );
-  await time('throughput (7 days)', () => throughputForProject(project.id));
 }
 
 console.log('\nTOTAL:', ((performance.now() - t0) / 1000).toFixed(2), 's');
