@@ -136,6 +136,22 @@ describe('kanal geçmişi kesimi — okuma yolları', () => {
     assert.match(b, /tx\.channelMember\.upsert\(/, 'satır yazılmıyor');
   });
 
+  test('kesim notu yalnızca GERÇEKTEN gizlenen mesaj varsa — history_hidden', () => {
+    // Kullanıcı kararı (18 Eylül): hiçbir mesaj kaybetmeyen üyeye "geçmiş şu
+    // tarihten itibaren görünüyor" demek sorulmamış soruya cevap.
+    const bas = KANAL.indexOf('const kesimli = Array.from(byId.values()).filter((c) => c.gecmisBaslangici);');
+    assert.notEqual(bas, -1, 'kesimli kanallar toplanmıyor — gizlenen mesaj hiç ölçülmüyor');
+    const b = KANAL.slice(bas, KANAL.indexOf('\n  }\n', bas));
+    assert.match(b, /MIN\(created_at\) AS ilk/, 'kanalın ilk mesajı sorgulanmıyor');
+    // SELECT satırına bağlı: GROUP BY'daki COALESCE kopyası aklamasın (mutasyon buldu).
+    assert.match(b, /SELECT COALESCE\(channel, 'general'\) AS channel, MIN\(created_at\) AS ilk/, 'genel kanalın channel=NULL eski satırları sayılmıyor');
+    assert.match(b, /c\.gecmisGizli = Boolean\(ilk && new Date\(ilk\) < c\.gecmisBaslangici\);/, 'gizlilik ilk mesaj < kesim ile hesaplanmıyor');
+    assert.match(KANAL, /data\.history_hidden = Boolean\(channel\.gecmisGizli\);/, 'kanal sözlüğü history_hidden taşımıyor');
+    const c = CHAT_JSX.indexOf('const gecmisNotu = (() => {');
+    const cb = CHAT_JSX.slice(c, CHAT_JSX.indexOf('})();', c));
+    assert.match(cb, /if \(!ham \|\| !kanal\?\.history_hidden\) return null;/, 'istemci notu gizlenen mesaj yokken de çiziyor');
+  });
+
   test('istemci kesim notunu sunucunun history_from alanından kuruyor, DM\'de değil', () => {
     assert.match(KANAL, /data\.history_from = new Date\(channel\.gecmisBaslangici\)\.toISOString\(\);/,
       'kanal sözlüğü history_from taşımıyor — istemci notu kuramaz');

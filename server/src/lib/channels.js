@@ -219,6 +219,8 @@ export function channelToDict(channel, { currentUserId = null, includeMembers = 
   // buradan kuruyor. Yalnızca kesim varsa gelir; yokluğu "kesim yok" demek.
   if (channel.gecmisBaslangici) {
     data.history_from = new Date(channel.gecmisBaslangici).toISOString();
+    // Kesimden önce mesaj var mı — istemci notu yalnızca varsa çiziyor.
+    data.history_hidden = Boolean(channel.gecmisGizli);
   }
   if (channel.lastMessage) {
     const lm = channel.lastMessage;
@@ -298,6 +300,30 @@ export async function listAccessibleChannels(user) {
   // önizlemesi görünürse kesim yalnızca görünüşte olur.
   for (const c of byId.values()) {
     c.gecmisBaslangici = await kanalGecmisBaslangici(c, user.id);
+  }
+
+  // Kesim GERÇEKTEN bir şey gizliyor mu? Kanalın ilk mesajı kesimden
+  // önceyse evet. İstemci notu buna bağlıyor (kullanıcı kararı, 18 Eylül):
+  // hiçbir mesaj kaybetmeyen üyeye "geçmiş şu tarihten itibaren görünüyor"
+  // demek doğru ama sorulmamış soruya cevap — "mesajlarım mı kayboldu?"
+  // diye düşündürür. Tek sorgu, kanal başına en eski mesaj; "genel"in
+  // channel=NULL eski satırları da sayılıyor.
+  const kesimli = Array.from(byId.values()).filter((c) => c.gecmisBaslangici);
+  if (kesimli.length) {
+    const kesimliSlug = kesimli.map((c) => c.slug);
+    const ilkler = await prisma.$queryRaw`
+      SELECT COALESCE(channel, 'general') AS channel, MIN(created_at) AS ilk
+      FROM chat_messages
+      WHERE workspace_id = ${wsId}
+        AND receiver_id IS NULL
+        AND (channel = ANY(${kesimliSlug}::text[]) OR (channel IS NULL AND 'general' = ANY(${kesimliSlug}::text[])))
+      GROUP BY COALESCE(channel, 'general')
+    `;
+    const ilkBySlug = new Map(ilkler.map((r) => [r.channel, r.ilk]));
+    for (const c of kesimli) {
+      const ilk = ilkBySlug.get(c.slug);
+      c.gecmisGizli = Boolean(ilk && new Date(ilk) < c.gecmisBaslangici);
+    }
   }
 
   // Her kanal için son mesajı tek raw SQL ile çek (DISTINCT ON kanal başına 1).

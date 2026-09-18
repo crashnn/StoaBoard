@@ -1822,8 +1822,11 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   // gitti?" sorusunu sormadan cevaplıyor; yokluğu "kesim yok" demek.
   const gecmisNotu = (() => {
     if (dmWith) return null;
-    const ham = _findCh(activeChannel || 'general')?.history_from;
-    if (!ham) return null;
+    const kanal = _findCh(activeChannel || 'general');
+    const ham = kanal?.history_from;
+    // Yalnızca gerçekten gizlenen mesaj varsa (kullanıcı kararı, 18 Eylül):
+    // hiçbir şey kaybetmeyen üyeye not göstermek sorulmamış soruya cevap.
+    if (!ham || !kanal?.history_hidden) return null;
     const d = new Date(ham);
     if (Number.isNaN(d.getTime())) return null;
     const lang = localStorage.getItem('stoa.lang') || 'tr';
