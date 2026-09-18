@@ -12,6 +12,24 @@ function CommandPalette({ open, onClose, onAction }) {
     if (open) { setQ(''); setIdx(0); setTimeout(() => inputRef.current?.focus(), 40); }
   }, [open]);
 
+  // ── Öneriler (kart #245) ─────────────────────────────────────────────────
+  //
+  // Palet boşken üç bölüm: son dokundukların, üzerindeki işler, hareketli.
+  // Veri sunucudan (hareket kaydından türetiliyor, cihazlar arası aynı liste);
+  // her açılışta yeniden çekiliyor. Yazmaya başlayınca öneriler çekilir,
+  // normal arama devralır. Yükleme hatası sessizce boş liste DEĞİL: konsola
+  // düşer, kullanıcıya komut listesi yine gelir — öneri ek, komutlar asıl.
+  const [oneriler, setOneriler] = useP(null);
+  useE(() => {
+    if (!open) return undefined;
+    let iptal = false;
+    setOneriler(null);
+    window.API?.oneriler?.()
+      .then((o) => { if (!iptal) setOneriler(o); })
+      .catch((e) => { console.warn('[palette] suggestions failed:', e?.message); });
+    return () => { iptal = true; };
+  }, [open]);
+
   const flat = useM(() => {
     // ── "#193" — kart numarasıyla arama ───────────────────────────────────
     //
@@ -73,6 +91,24 @@ function CommandPalette({ open, onClose, onAction }) {
     const all = [];
     DATA.COMMANDS.forEach(g => g.items.forEach(it => all.push({ ...it, group: g.group })));
     let base = all;
+    // Boş sorguda öneriler komutların ÖNÜNDE: kullanıcı paleti çoğu zaman bir
+    // karta gitmek için açıyor. Bölüm boşsa başlığı da yok — boş başlık
+    // "özellik bozuk" izlenimi verir.
+    if (!q && oneriler) {
+      const bolum = (anahtar, yedek, liste) => (liste || []).map(t => ({
+        label: t.title,
+        icon: 'circleCheck',
+        action: 'open:task:' + t.id,
+        group: window.t?.(anahtar) || yedek,
+        sub: t.col_title || t.col || null,
+      }));
+      base = [
+        ...bolum('palette_group_recent', 'Son dokundukların', oneriler.dokunulan),
+        ...bolum('palette_group_mine', 'Üzerindeki işler', oneriler.atanmis),
+        ...bolum('palette_group_active', 'Hareketli', oneriler.hareketli),
+        ...all,
+      ];
+    }
     if (q) {
       const ql = q.toLowerCase();
       base = all.filter(it => it.label.toLowerCase().includes(ql));
@@ -115,7 +151,7 @@ function CommandPalette({ open, onClose, onAction }) {
       base = [...base, ...noteHits];
     }
     return base;
-  }, [q]);
+  }, [q, oneriler]);
 
   const grouped = useM(() => {
     const m = {};

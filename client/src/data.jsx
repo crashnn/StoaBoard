@@ -341,6 +341,7 @@ const API = {
   unlinkNoteTask: (noteId, taskId) => apiFetch(`/api/notes/${noteId}/link-task/${taskId}`, { method: 'DELETE' }),
   taskLinkedNotes: (taskId)        => apiFetch(`/api/tasks/${taskId}/linked-notes`),
   workspaceTasks:  ()              => apiFetch('/api/workspaces/me/tasks'),
+  oneriler:        ()              => apiFetch('/api/workspaces/me/tasks/oneriler'),
 
   // Task attachments
   listAttachments:   (taskId)          => apiFetch(`/api/tasks/${taskId}/attachments`),
@@ -883,6 +884,7 @@ window.APP_I18N = {
     // Palette
     palette_ph:'Komut, görev veya sayfa ara — numara için #193',
     palette_group_tasks:'Görevler',
+    palette_group_recent:'Son dokundukların', palette_group_mine:'Üzerindeki işler', palette_group_active:'Hareketli (48 saat)',
     palette_id_hint:'Kart numarası yaz: #193',
     palette_task_elsewhere:'Bu projede değil — açmayı dene',
     palette_navigate:'gez', palette_select:'seç', palette_close:'kapat',
@@ -1803,6 +1805,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     // Palette
     palette_ph:'Search commands, tasks or pages — use #193 for a number',
     palette_group_tasks:'Tasks',
+    palette_group_recent:'Recently touched', palette_group_mine:'Your open work', palette_group_active:'Active (48h)',
     palette_id_hint:'Type a card number: #193',
     palette_task_elsewhere:'Not in this project — try opening it',
     palette_navigate:'navigate', palette_select:'select', palette_close:'close',

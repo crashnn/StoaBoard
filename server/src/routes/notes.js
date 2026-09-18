@@ -16,6 +16,7 @@ import { Router } from 'express';
 
 import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
+import { oneriKur, HAREKETLI_PENCERE_MS } from '../lib/oneri.js';
 import { requireAuth } from '../lib/session.js';
 import { emitSafely } from '../lib/emit.js';
 import {
@@ -465,6 +466,106 @@ notesRouter.delete(
 );
 
 // ─── GET /api/workspaces/me/tasks — hafif liste (Notes link picker için) ──
+
+// ─── GET /workspaces/me/tasks/oneriler ──────────────────────────────────────
+//
+// Arama önerileri (kart #245): palet boşken üç bölüm. Kural saf (lib/oneri.js);
+// burası yalnızca veriyi topluyor. Şema değişmedi: "dokunulan" taşıma
+// (task_transitions), yorum (comments) ve açış (tasks.created_by) kayıtlarından
+// türüyor. Kartlar aktif alanla sınırlı, bitmiş ve çöptekiler dışarıda —
+// kullanıcının göremediği bir kart öneri yolundan görünmesin (GUVENLIK §4).
+meTasksRouter.get(
+  '/oneriler',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = await loadUser(req);
+    const wsId = await resolveWorkspaceId(user);
+    const bos = { dokunulan: [], atanmis: [], hareketli: [] };
+    if (!wsId) return res.json(bos);
+
+    const simdi = new Date();
+    const esik = new Date(simdi.getTime() - HAREKETLI_PENCERE_MS);
+    const projeler = await prisma.project.findMany({ where: { workspaceId: wsId }, select: { id: true } });
+    const projeIds = projeler.map((p) => p.id);
+    if (!projeIds.length) return res.json(bos);
+
+    const [benimTasima, benimYorum, actiklarim, atananlar, sonTasima, sonYorum] = await Promise.all([
+      prisma.taskTransition.findMany({
+        where: { userId: user.id, projectId: { in: projeIds } },
+        orderBy: { at: 'desc' }, take: 60, select: { taskId: true, at: true },
+      }),
+      prisma.comment.findMany({
+        where: { userId: user.id, task: { projectId: { in: projeIds } } },
+        orderBy: { createdAt: 'desc' }, take: 60, select: { taskId: true, createdAt: true },
+      }),
+      prisma.task.findMany({
+        where: { createdBy: user.id, projectId: { in: projeIds }, deletedAt: null },
+        orderBy: { createdAt: 'desc' }, take: 30, select: { id: true, createdAt: true },
+      }),
+      prisma.taskAssignee.findMany({
+        where: { userId: user.id, task: { projectId: { in: projeIds }, deletedAt: null } },
+        select: { taskId: true },
+      }),
+      prisma.taskTransition.findMany({
+        where: { projectId: { in: projeIds }, at: { gte: esik } },
+        orderBy: { at: 'desc' }, take: 200, select: { taskId: true, at: true },
+      }),
+      prisma.comment.findMany({
+        where: { createdAt: { gte: esik }, task: { projectId: { in: projeIds } } },
+        orderBy: { createdAt: 'desc' }, take: 200, select: { taskId: true, createdAt: true },
+      }),
+    ]);
+
+    const dokunulan = [
+      ...benimTasima.map((t) => ({ taskId: t.taskId, at: t.at })),
+      ...benimYorum.map((c) => ({ taskId: c.taskId, at: c.createdAt })),
+      ...actiklarim.map((t) => ({ taskId: t.id, at: t.createdAt })),
+    ];
+    const hareketli = [
+      ...sonTasima.map((t) => ({ taskId: t.taskId, at: t.at })),
+      ...sonYorum.map((c) => ({ taskId: c.taskId, at: c.createdAt })),
+    ];
+    const adaylar = new Set([
+      ...dokunulan.map((h) => h.taskId),
+      ...atananlar.map((a) => a.taskId),
+      ...hareketli.map((h) => h.taskId),
+    ].filter((id) => id != null));
+    if (!adaylar.size) return res.json(bos);
+
+    // Yalnızca AÇIK ve silinmemiş kartlar; bitiş kolonundakiler dışarıda.
+    const rows = await prisma.task.findMany({
+      where: {
+        id: { in: [...adaylar] },
+        projectId: { in: projeIds },
+        deletedAt: null,
+        // is_done NULL olabiliyor (#198): NULL "bitmemiş" sayılır. `not: true`
+        // NULL'u dışarıda bırakırdı — #193'teki NULL tuzağının aynısı.
+        OR: [{ column: null }, { column: { isDone: false } }, { column: { isDone: null } }],
+      },
+      select: {
+        id: true, title: true, projectId: true,
+        project: { select: { name: true } },
+        column: { select: { slug: true, titleTr: true } },
+      },
+    });
+    const kartlar = new Map(rows.map((r) => [r.id, {
+      id: String(r.id),
+      title: r.title,
+      project_id: r.projectId,
+      project_name: r.project?.name || '',
+      col: r.column?.slug || null,
+      col_title: r.column?.titleTr || r.column?.slug || null,
+    }]));
+
+    res.json(oneriKur({
+      dokunulan,
+      atanmis: atananlar.map((a) => a.taskId),
+      hareketli,
+      kartlar,
+      simdi,
+    }));
+  }),
+);
 
 meTasksRouter.get(
   '/',
