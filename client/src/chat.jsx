@@ -1809,6 +1809,14 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   // Helper: find channel meta by slug (id)
   const _findCh = (slug) => channels.find(c => (c.slug || c.id) === slug);
 
+  // Açık kanalın görünen adı — başlık, boş durum ve yazma kutusu buradan
+  // okuyor (kart #249). Eskiden boş durum ve yazma kutusu kanaldan bağımsız
+  // sabit "genel kanal" metni taşıyordu: başka bir kanalda kullanıcıya yanlış
+  // yeri söylüyordu. Metne yerleştirirken değer FONKSİYONLA veriliyor
+  // (`() => kanalAdi`): düz metin verilseydi `String.replace` adındaki `$&`,
+  // `$'` gibi dizileri özel yorumlar, kanal adı bozulurdu.
+  const kanalAdi = _findCh(activeChannel)?.name || activeChannel || 'genel';
+
   // Kanal geçmişi kesimi notu (kart #119): sunucu `history_from` verdiyse
   // kullanıcı katılımından öncesini görmüyor demektir. Not, "mesajlar nereye
   // gitti?" sorusunu sormadan cevaplıyor; yokluğu "kesim yok" demek.
@@ -3137,7 +3145,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                   </div>
                   <div className="chat-fp-conv-title-wrap">
                     <div className="chat-fp-conv-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {(_findCh(activeChannel)?.name) || activeChannel || 'genel'}
+                      {kanalAdi}
                       {currentChannelDetail && (
                         <button
                           className="icon-btn"
@@ -3243,7 +3251,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
               )}
               {messages.length === 0 && (
                 <div className="chat-empty">
-                  {dmWith ? `${dmUser?.name || dmWith} ${window.t?.('chat_dm_start')||'ile sohbet başlat.'}` : (window.t?.('chat_general_first')||'Genel kanala ilk mesajı gönder.')}
+                  {dmWith ? `${dmUser?.name || dmWith} ${window.t?.('chat_dm_start')||'ile sohbet başlat.'}` : (window.t?.('chat_channel_first')||'#{kanal} kanalına ilk mesajı gönder.').replace('{kanal}', () => kanalAdi)}
                 </div>
               )}
               {messages.map((msg, i) => {
@@ -3417,7 +3425,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
               <textarea
                 ref={inputRef}
                 className="chat-fp-input"
-                placeholder={pendingFile ? (window.t?.('chat_desc_ph')||'Açıklama ekle (isteğe bağlı)…') : (dmWith ? `${dmUser?.name || dmWith}${window.t?.('chat_write_dm') || ' — mesaj yaz...'}` : (window.t?.('chat_write_general')||'#genel kanala yaz...'))}
+                placeholder={pendingFile ? (window.t?.('chat_desc_ph')||'Açıklama ekle (isteğe bağlı)…') : (dmWith ? `${dmUser?.name || dmWith}${window.t?.('chat_write_dm') || ' — mesaj yaz...'}` : (window.t?.('chat_write_channel')||'#{kanal} kanalına yaz...').replace('{kanal}', () => kanalAdi))}
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
@@ -3917,7 +3925,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
               )}
               {messages.length === 0 && (
                 <div className="chat-empty">
-                  {dmWith ? `${dmUser?.name || dmWith} ${window.t?.('chat_dm_start')||'ile sohbet başlat.'}` : (window.t?.('chat_general_first')||'Genel kanala ilk mesajı gönder.')}
+                  {dmWith ? `${dmUser?.name || dmWith} ${window.t?.('chat_dm_start')||'ile sohbet başlat.'}` : (window.t?.('chat_channel_first')||'#{kanal} kanalına ilk mesajı gönder.').replace('{kanal}', () => kanalAdi)}
                 </div>
               )}
               {messages.map((msg, i) => {
@@ -4099,7 +4107,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
               <textarea
                 ref={inputRef}
                 className="chat-input"
-                placeholder={pendingFile ? (window.t?.('chat_desc_ph')||'Açıklama ekle (isteğe bağlı)…') : (dmWith ? `${dmUser?.name || dmWith}${window.t?.('chat_write_dm') || ' — mesaj yaz...'}` : (window.t?.('chat_write_general')||'Genel kanala yaz...'))}
+                placeholder={pendingFile ? (window.t?.('chat_desc_ph')||'Açıklama ekle (isteğe bağlı)…') : (dmWith ? `${dmUser?.name || dmWith}${window.t?.('chat_write_dm') || ' — mesaj yaz...'}` : (window.t?.('chat_write_channel')||'#{kanal} kanalına yaz...').replace('{kanal}', () => kanalAdi))}
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
