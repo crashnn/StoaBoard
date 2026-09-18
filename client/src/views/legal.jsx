@@ -245,16 +245,27 @@ export function LegalPage({ type, onViewChange, authed }) {
 
   // Unauthenticated view (renders with auth dust particles and full background)
   return (
+    // KUSUR (kart #254, 18 Eylül 2026, kullanıcının ekran görüntüsü): sayfa
+    // "1. bölüm"ün ortasından başlıyordu; logo, başlık ve Kapat düğmesi hiç
+    // görünmüyordu. Kap `.app` kabuğunun (100dvh, overflow: hidden) içinde
+    // `alignItems: center` ile DİKEY ORTALIYORDU: içerik ekrandan uzun olunca
+    // ortalama taşmayı yukarıya ve aşağıya eşit dağıtıyor. `overflowX: hidden`
+    // CSS gereği dikey yönü `auto` yaptığı için sayfa kayıyor GÖRÜNÜYORDU ama
+    // yukarı taşan kısım kaydırma alanının dışında kalıyor, hiç ulaşılamıyordu.
+    //
+    // Şimdi: kap kendi kaydırma alanı (kabuğu dolduruyor) ve ortalama kartın
+    // `margin: auto`sundan geliyor. Esnek kutuda otomatik kenar boşluğu içerik
+    // taşınca sıfıra iner: kısa içerik ortada, uzun içerik ÜSTTEN başlar.
     <div className="legal-page-public" style={{
-      width: '100vw',
-      minHeight: '100vh',
+      width: '100%',
+      height: '100%',
+      minHeight: 0,
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
       padding: '40px 20px',
       background: 'var(--bg)',
       position: 'relative',
-      overflowX: 'hidden'
+      overflowX: 'hidden',
+      overflowY: 'auto'
     }}>
       {/* Background dust particles (matching AuthPage) */}
       <div className="dust-overlay" style={{ pointerEvents: 'none' }}>
@@ -276,6 +287,7 @@ export function LegalPage({ type, onViewChange, authed }) {
       <div style={{
         width: '100%',
         maxWidth: 720,
+        margin: 'auto',
         background: 'var(--bg-raised)',
         border: '1px solid var(--line)',
         boxShadow: 'var(--shadow-lg)',
@@ -286,7 +298,7 @@ export function LegalPage({ type, onViewChange, authed }) {
         animation: 'fadeIn 0.4s var(--ease)'
       }}>
         {/* Header Branding */}
-        <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', marginBottom: 28, borderBottom: '1px solid var(--line)', paddingBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, borderBottom: '1px solid var(--line)', paddingBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <StoaLogo size={32} />
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--ink)', letterSpacing: '-0.02em' }}>
