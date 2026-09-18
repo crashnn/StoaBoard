@@ -90,7 +90,7 @@ Gece **kişisel MCP anahtarları** (DEVIR 0-V2): Ayarlar → Claude bağlantıs�
 iptal. **Anahtarı ortam değişkenine eklemek artık tek yol değil** — yeni kişi
 kendi anahtarını üretir.
 
-Test sayısı **796**, hepsi geçiyor. Ayrıntılı durum için **her zaman
+Test sayısı **805**, hepsi geçiyor. Ayrıntılı durum için **her zaman
 [DEVIR.md](DEVIR.md)** — bu blok bayatlamaya yatkın, oradaki 0-* bölümleri
 tarihli ve daha güvenilir.
 
@@ -158,7 +158,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 796 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 805 test,
 veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
 "Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
 modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
@@ -167,8 +167,8 @@ alttaki `pass` / `fail` satırlarıdır.
 ```bash
 cd server && npm test        # PowerShell'de: npm.cmd test
 cd client && npm run build   # ön yüz derlemesi
-cd client && npm run lint    # ESLint: no-undef + rules-of-hooks hata, iki uyarı
-cd server && npm run lint    # ESLint: no-undef hata, no-unused-vars uyarı
+cd client && npm run lint    # ESLint: no-undef + rules-of-hooks + no-unused-vars hata, exhaustive-deps uyarı
+cd server && npm run lint    # ESLint: no-undef + no-unused-vars hata (18 Eylül, #153)
 cd server && npm run mcp:tara # MCP taraması — çalışan sunucu + veritabanı ister
 ```
 
