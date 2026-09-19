@@ -522,3 +522,64 @@ describe('proje listesi ve etiketler yayınlanıyor (#272)', () => {
     assert.match(APP, /\n  \};\n  switchProjectRef\.current = switchProject;/, 'switchProject ref\'i tanımın hemen ardından güncellenmiyor — bayat kopya');
   });
 });
+
+// ─── #273 — alan adı/logo, roller, profil canlı ─────────────────────────────
+
+describe('alan adı/logo, roller ve profil yayınlanıyor (#273)', () => {
+  const WS = yorumsuzDosya(path.join(SRC, 'routes', 'workspaces.js'));
+  const API = yorumsuzDosya(path.join(SRC, 'routes', 'api.js'));
+  const BOARD = yorumsuzDosya(path.join(SRC, 'lib', 'board.js'));
+  const APP = yorumsuzDosya(path.join(CLIENT, 'app.jsx'));
+  const blok = (src, bas, son) => {
+    const i = src.indexOf(bas);
+    assert.notEqual(i, -1, `blok başlangıcı bulunamadı: ${bas}`);
+    const j = src.indexOf(son, i);
+    assert.notEqual(j, -1, `blok sonu bulunamadı: ${son}`);
+    return src.slice(i, j);
+  };
+  const yayinOnce = (b, fn, ad) => {
+    const y = b.indexOf(`${fn}(`);
+    assert.notEqual(y, -1, `${ad}: yayınlamıyor — karşı taraf F5'e kadar eskiyi görür`);
+    const sonYanit = Math.max(b.lastIndexOf('res.json('), b.lastIndexOf('res.status(201)'));
+    assert.ok(sonYanit > y, `${ad}: yayın başarılı yanıttan sonra`);
+  };
+
+  test('alan adı ve logo (yükle/sil) yayınlıyor', () => {
+    yayinOnce(blok(WS, "workspacesRouter.patch(\n  '/:wsId',", 'workspacesRouter.post('), 'alanYayini', 'alan adı');
+    yayinOnce(blok(WS, "workspacesRouter.post(\n  '/:wsId/logo',", 'workspacesRouter.delete('), 'alanYayini', 'logo yükleme');
+    yayinOnce(blok(WS, "workspacesRouter.delete(\n  '/:wsId/logo',", '\n);'), 'alanYayini', 'logo silme');
+  });
+
+  test('rol ekleme / düzenleme / silme rol VE üye listesini yayınlıyor', () => {
+    yayinOnce(blok(WS, "workspacesRouter.post(\n  '/me/roles',", "workspacesRouter.patch(\n  '/roles/:roleId'"), 'rollerYayini', 'rol ekleme');
+    yayinOnce(blok(WS, "workspacesRouter.patch(\n  '/roles/:roleId',", "workspacesRouter.delete(\n  '/roles/:roleId'"), 'rollerYayini', 'rol düzenleme');
+    yayinOnce(blok(WS, "workspacesRouter.delete(\n  '/roles/:roleId',", "workspacesRouter.patch(\n  '/members/:slug'"), 'rollerYayini', 'rol silme');
+    const r = blok(BOARD, 'export async function rollerYayini', '\n}');
+    assert.match(r, /members: uyeler\.map\(memberToDict\)/, 'üye listesi gitmiyor — silinen rolün üyeleri istemcide eski rolde kalır');
+    assert.match(r, /roles: roles\.map\(workspaceRoleToDict\)/);
+  });
+
+  test('profil (ad/unvan, avatar yükle/sil) üyesi olduğu her alana yayınlıyor', () => {
+    // Blok sonu bir SONRAKİ yönlendirici; "apiRouter." aramak başlangıcın
+    // kendisini bulup boş blok verirdi.
+    yayinOnce(blok(API, "apiRouter.put(\n  '/users/me',", "apiRouter.delete(\n  '/users/me',"), 'uyeYayini', 'profil');
+    yayinOnce(blok(API, "apiRouter.post(\n  '/users/me/avatar',", "apiRouter.delete(\n  '/users/me/avatar'"), 'uyeYayini', 'avatar yükleme');
+    yayinOnce(blok(API, "apiRouter.delete(\n  '/users/me/avatar',", '\n);'), 'uyeYayini', 'avatar silme');
+    const u = blok(BOARD, 'export async function uyeYayini', '\n}');
+    assert.match(u, /where: \{ userId \}/, 'yalnızca aktif alana gidiyor — öbür alanlardaki üye listeleri eski kalır');
+    assert.match(u, /for \(const wm of uyelikler\)[\s\S]*panoYayini\(io, 'member_updated', wm\.workspaceId/, 'her üyeliğe kendi alanının üye sözlüğü gitmiyor');
+  });
+
+  test('istemci üçünü de uyguluyor', () => {
+    const m = blok(APP, "sock.on('member_updated'", '\n    });');
+    assert.match(m, /setMembers\(prev => \{[\s\S]*window\.DATA\.MEMBERS = next;/, 'üye listesi güncellenmiyor');
+    assert.match(m, /member\.id === window\.CURRENT_USER\?\.id\) window\.CURRENT_USER = /, 'kendi profili üst çubukta eski kalır');
+    const w = blok(APP, "sock.on('workspace_updated'", '\n    });');
+    assert.match(w, /window\.DATA\.WORKSPACE = \{ \.\.\.window\.DATA\.WORKSPACE, name: workspace\.name, logo_url: workspace\.logo_url \}/, 'üst çubuk eski kalır');
+    assert.match(w, /setWorkspaces\(prev => prev\.map\(/, 'alan seçici eski kalır');
+    const r = blok(APP, "sock.on('workspace_roles'", '\n    });');
+    assert.match(r, /window\.DATA\.WORKSPACE = \{ \.\.\.window\.DATA\.WORKSPACE, roles \}/, 'rol listesi eski kalır');
+    assert.match(r, /window\.DATA\.MEMBERS = uyeler; setMembers\(uyeler\);/, 'üyelerin rol alanları eski kalır');
+    for (const b of [m, w, r]) assert.match(b, /setVeriTiki\(/, 'yazılıyor ama yeniden çizilmiyor');
+  });
+});

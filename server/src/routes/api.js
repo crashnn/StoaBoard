@@ -44,6 +44,7 @@ import {
 } from '../lib/channels.js';
 import { countVisibleNotes } from '../lib/notes.js';
 import { projeSozlukleri } from '../lib/projects.js';
+import { uyeYayini } from '../lib/board.js';
 import { avatarUpload, storeFile } from '../lib/uploads.js';
 
 export const apiRouter = Router();
@@ -414,6 +415,9 @@ apiRouter.put(
     const wmCurrent =
       wmUpdate || (await currentMember(updated));
 
+    // Ad/avatar/unvan üye listelerinde, kartlarda ve sohbette görünüyor;
+    // üyesi olduğu her alana yayınlanıyor (#273).
+    await uyeYayini(req.app.get('io'), user.id);
     res.json(userPrivateDict(updated, wmCurrent));
   }),
 );
@@ -625,6 +629,7 @@ apiRouter.post(
       where: { id: user.id },
       data: { avatarPhotoUrl: url },
     });
+    await uyeYayini(req.app.get('io'), user.id);
     res.json({ avatar_photo_url: url });
   }),
 );
@@ -641,6 +646,7 @@ apiRouter.delete(
       where: { id: user.id },
       data: { avatarPhotoUrl: null },
     });
+    await uyeYayini(req.app.get('io'), user.id);
     res.json({ avatar_photo_url: null });
   }),
 );

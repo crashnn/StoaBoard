@@ -38,8 +38,11 @@
 
 import { prisma } from '../db.js';
 import { emitSafely } from './emit.js';
-import { columnToDict, activityToDict, taskToDict, labelToDictValue, GOREV_INCLUDE } from './serializers.js';
+import {
+  columnToDict, activityToDict, taskToDict, labelToDictValue, workspaceRoleToDict, GOREV_INCLUDE,
+} from './serializers.js';
 import { kenarCubuguProjeleri } from './projects.js';
+import { memberToDict } from './workspace.js';
 
 /**
  * Yeni hareket kaydını alanın odasına yayınlar (#259).
@@ -169,4 +172,54 @@ export async function etiketlerYayini(io, project, actorSlug) {
     { project_id: String(project.id), labels: labelsMap },
     actorSlug,
   );
+}
+
+// ── Alan düzeyi yayınlar (#273) ───────────────────────────────────────────
+//
+// Alan adı/logo, roller ve profil 19 Eylül'e kadar hiç yayınlanmıyordu;
+// başkasının üst çubuğu, üye listesi ve avatarları F5'e kadar eski kalıyordu.
+// Üçü de bootstrap'ın verdiği ŞEKLİN aynısını gönderiyor; istemcide yeni bir
+// şekil yok, olan yerine yazılıyor.
+
+/** Alanın adı/logosu değişti — yalnızca herkese ortak alanlar (izin yok). */
+export async function alanYayini(io, workspaceId, actorSlug) {
+  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+  if (!ws) return false;
+  return panoYayini(io, 'workspace_updated', workspaceId, {
+    workspace: { id: String(ws.id), name: ws.name, logo_url: ws.logoUrl || null },
+  }, actorSlug);
+}
+
+/**
+ * Rol listesi değişti. Üye listesi de gidiyor: üyenin rol adı/rengi/izinleri
+ * rolden türetiliyor (memberToDict), rol silinince üyeler varsayılana
+ * düşüyor — istemcide "hangi üye etkilendi" hesabı ikinci bir okuyucu olurdu.
+ */
+export async function rollerYayini(io, workspaceId, actorSlug) {
+  const [roles, uyeler] = await Promise.all([
+    prisma.workspaceRole.findMany({ where: { workspaceId }, orderBy: { id: 'asc' } }),
+    prisma.workspaceMember.findMany({ where: { workspaceId }, include: { user: true, workspaceRole: true } }),
+  ]);
+  return panoYayini(io, 'workspace_roles', workspaceId, {
+    roles: roles.map(workspaceRoleToDict),
+    members: uyeler.map(memberToDict).filter(Boolean),
+  }, actorSlug);
+}
+
+/**
+ * Kullanıcının profili (ad, avatar, unvan) değişti — üyesi olduğu HER alana,
+ * o alandaki üye sözlüğüyle (rol alanları alana göre değişiyor). Yankı
+ * elenmiyor: kendi ekranı da bu yoldan güncellensin, iki yol olmasın.
+ */
+export async function uyeYayini(io, userId) {
+  const uyelikler = await prisma.workspaceMember.findMany({
+    where: { userId },
+    include: { user: true, workspaceRole: true },
+  });
+  let n = 0;
+  for (const wm of uyelikler) {
+    const d = memberToDict(wm);
+    if (d && panoYayini(io, 'member_updated', wm.workspaceId, { member: d }, null)) n += 1;
+  }
+  return n > 0;
 }

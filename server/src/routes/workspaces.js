@@ -40,6 +40,7 @@ import { workspaceRoleToDict, taskToDict, GOREV_INCLUDE } from '../lib/serialize
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { upload, storeFile } from '../lib/uploads.js';
 import { recordAudit, AUDIT } from '../lib/audit.js';
+import { alanYayini, rollerYayini } from '../lib/board.js';
 
 export const workspacesRouter = Router();
 
@@ -273,6 +274,8 @@ workspacesRouter.patch(
     const updated = Object.keys(updates).length
       ? await prisma.workspace.update({ where: { id: wsId }, data: updates })
       : ws;
+    // Üst çubuk ve alan seçici başkasında F5'siz güncellensin (#273).
+    await alanYayini(req.app.get('io'), wsId, user.slug);
     res.json({ ok: true, name: updated.name });
   }),
 );
@@ -866,6 +869,7 @@ workspacesRouter.post(
         isDefault: Boolean(data.is_default),
       },
     });
+    await rollerYayini(req.app.get('io'), member.workspaceId, user.slug);
     res.status(201).json(workspaceRoleToDict(role));
   }),
 );
@@ -906,6 +910,7 @@ workspacesRouter.patch(
       where: { id: roleId },
       data: updates,
     });
+    await rollerYayini(req.app.get('io'), member.workspaceId, user.slug);
     res.json(workspaceRoleToDict(updated));
   }),
 );
@@ -946,6 +951,8 @@ workspacesRouter.delete(
         prisma.workspaceRole.delete({ where: { id: roleId } }),
       ]);
     }
+    // Silinen rolün üyeleri varsayılana düştü; üye listesi de yayınla gidiyor.
+    await rollerYayini(req.app.get('io'), member.workspaceId, user.slug);
     res.json({ ok: true });
   }),
 );
@@ -1146,6 +1153,7 @@ workspacesRouter.post(
     const stored = await storeFile(req.file, 'logo');
     const url = `/api/media/${stored.id}`;
     await prisma.workspace.update({ where: { id: wsId }, data: { logoUrl: url } });
+    await alanYayini(req.app.get('io'), wsId, user.slug);
     res.json({ logo_url: url });
   }),
 );
@@ -1165,6 +1173,7 @@ workspacesRouter.delete(
       return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz' });
     }
     await prisma.workspace.update({ where: { id: wsId }, data: { logoUrl: null } });
+    await alanYayini(req.app.get('io'), wsId, user.slug);
     res.json({ logo_url: null });
   }),
 );

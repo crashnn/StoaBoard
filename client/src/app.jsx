@@ -589,6 +589,43 @@ function App() {
       });
     });
 
+    // Profil (#273): ad/avatar/unvan değişti. Şekil member_role_changed ile
+    // aynı (memberToDict), birleştirme de aynı. Yankı elenmiyor — sunucu
+    // aktör göndermiyor, kendi ekranı da bu yoldan güncelleniyor.
+    sock.on('member_updated', ({ member }) => {
+      if (!member?.id) return;
+      setMembers(prev => {
+        const next = prev.map(m => m.id === member.id ? { ...m, ...member } : m);
+        window.DATA.MEMBERS = next;
+        return next;
+      });
+      if (member.id === window.CURRENT_USER?.id) window.CURRENT_USER = { ...window.CURRENT_USER, ...member };
+      setVeriTiki(n => n + 1);
+    });
+
+    // Alan adı / logo (#273): üst çubuk DATA.WORKSPACE'ten, alan seçici
+    // `workspaces` durumundan okuyor; ikisi de güncelleniyor. Yalnızca ortak
+    // alanlar geliyor (ad, logo) — izinler kişiye özel, onlara dokunulmuyor.
+    sock.on('workspace_updated', ({ workspace, actor }) => {
+      if (!workspace?.id || benimYankim(actor)) return;
+      if (String(window.DATA.WORKSPACE?.id) === String(workspace.id)) {
+        window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, name: workspace.name, logo_url: workspace.logo_url };
+      }
+      setWorkspaces(prev => prev.map(w => (String(w.id) === String(workspace.id)
+        ? { ...w, name: workspace.name, logo_url: workspace.logo_url } : w)));
+      setVeriTiki(n => n + 1);
+    });
+
+    // Roller (#273): rol listesi VE üye listesi birlikte — üyenin rol
+    // adı/rengi/izinleri rolden türüyor, silinen rolün üyeleri varsayılana
+    // düşüyor; "hangi üye etkilendi" hesabı istemcide ikinci okuyucu olurdu.
+    sock.on('workspace_roles', ({ roles, members: uyeler, actor }) => {
+      if (!Array.isArray(roles) || benimYankim(actor)) return;
+      window.DATA.WORKSPACE = { ...window.DATA.WORKSPACE, roles };
+      if (Array.isArray(uyeler)) { window.DATA.MEMBERS = uyeler; setMembers(uyeler); }
+      setVeriTiki(n => n + 1);
+    });
+
     // Notes count maintenance (NotesView keeps its own list; we mirror count here)
     sock.on('note_created', (note) => {
       if (!note) return;
