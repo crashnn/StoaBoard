@@ -107,6 +107,15 @@ function App() {
   });
   const [tasks, setTasks]                   = useS([]);
   const [currentProject, setCurrentProject] = useS(null);
+  // `window.DATA.PROJECTS` ve `DATA.LABELS` React durumu değil; soketten
+  // gelen liste oraya yazılınca kimse yeniden çizilmez (#272). Bu sayaç
+  // "veri değişti, çiz" demenin tek yolu — kolonların CustomEvent'iyle aynı
+  // iş, ama kenar çubuğu ve etiket okuyucuları App'in altında olduğu için
+  // App'i yeniden çizmek yeter.
+  const [, setVeriTiki] = useS(0);
+  // Soket etkisi [authed, needsWorkspace] ile bir kez kuruluyor; içinden
+  // `switchProject`i doğrudan çağırmak o render'daki bayat kopyayı çağırırdı.
+  const switchProjectRef = useRef(null);
   const [drawerTask, setDrawerTask]         = useS(null);
   // Görev drawer'ı kapanınca dönülecek görünüm. Raporlardan bir göreve
   // tıklanınca pano açılıp kart drawer'ı geliyor; drawer kapanınca kullanıcı
@@ -655,6 +664,26 @@ function App() {
     // olaylarda eylemi yapanın ekranı iyimser güncellendi, burada güncellenmedi
     // — hareket satırını sunucu kuruyor. Kendi taşıdığın kart da listede
     // görünmeli. İki kez görünmesin diye tekilleştirme kimlikle (etkinlik.js).
+    // Proje listesi (#272): sunucu LİSTEYİ bütün gönderiyor (kolonlardaki
+    // karar). Aktif proje listeden düştüyse (başkası sildi) ilk projeye
+    // geçiliyor; pano silinmiş bir projenin kartlarını göstermeye devam etmesin.
+    sock.on('workspace_projects', ({ projects, actor }) => {
+      if (!Array.isArray(projects) || benimYankim(actor)) return;
+      window.DATA.PROJECTS = projects;
+      setVeriTiki(n => n + 1);
+      const aktifVar = projects.some(p => String(p.id) === String(window.CURRENT_PROJECT_ID));
+      if (!aktifVar && projects[0] && switchProjectRef.current) switchProjectRef.current(projects[0].id);
+    });
+
+    // Etiketler (#272): yalnızca AKTİF projenin sözlüğü uygulanıyor, kolonlar
+    // gibi — başka projenin etiketleri aktif panonun renklerini ezmesin.
+    sock.on('project_labels', ({ project_id, labels, actor }) => {
+      if (!labels || benimYankim(actor)) return;
+      if (String(project_id) !== String(window.CURRENT_PROJECT_ID)) return;
+      window.DATA.LABELS = labels;
+      setVeriTiki(n => n + 1);
+    });
+
     sock.on('activity_new', ({ project_id, activity }) => {
       if (!activity || String(project_id) !== String(window.CURRENT_PROJECT_ID)) return;
       setEtkinlik(prev => etkinligeEkle(prev, activity));
@@ -1148,6 +1177,7 @@ function App() {
       }
     }
   };
+  switchProjectRef.current = switchProject;
 
   const handleCreateProject = async (name, color, icon) => {
     try {

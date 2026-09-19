@@ -173,9 +173,15 @@ describe('istemci pano olaylarını dinliyor ve kendi yankısını eliyor', () =
     const bas = APP.indexOf("sock.on('task_created'");
     const son = APP.indexOf("sock.on('notification'", bas);
     const blok = APP.slice(bas, son);
+    // "Her dinleyicide bir tane" ölçülüyor, sabit sayı değil (#272 iki
+    // dinleyici ekledi). Tek istisna `activity_new`: orada yankı BİLİNÇLİ
+    // olarak elenmiyor — hareket satırını sunucu kuruyor, kendi taşıdığın
+    // kart da listede görünmeli.
+    const dinleyici = (blok.match(/sock\.on\('/g) || []).length;
     const kullanim = (blok.match(/benimYankim\(actor\)/g) || []).length;
-    assert.equal(kullanim, 5,
-      `yankı elemesi ${kullanim} dinleyicide kullanılıyor, beşinde birden olmalı`);
+    assert.ok(dinleyici >= 6, `tarama kör: yalnızca ${dinleyici} dinleyici görüyor`);
+    assert.equal(kullanim, dinleyici - 1,
+      `yankı elemesi ${kullanim} dinleyicide, ${dinleyici - 1} olmalı (activity_new hariç hepsi)`);
   });
 
   test('kart olayları AKTİF projeye göre süzülüyor', () => {
@@ -458,5 +464,61 @@ describe('alt görev, ek ve yorum silme kartı yeniden yayınlıyor (#271)', () 
       .filter((f) => /labelLinks: \{ include: \{ label: true \} \},\s*subtasks: true,\s*comments: \{ select: \{ id: true \} \}/.test(yorumsuzDosya(f)))
       .map((f) => path.basename(f));
     assert.deepEqual(kopya, [], 'görev include bloğu yeniden kopyalanmış');
+  });
+});
+
+// ─── #272 — proje listesi ve etiketler canlı ────────────────────────────────
+
+describe('proje listesi ve etiketler yayınlanıyor (#272)', () => {
+  const PROJECTS = yorumsuzDosya(path.join(SRC, 'routes', 'projects.js'));
+  const BOARD = yorumsuzDosya(path.join(SRC, 'lib', 'board.js'));
+  const APP = yorumsuzDosya(path.join(CLIENT, 'app.jsx'));
+  const blok = (src, bas, son) => {
+    const i = src.indexOf(bas);
+    assert.notEqual(i, -1, `blok başlangıcı bulunamadı: ${bas}`);
+    const j = src.indexOf(son, i);
+    assert.notEqual(j, -1, `blok sonu bulunamadı: ${son}`);
+    return src.slice(i, j);
+  };
+  const yayinOnce = (b, fn, ad) => {
+    const y = b.indexOf(`${fn}(`);
+    assert.notEqual(y, -1, `${ad}: yayınlamıyor — karşı taraf F5'e kadar eski listeyi görür`);
+    const sonYanit = Math.max(b.lastIndexOf('res.json('), b.lastIndexOf('res.status(201)'));
+    assert.ok(sonYanit > y, `${ad}: yayın başarılı yanıttan sonra`);
+  };
+
+  test('proje açma / düzenleme / silme liste yayınlıyor', () => {
+    yayinOnce(blok(PROJECTS, "projectsRouter.post(\n  '/',", "projectsRouter.patch("), 'projelerYayini', 'proje açma');
+    yayinOnce(blok(PROJECTS, "projectsRouter.patch(\n  '/:projectId',", "projectsRouter.delete("), 'projelerYayini', 'proje düzenleme');
+    yayinOnce(blok(PROJECTS, "projectsRouter.delete(\n  '/:projectId',", "projectsRouter.get("), 'projelerYayini', 'proje silme');
+  });
+
+  test('etiket ekleme / düzenleme / silme sözlük yayınlıyor', () => {
+    yayinOnce(blok(PROJECTS, "projectsRouter.post(\n  '/:projectId/labels',", "projectsRouter.patch(\n  '/:projectId/labels/:slug'"), 'etiketlerYayini', 'etiket ekleme');
+    yayinOnce(blok(PROJECTS, "projectsRouter.patch(\n  '/:projectId/labels/:slug',", "projectsRouter.delete(\n  '/:projectId/labels/:slug'"), 'etiketlerYayini', 'etiket düzenleme');
+    yayinOnce(blok(PROJECTS, "projectsRouter.delete(\n  '/:projectId/labels/:slug',", "\n);"), 'etiketlerYayini', 'etiket silme');
+  });
+
+  test('yayın gövdesi bootstrap ile aynı şekilde — proje listesi tek tanımdan, etiket sözlüğü slug→değer', () => {
+    const p = blok(BOARD, 'export async function projelerYayini', '\n}');
+    assert.match(p, /kenarCubuguProjeleri\(workspaceId\)/, 'proje listesi bootstrap\'takinden farklı bir şekil');
+    assert.match(p, /panoYayini\(io, 'workspace_projects', workspaceId, \{ projects \}/);
+    const e = blok(BOARD, 'export async function etiketlerYayini', '\n}');
+    assert.match(e, /labelsMap\[l\.slug\] = labelToDictValue\(l\)/, 'etiket şekli bootstrap\'takinden farklı');
+    assert.match(e, /'project_labels'/);
+    assert.match(e, /project_id: String\(project\.id\)/, 'istemci hangi projenin etiketi olduğunu bilemez');
+  });
+
+  test('istemci listeyi uyguluyor ve yeniden çiziyor; aktif proje silindiyse ilk projeye geçiyor', () => {
+    const p = blok(APP, "sock.on('workspace_projects'", '\n    });');
+    assert.match(p, /benimYankim\(actor\)/, 'kendi yankısı elenmiyor');
+    assert.match(p, /window\.DATA\.PROJECTS = projects;\s*setVeriTiki\(/, 'liste yazılıyor ama kimse yeniden çizilmiyor — DATA React durumu değil');
+    assert.match(p, /if \(!aktifVar && projects\[0\] && switchProjectRef\.current\) switchProjectRef\.current\(projects\[0\]\.id\)/,
+      'silinmiş projenin panosu açık kalır');
+    const e = blok(APP, "sock.on('project_labels'", '\n    });');
+    assert.match(e, /String\(project_id\) !== String\(window\.CURRENT_PROJECT_ID\)\) return;/, 'başka projenin etiketleri aktif panoyu ezer');
+    assert.match(e, /window\.DATA\.LABELS = labels;\s*setVeriTiki\(/, 'etiketler yazılıyor ama yeniden çizim yok');
+    // Ref her render'da tazeleniyor; soket etkisi bir kez kuruluyor.
+    assert.match(APP, /\n  \};\n  switchProjectRef\.current = switchProject;/, 'switchProject ref\'i tanımın hemen ardından güncellenmiyor — bayat kopya');
   });
 });

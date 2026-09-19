@@ -18,7 +18,7 @@
 
 import { Router } from 'express';
 
-import { kolonlariYayinla, etkinlikYayini } from '../lib/board.js';
+import { kolonlariYayinla, etkinlikYayini, projelerYayini, etiketlerYayini } from '../lib/board.js';
 import { kolonSlug } from '../lib/slug.js';
 
 import { prisma } from '../db.js';
@@ -37,7 +37,7 @@ import {
   GOREV_INCLUDE,
 } from '../lib/serializers.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
-import { deleteProjectTree, logActivity } from '../lib/projects.js';
+import { deleteProjectTree, logActivity, kenarCubuguProjeleri, projeSozlukleri } from '../lib/projects.js';
 
 export const projectsRouter = Router();
 export const columnsRouter = Router(); // /api/columns/:colId için ayrı mount
@@ -82,32 +82,6 @@ async function loadProjectWithAccess(req, res, projectId, { permission = null, a
   return { denied: false, user, project, member };
 }
 
-/**
- * Project'i, çağıran kullanıcıya görünür açık-görev sayısıyla serialize et.
- */
-async function projectWithOpenCount(p) {
-  const doneCols = await prisma.boardColumn.findMany({
-    where: { projectId: p.id, isDone: true },
-    select: { id: true },
-  });
-  const doneIds = doneCols.map((c) => c.id);
-  const openCount = await prisma.task.count({
-    where: {
-      projectId: p.id,
-      // Çöp kutusundaki kart açık iş değil. Süzgeç eksikti ve sayı sessizce
-      // şişiyordu: `GET /projects/:id/tasks` `deletedAt: null` ile çalıştığı
-      // için pano 6 kart gösterirken kenar çubuğu 9 diyebiliyordu — silinen
-      // kart 30 gün çöpte durduğu için fark haftalarca yaşıyor.
-      // Aynı sayım `api.js`teki bootstrap sorgusunda da var; ikisi birlikte
-      // düzeltildi ve `mcp.test.js` ikisinin de aynı tanımı kullandığını
-      // kilitliyor.
-      deletedAt: null,
-      ...(doneIds.length ? { NOT: { columnId: { in: doneIds } } } : {}),
-    },
-  });
-  return projectToDict(p, { openCount });
-}
-
 // ─── /api/projects ─────────────────────────────────────────────────────────
 
 projectsRouter.get(
@@ -118,14 +92,7 @@ projectsRouter.get(
     const member = await currentMember(user);
     if (!member) return res.json([]);
 
-    const projects = await prisma.project.findMany({
-      where: { workspaceId: member.workspaceId },
-    });
-    const result = [];
-    for (const p of projects) {
-      result.push(await projectWithOpenCount(p));
-    }
-    res.json(result);
+    res.json(await kenarCubuguProjeleri(member.workspaceId));
   }),
 );
 
@@ -173,6 +140,8 @@ projectsRouter.post(
       return p;
     });
 
+    // Kenar çubuğu listesi başkasında F5'siz güncellensin (#272).
+    await projelerYayini(req.app.get('io'), member.workspaceId, user.slug);
     res.status(201).json(projectToDict(project, { openCount: 0 }));
   }),
 );
@@ -203,7 +172,8 @@ projectsRouter.patch(
     const updated = Object.keys(updates).length
       ? await prisma.project.update({ where: { id: projectId }, data: updates })
       : access.project;
-    res.json(await projectWithOpenCount(updated));
+    await projelerYayini(req.app.get('io'), access.project.workspaceId, access.user.slug);
+    res.json((await projeSozlukleri([updated]))[0]);
   }),
 );
 
@@ -220,6 +190,7 @@ projectsRouter.delete(
     await prisma.$transaction(async (tx) => {
       await deleteProjectTree(tx, projectId);
     });
+    await projelerYayini(req.app.get('io'), access.project.workspaceId, access.user.slug);
     res.json({ ok: true });
   }),
 );
@@ -531,6 +502,8 @@ projectsRouter.post(
         colorTone: data.tone || 'blue',
       },
     });
+    // Etiket seçici ve kart renkleri başkasında F5'siz güncellensin (#272).
+    await etiketlerYayini(req.app.get('io'), access.project, access.user.slug);
     res.status(201).json({ [label.slug]: labelToDictValue(label) });
   }),
 );
@@ -562,6 +535,7 @@ projectsRouter.patch(
     const updated = Object.keys(updates).length
       ? await prisma.label.update({ where: { id: label.id }, data: updates })
       : label;
+    await etiketlerYayini(req.app.get('io'), access.project, access.user.slug);
     res.json({ [updated.slug]: labelToDictValue(updated) });
   }),
 );
@@ -585,6 +559,7 @@ projectsRouter.delete(
       prisma.taskLabel.deleteMany({ where: { labelId: label.id } }),
       prisma.label.delete({ where: { id: label.id } }),
     ]);
+    await etiketlerYayini(req.app.get('io'), access.project, access.user.slug);
     res.json({ ok: true });
   }),
 );

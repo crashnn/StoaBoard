@@ -38,7 +38,8 @@
 
 import { prisma } from '../db.js';
 import { emitSafely } from './emit.js';
-import { columnToDict, activityToDict, taskToDict, GOREV_INCLUDE } from './serializers.js';
+import { columnToDict, activityToDict, taskToDict, labelToDictValue, GOREV_INCLUDE } from './serializers.js';
+import { kenarCubuguProjeleri } from './projects.js';
 
 /**
  * Yeni hareket kaydını alanın odasına yayınlar (#259).
@@ -136,4 +137,36 @@ export async function gorevYayini(io, taskId, actorSlug) {
   });
   if (!task || task.deletedAt) return false;
   return panoYayini(io, 'task_updated', task.project?.workspaceId, { task: taskToDict(task) }, actorSlug);
+}
+
+/**
+ * Alanın proje listesini bütün hâlinde yayınlar (#272). Kolon listesiyle
+ * aynı karar: ekleme/adlandırma/silme için istemcide üç birleştirme dalı
+ * yerine tek uygulama. Liste alan başına birkaç proje, bedeli yok.
+ * Bootstrap'ın kenar çubuğuna verdiği sözlüklerin AYNISI (açık sayımıyla);
+ * ikinci bir şekil yok.
+ */
+export async function projelerYayini(io, workspaceId, actorSlug) {
+  if (!workspaceId) return false;
+  const projects = await kenarCubuguProjeleri(workspaceId);
+  return panoYayini(io, 'workspace_projects', workspaceId, { projects }, actorSlug);
+}
+
+/**
+ * Projenin etiket sözlüğünü bütün hâlinde yayınlar (#272). `project_id`
+ * gövdede: istemci yalnızca AKTİF projenin etiketlerini uyguluyor, kolonlar
+ * gibi. Şekil bootstrap'ın `labels` alanıyla aynı (slug → değer).
+ */
+export async function etiketlerYayini(io, project, actorSlug) {
+  if (!project) return false;
+  const labels = await prisma.label.findMany({ where: { projectId: project.id } });
+  const labelsMap = {};
+  for (const l of labels) labelsMap[l.slug] = labelToDictValue(l);
+  return panoYayini(
+    io,
+    'project_labels',
+    project.workspaceId,
+    { project_id: String(project.id), labels: labelsMap },
+    actorSlug,
+  );
 }

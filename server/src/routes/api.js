@@ -30,7 +30,6 @@ import {
 import {
   workspaceToDict,
   workspaceRoleToDict,
-  projectToDict,
   columnToDict,
   labelToDictValue,
   taskToDict,
@@ -44,6 +43,7 @@ import {
   userCanCreateChannel,
 } from '../lib/channels.js';
 import { countVisibleNotes } from '../lib/notes.js';
+import { projeSozlukleri } from '../lib/projects.js';
 import { avatarUpload, storeFile } from '../lib/uploads.js';
 
 export const apiRouter = Router();
@@ -208,32 +208,7 @@ apiRouter.get(
       status: onlineState.getStatus(u.id),
     }));
 
-    // Project open-count batch sorgusu (projects geldikten sonra)
-    let openCounts = new Map();
-    if (projects.length) {
-      const projectIds = projects.map((p) => p.id);
-      const doneCols = await prisma.boardColumn.findMany({
-        where: { projectId: { in: projectIds }, isDone: true },
-        select: { id: true },
-      });
-      const doneColIds = doneCols.map((c) => c.id);
-      const grouped = await prisma.task.groupBy({
-        by: ['projectId'],
-        where: {
-          projectId: { in: projectIds },
-          // Çöp kutusundaki kart açık iş değil — `projects.js` içindeki
-          // `projectWithOpenCount` ile aynı tanım. İki sayımda da eksikti.
-          deletedAt: null,
-          ...(doneColIds.length ? { NOT: { columnId: { in: doneColIds } } } : {}),
-        },
-        _count: { _all: true },
-      });
-      openCounts = new Map(grouped.map((g) => [g.projectId, g._count._all]));
-    }
-
-    const sidebarProjects = projects.map((p) =>
-      projectToDict(p, { openCount: openCounts.get(p.id) || 0 }),
-    );
+    const sidebarProjects = await projeSozlukleri(projects);
 
     const channelsPayload = accessibleChannels.map((c) =>
       channelToDict(c, { currentUserId: user.id }),

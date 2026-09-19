@@ -3,6 +3,7 @@
 
 import { prisma } from '../db.js';
 import { ilerlemeHesapla } from './checklist.js';
+import { projectToDict } from './serializers.js';
 
 /**
  * Project'i ve bağlı tüm kayıtları sil. Transaction'da çağrılmalı.
@@ -118,4 +119,41 @@ export async function recalcTaskProgress(client, taskId) {
   const progress = ilerlemeHesapla({ altlar: task.subtasks, kolonBitti: task.column?.isDone === true });
   await client.task.update({ where: { id: taskId }, data: { progress } });
   return progress;
+}
+
+/**
+ * Projelerin kenar çubuğu sözlükleri — açık görev sayısıyla, TEK tanımdan.
+ *
+ * "Açık" = çöpte olmayan VE bitiş kolonunda olmayan kart. 11 Eylül'e kadar
+ * bu sayım iki yerde iki kez yazılmıştı (bootstrap'ta toplu, GET /projects'te
+ * proje başına) ve ikisi de çöp kutusunu sayıyordu: kenar çubuğu 9 derken
+ * pano 6 kart gösteriyordu. İkisi birlikte düzeltildi; 19 Eylül'de (#272)
+ * proje listesi canlı yayınlanmaya başlayınca üçüncü bir okuyucu yazmak
+ * yerine üçü buraya indi. Tek sorgu: proje sayısı kadar değil, iki sorgu.
+ */
+export async function projeSozlukleri(projects) {
+  if (!projects.length) return [];
+  const projectIds = projects.map((p) => p.id);
+  const doneCols = await prisma.boardColumn.findMany({
+    where: { projectId: { in: projectIds }, isDone: true },
+    select: { id: true },
+  });
+  const doneColIds = doneCols.map((c) => c.id);
+  const grouped = await prisma.task.groupBy({
+    by: ['projectId'],
+    where: {
+      projectId: { in: projectIds },
+      deletedAt: null,
+      ...(doneColIds.length ? { NOT: { columnId: { in: doneColIds } } } : {}),
+    },
+    _count: { _all: true },
+  });
+  const openCounts = new Map(grouped.map((g) => [g.projectId, g._count._all]));
+  return projects.map((p) => projectToDict(p, { openCount: openCounts.get(p.id) || 0 }));
+}
+
+/** Alanın kenar çubuğu proje listesi. */
+export async function kenarCubuguProjeleri(workspaceId) {
+  const projects = await prisma.project.findMany({ where: { workspaceId } });
+  return projeSozlukleri(projects);
 }

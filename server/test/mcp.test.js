@@ -519,40 +519,31 @@ describe('araç başlıkları — kullanıcı metni, iki dilde', () => {
   });
 });
 
-describe('açık görev tanımı — üç yerde de aynı olmalı', () => {
+describe('açık görev tanımı — TEK yerde (lib/projects.js)', () => {
   // Korunan kusur (11 Eylül 2026): `projectWithOpenCount` ve bootstrap'taki
   // toplu sayım çöp kutusundaki kartları da "açık" sayıyordu; oysa
   // `GET /projects/:id/tasks` onları hiç döndürmüyor. Kenar çubuğu 9 derken
-  // pano 6 kart gösteriyordu ve silinen kart 30 gün çöpte durduğu için fark
-  // haftalarca yaşıyordu. MCP aynı sayıyı modele aktardığı için yalan
-  // büyüyordu.
-  const parcalar = [
-    ['routes/projects.js', 'prisma.task.count('],
-    ['routes/api.js', 'prisma.task.groupBy('],
-  ];
+  // pano 6 kart gösteriyordu. İki tanım 11 Eylül'de birlikte düzeltildi;
+  // 19 Eylül'de (#272) proje listesi canlı yayınlanınca üçüncü bir okuyucu
+  // yazmak yerine üçü tek fonksiyona indi. Test artık o tek yeri ölçüyor ve
+  // route'larda ikinci bir sayımın geri gelmesini yasaklıyor.
+  test('lib/projects.js açık sayımı çöp kutusunu ve bitiş kolonunu dışarıda bırakıyor', () => {
+    const src = yorumsuz('lib/projects.js');
+    const bas = src.indexOf('prisma.task.groupBy(');
+    assert.ok(bas > 0, 'toplu sayım bulunamadı — sayım taşınmışsa test güncellenmeli');
+    const blok = src.slice(bas).replace(/\s+/g, ' ').slice(0, 400);
+    assert.ok(/deletedAt:\s*null/.test(blok), 'Açık görev sayımı silinmiş kartları da sayıyor; liste onları vermiyor.');
+    assert.ok(/isDone|doneColIds|doneIds/.test(blok), 'Açık görev sayımı bitiş kolonunu dışarıda bırakmalı.');
+  });
 
-  for (const [dosya, cagri] of parcalar) {
-    test(`${dosya} açık sayımı çöp kutusunu dışarıda bırakıyor`, () => {
-      const src = yorumsuz(dosya);
-      const bas = src.indexOf(cagri);
-      assert.ok(bas > 0, `${cagri} bulunamadı — sayım taşınmışsa test güncellenmeli`);
-      // Pencere boslugu sikistirilarak aliniyor. Yorumlar artik SILINMIYOR,
-      // bosluga cevriliyor (satir ve konum degismezleri korunsun diye), bu
-      // yuzden sabit 400 karakter yorumu bol bir blokta koda hic ulasmiyordu:
-      // projects.js'te sayim ile `deletedAt: null` arasinda yedi satir yorum
-      // var. Olcut zaten hep "sonraki 400 karakter KOD" idi; simdi oyle
-      // yaziliyor ve yorum hacminden bagimsiz.
-      const blok = src.slice(bas).replace(/\s+/g, ' ').slice(0, 400);
-      assert.ok(
-        /deletedAt:\s*null/.test(blok),
-        'Açık görev sayımı silinmiş kartları da sayıyor; liste onları vermiyor.',
-      );
-      assert.ok(
-        /isDone|doneColIds|doneIds/.test(blok),
-        'Açık görev sayımı bitiş kolonunu dışarıda bırakmalı.',
-      );
-    });
-  }
+  test('route dosyalarında ikinci bir açık sayım yok', () => {
+    // Eski iki site: projects.js proje başına count, api.js toplu groupBy.
+    // (api.js'teki `task.count` çağrıları istatistik sayımı, açık sayımı değil.)
+    assert.doesNotMatch(yorumsuz('routes/projects.js'), /prisma\.task\.count\(/, 'projects.js kendi açık sayımını yazıyor — lib/projects.js ile ayrışır');
+    assert.doesNotMatch(yorumsuz('routes/api.js'), /prisma\.task\.groupBy\(/, 'api.js kendi açık sayımını yazıyor — lib/projects.js ile ayrışır');
+    assert.match(yorumsuz('routes/api.js'), /projeSozlukleri\(projects\)/, 'bootstrap kenar çubuğunu tek tanımdan kurmuyor');
+    assert.match(yorumsuz('routes/projects.js'), /res\.json\(await kenarCubuguProjeleri\(/, 'GET /projects tek tanımdan okumuyor');
+  });
 });
 
 // ─── 0.3.1 — canlı denemenin bulguları ─────────────────────────────────────
