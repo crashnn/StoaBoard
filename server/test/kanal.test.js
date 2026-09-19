@@ -99,3 +99,54 @@ describe('mesaj silinemezse geri geliyor ve söyleniyor (#268 aile)', () => {
     assert.match(yakala, /window\.showToast\?\.\(\(window\.t\?\.\('chat_msg_delete_failed'\)/, 'hata kullanıcıya söylenmiyor');
   });
 });
+
+// Panel kipinde "Genel" sekmesi activeChannel'ın mesajlarını gösteriyordu ama
+// kanalı SEÇECEK bir yüzey yoktu; genel dışındaki kanala ulaşmak tam ekrana
+// geçip listeden seçmeyi gerektiriyordu (#253, 18 Eylül sade tur maddesi 13).
+// Şerit yalnızca panel dalında (`!fullPage`) ve yalnızca birden fazla kanal
+// varken çizilir. Ölçüt şeridin kendi bloğuna bağlı: dosyanın başka yerinde
+// (tam sayfa listesi) zaten `setActiveChannel(slug)` geçiyor, dosya geneli
+// bir arama şeridi silinse de yeşil kalırdı.
+describe('sohbet paneli — kanal şeridi (#253)', () => {
+  const BAS = "{!dmWith && tab === 'general' && channels.length > 1 && (";
+  const blok = () => {
+    const i = CHAT.indexOf(BAS);
+    assert.ok(i >= 0, 'kanal şeridi bloğu yok');
+    const j = CHAT.indexOf('\n        )}', i);
+    return { i, govde: CHAT.slice(i, j) };
+  };
+
+  test('şerit panel dalında, tam sayfa dalında değil', () => {
+    const { i } = blok();
+    const panel = CHAT.indexOf('{!fullPage && (');
+    assert.ok(panel >= 0 && i > panel, 'şerit panel (!fullPage) dalından önce duruyor');
+  });
+
+  test('her kanal bir düğme, dokununca aktif kanal değişiyor', () => {
+    const { govde } = blok();
+    assert.match(govde, /className="chat-channel-strip"/);
+    assert.match(govde, /channels\.map\(/, 'kanal listesi dolaşılmıyor');
+    assert.match(govde, /onClick=\{\(\) => setActiveChannel\(slug\)\}/, 'dokunma aktif kanalı değiştirmiyor');
+    assert.match(govde, /const aktif = \(activeChannel \|\| 'general'\) === slug/, 'aktif kanal ölçütü eksik ya da null-genel eşlemesi yok');
+    assert.match(govde, /data-active=\{aktif\}/, 'aktif kanal işaretlenmiyor');
+    assert.match(govde, /<ChannelIconMark channel=\{ch\} slug=\{slug\}/, 'kanal simgesi tam sayfa listesiyle aynı kaynaktan gelmiyor');
+  });
+
+  test('erişilebilirlik etiketi iki dilde de var', () => {
+    const { govde } = blok();
+    assert.match(govde, /aria-label=\{window\.t\?\.\('chat_channel_strip'\)/);
+    const [tr, en] = kopyalar(DATA, 'chat_channel_strip:', '\n');
+    assert.ok(tr && en, 'chat_channel_strip iki sözlükte de olmalı');
+    assert.notEqual(tr, en, 'tr ve en karşılığı aynı — biri kopya');
+  });
+
+  test('şerit yatay kayıyor, satır sarmıyor', () => {
+    const css = yorumsuzDosya(path.join(ISTEMCI, 'styles.css'));
+    const i = css.indexOf('.chat-channel-strip {');
+    assert.ok(i >= 0, '.chat-channel-strip kuralı yok');
+    const kural = css.slice(i, css.indexOf('}', i));
+    assert.match(kural, /overflow-x:\s*auto/, 'şerit taşınca kaydırılamıyor');
+    const dugme = css.slice(css.indexOf('.chat-channel-strip button {'));
+    assert.match(dugme.slice(0, dugme.indexOf('}')), /white-space:\s*nowrap/, 'kanal adı satır sarıyor');
+  });
+});

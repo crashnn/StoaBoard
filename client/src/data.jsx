@@ -1022,6 +1022,7 @@ window.APP_I18N = {
     chat_all_pinned:'Tüm sabitliler', chat_channel_pinned:'Kanala sabitli',
     chat_tab_general:'Genel', chat_tab_dm:'Direkt',
     chat_tab_media:'Medya', chat_tab_starred:'Yıldız',
+    chat_channel_strip:'Kanallar',
     chat_unmute:'Bildirimleri aç', chat_mute:'Bildirimleri sustur',
     chat_expand:'Tam ekranda aç',
     // Notes title
@@ -1954,6 +1955,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     chat_all_pinned:'All pinned', chat_channel_pinned:'Pinned in channel',
     chat_tab_general:'General', chat_tab_dm:'Direct',
     chat_tab_media:'Media', chat_tab_starred:'Starred',
+    chat_channel_strip:'Channels',
     chat_unmute:'Unmute notifications', chat_mute:'Mute notifications',
     chat_expand:'Open full-screen',
     // Notes title

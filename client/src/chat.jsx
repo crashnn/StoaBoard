@@ -3831,6 +3831,36 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
           </div>
         )}
 
+        {/* Kanal şeridi (#253, 19 Eylül 2026). Panel kipinde "Genel" sekmesi
+            activeChannel'ın mesajlarını gösteriyordu ama kanalı SEÇECEK bir
+            yüzey yoktu: genel dışındaki bir kanala ulaşmak tam ekrana geçip
+            listeden seçmeyi gerektiriyordu (beş adım). Şerit yalnızca birden
+            fazla kanal varken çizilir; tek kanallı alanda yalnızca yer kaplar.
+            Kanal başına okunmamış rozeti YOK: sayaç alan düzeyinde tutuluyor
+            (`general_${wsId}`, app.jsx), kanalları ayırmıyor — ayrı iş. */}
+        {!dmWith && tab === 'general' && channels.length > 1 && (
+          <div className="chat-channel-strip" role="tablist" aria-label={window.t?.('chat_channel_strip') || 'Kanallar'}>
+            {channels.map(ch => {
+              const slug = ch.slug || ch.id;
+              const aktif = (activeChannel || 'general') === slug;
+              return (
+                <button
+                  key={slug}
+                  type="button"
+                  role="tab"
+                  aria-selected={aktif}
+                  data-active={aktif}
+                  title={ch.name}
+                  onClick={() => setActiveChannel(slug)}
+                >
+                  <ChannelIconMark channel={ch} slug={slug} size={10} />
+                  <span>{ch.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Media gallery tab */}
         {!dmWith && tab === 'media' ? (
           <MediaGallery allMembers={allMembers} onImageClick={setLightbox} />
