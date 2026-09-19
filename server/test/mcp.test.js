@@ -48,6 +48,7 @@ import {
   baslik,
   alanUyusuyor,
   atamaListesi,
+  base64Coz,
   uyeOlmayanAtananlar,
   aracAdlari,
   ARAC_BASLIKLARI,
@@ -1154,5 +1155,77 @@ describe('sohbet araçları — kapsam kanallarla sınırlı (DM yüzeyde yok)',
     // Yukarıdaki testler şema boş dönerse de yeşil kalırdı.
     assert.ok(girdiSemasi('send_message').includes('text:'), 'şema okunamıyor, tarama kör');
     assert.ok(girdiSemasi('list_messages').includes('limit:'), 'şema okunamıyor, tarama kör');
+  });
+});
+
+// ─── add_attachment (0.9.0, kart #205) ──────────────────────────────────────
+//
+// Dosya base64 gövde olarak geliyor ve multipart uca devrediliyor. Buradaki
+// tuzaklar: (1) Buffer.from hoşgörülü — bozuk gövde sessizce kısaltılıp
+// "yüklendi" görünür; (2) gövde JSON olarak gönderilirse multer dosyayı hiç
+// görmez; (3) denetim kaydına içerik yazılır; (4) sınır sayısı üçüncü kopya
+// olarak araca yazılır (kart notu: 17 Eylül). Dördü de aracın KENDİ bloğunda
+// ölçülüyor.
+
+describe('base64Coz — bozuk gövde sessizce kısaltılmıyor', () => {
+  test('geçerli gövde, data: öneki, satır sonu ve URL-güvenli alfabe çözülüyor', () => {
+    assert.equal(base64Coz('aGVsbG8=').buffer.toString(), 'hello');
+    assert.equal(base64Coz('data:text/plain;base64,aGVs\nbG8=').buffer.toString(), 'hello');
+    assert.equal(base64Coz('aGVsbG8').buffer.toString(), 'hello', 'dolgusuz gövde geçerli');
+    assert.equal(base64Coz('-_-_').ok, true, 'URL-güvenli alfabe reddedildi');
+  });
+
+  test('boş, kesik ve alfabe dışı gövde reddediliyor — kısmi dosya yok', () => {
+    for (const bozuk of ['', '   ', 'a', 'aGVsbG8=!', 'aG!!', 'héllo', 42, null]) {
+      const c = base64Coz(bozuk);
+      assert.equal(c.ok, false, `${JSON.stringify(bozuk)} kabul edildi`);
+      assert.ok(c.sebep, 'ret sebepsiz');
+    }
+  });
+});
+
+describe('add_attachment — gövde çözülüp multipart devrediliyor', () => {
+  const mcpSrc = yorumsuz('routes/mcp.js');
+  const bloklar = mcpSrc.split('server.registerTool(').slice(1);
+  const blok = bloklar.find((b) => /^\s*'add_attachment'/.test(b));
+
+  test('araç kayıtlı', () => { assert.ok(blok, 'add_attachment kaydı yok'); });
+
+  test('base64 çözümü callSelf\'ten ÖNCE ve ret 400 ile', () => {
+    const coz = blok.indexOf('base64Coz(content_base64)');
+    const cagri = blok.indexOf('callSelf(');
+    assert.ok(coz >= 0, 'gövde base64Coz ile doğrulanmıyor');
+    assert.ok(coz < cagri, 'çözüm callSelf\'ten sonra — bozuk gövde uca gidiyor');
+    assert.match(blok.slice(coz, cagri), /err_mcp_bad_base64/, 'bozuk gövde reddedilmiyor');
+  });
+
+  test('uca JSON değil multipart form gidiyor', () => {
+    assert.match(blok, /new FormData\(\)/, 'FormData kurulmuyor');
+    assert.match(blok, /form\.append\('file', new Blob\(\[cozum\.buffer\]/, 'dosya form alanına konmuyor');
+    assert.match(blok, /callSelf\(user, `\/api\/tasks\/\$\{task_id\}\/attachments`, \{ method: 'POST', form \}\)/,
+      'callSelf form ile çağrılmıyor — JSON gövdede multer dosyayı görmez');
+    assert.doesNotMatch(blok, /body:\s*\{/, 'araç JSON gövde de gönderiyor');
+  });
+
+  test('denetim kaydına içerik yazılmıyor', () => {
+    const a = blok.indexOf('recordAudit(');
+    const detay = blok.slice(a, blok.indexOf('});', a));
+    assert.match(detay, /AUDIT\.MCP_ATTACHMENT_ADDED/);
+    assert.doesNotMatch(detay, /content_base64|cozum\.buffer[^.]/, 'dosya içeriği denetim kaydına gidiyor');
+    assert.match(detay, /size: cozum\.buffer\.length/, 'boyut kayda yazılmıyor');
+  });
+
+  test('boyut sınırı yazılmıyor, sabitlerden türetiliyor', () => {
+    const tanim = /const EK_TAVAN_MB = [^\n]+/.exec(mcpSrc)?.[0];
+    assert.ok(tanim, 'EK_TAVAN_MB tanımı yok');
+    assert.match(tanim, /UPLOAD_MAX_BYTES/, 'yükleme sınırı sabitten okunmuyor');
+    assert.match(tanim, /config\.maxContentLength/, 'JSON gövde sınırı sabitten okunmuyor');
+    assert.match(blok, /\$\{EK_TAVAN_MB\} MB/, 'araç tavanı modele söylemiyor');
+    // "10 MB" gibi bir sayı aracın metnine gömülmemeli — o sayı uploads.js'te.
+    assert.doesNotMatch(blok, /\d+\s*MB/, 'sınır sayısı araca gömülü — üçüncü kopya');
+  });
+
+  test('silme yüzeye çıkmıyor', () => {
+    assert.ok(!bloklar.some((b) => /^\s*'(delete|remove)_attachment'/.test(b)), 'ek silme aracı kaydedilmiş');
   });
 });

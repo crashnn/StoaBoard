@@ -71,6 +71,8 @@ async function cookieFor(userId) {
  * @param {object}  [opts]
  * @param {string}  [opts.method='GET']
  * @param {object}  [opts.body]   JSON gövde
+ * @param {FormData} [opts.form]  multipart gövde (dosya yükleyen uçlar için);
+ *                                body ile birlikte verilemez
  * @param {string}  [opts.lang]   'tr' | 'en' — sunucu hata cümleleri için
  * @returns {Promise<{ok: boolean, status: number, data: any}>}
  *
@@ -79,17 +81,21 @@ async function cookieFor(userId) {
  * denemek yerine kullanıcıya söylesin.
  */
 export async function callSelf(user, yol, opts = {}) {
-  const { method = 'GET', body, lang = 'tr' } = opts;
+  const { method = 'GET', body, form, lang = 'tr' } = opts;
+  if (body !== undefined && form !== undefined) {
+    throw new Error('callSelf: body ve form birlikte verilemez');
+  }
   const cookie = await cookieFor(user.id);
+
+  // multipart'ta Content-Type'ı fetch kendisi yazıyor (sınır dizisiyle);
+  // elle yazılırsa multer sınırı bulamıyor ve dosyayı hiç görmüyor.
+  const headers = { Cookie: cookie, 'X-Stoa-Lang': lang };
+  if (form === undefined) headers['Content-Type'] = 'application/json';
 
   const res = await fetch(`http://127.0.0.1:${config.port}${yol}`, {
     method,
-    headers: {
-      Cookie: cookie,
-      'Content-Type': 'application/json',
-      'X-Stoa-Lang': lang,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    headers,
+    body: form !== undefined ? form : (body === undefined ? undefined : JSON.stringify(body)),
   });
 
   let data = null;

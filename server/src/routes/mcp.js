@@ -62,6 +62,8 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireMcpToken } from '../lib/mcpAuth.js';
 import { currentMember, memberPermissions } from '../lib/workspace.js';
 import { callSelf } from '../lib/selfApi.js';
+import { UPLOAD_MAX_BYTES } from '../lib/uploads.js';
+import { config } from '../config.js';
 import { recordAudit, AUDIT } from '../lib/audit.js';
 import {
   gelistiriciMi,
@@ -96,6 +98,7 @@ import {
   alanUyusuyor,
   atamaListesi,
   aracAdlari,
+  base64Coz,
 } from '../lib/mcpShape.js';
 
 export const mcpRouter = Router();
@@ -107,7 +110,13 @@ export const mcpRouter = Router();
 // cevaplanamıyor. Yüzeyi değiştiren her commit'te bump et; `initialize`
 // yanıtındaki serverInfo.version dağıtım kanıtı olarak okunabilsin.
 // Sürüm geçmişi ve kırıcı değişiklikler: MCP-SURUMLER.md.
-const MCP_VERSION = '0.8.0';
+const MCP_VERSION = '0.9.0';
+
+// add_attachment'ın modele söylediği pratik tavan (MB). İki sınırın küçüğü:
+// dosya sınırı (lib/uploads.js) ve base64'ün %33 şişirdiği JSON gövde sınırı
+// (config.maxContentLength). Sayı burada YAZILMIYOR, türetiliyor — kart #205
+// notu: araç kendi sınırını yazarsa üçüncü kopya olur.
+const EK_TAVAN_MB = Math.floor(Math.min(UPLOAD_MAX_BYTES, (config.maxContentLength * 3) / 4) / (1024 * 1024));
 
 /**
  * Kota sayaçları — süreç ömrü boyunca, kullanıcı × kota türü. Her istekte
@@ -1367,6 +1376,95 @@ export function buildMcpServer(user, dil, req) {
       return baglamli(user, {
         added: true,
         comment: yanit.data,
+        task: { id: metinKimlik(task_id), title: g.gorev.title, project_name: g.proje.name },
+      }, kapi.workspace);
+    },
+  );
+
+  // ── add_attachment ───────────────────────────────────────────────────────
+  //
+  // Kart #205: kullanıcı sohbette paylaştığı bir PDF'i karta bağlamak istedi,
+  // MCP'de dosya aracı yoktu. Dosya base64 gövde olarak geliyor ve aynı
+  // multipart uca (POST /tasks/:id/attachments) gidiyor: boyut sınırı
+  // (lib/uploads.js, multer), tür süzgeci (ALLOWED_MIME_PREFIXES) ve erişim
+  // kapısı (requireTaskAccess) orada; burada ikinci bir kopyası YOK.
+  //
+  // İki sınır var ve ikisi de burada yazılmıyor, yalnızca söyleniyor:
+  // dosya sınırı UPLOAD_MAX_BYTES; ama gövde JSON-RPC içinde base64 taşındığı
+  // için önce express.json'un sınırı (config.maxContentLength) devreye girer
+  // ve base64 %33 şişirdiğinden pratik tavan onun 3/4'ü. Model bunu bilsin ki
+  // 9 MB'lık dosyada "neden 413" diye dönüp durmasın.
+  //
+  // Silme bilerek yüzeyde yok — kalıcı silme kuralıyla aynı gerekçe.
+
+  server.registerTool(
+    'add_attachment',
+    {
+      title: B('add_attachment'),
+      description:
+        'Bir karta dosya ekler. Dosya kullanıcının adına yüklenir. Kullanıcı '
+        + 'açıkça istemediyse yükleme. workspace_id zorunludur ve AKTİF alanın '
+        + 'kimliği olmalıdır; değilse 409 döner ve hiçbir şey yazılmaz. Görev '
+        + 'aktif alanda değilse "bulunamadı" döner. '
+        + 'content_base64 dosyanın base64 gövdesidir (data: öneki ve satır sonu '
+        + 'kabul); bozuk gövde 400 ile reddedilir, kısmi dosya yazılmaz. '
+        + `Pratik tavan ${EK_TAVAN_MB} MB: gövde JSON içinde taşındığı için sunucu `
+        + 'sınırı dosya sınırından önce devreye girer; büyük dosyayı tarayıcıdan '
+        + 'yüklemesini kullanıcıya söyle. content_type sunucunun tür süzgecinden '
+        + 'geçer (görsel, video, ses, PDF, metin, zip, Office); desteklenmeyen '
+        + 'tür 415 döner. Ek silme MCP üzerinden YAPILAMAZ. '
+        + 'Bu araç tekrarlanabilir DEĞİLDİR: aynı çağrıyı iki kez yaparsan iki '
+        + 'ayrı ek oluşur, hata aldığını sanıp yeniden deneme.',
+      inputSchema: {
+        workspace_id: kimlik('aktif alanın kimliği — whoami yanıtındaki workspace.id'),
+        task_id: kimlik('list_tasks içindeki id'),
+        file_name: z.string().trim().min(1).max(255).describe('dosya adı, uzantısıyla (rapor.pdf)'),
+        content_type: z.string().trim().min(3).max(120).regex(/^[\w.+-]+\/[\w.+-]+$/, 'tür/alt-tür biçiminde olmalı')
+          .describe('MIME türü, örn. application/pdf'),
+        content_base64: z.string().min(1).describe('dosya içeriği, base64'),
+      },
+      annotations: yazma,
+    },
+    async ({ workspace_id, task_id, file_name, content_type, content_base64 }) => {
+      const kapi = await yazmaKapisi(user, workspace_id);
+      if (!kapi.ok) return hata(kapi.yanit);
+
+      const g = await aktifGorev(user, task_id);
+      if (!g.ok) return hata(g.yanit);
+
+      const cozum = base64Coz(content_base64);
+      if (!cozum.ok) {
+        return hata({
+          status: 400,
+          data: { error: 'err_mcp_bad_base64', message: `Base64 gövde çözülemedi: ${cozum.sebep}` },
+        });
+      }
+
+      // Dosya adındaki yol ayracı sunucuda anlamsız ama arayüzde yanıltıcı;
+      // yalnızca son parça kalıyor (tarayıcı da böyle gönderiyor).
+      const ad = file_name.split(/[\\/]/).pop() || file_name;
+      const form = new FormData();
+      form.append('file', new Blob([cozum.buffer], { type: content_type }), ad);
+
+      const yanit = await callSelf(user, `/api/tasks/${task_id}/attachments`, { method: 'POST', form });
+      if (!yanit.ok) return hata(yanit);
+
+      recordAudit(req, {
+        workspaceId: kapi.workspace.id,
+        user,
+        action: AUDIT.MCP_ATTACHMENT_ADDED,
+        // İçerik kayda YAZILMIYOR (audit.js kuralı); ad, tür ve boyut yeter.
+        detail: {
+          task_id: metinKimlik(task_id),
+          attachment_id: metinKimlik(yanit.data?.id),
+          file_name: ad,
+          content_type,
+          size: cozum.buffer.length,
+        },
+      });
+      return baglamli(user, {
+        added: true,
+        attachment: yanit.data,
         task: { id: metinKimlik(task_id), title: g.gorev.title, project_name: g.proje.name },
       }, kapi.workspace);
     },

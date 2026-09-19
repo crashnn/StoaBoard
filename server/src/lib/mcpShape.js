@@ -544,6 +544,7 @@ export const ARAC_BASLIKLARI = {
   delete_task: { tr: 'Görevi çöpe at', en: 'Trash task' },
   restore_task: { tr: 'Görevi geri al', en: 'Restore task' },
   add_subtask: { tr: 'Alt görev ekle', en: 'Add subtask' },
+  add_attachment: { tr: 'Karta dosya ekle', en: 'Add attachment' },
   update_subtask: { tr: 'Alt görevi düzenle', en: 'Edit subtask' },
   delete_subtask: { tr: 'Alt görevi sil', en: 'Delete subtask' },
   set_active_workspace: { tr: 'Aktif alanı değiştir', en: 'Switch workspace' },
@@ -582,4 +583,28 @@ export function baslik(arac, dil) {
   const kayit = ARAC_BASLIKLARI[arac];
   if (!kayit) return arac;
   return kayit[dil] || kayit.tr;
+}
+
+/**
+ * Base64 gövdeyi çözer — `add_attachment` için (kart #205).
+ *
+ * Node'un `Buffer.from(s, 'base64')`ı hoşgörülü: geçersiz karakteri sessizce
+ * atlıyor, kesik gövdeyi kısaltıp döndürüyor. Yani bozuk bir girdi "yüklendi"
+ * görünüp içeriği bozuk bir dosya üretirdi — sessiz başarısızlık. Burada
+ * gövde önce biçimce doğrulanıyor; boşluk ve satır sonu (istemciler 76
+ * sütunda kırabiliyor) ayıklanıyor, `data:...;base64,` öneki soyuluyor.
+ *
+ * @returns {{ ok: true, buffer: Buffer } | { ok: false, sebep: string }}
+ */
+export function base64Coz(govde) {
+  if (typeof govde !== 'string') return { ok: false, sebep: 'gövde metin değil' };
+  let s = govde.replace(/^data:[^,]*;base64,/, '').replace(/\s+/g, '');
+  if (!s) return { ok: false, sebep: 'gövde boş' };
+  // URL-güvenli alfabe de kabul: bazı istemciler onu üretiyor.
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s)) return { ok: false, sebep: 'base64 dışı karakter' };
+  if (s.length % 4 === 1) return { ok: false, sebep: 'kesik gövde (uzunluk 4 ile bölünemiyor)' };
+  const buffer = Buffer.from(s, 'base64');
+  if (buffer.length === 0) return { ok: false, sebep: 'gövde boş' };
+  return { ok: true, buffer };
 }

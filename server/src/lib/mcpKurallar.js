@@ -92,6 +92,8 @@ export const ARAC_KURALLARI = Object.freeze({
   update_task: { tur: 'yazma', kota: 'yazma', bildirim: ['add_assignees'], kurallar: ['aciklama_ustune_yazma'] },
   move_task: { tur: 'yazma', kota: 'yazma', kurallar: ['bitti_kolonu'] },
   add_comment: { tur: 'yazma', kota: 'yazma', bildirim: ['@text'] },
+  // Dosya karta bağlanır, silme yüzeyde yok (#205). Bildirim düşürmüyor.
+  add_attachment: { tur: 'yazma', kota: 'yazma' },
   send_message: { tur: 'yazma', kota: 'mesaj', bildirim: ['@text'] },
   add_subtask: { tur: 'yazma', kota: 'yazma' },
   update_subtask: { tur: 'yazma', kota: 'yazma' },

@@ -16,6 +16,36 @@ commit'te sürüm artırılır ve buraya yazılır.
 
 ---
 
+## 0.9.0 — 19 Eylül 2026 — `add_attachment` (kart #205)
+
+**Yeni araç:** `add_attachment` — karta dosya ekler. Girdi `workspace_id`,
+`task_id`, `file_name`, `content_type`, `content_base64`. Kural satırı
+`{ tur: 'yazma', kota: 'yazma' }`, herkese açık; denetim kaydı
+`mcp.attachment_added` (ad, tür, boyut — içerik değil). Ekip dışı: 22 araç,
+geliştirici ekip: 23.
+
+**Nasıl çalışıyor.** Gövde base64 çözülüp aynı multipart uca devrediliyor
+(`POST /api/tasks/:id/attachments`, `callSelf`e `form` seçeneği eklendi).
+Boyut sınırı (multer, `UPLOAD_MAX_BYTES`), tür süzgeci ve erişim kapısı
+uçta; MCP'de kopyası yok. Bozuk base64 uca hiç gitmiyor: `Buffer.from`
+hoşgörülü olduğu için bozuk gövde sessizce kısaltılıp "yüklendi" görünürdü;
+artık biçim önce doğrulanıyor (`mcpShape.base64Coz`) ve 400
+`err_mcp_bad_base64` dönüyor.
+
+**İki sınır, biri görünmez.** Dosya sınırı 10 MB ama gövde JSON-RPC içinde
+base64 taşındığı için `express.json`un sınırı (`config.maxContentLength`,
+10 MB) önce devreye giriyor ve base64 %33 şişirdiğinden pratik tavan
+**7 MB**. Bu sayı araca yazılmıyor, iki sabitten türetilip araç metnine
+basılıyor. Daha büyük dosyayı model tarayıcıya yönlendirmeli.
+
+**Bilerek dışarıda:** ek silme (kalıcı silme kuralıyla aynı gerekçe), ek
+listeleme/indirme (okuma araçlarına sonra, ihtiyaç çıkarsa).
+
+**Tarama:** `mcp:tara` dört reddetme yolu ekledi (alan uyuşmazlığı, olmayan
+görev, bozuk base64, desteklenmeyen tür → uçta 415) ve ek sayısını önce/sonra
+ölçüyor. Kural tablosu değiştiği için `.githooks/post-merge` referans farkını
+gösterecek — beklenen fark tek satır: `add_attachment`.
+
 ## 0.8.0 — 18 Eylül 2026 — güvenlik duvarı (kart #262, Faz 1)
 
 **Kullanıcı kararı:** "kural atlanamaz olmalı, bir şekilde yolunu bulup es

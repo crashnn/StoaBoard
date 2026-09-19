@@ -60,6 +60,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from '../src/config.js';
 import { prisma } from '../src/db.js';
 import { ARAC_BASLIKLARI, DESC_SINIRI, kelimedeKes, katla } from '../src/lib/mcpShape.js';
+import { ARAC_KURALLARI, aracAcikMi, gelistiriciMi } from '../src/lib/mcpKurallar.js';
 import { ALL_PERMISSIONS } from '../src/lib/permissions.js';
 import { hashToken } from '../src/lib/mcpToken.js';
 
@@ -93,7 +94,8 @@ const OLMAYAN = 2147480000;
  * elle güncellenmek zorunda — bayatlarsa tarama kırılır ve bunu söyler.
  */
 const YAZMA_ARACLARI = new Set([
-  'create_task', 'update_task', 'move_task', 'add_comment',
+  'create_task', 'update_task', 'move_task', 'add_comment', 'add_attachment',
+  'send_message',
   'delete_task', 'restore_task',
   'add_subtask', 'update_subtask', 'delete_subtask',
   'set_active_workspace',
@@ -117,6 +119,17 @@ function anahtariSec() {
 }
 
 const ANAHTAR = anahtariSec();
+
+/**
+ * 0.8.0 güvenlik duvarı: araç yüzeyi KİŞİYE göre değişiyor (kapalı araç hiç
+ * kaydedilmiyor). Beklenen yüzey = başlık tablosundaki araçlar − bu anahtarın
+ * sahibine kapalı olanlar. Sahip anahtarın slug'ından okunuyor; MCP_TOKEN
+ * slug'sız verildiyse ekip dışı sayılır ve bu başta söylenir.
+ */
+const GELISTIRICI = gelistiriciMi(ANAHTAR?.slug);
+const yuzeydeBeklenen = (adlar) => adlar.filter((ad) => aracAcikMi(ARAC_KURALLARI[ad] || {}, GELISTIRICI));
+const BEKLENEN_ARACLAR = yuzeydeBeklenen(Object.keys(ARAC_BASLIKLARI));
+const BEKLENEN_YAZANLAR = yuzeydeBeklenen([...YAZMA_ARACLARI]);
 
 // ─── HTTP ve JSON-RPC ──────────────────────────────────────────────────────
 
@@ -270,8 +283,7 @@ function sayiKimlikler(deger, yol = '$', bulunan = []) {
 }
 
 function basliklarDogru(araclar, dil) {
-  const beklenen = Object.keys(ARAC_BASLIKLARI);
-  return araclar.length === beklenen.length
+  return araclar.length === BEKLENEN_ARACLAR.length
     && araclar.every((a) => a.title === ARAC_BASLIKLARI[a.name]?.[dil]);
 }
 
@@ -401,7 +413,8 @@ async function tara() {
     );
     kontrol('durum tutmayan kip — oturum kimliği dönmüyor', !elSikisma.basliklar.get('mcp-session-id'));
 
-    const beklenen = Object.keys(ARAC_BASLIKLARI);
+    const beklenen = BEKLENEN_ARACLAR;
+    if (!ANAHTAR.slug) bilgi('MCP_TOKEN slug olmadan verildi — yüzey ekip dışı varsayımıyla ölçülüyor (MCP_SLUG ver)');
     const araclar = (await rpc('tools/list', {})).json?.result?.tools || [];
     durum.aracAdlari = araclar.map((a) => a.name);
     kontrol(
@@ -412,8 +425,8 @@ async function tara() {
     const yazanlar = araclar.filter((a) => a.annotations?.readOnlyHint === false).map((a) => a.name);
     kontrol(
       `yazma araçları: ${yazanlar.join(', ') || 'yok'}`,
-      ayniKume(yazanlar, [...YAZMA_ARACLARI]),
-      `beklenen: ${[...YAZMA_ARACLARI].join(', ')}`,
+      ayniKume(yazanlar, BEKLENEN_YAZANLAR),
+      `beklenen: ${BEKLENEN_YAZANLAR.join(', ')}`,
     );
     kontrol(
       'geri kalanı salt okuma (readOnlyHint)',
@@ -923,6 +936,11 @@ async function tara() {
       ? prisma.subtask.count({ where: { taskId: { in: kartIdleri() } } })
       : null);
     const altOnce = await altSayisi();
+    // Ek sayısı da (0.9.0): add_attachment'ın dört reddi de dosya yazmamalı.
+    const ekSayisi = async () => (db.ok
+      ? prisma.taskAttachment.count({ where: { taskId: { in: kartIdleri() } } })
+      : null);
+    const ekOnce = await ekSayisi();
 
     const w = durum.alan.id;
     const baslik = 'mcp-tara — oluşmamalı, oluştuysa silinebilir';
@@ -945,6 +963,18 @@ async function tara() {
     await dene('move_task', { workspace_id: w, task_id: ilkKart.id, col: 'olmayan-kolon-xyz' }, 'err_mcp_column_not_found');
     await dene('add_comment', { workspace_id: OLMAYAN, task_id: ilkKart.id, text: 'mcp-tara' }, 'err_mcp_workspace_mismatch');
     await dene('add_comment', { workspace_id: w, task_id: OLMAYAN, text: 'mcp-tara' }, 'err_task_not_found');
+
+    // ── add_attachment (0.9.0) — dört reddetme yolu, hiçbiri dosya yazmıyor.
+    // Son ikisi kapıların sırasını da gösteriyor: bozuk gövde uca hiç gitmiyor
+    // (MCP'de 400), desteklenmeyen tür uca gidip ORADA reddediliyor (415) —
+    // yani tür süzgeci MCP'de kopyalanmamış, uçtan geçiyor.
+    const EK = { file_name: 'mcp-tara.txt', content_type: 'text/plain', content_base64: 'bWNwLXRhcmE=' };
+    await dene('add_attachment', { workspace_id: OLMAYAN, task_id: ilkKart.id, ...EK }, 'err_mcp_workspace_mismatch');
+    await dene('add_attachment', { workspace_id: w, task_id: OLMAYAN, ...EK }, 'err_task_not_found');
+    await dene('add_attachment', { workspace_id: w, task_id: ilkKart.id, ...EK, content_base64: '!!bozuk!!' }, 'err_mcp_bad_base64');
+    await dene('add_attachment', {
+      workspace_id: w, task_id: ilkKart.id, ...EK, file_name: 'mcp-tara.exe', content_type: 'application/x-msdownload',
+    }, 'err_unsupported_file_type');
 
     const yok = await arac('move_task', { workspace_id: w, task_id: OLMAYAN, col: ilkKart.col });
     kontrol('olmayan göreve yazma → get_task ile birebir aynı 404', yok.hata && yok.metin === durum.ref?.gorev, yok.metin.slice(0, 140));
@@ -970,16 +1000,24 @@ async function tara() {
     // panosunda sınıyor, tarama üretim verisine dokunmuyor.
     const OLMAYAN_ALT = 999999999;
 
-    await dene('delete_task', { workspace_id: OLMAYAN, task_id: ilkKart.id }, 'err_mcp_workspace_mismatch');
-    await dene('delete_task', { workspace_id: w, task_id: OLMAYAN }, 'err_task_not_found');
+    // 0.8.0: kart silme yalnızca geliştirici ekibe açık; ekip dışında yüzeyde yok.
+    if (GELISTIRICI) {
+      await dene('delete_task', { workspace_id: OLMAYAN, task_id: ilkKart.id }, 'err_mcp_workspace_mismatch');
+      await dene('delete_task', { workspace_id: w, task_id: OLMAYAN }, 'err_task_not_found');
+    } else {
+      const sil = await arac('delete_task', { workspace_id: w, task_id: OLMAYAN });
+      kontrol('delete_task ekip dışında yüzeyde yok', sil.hata && /not found/i.test(sil.metin), sil.metin.slice(0, 140));
+    }
     await dene('restore_task', { workspace_id: OLMAYAN, task_id: ilkKart.id }, 'err_mcp_workspace_mismatch');
     await dene('add_subtask', { workspace_id: OLMAYAN, task_id: ilkKart.id, title: baslik }, 'err_mcp_workspace_mismatch');
     await dene('update_subtask', {
       workspace_id: w, task_id: ilkKart.id, subtask_id: OLMAYAN_ALT, done: true,
     }, 'err_mcp_subtask_not_found');
-    await dene('delete_subtask', {
-      workspace_id: w, task_id: ilkKart.id, subtask_id: OLMAYAN_ALT,
-    }, 'err_mcp_subtask_not_found');
+    // 0.8.0: kalıcı silme HERKESE kapalı — araç yüzeyde yok, çağrı "tool not
+    // found" ile dönmeli. Ret kodu değil yokluk ölçülüyor: reddedilen araç
+    // modelin deneyebildiği araçtır, kapalı araç deneyemediği.
+    const kalici = await arac('delete_subtask', { workspace_id: w, task_id: ilkKart.id, subtask_id: OLMAYAN_ALT });
+    kontrol('delete_subtask yüzeyde yok (kalıcı silme kapalı)', kalici.hata && /not found/i.test(kalici.metin), kalici.metin.slice(0, 140));
     await dene('update_task', {
       workspace_id: w, task_id: ilkKart.id, add_labels: ['hayalet-etiket-xyz'],
     }, 'err_mcp_label_not_found');
@@ -1023,6 +1061,14 @@ async function tara() {
     } else {
       kontrol(`alt görev sayısı değişmedi (${altOnce} → ${altSonra})`, altOnce === altSonra,
         'tarama bir ALT GÖREV oluşturdu — reddetme yolu sızdırıyor');
+    }
+
+    const ekSonra = await ekSayisi();
+    if (ekOnce === null) {
+      atla('ek sayısı değişmedi', 'veritabanına ulaşılamadı');
+    } else {
+      kontrol(`ek sayısı değişmedi (${ekOnce} → ${ekSonra})`, ekOnce === ekSonra,
+        'tarama bir EK yükledi — reddetme yolu sızdırıyor');
     }
   });
 

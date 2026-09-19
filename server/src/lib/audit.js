@@ -33,6 +33,7 @@ export const AUDIT = {
   MCP_TASK_UPDATED: 'mcp.task_updated',
   MCP_TASK_MOVED: 'mcp.task_moved',
   MCP_COMMENT_ADDED: 'mcp.comment_added',
+  MCP_ATTACHMENT_ADDED: 'mcp.attachment_added',
   MCP_MESSAGE_SENT: 'mcp.message_sent',
   // 0.5.0. Silme ÇÖPE taşımadır; kalıcı silme MCP yüzeyinde yok.
   MCP_TASK_DELETED: 'mcp.task_deleted',
