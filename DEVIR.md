@@ -18,7 +18,7 @@ güven, düzyazıya değil.
 
 ---
 
-## 0-AH. 18 Eylül akşamı – 19 Eylül — ev turu: on dört kusur, MCP 0.8→0.9.1, tur kartı
+## 0-AH. 18 Eylül akşamı – 19 Eylül — ev turu: yirmi üç kusur, MCP 0.8→0.9.1, canlı veri ailesi, 1000 test
 
 **Ev makinesi, veritabanı erişilebilir.** Staj bitti, ofis makinesi
 (`eray-atalay-3`) 18 Eylül 16:25'te son işini verip kapandı (0-AG). Kullanıcı
@@ -68,23 +68,41 @@ tablosu değişti: `post-merge` referans farkı bir satır göstermeli.
 düşüyor (`mcp.workspace_left`); "bulunamadı" mesajı "AKTİF alanda …" diyor,
 sabit metin, kâhin yok; alt görev `title`→`text` sözleşmesi belgelendi.
 
-### Tur kartı #269 (I turu)
+### 19 Eylül akşamı, devamı — #271 ailesi
 
-Kullanıcı: "testleri tura ekle, birden yapacağız." H turu (#247) bittikten
-sonra İncelemede'ye giren **bütün** kartlar #269'da sade maddelerle (19
-madde). **Kural: biten her iş #269'a yorumla madde ekler; kullanıcıya ayrı
-ayrı "canlıda bak" denmez.** Tur bitince geçenler Tamamlandı'ya, kalanlar
-bulguyla yeni karta.
+**`3cfe0eb` — #270** sohbette açık kanal alan başına hatırlanıyor
+(`rota.js`, `stoa.sonKanal`); alan değişince eski alanın slug'ının aktif
+kalması da kapandı. **`8a36cbf` — #265/#267** mobil jestler tek kaynakta
+(`client/src/jest.js`): çekmecede yatay kaydır → komşu kart (sola =
+sonraki, **kullanıcı teyit etmedi**), sohbet panelinde aşağı çek → kapat.
+#238'in mantığı oraya taşındı, testler davranışı sahte DOM ile sürüyor.
+**`0c29cb1` — #271** tarama: önyüklemede gelip canlı tazelenmeyen veriler.
+Görev düzeyi (alt görev, ek, yorum silme) `gorevYayini` ile kapandı;
+**beklenmedik bulgu:** kartta ek sayısı hiç gelmiyordu (`attachments: 0`
+sabitti), beş kopya include tek sabite (`GOREV_INCLUDE`) indi.
+**`9b93255` — #272** proje listesi ve etiketler canlı; açık sayım tek
+tanımda (`lib/projects.js`). **`6f44319` — #273** alan adı/logo, roller,
+profil canlı. Testler **1000**.
+
+### Tur kartı: #261 (I turu) — TEK kart
+
+Kullanıcı: "testleri tura ekle, birden yapacağız." Dün akşam açılmış #261
+görülmeden bugün ikinci bir tur kartı (#269) açıldı; fark edilince maddeler
+#261'e taşındı (26-34), #269 çöpe alındı. **Kural: biten her iş #261'e
+yorumla madde ekler; kullanıcıya ayrı ayrı "canlıda bak" denmez.** Tur
+bitince geçenler Tamamlandı'ya, kalanlar bulguyla yeni karta. Yeni iş
+almadan önce **var olan tur kartını ara** — bu hata bir kez yapıldı.
 
 ### Kaldığı yer
 
-- **HEAD `f1295f4`**, `main` = `origin/main`, ağaç temiz. Hiçbir karta
-  Devam Ediyor'da atalı değilim.
-- **İncelemede 23 kart**, hepsi #269'da maddeli. Cihaz gerektirmeyen üçü
-  (#200, #215, #251) ayrıca listeli.
-- **Kalan sıra (karar gerektirmeyen):** #265/#267 mobil jestler → sohbette
-  aktif kanal hatırlanmıyor (#256'daki not) → #259 ailesi (önyüklemede gelip
-  canlı tazelenmeyen başka veriler, taranmadı).
+- **HEAD `6f44319`** (+ bu devir commit'i), `main` = `origin/main`, ağaç
+  temiz. Hiçbir karta Devam Ediyor'da atalı değilim.
+- **İncelemede 28 kart**, hepsi #261'de maddeli (34 madde). Cihaz
+  gerektirmeyen üçü (#200, #215, #251) ayrıca listeli.
+- **Karar gerektirmeyen iş KALMADI.** Backlog/Yapılacak'taki her şey karar,
+  dış araç (#197 DNS, #203 fatura) ya da bitmiş ofis kısıtı (#206, #219 —
+  kapatılabilir) bekliyor. #230 (904 satır içi stil) yapılabilir ama
+  kullanıcı istemeden girilmedi.
 - **Karar bekleyen:** #264 (seçenek 1 önerildi). #266 ultra mod ister —
   başlamadan haber ver. Ertelenenler, sorma: #117 #118 #239 #209 #191 #214
   #198 #237 #199 #124 #232 #260 #200 #215 #195. Kararlar kartın altına yorum
