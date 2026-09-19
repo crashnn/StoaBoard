@@ -34,6 +34,7 @@ import {
   columnToDict,
   labelToDictValue,
   taskToDict,
+  GOREV_INCLUDE,
 } from '../lib/serializers.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { deleteProjectTree, logActivity } from '../lib/projects.js';
@@ -235,13 +236,7 @@ projectsRouter.get(
     const tasks = await prisma.task.findMany({
       where: { projectId, deletedAt: { not: null } },
       orderBy: { deletedAt: 'desc' },
-      include: {
-        column: true, creator: true,
-        assignees: { include: { user: true } },
-        labelLinks: { include: { label: true } },
-        subtasks: true,
-        comments: { select: { id: true } },
-      },
+      include: GOREV_INCLUDE,
     });
     res.json(tasks.map(taskToDict));
   }),

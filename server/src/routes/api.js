@@ -36,6 +36,7 @@ import {
   taskToDict,
   notificationToDict,
   activityToDict,
+  GOREV_INCLUDE,
 } from '../lib/serializers.js';
 import {
   channelToDict,
@@ -287,14 +288,7 @@ apiRouter.get(
       prisma.label.findMany({ where: { projectId: project.id } }),
       prisma.task.findMany({
         where: { projectId: project.id, deletedAt: null },
-        include: {
-          column: true,
-          creator: true,
-          assignees: { include: { user: true } },
-          labelLinks: { include: { label: true } },
-          subtasks: true,
-          comments: { select: { id: true } },
-        },
+        include: GOREV_INCLUDE,
       }),
       prisma.notification.findMany({
         where: { userId: user.id },

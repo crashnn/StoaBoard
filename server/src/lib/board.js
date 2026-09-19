@@ -38,7 +38,7 @@
 
 import { prisma } from '../db.js';
 import { emitSafely } from './emit.js';
-import { columnToDict, activityToDict } from './serializers.js';
+import { columnToDict, activityToDict, taskToDict, GOREV_INCLUDE } from './serializers.js';
 
 /**
  * Yeni hareket kaydını alanın odasına yayınlar (#259).
@@ -115,4 +115,25 @@ export async function kolonlariYayinla(io, project, actorSlug) {
     { project_id: String(project.id), columns: kolonlar.map(columnToDict) },
     actorSlug,
   );
+}
+
+/**
+ * Tek kartı yeniden yükleyip `task_updated` olarak yayınlar (kart #271).
+ *
+ * Kartın KENDİSİNE dokunmayan ama kartta GÖRÜNEN şeyleri değiştiren uçlar
+ * için: alt görev (ilerleme çubuğu, "2/5"), ek (ataç sayacı), yorum silme
+ * (yorum sayacı). Bunlar 19 Eylül'e kadar hiç yayınlanmıyordu; başka hesap
+ * F5 basana kadar eski sayacı görüyordu — #235/#259 ile aynı sınıf.
+ *
+ * Kart baştan yükleniyor, çünkü çağıran uç elinde yalnızca alt kaydı
+ * (subtask, attachment) tutuyor; dict'i oradan türetmek ikinci bir okuyucu
+ * olurdu. Kart çöpteyse ya da yoksa yayın yok (`false`).
+ */
+export async function gorevYayini(io, taskId, actorSlug) {
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: { ...GOREV_INCLUDE, project: { select: { workspaceId: true } } },
+  });
+  if (!task || task.deletedAt) return false;
+  return panoYayini(io, 'task_updated', task.project?.workspaceId, { task: taskToDict(task) }, actorSlug);
 }

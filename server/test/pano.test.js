@@ -27,6 +27,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { panoYayini } from '../src/lib/board.js';
+import { taskToDict, GOREV_INCLUDE } from '../src/lib/serializers.js';
 import { yorumsuzDosya, kaynakDosyalari } from './yardimcilar.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -388,5 +389,74 @@ describe('takım hareketleri canlı (#259)', async () => {
     for (const d of kaynakDosyalari(path.join(K, 'client', 'src'), /\.(jsx?|mjs)$/)) {
       assert.doesNotMatch(yorumsuzDosya(d), /DATA\.ACTIVITY/, `${path.basename(d)}: global hareket listesi geri geldi — değişince çizilmez`);
     }
+  });
+});
+
+// ─── #271 — kartta görünen ama kartın kendisine dokunmayan değişiklikler ─────
+//
+// Alt görev, ek ve yorum silme kartın satırını değiştirmiyor ama kartta
+// GÖRÜNEN şeyi (ilerleme, "2/5", ataç ve yorum sayacı) değiştiriyor. 19 Eylül'e
+// kadar hiçbiri yayınlanmıyordu. Ölçüt her uçta kendi bloğuna bağlı.
+
+describe('alt görev, ek ve yorum silme kartı yeniden yayınlıyor (#271)', () => {
+  const TASKS = yorumsuzDosya(path.join(SRC, 'routes', 'tasks.js'));
+  const ATT = yorumsuzDosya(path.join(SRC, 'routes', 'attachments.js'));
+  const BOARD = yorumsuzDosya(path.join(SRC, 'lib', 'board.js'));
+  const blok = (src, bas, son) => {
+    const i = src.indexOf(bas);
+    assert.notEqual(i, -1, `blok başlangıcı bulunamadı: ${bas}`);
+    const j = src.indexOf(son, i);
+    assert.notEqual(j, -1, `blok sonu bulunamadı: ${son}`);
+    return src.slice(i, j);
+  };
+  // Yayın YANITTAN ÖNCE olmalı: yanıttan sonraki satır, asyncHandler'ın
+  // istek yaşam döngüsünde teknik olarak koşar ama "yanıt gitti, sonra yayın
+  // yapılmadı" hatası buradan görünmez. Sıra ölçülüyor.
+  const yayinOnce = (b, ad) => {
+    const y = b.indexOf('gorevYayini(');
+    assert.notEqual(y, -1, `${ad}: kart yeniden yayınlanmıyor — karşı taraf F5'e kadar eski sayacı görür`);
+    const sonYanit = Math.max(b.lastIndexOf('res.json('), b.lastIndexOf('res.status(201)'));
+    assert.ok(sonYanit > y, `${ad}: yayın başarılı yanıttan sonra`);
+  };
+
+  test('alt görev ekleme / düzenleme / silme', () => {
+    yayinOnce(blok(TASKS, "tasksRouter.post(\n  '/:taskId/subtasks'", 'subtasksRouter.patch('), 'alt görev ekleme');
+    yayinOnce(blok(TASKS, 'subtasksRouter.patch(', 'subtasksRouter.delete('), 'alt görev düzenleme');
+    yayinOnce(blok(TASKS, 'subtasksRouter.delete(', 'tasksRouter.get('), 'alt görev silme');
+  });
+
+  test('yorum silme (ekleme zaten yayınlıyordu)', () => {
+    yayinOnce(blok(TASKS, 'commentsRouter.delete(', '\n);'), 'yorum silme');
+  });
+
+  test('ek yükleme / yeniden adlandırma / silme', () => {
+    yayinOnce(blok(ATT, "taskAttachmentsRouter.post(", 'attachmentsRouter.get('), 'ek yükleme');
+    yayinOnce(blok(ATT, 'attachmentsRouter.patch(', 'attachmentsRouter.delete('), 'ek adlandırma');
+    yayinOnce(blok(ATT, 'attachmentsRouter.delete(', 'chatUploadRouter.post('), 'ek silme');
+  });
+
+  test('gorevYayini kartı GOREV_INCLUDE ile yükleyip task_updated gönderiyor; çöpteki kart yayınlanmıyor', () => {
+    const b = blok(BOARD, 'export async function gorevYayini', '\n}');
+    assert.match(b, /include: \{ \.\.\.GOREV_INCLUDE/, 'dict için gereken join\'ler eksik — sayaçlar 0 gider');
+    assert.match(b, /if \(!task \|\| task\.deletedAt\) return false;/, 'çöpteki kart panoya "güncellendi" diye geri gelir');
+    assert.match(b, /panoYayini\(io, 'task_updated'/, 'istemcinin dinlediği olay değil');
+  });
+
+  test('ek sayısı kartta artık gerçek — sabit 0 değil', () => {
+    // 19 Eylül'e kadar `attachments: 0` sabitti; önyükleme ekleri hiç
+    // yüklemiyordu. Ataç simgesi hiçbir kartta hiçbir zaman görünmüyordu.
+    assert.ok(GOREV_INCLUDE.attachments, 'include ekleri yüklemiyor');
+    const dict = taskToDict({ id: 1, title: 't', column: { slug: 'todo' }, attachments: [{ id: 1 }, { id: 2 }] });
+    assert.equal(dict.attachments, 2);
+    assert.equal(taskToDict({ id: 1, title: 't', column: { slug: 'todo' } }).attachments, 0);
+  });
+
+  test('görev include bloğunun kopyası kalmadı — tek kaynak GOREV_INCLUDE', () => {
+    // Beş route dosyasında elle kopyalanmış include vardı; hiçbirinde ek yoktu.
+    // Kopya geri gelirse sayaçlardan biri yine sessizce 0 olur.
+    const kopya = kaynakDosyalari(path.join(SRC, 'routes'), /\.js$/)
+      .filter((f) => /labelLinks: \{ include: \{ label: true \} \},\s*subtasks: true,\s*comments: \{ select: \{ id: true \} \}/.test(yorumsuzDosya(f)))
+      .map((f) => path.basename(f));
+    assert.deepEqual(kopya, [], 'görev include bloğu yeniden kopyalanmış');
   });
 });

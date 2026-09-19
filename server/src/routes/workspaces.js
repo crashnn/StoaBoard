@@ -36,7 +36,7 @@ import {
   hasPermission,
   resolveWorkspaceId,
 } from '../lib/workspace.js';
-import { workspaceRoleToDict, taskToDict } from '../lib/serializers.js';
+import { workspaceRoleToDict, taskToDict, GOREV_INCLUDE } from '../lib/serializers.js';
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { upload, storeFile } from '../lib/uploads.js';
 import { recordAudit, AUDIT } from '../lib/audit.js';
@@ -750,14 +750,7 @@ workspacesRouter.get(
 
     const tasks = await prisma.task.findMany({
       where: { projectId: { in: projectIds }, deletedAt: { not: null } },
-      include: {
-        column: true,
-        creator: true,
-        assignees: { include: { user: true } },
-        labelLinks: { include: { label: true } },
-        subtasks: true,
-        comments: { select: { id: true } },
-      },
+      include: GOREV_INCLUDE,
       orderBy: { deletedAt: 'desc' },
     });
 

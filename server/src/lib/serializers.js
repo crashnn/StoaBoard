@@ -77,10 +77,26 @@ export function labelToDictValue(l) {
 }
 
 /**
+ * `taskToDict`in beklediği join'ler — TEK yerde (kart #271). 19 Eylül'e kadar
+ * bu blok beş route dosyasında elle kopyalanmıştı ve ekler hiçbirinde yoktu:
+ * dict `attachments: 0` sabitini yazıyordu, yani ataç sayacı hiçbir kartta
+ * hiçbir zaman görünmüyordu. Include ile dict aynı olgunun iki okuyucusu;
+ * yan yana dursunlar ki biri değişince öbürü de değişsin.
+ */
+export const GOREV_INCLUDE = Object.freeze({
+  column: true,
+  creator: true,
+  assignees: { include: { user: true } },
+  labelLinks: { include: { label: true } },
+  subtasks: true,
+  comments: { select: { id: true } },
+  attachments: { select: { id: true } },
+});
+
+/**
  * Python Task.to_dict — board kartının özet hali.
  *
- * `task` şu join'lerle gelmeli:
- *   { column, assignees: { user }, labelLinks: { label }, subtasks, comments }
+ * `task` GOREV_INCLUDE join'leriyle gelmeli.
  */
 export function taskToDict(task) {
   const col = task.column;
@@ -106,7 +122,7 @@ export function taskToDict(task) {
     assignee_dates: task.assigneeDates || {},
     progress: task.progress || 0,
     comments: commentCount,
-    attachments: 0,
+    attachments: (task.attachments || []).length,
     project_id: task.projectId,
     created_by: task.creator?.slug || null,
     // Şemada hep vardı, yayımlanmıyordu; "bu kart ne zaman açıldı" sorusu

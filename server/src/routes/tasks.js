@@ -21,13 +21,14 @@ import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { memberForWorkspace, hasPermission } from '../lib/workspace.js';
-import { panoYayini, etkinlikYayini } from '../lib/board.js';
+import { panoYayini, etkinlikYayini, gorevYayini } from '../lib/board.js';
 import {
   taskToDict,
   taskToDetailDict,
   subtaskToDict,
   commentToDict,
   columnToDict,
+  GOREV_INCLUDE,
 } from '../lib/serializers.js';
 import {
   parseDate,
@@ -60,14 +61,7 @@ const TASK_FULL_INCLUDE = {
 };
 
 // Task list için hafif include (taskToDict yeterli alır)
-const TASK_LIST_INCLUDE = {
-  column: true,
-  creator: true,
-  assignees: { include: { user: true } },
-  labelLinks: { include: { label: true } },
-  subtasks: true,
-  comments: { select: { id: true } },
-};
+const TASK_LIST_INCLUDE = GOREV_INCLUDE;
 
 async function loadUser(req) {
   const uid = req.session?.userId;
@@ -600,13 +594,7 @@ tasksRouter.post(
     await prisma.task.update({ where: { id: taskId }, data: { deletedAt: null } });
     const task = await prisma.task.findUnique({
       where: { id: taskId },
-      include: {
-        column: true, creator: true,
-        assignees: { include: { user: true } },
-        labelLinks: { include: { label: true } },
-        subtasks: true,
-        comments: { select: { id: true } },
-      },
+      include: GOREV_INCLUDE,
     });
     const dict = taskToDict(task);
     // Geri alınan kart panoda YENİDEN BELİRİYOR, yani karşı taraf için
@@ -682,6 +670,8 @@ tasksRouter.post(
     // Yeni alt görev toplamı değiştirdiği için ilerleme yeniden hesaplanmalı;
     // aksi halde 2/2 (%100) bir göreve üçüncü alt görev eklenince %100 kalıyordu.
     await recalcTaskProgress(prisma, taskId);
+    // İlerleme ve "n/m" sayacı kartta görünüyor; başkası F5'siz görsün (#271).
+    await gorevYayini(req.app.get('io'), taskId, access.user.slug);
     res.status(201).json(subtaskToDict(s));
   }),
 );
@@ -721,6 +711,7 @@ subtasksRouter.patch(
     await recalcTaskProgress(prisma, s.taskId);
 
     const updated = await prisma.subtask.findUnique({ where: { id: subtaskId } });
+    await gorevYayini(req.app.get('io'), s.taskId, user.slug);
     res.json(subtaskToDict(updated));
   }),
 );
@@ -747,6 +738,7 @@ subtasksRouter.delete(
     }
     await prisma.subtask.delete({ where: { id: subtaskId } });
     await recalcTaskProgress(prisma, s.taskId);
+    await gorevYayini(req.app.get('io'), s.taskId, user.slug);
     res.json({ ok: true });
   }),
 );
@@ -888,6 +880,9 @@ commentsRouter.delete(
       return res.status(403).json({ error: 'err_unauthorized', message: 'Yetkisiz işlem' });
     }
     await prisma.comment.delete({ where: { id: commentId } });
+    // Ekleme `task_comment` ile yayınlanıyordu, silme hiç yayınlanmıyordu:
+    // başkasında yorum sayacı eski kalıyordu (#271).
+    await gorevYayini(req.app.get('io'), comment.taskId, user.slug);
     res.json({ ok: true });
   }),
 );

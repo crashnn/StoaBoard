@@ -15,6 +15,7 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
 import { memberForWorkspace } from '../lib/workspace.js';
 import { taskAttachmentToDict } from '../lib/serializers.js';
+import { gorevYayini } from '../lib/board.js';
 import { upload, storeFile, uploadErrorHandler } from '../lib/uploads.js';
 import { resolveChatTarget } from '../lib/channels.js';
 import { rateLimited } from '../lib/rateLimit.js';
@@ -130,6 +131,10 @@ taskAttachmentsRouter.post(
       },
       include: { uploader: true },
     });
+    // Ataç sayacı kartta görünüyor; başkası F5'siz görsün (#271). Yeniden
+    // adlandırma sayacı değiştirmez ama kart eklerini açık tutan öbür
+    // kullanıcı için ad da kart verisidir — üçü de yayınlanıyor.
+    await gorevYayini(req.app.get('io'), taskId, ctx.user.slug);
     res.status(201).json(taskAttachmentToDict(attachment));
   }),
 );
@@ -182,6 +187,7 @@ attachmentsRouter.patch(
       where: { id: attId },
       include: { uploader: true },
     });
+    await gorevYayini(req.app.get('io'), att.taskId, ctx.user.slug);
     res.json(taskAttachmentToDict(updated));
   }),
 );
@@ -201,6 +207,7 @@ attachmentsRouter.delete(
       prisma.taskAttachment.delete({ where: { id: attId } }),
       prisma.uploadedFile.delete({ where: { id: att.fileId } }),
     ]);
+    await gorevYayini(req.app.get('io'), att.taskId, ctx.user.slug);
     res.json({ ok: true });
   }),
 );
