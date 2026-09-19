@@ -90,7 +90,7 @@ Gece **kişisel MCP anahtarları** (DEVIR 0-V2): Ayarlar → Claude bağlantıs�
 iptal. **Anahtarı ortam değişkenine eklemek artık tek yol değil** — yeni kişi
 kendi anahtarını üretir.
 
-Test sayısı **993**, hepsi geçiyor. Ayrıntılı durum için **her zaman
+Test sayısı **992**, hepsi geçiyor. Ayrıntılı durum için **her zaman
 [DEVIR.md](DEVIR.md)** — bu blok bayatlamaya yatkın, oradaki 0-* bölümleri
 tarihli ve daha güvenilir.
 
