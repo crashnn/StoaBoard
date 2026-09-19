@@ -2935,6 +2935,9 @@ input, textarea, select, [contenteditable="true"] {
   overscroll-behavior-y: contain;
 }
 
+.chat-grab { display: none; }
+.chat-drag { flex-shrink: 0; }
+
 /* Sürükle-kapat tutamağı — yalnızca dokunmatik cihazda.
    Masaüstünde jest yok (orada Esc ve X var, üstelik fareyle aşağı sürüklemek
    kapatma anlamına gelmiyor), dolayısıyla çubuk da yok: işaret ettiği şey
@@ -2957,6 +2960,23 @@ input, textarea, select, [contenteditable="true"] {
     border-radius: 2px;
     background: var(--line);
   }
+  /* Sohbet panelinin tutamağı — aynı jest, aynı görünüm (#267). Aynı blokta
+     duruyor: mobil testi tek bir `pointer: coarse` bloğu ölçüyor. */
+  .chat-grab {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 0;
+    touch-action: none;
+  }
+  .chat-grab > span {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+  }
+  /* Yatay kaydır → komşu kart (#265): tarayıcı dikey kaydırmayı kendi
+     yapsın, yatay hareket bize gelsin. `none` olsaydı kart okunamazdı. */
+  .drawer { touch-action: pan-y; }
 }
 
 .doc-title {
@@ -5089,6 +5109,9 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Çekmecedeki gerekçenin aynısı (#238/#267): listenin tepesinden aşağı
+     çekmek Chrome Android'de "sayfayı yenile" olmasın. */
+  overscroll-behavior-y: contain;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;

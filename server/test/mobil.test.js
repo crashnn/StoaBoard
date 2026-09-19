@@ -228,46 +228,16 @@ describe('sürükle-kapat — mobilde kartı aşağı çekerek kapatma (#238)', 
     path.join(KOK, 'client', 'src', 'drawer.jsx'), 'utf8',
   ).replace(/\r\n/g, '\n');
 
-  const jestBloku = () => {
-    const bas = DRAWER.indexOf('const jestBitir');
-    assert.notEqual(bas, -1, 'jest bitiş işleyicisi bulunamadı');
-    return DRAWER.slice(bas, DRAWER.indexOf('\n  };', bas));
-  };
-
-  test('jest dokunmatik cihazla sınırlı', () => {
-    // Ölçüt `pointer: coarse`, ekran GENİŞLİĞİ değil — #233'te aynı karar
-    // verildi. Dar bir masaüstü penceresinde fareyle aşağı sürüklemek kapatma
-    // jesti değildir ve kaydırmayla çakışır.
-    const bas = DRAWER.indexOf('const dokunmatikMi');
-    assert.notEqual(bas, -1, 'dokunmatik ölçüsü yok');
-    const blok = DRAWER.slice(bas, DRAWER.indexOf('\n  );', bas));
-    assert.match(blok, /pointer:\s*coarse/,
-      'jest masaüstünde de kurulur — fare sürüklemesi kartı kapatır');
-
-    const basla = DRAWER.slice(DRAWER.indexOf('const jestBasla'), DRAWER.indexOf('const jestSurukle'));
-    assert.match(basla, /!dokunmatikMi\(\)/,
-      'ölçü hesaplanıyor ama jestin kurulmasına bağlanmamış');
-  });
-
-  test('İKİ eşik var — uzun sürükleme VE hızlı fiske', () => {
-    // Tek eşik ikisinden birini yanlış yorumlar: yavaş ama uzun sürükleme de,
-    // kısa ama hızlı fiske de "kapat" demektir. Yalnızca mesafeye bakmak
-    // fiskeyi görmez; yalnızca hıza bakmak dikkatli sürüklemeyi görmez.
-    const blok = jestBloku();
-    assert.match(blok, /innerHeight/,
-      'eşik ekran yüksekliğine göre değil — küçük ve büyük telefonda farklı davranır');
-    assert.match(blok, /j\.y \/ sure/,
-      'hız hesaplanmıyor; hızlı fiske kapatmaz');
-    assert.match(blok, /uzun \|\| fiske/,
-      'iki eşik birleştirilmemiş');
-  });
-
-  test('eşik altında kapanmıyor — geri yaylanıyor', () => {
-    // Ters yönlü kilit. Eşiksiz bir jest, kartı okumak için parmağını gezdiren
-    // kullanıcının altından kartı çeker.
-    const blok = jestBloku();
-    assert.match(blok, /if \(uzun \|\| fiske\) onClose\(\)/,
-      'kapatma koşulsuz çağrılıyor olabilir — her dokunuş kartı kapatır');
+  // Eşik, hız ve dokunmatik ölçütü artık `client/src/jest.js`te ve saf
+  // fonksiyonlarla ölçülüyor (jest.test.js, #265/#267 ile ortaklaştı). Burada
+  // kalan: çekmecenin o modüle GERÇEKTEN bağlı olduğu.
+  test('çekmece ortak jest modülüne bağlı — kendi kopyası yok', () => {
+    assert.match(DRAWER, /import \{ dikeyCekJesti, yatayKaydirJesti \} from '\.\/jest\.js'/,
+      'çekmece jest.js dosyasını içe almıyor');
+    assert.match(DRAWER, /dikey: dikeyCekJesti\(\{/, 'aşağı çek-kapat jesti kurulmuyor');
+    assert.match(DRAWER, /className="drawer-drag" \{\.\.\.jestOzellikleri\}/, 'jest başlık bölgesine bağlı değil');
+    // Kopya yasağı: eski satır içi eşik hesabı geri gelirse iki okuyucu olur.
+    assert.doesNotMatch(DRAWER, /innerHeight \* 0\.25|j\.y \/ sure/, 'çekmece kendi eşik hesabını taşıyor — jest.js ile ayrışır');
   });
 
   test('X düğmesi KALIYOR — jest onun yerine geçmiyor', () => {

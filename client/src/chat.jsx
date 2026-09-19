@@ -4,6 +4,7 @@ import React, { useState as useChatS, useEffect as useChatE, useRef as useChatRe
 import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
 import { rolAdi } from './rolAdi.js';
+import { dikeyCekJesti, yaziliyorMu } from './jest.js';
 import { Avatar, AvatarStack } from './shell.jsx';
 
 // Sohbet taslakları: (alan + hedef) çifti başına metin, yanıt ve eklenmiş
@@ -1671,6 +1672,27 @@ function MediaGallery({ allMembers, onImageClick }) {
 function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, members: membersProp, socket, initialDmWith, initialChannel, canManageChannels, canDeleteMessages, unreadCounts, markAsRead, wsId, highlightMsgId, fullPage }) {
   const [askConfirm, ConfirmUI] = useConfirm();
   const [tab, setTab]             = useChatS('general');
+
+  // Aşağı çek → kapat (#267, kullanıcı: "küçük açılır sohbet için de aşağı
+  // kaydır kapatır yapabiliriz kartta olduğu gibi"). Mantık kart çekmecesiyle
+  // ORTAK (`jest.js`), ikinci kopya değil. Yalnızca panel kipinde bağlanıyor
+  // (tam sayfada geri tuşu ve menü var) ve başlık/tutamak bölgesinde: mesaj
+  // listesi dikey kaydığı için gövdeden jest okumayla çakışırdı (#238 kararı).
+  // Yazma kutusu odaktayken KAPALI: klavye açıkken paneli kazara kapatmak
+  // yarım mesajı gözden kaybettirir (taslak saklanıyor ama kullanıcı bunu
+  // bilmez). İşleyici bir kez kuruluyor, `onClose` ref'ten okunuyor.
+  const panelRef = useChatRef(null);
+  const kapatRef = useChatRef(onClose);
+  kapatRef.current = onClose;
+  const cekJestRef = useChatRef(null);
+  if (!cekJestRef.current) {
+    cekJestRef.current = dikeyCekJesti({
+      panel: () => panelRef.current,
+      kapat: () => kapatRef.current?.(),
+      etkin: () => !yaziliyorMu(),
+    });
+  }
+  const cekJest = fullPage ? {} : cekJestRef.current;
   const [dmWith, setDmWith]       = useChatS(null);
   const [messages, setMessages]   = useChatS([]);
   const [text, setText]           = useChatS('');
@@ -2918,7 +2940,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
         document.body
       )}
       {!fullPage && <div className="chat-overlay" data-open={open} onClick={onClose} />}
-      <div className="chat-panel" data-open={open || fullPage} data-full-page={!!fullPage}>
+      <div className="chat-panel" data-open={open || fullPage} data-full-page={!!fullPage} ref={panelRef}>
 
       {/* ═════════════════ FULL-PAGE 3-COLUMN LAYOUT ═════════════════ */}
       {fullPage && (() => {
@@ -3753,7 +3775,11 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
       {!fullPage && (
       <>
 
-        {/* Header */}
+        {/* Header — jest bölgesi tutamak + başlık (#267). Düğmeler
+            etkilenmiyor: eşik hareket istiyor, dokunup bırakmak jesti
+            tetiklemiyor. Tutamak yalnızca dokunmatikte görünür (CSS). */}
+        <div className="chat-drag" {...cekJest}>
+        <div className="chat-grab" aria-hidden="true"><span /></div>
         <div className="chat-head">
           {dmWith ? (
             <>
@@ -3795,6 +3821,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
           <button className="icon-btn" style={{ flexShrink: 0 }} onClick={onClose} title={window.t?.('ui_close') || 'Kapat'}>
             <Icon name="x" size={14} />
           </button>
+        </div>
         </div>
 
         {/* Tabs */}

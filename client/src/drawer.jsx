@@ -8,6 +8,7 @@ import { API, fmtTimeAgo } from './data.jsx';
 import { DatePicker } from './modals.jsx';
 import { WorkLogSection } from './worklog.jsx';
 import { paragraflaraBol } from './belge.js';
+import { dikeyCekJesti, yatayKaydirJesti } from './jest.js';
 
 // `tweaks` BİLEREK prop, global değil. Çekmece başka globalleri (DATA.COLUMNS,
 // window.t) okuyor ama `window.__TWEAKS__` bunlardan farklı: o sunucunun
@@ -50,62 +51,41 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   // bir jest, olmayan bir jesttir ve klavyeyle gezen kullanıcının da bir yolu
   // olmalı.
   const panelRef = useDrawerRef(null);
-  const jestRef = useDrawerRef(null);
 
-  const dokunmatikMi = () => (
-    typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)')?.matches
-  );
-
-  const jestBasla = (e) => {
-    // Ölçüt `pointer: coarse`, ekran GENİŞLİĞİ değil — #233'te aynı karar
-    // verildi: aranan şey "dokunmatik mi", "pencere dar mı" değil. Dar bir
-    // masaüstü penceresinde fare ile aşağı sürüklemek kapatma jesti değildir.
-    if (!dokunmatikMi() || e.touches?.length !== 1) return;
-    jestRef.current = { y0: e.touches[0].clientY, t0: Date.now(), y: 0 };
-  };
-
-  const jestSurukle = (e) => {
-    const j = jestRef.current;
-    const el = panelRef.current;
-    if (!j || !el || e.touches?.length !== 1) return;
-    // Yalnızca AŞAĞI. Yukarı sürükleme paneli tavana yapıştırmıyor; 0'da
-    // duruyor ki kullanıcı yanlışlıkla yukarı çekince bir şey "bozulmasın".
-    j.y = Math.max(0, e.touches[0].clientY - j.y0);
-    // Doğrudan DOM: sürükleme kare başına durum güncellemesi demek ve uzun bir
-    // kartın yeniden çizimi 60 kez/sn takılmaya yol açardı.
-    el.style.transition = 'none';
-    el.style.transform = `translateY(${j.y}px)`;
-  };
-
-  const jestBitir = () => {
-    const j = jestRef.current;
-    const el = panelRef.current;
-    jestRef.current = null;
-    if (!el) return;
-    // Satır içi stiller temizleniyor ki CSS geri alsın: açıkken
-    // `translateX(0)`, kapanırken geçiş animasyonu.
-    el.style.transition = '';
-    el.style.transform = '';
-    if (!j) return;
-
-    // İKİ EŞİK, çünkü iki farklı hareket de "kapat" demek: yavaş ama uzun
-    // sürükleme ve kısa ama hızlı fiske. Tek eşik ikisinden birini yanlış
-    // yorumlar.
-    const yukseklik = window.innerHeight || 800;
-    const sure = Math.max(1, Date.now() - j.t0);
-    const uzun = j.y > yukseklik * 0.25;
-    const fiske = j.y / sure > 0.6 && j.y > 60;
-    if (uzun || fiske) onClose();
-    // Eşiğin altındaysa hiçbir şey yapılmıyor: stil temizlendiği için panel
-    // CSS geçişiyle yerine yaylanıyor.
-  };
-
-  const jestOzellikleri = {
-    onTouchStart: jestBasla,
-    onTouchMove: jestSurukle,
-    onTouchEnd: jestBitir,
-    onTouchCancel: jestBitir,
-  };
+  // Jest mantığı `jest.js`te (#238 → #265/#267 ile ortaklaştı). İşleyiciler
+  // bileşen ömründe BİR kez kuruluyor: her render'da yeniden üretilseydi,
+  // sürükleme ortasında gelen bir soket yayını jestin durumunu sıfırlar ve
+  // panel yarı çekilmiş hâlde takılı kalırdı. Çağrılar ref üzerinden okunuyor
+  // ki en güncel `onClose` / `komsu` görülsün.
+  const sonRef = useDrawerRef({});
+  sonRef.current = { onClose, onKomsu, komsu };
+  const jestlerRef = useDrawerRef(null);
+  if (!jestlerRef.current) {
+    jestlerRef.current = {
+      // Başlık + tutamak: aşağı çek → kapat.
+      dikey: dikeyCekJesti({
+        panel: () => panelRef.current,
+        kapat: () => sonRef.current.onClose?.(),
+      }),
+      // Panelin tamamı: yatay kaydır → aynı kolondaki komşu kart (#265).
+      // Sola = sonraki, sağa = önceki (galeri alışkanlığı). Kolon sonunda
+      // durur, uçta dirençle "burası son" der. Yorum taslağı ve adres #246'nın
+      // geçiş yolundan (onKomsu) geçtiği için aynı kuralları miras alıyor.
+      yatay: yatayKaydirJesti({
+        panel: () => panelRef.current,
+        komsu: () => ({
+          onceki: !!(sonRef.current.onKomsu && sonRef.current.komsu?.onceki),
+          sonraki: !!(sonRef.current.onKomsu && sonRef.current.komsu?.sonraki),
+        }),
+        gec: (yon) => {
+          const { onKomsu: git, komsu: k } = sonRef.current;
+          if (git && k?.[yon]) git(k[yon]);
+        },
+      }),
+    };
+  }
+  const jestOzellikleri = jestlerRef.current.dikey;
+  const yatayJest = jestlerRef.current.yatay;
 
   // ── Checklist (alt görevler) ───────────────────────────────────────────
   const [checkInput, setCheckInput]     = useDrawerState('');
@@ -1176,7 +1156,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   return (
     <>
       <div className="drawer-overlay" data-open={open} onClick={onClose} />
-      <div className="drawer" data-open={open} ref={panelRef}>
+      <div className="drawer" data-open={open} ref={panelRef} {...yatayJest}>
         {/* Jest bölgesi başlığı da kapsıyor: kullanıcı çubuğu tam
             yakalayamadığında başlıktan çekmesi de çalışsın. Başlıktaki
             düğmeler etkilenmiyor — eşik hareket istiyor, dokunup bırakmak
