@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 18 Eylül 2026 mesai sonu, **ofis makinesinde** (5432
-kapalı). En taze bölüm **0-AG** (öğleden sonra eki dahil).
+**Son güncelleme:** 19 Eylül 2026 akşamı, **ev makinesinde**. En taze bölüm
+**0-AH**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,87 @@ kapalı). En taze bölüm **0-AG** (öğleden sonra eki dahil).
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AH. 18 Eylül akşamı – 19 Eylül — ev turu: on dört kusur, MCP 0.8→0.9.1, tur kartı
+
+**Ev makinesi, veritabanı erişilebilir.** Staj bitti, ofis makinesi
+(`eray-atalay-3`) 18 Eylül 16:25'te son işini verip kapandı (0-AG). Kullanıcı
+"devir al, kararlarımı ertele" dedi; o akşamdan bu yana tek oturum. 19 Eylül
+akşamı kullanıcı Claude hesabını değiştirdi (sohbet ve depo aynı, yalnızca
+hesap); devir notu Köprü kanalında msg 251, bu bölüm onu belgeye taşıyor.
+Testler **848 → 948**.
+
+### 18 Eylül akşamı — sade tur bulguları (0-AG'de yok)
+
+| Commit | İş |
+|---|---|
+| `a6b827b` | Git dışında duran şema SQL'leri, tohum ve etkinlik betikleri depoya alındı |
+| `6c990c0` | **#256** seçili proje F5'te, girişte ve alan değişiminde unutulmuyor |
+| `ffe5c10` | #263 çekmecede kart numarası telefonda eziliyordu; proje adı sabit "StoaBoard Web" yerine kartın projesi |
+| `5356bab` | **MCP 0.8.0 — yapay zekâ güvenlik duvarı** (#262 Faz 1): `registerTool` sarıldı, kural tablosu `lib/mcpKurallar.js`, kota, `delete_subtask` herkese kapalı, `delete_task` yalnızca ekip. Ayrıntı MCP-SURUMLER |
+| `cc0850e` | #257 bildirimde ham `<strong>`; kart bahsetmesi ortak kurucudan |
+| `e908374` | #254 şartlar sayfasının üstü kesik (oturumsuz) |
+| `548220c` | #235 başka hesabın açtığı kolon F5'siz görünüyor |
+| `0309476` | #252 geri tuşu açık katmanı kapatıyor: Yeni görev, palet, bildirim, sohbet paneli, mobil menü |
+| `1a6209f` | #251 kullanıcı adresi Türkçe harfi çeviriyor (siliyordu); kolon adresi tekil |
+| `8882b5a` | #210 sohbette dosya eki okunuyor ve adı görünüyor; kör kontrast testi onarıldı |
+| `99f697c` | #208 #255 İngilizce arayüzde Türkçe kalanlar: varsayılan rol adları, giriş ekranı |
+| `74817e6` | #268 "BEN" rozeti bitmiş kartta başlığa biniyordu; Türkçe harfsiz metinler dil taramasına girdi; mesaj silme hatası sessiz değil |
+| `bb57d9a` | #258 bildirime basınca ilgili yere gidiyor (tür → hedef tablosu) |
+| `a654819` | #259 Ana Sayfa takım hareketleri canlı (`activity_new`) |
+
+### 19 Eylül akşamı
+
+**`7eb9f4f` — #253 sohbet panelinde kanal şeridi.** Sağ üst panelde yalnızca
+Genel/Direkt/Medya/Yıldız vardı; genel dışındaki kanala ulaşmak tam ekrana
+geçip listeden seçmeyi gerektiriyordu (beş adım). Unutulmuştu, bilerek sade
+tutulmamış. Sekmelerin altına yatay kayan şerit; yalnızca birden fazla kanal
+varken. Kanal başına okunmamış rozeti YOK (sayaç alan düzeyinde, ayrı iş).
+Ders: mutasyon döngüsünde `git checkout` commit'lenmemiş değişiklikleri de
+sildi; mutasyonu kopya dosya üzerinden koş, `git checkout` ile değil.
+
+**`699902f` — MCP 0.9.0 `add_attachment`** (#205). Base64 gövde çözülüp aynı
+multipart uca gidiyor (`callSelf`e `form`); sınırlar uçta, MCP'de kopya yok.
+Bozuk base64 400 (`Buffer.from` sessizce kısaltıyordu). **Pratik tavan 7 MB**
+(JSON gövde sınırı base64'ten önce). **Tarama 0.8.0'dan beri kırmızıydı** —
+duvar öncesi beklentiler (`delete_subtask` yok, `send_message` listede
+eksik). Duvar modeline uyarlandı; yerel sunucuya karşı **83/0/2**. Kural
+tablosu değişti: `post-merge` referans farkı bir satır göstermeli.
+
+**`f1295f4` — MCP 0.9.1** (#213): alan geçişi kaynak alanın kaydına da
+düşüyor (`mcp.workspace_left`); "bulunamadı" mesajı "AKTİF alanda …" diyor,
+sabit metin, kâhin yok; alt görev `title`→`text` sözleşmesi belgelendi.
+
+### Tur kartı #269 (I turu)
+
+Kullanıcı: "testleri tura ekle, birden yapacağız." H turu (#247) bittikten
+sonra İncelemede'ye giren **bütün** kartlar #269'da sade maddelerle (19
+madde). **Kural: biten her iş #269'a yorumla madde ekler; kullanıcıya ayrı
+ayrı "canlıda bak" denmez.** Tur bitince geçenler Tamamlandı'ya, kalanlar
+bulguyla yeni karta.
+
+### Kaldığı yer
+
+- **HEAD `f1295f4`**, `main` = `origin/main`, ağaç temiz. Hiçbir karta
+  Devam Ediyor'da atalı değilim.
+- **İncelemede 23 kart**, hepsi #269'da maddeli. Cihaz gerektirmeyen üçü
+  (#200, #215, #251) ayrıca listeli.
+- **Kalan sıra (karar gerektirmeyen):** #265/#267 mobil jestler → sohbette
+  aktif kanal hatırlanmıyor (#256'daki not) → #259 ailesi (önyüklemede gelip
+  canlı tazelenmeyen başka veriler, taranmadı).
+- **Karar bekleyen:** #264 (seçenek 1 önerildi). #266 ultra mod ister —
+  başlamadan haber ver. Ertelenenler, sorma: #117 #118 #239 #209 #191 #214
+  #198 #237 #199 #124 #232 #260 #200 #215 #195. Kararlar kartın altına yorum
+  olarak gelecek; her işten önce bak.
+- **#124 hangi Neon dalı** hâlâ açık: `server/.env` veritabanına ulaşıyor
+  (19 alan) ama üretim mi test dalı mı bilinmiyor. Bu yüzden `add_attachment`
+  başarı yolu yerelde denenmedi; tarama yalnızca reddetme yollarından geçti.
+- **MCP yüzeyi değişti (0.9.x): yeni sohbet aç**, eski sohbet
+  `add_attachment`ı görmez.
+- CLAUDE.md "Şu anki durum" bloğu 11-13 Eylül'de kalmış; bayatlığı bu bölüm
+  kapatıyor, oraya dokunulmadı.
 
 ---
 
