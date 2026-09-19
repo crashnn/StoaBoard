@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import {
   GORUNUM_YOLLARI, durumdanYol, yoldanDurum, girisNoktasiMi,
   girisSonrasiKaydet, girisSonrasiOku, girisSonrasiSil, baslangicYolu,
-  projeyiHatirla, hatirlananProje,
+  projeyiHatirla, hatirlananProje, kanaliHatirla, hatirlananKanal,
 } from '../../client/src/rota.js';
 import { yorumsuzDosya } from './yardimcilar.js';
 
@@ -332,5 +332,80 @@ describe('rota — #256 app.jsx bağlantıları', () => {
       'alan değiştirme hangi alana gidildiğini söylemiyor — eski alanın projesi gönderilir');
     assert.match(govde("sock.on('workspace_switched'", '});'), /onyukle\(workspace_id\)/,
       'soket alan değişimi olayın taşıdığı alanı kullanmıyor');
+  });
+});
+
+// ─── Son açık kanal — alan başına (#270, #256'nın aile üyesi) ───────────────
+
+describe('kanal hafızası — alan başına, listeyle doğrulanmış', () => {
+  const KANALLAR = [{ slug: 'general' }, { slug: 'ai-i-letişim-kanalı---köprü' }, { id: 'eski-biçim' }];
+
+  test('yazılan kanal aynı alanda geri okunuyor; öbür alan etkilenmiyor', () => {
+    const d = sahteDepo();
+    kanaliHatirla(15, 'ai-i-letişim-kanalı---köprü', d);
+    kanaliHatirla(4, 'general', d);
+    assert.equal(hatirlananKanal(15, KANALLAR, d), 'ai-i-letişim-kanalı---köprü');
+    assert.equal(hatirlananKanal(4, KANALLAR, d), 'general');
+  });
+
+  test('hatırlanan kanal listede yoksa genel — silinmiş/erişimi kalkmış kanal açılmaz', () => {
+    const d = sahteDepo();
+    kanaliHatirla(15, 'silinmis-kanal', d);
+    assert.equal(hatirlananKanal(15, KANALLAR, d), 'general');
+    assert.equal(hatirlananKanal(15, [], d), 'general', 'boş listede doğrulanamayan slug açıldı');
+    assert.equal(hatirlananKanal(15, null, d), 'general');
+  });
+
+  test('id ile gelen eski biçim kanal da eşleşiyor', () => {
+    const d = sahteDepo();
+    kanaliHatirla(15, 'eski-biçim', d);
+    assert.equal(hatirlananKanal(15, KANALLAR, d), 'eski-biçim');
+  });
+
+  test('kayıt yok ya da alan kimliği bozuksa genel', () => {
+    const d = sahteDepo();
+    assert.equal(hatirlananKanal(15, KANALLAR, d), 'general');
+    assert.equal(hatirlananKanal('abc', KANALLAR, d), 'general');
+    assert.equal(hatirlananKanal(null, KANALLAR, d), 'general');
+  });
+
+  test('bozuk değer yazılmıyor: boşluklu slug, boş, alan kimliği sayı değil', () => {
+    const d = sahteDepo();
+    kanaliHatirla(15, 'a b', d);
+    kanaliHatirla(15, '', d);
+    kanaliHatirla('x', 'general', d);
+    assert.equal(d.getItem('stoa.sonKanal'), null);
+  });
+
+  test('bozuk kayıt siliniyor, sonraki yazma temiz başlıyor', () => {
+    const d = sahteDepo();
+    d.setItem('stoa.sonKanal', '{bozuk');
+    assert.equal(hatirlananKanal(15, KANALLAR, d), 'general');
+    assert.equal(d.getItem('stoa.sonKanal'), null, 'bozuk kayıt duruyor — her açılışta yeniden okunup atılır');
+    kanaliHatirla(15, 'general', d);
+    assert.equal(hatirlananKanal(15, KANALLAR, d), 'general');
+  });
+});
+
+describe('sohbet paneli kanal hafızasına bağlı (#270)', () => {
+  const CHAT = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'chat.jsx'));
+
+  test('başlangıç değeri hatırlanan kanal, sabit genel değil', () => {
+    assert.match(CHAT, /useChatS\(\(\) => hatirlananKanal\(wsId, _initialChannels\(\)\)\)/,
+      'activeChannel sabit "general" ile başlıyor — hatırlanan okunmuyor');
+  });
+
+  test('kayıt yalnızca listesi uygulanmış alanda yazılıyor (alan değişiminde eski slug sızmaz)', () => {
+    const i = CHAT.indexOf('kanaliHatirla(wsId, activeChannel)');
+    assert.ok(i >= 0, 'kanal hiç yazılmıyor');
+    const satir = CHAT.slice(CHAT.lastIndexOf('\n', i), i);
+    assert.match(satir, /if \(wsId && kanalAlaniRef\.current === wsId\)/, 'yazma alan kapısından geçmiyor');
+  });
+
+  test('alan değişince yeni listeyle hatırlanan kanal uygulanıyor', () => {
+    const i = CHAT.indexOf("fetch('/api/channels')");
+    const blok = CHAT.slice(i, CHAT.indexOf('}, [open, wsId]);', i));
+    assert.match(blok, /if \(kanalAlaniRef\.current !== wsId\) \{\s*kanalAlaniRef\.current = wsId;\s*setActiveChannel\(hatirlananKanal\(wsId, list\)\);/,
+      'alan değişiminde kanal listeyle doğrulanıp uygulanmıyor');
   });
 });

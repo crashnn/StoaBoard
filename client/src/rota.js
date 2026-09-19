@@ -222,3 +222,48 @@ export function hatirlananProje(alanId = null, depo = globalThis.localStorage) {
   const p = projeHaritasi(depo)[a];
   return typeof p === 'string' && KIMLIK.test(p) ? p : null;
 }
+
+// ── Son açık kanal — alan başına (kart #270, #256'nın aile üyesi) ──────────
+//
+// Sohbet panelinde açık kanal hiçbir yerde durmuyordu: yenilemede ve panel
+// söküldüğünde (Notlar'a geçince panel unmount oluyor) genel'e dönülüyordu.
+// Projeyle aynı kalıp: tarayıcıda, alan başına. Kanal listesi sunucudan
+// geldiği için doğrulama burada: hatırlanan slug listede yoksa (kanal
+// silinmiş, özel kanaldan çıkarılmış, başka alanın kanalı) genel'e düşer —
+// bayat bir slug'la boş bir kanal açmak yerine.
+
+const SON_KANAL = 'stoa.sonKanal'; // { "<alanId>": "<slug>" }
+const KANAL_SLUG = /^[^\s]{1,80}$/;
+
+function kanalHaritasi(depo) {
+  try {
+    const h = JSON.parse(depo.getItem(SON_KANAL) || '{}');
+    return h && typeof h === 'object' && !Array.isArray(h) ? h : {};
+  } catch {
+    depo.removeItem(SON_KANAL);
+    return {};
+  }
+}
+
+/** Bu alanda açık kanalı yaz. */
+export function kanaliHatirla(alanId, slug, depo = globalThis.localStorage) {
+  const a = String(alanId ?? ''), s = String(slug ?? '');
+  if (!KIMLIK.test(a) || !KANAL_SLUG.test(s)) return;
+  const h = kanalHaritasi(depo);
+  if (h[a] === s) return;
+  h[a] = s;
+  depo.setItem(SON_KANAL, JSON.stringify(h));
+}
+
+/**
+ * Bu alanda açılacak kanal: hatırlanan slug, `kanallar` listesinde varsa;
+ * yoksa 'general'. Liste boşsa da 'general' — doğrulanamayan slug açılmaz.
+ */
+export function hatirlananKanal(alanId, kanallar, depo = globalThis.localStorage) {
+  const a = String(alanId ?? '');
+  if (!KIMLIK.test(a)) return 'general';
+  const s = kanalHaritasi(depo)[a];
+  if (typeof s !== 'string' || !KANAL_SLUG.test(s)) return 'general';
+  const var_ = Array.isArray(kanallar) && kanallar.some((k) => (k?.slug || k?.id) === s);
+  return var_ ? s : 'general';
+}

@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
 import { rolAdi } from './rolAdi.js';
 import { dikeyCekJesti, yaziliyorMu } from './jest.js';
+import { kanaliHatirla, hatirlananKanal } from './rota.js';
 import { Avatar, AvatarStack } from './shell.jsx';
 
 // Sohbet taslakları: (alan + hedef) çifti başına metin, yanıt ve eklenmiş
@@ -1742,7 +1743,17 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
     return [{ id: 'general', slug: 'general', name: 'genel', type: 'public', is_default: true, my_role: 'member', is_member: true }];
   };
   const [channels, setChannels] = useChatS(_initialChannels);
-  const [activeChannel, setActiveChannel] = useChatS('general');
+  // Açık kanal alan başına hatırlanıyor (#270): panel her kurulduğunda
+  // (yenileme, görünüm değişimi) bu alanda son bakılan kanal açılır.
+  const [activeChannel, setActiveChannel] = useChatS(() => hatirlananKanal(wsId, _initialChannels()));
+  // Kayıt yalnızca kanal listesi BU alana ait olduğu sürece yazılıyor. Alan
+  // değişince activeChannel bir an eski alanın slug'ını taşır; o an yazmak
+  // yeni alanın kaydına eski alanın kanalını sokardı. Ref, listesi
+  // uygulanmış alanı tutuyor; liste gelince alanın hatırlanan kanalı açılır.
+  const kanalAlaniRef = useChatRef(wsId);
+  useChatE(() => {
+    if (wsId && kanalAlaniRef.current === wsId) kanaliHatirla(wsId, activeChannel);
+  }, [wsId, activeChannel]);
   const [addChannelOpen, setAddChannelOpen] = useChatS(false);
   const [mentionTaskRef, setMentionTaskRef] = useChatS(null); // { id, title } set when navigating from a @mention
 
@@ -1825,6 +1836,12 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
       if (Array.isArray(list)) {
         setChannels(list);
         window.DATA.CHANNELS = list;
+        // Alan değiştiyse: eski alanın kanalı bu listede yok, hatırlanan (ya
+        // da genel) açılır. Aynı alanda yalnızca listeyi tazeliyoruz.
+        if (kanalAlaniRef.current !== wsId) {
+          kanalAlaniRef.current = wsId;
+          setActiveChannel(hatirlananKanal(wsId, list));
+        }
       }
     }).catch(() => {});
   }, [open, wsId]);
