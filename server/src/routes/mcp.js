@@ -110,7 +110,7 @@ export const mcpRouter = Router();
 // cevaplanamıyor. Yüzeyi değiştiren her commit'te bump et; `initialize`
 // yanıtındaki serverInfo.version dağıtım kanıtı olarak okunabilsin.
 // Sürüm geçmişi ve kırıcı değişiklikler: MCP-SURUMLER.md.
-const MCP_VERSION = '0.9.0';
+const MCP_VERSION = '0.9.1';
 
 // add_attachment'ın modele söylediği pratik tavan (MB). İki sınırın küçüğü:
 // dosya sınırı (lib/uploads.js) ve base64'ün %33 şişirdiği JSON gövde sınırı
@@ -219,17 +219,26 @@ function hata(yanit) {
  * aynı kimliği yeniden denemek yerine doğru aracı çağırması için.
  */
 const BULUNAMADI = {
+  //
+  // Mesaj (#213/2) kapsamı söylüyor ama HEDEFE bağlı değil: "aktif alanda
+  // bulunamadı" hem olmayan kayıt hem başka alandaki kayıt için aynı cümle,
+  // aynı gövde. Alan adı da yazılmıyor — o zaten her başarılı yanıtta var
+  // (`baglamli`) ve buraya girse iki yanıt yine ayrışmazdı, ama modelin
+  // "acaba başka alanda mı" diye dönmesini engelleyen şey cümlenin kendisi.
   proje: {
     error: 'err_project_not_found',
-    message: 'Proje bulunamadı — geçerli kimlikler için list_projects kullan',
+    message: 'Proje AKTİF alanda bulunamadı — başka alandaki proje de burada görünmez '
+      + '(alanı whoami ile doğrula). Geçerli kimlikler için list_projects kullan.',
   },
   gorev: {
     error: 'err_task_not_found',
-    message: 'Görev bulunamadı — geçerli kimlikler için list_tasks ya da search_tasks kullan',
+    message: 'Görev AKTİF alanda bulunamadı — başka alandaki kart da burada görünmez '
+      + '(alanı whoami ile doğrula). Geçerli kimlikler için list_tasks ya da search_tasks kullan.',
   },
   not: {
     error: 'err_note_not_found',
-    message: 'Not bulunamadı — geçerli kimlikler için list_notes kullan',
+    message: 'Not AKTİF alanda bulunamadı — başka alandaki not da burada görünmez '
+      + '(alanı whoami ile doğrula). Geçerli kimlikler için list_notes kullan.',
   },
 };
 
@@ -1700,7 +1709,9 @@ export function buildMcpServer(user, dil, req) {
         + 'workspace_id '
         + 'zorunludur ve AKTİF alanın kimliği olmalıdır. Araç '
         + 'TEKRARLANABİLİR DEĞİLDİR: aynı çağrı iki kez yapılırsa iki alt '
-        + 'görev oluşur.',
+        + 'görev oluşur. SÖZLEŞME: girdi alanı title, yanıtta ve get_task '
+        + 'subtasks_detail listesinde aynı metin text alanında döner — bu '
+        + 'bilinçli, değişmeyecek.',
       inputSchema: {
         workspace_id: kimlik('aktif alanın kimliği — whoami yanıtındaki workspace.id'),
         task_id: kimlik('list_tasks içindeki id'),
@@ -1747,7 +1758,8 @@ export function buildMcpServer(user, dil, req) {
         + 'subtask_id get_task yanıtındaki subtasks_detail listesinden alınır '
         + 've o görevin alt görevi olmalıdır; başka kartın alt görevi verilirse '
         + '"bulunamadı" döner. done değiştiğinde kartın ilerleme yüzdesi '
-        + 'yeniden hesaplanır. En az bir alan (done ya da title) verilmelidir.',
+        + 'yeniden hesaplanır. En az bir alan (done ya da title) verilmelidir. '
+        + 'SÖZLEŞME: girdi title, yanıtta metin text alanında döner.',
       inputSchema: {
         workspace_id: kimlik('aktif alanın kimliği — whoami yanıtındaki workspace.id'),
         task_id: kimlik('alt görevin bağlı olduğu görev — list_tasks içindeki id'),
@@ -1886,14 +1898,27 @@ export function buildMcpServer(user, dil, req) {
       const yanit = await callSelf(user, `/api/workspaces/${workspace_id}/switch`, { method: 'POST' });
       if (!yanit.ok) return hata(yanit);
 
+      // İKİ satır (#213/3). Kayıt alan bazında okunuyor: yalnızca hedefe
+      // yazılınca kaynak alanın kaydında "buradan çıkıldı" hiç görünmüyordu —
+      // 1→4 geçişi 1'in kaydında yoktu, yalnızca 4→1 dönüşü vardı. Kaynak
+      // alanın yöneticisi Claude'un o alandan ayrıldığını kendi kaydında görmeli.
+      const detail = {
+        from: metinKimlik(once.workspace?.id ?? null),
+        to: metinKimlik(workspace_id),
+      };
+      if (once.workspace?.id) {
+        recordAudit(req, {
+          workspaceId: Number(once.workspace.id),
+          user,
+          action: AUDIT.MCP_WORKSPACE_LEFT,
+          detail,
+        });
+      }
       recordAudit(req, {
         workspaceId: Number(workspace_id) || null,
         user,
         action: AUDIT.MCP_WORKSPACE_SWITCHED,
-        detail: {
-          from: metinKimlik(once.workspace?.id ?? null),
-          to: metinKimlik(workspace_id),
-        },
+        detail,
       });
       // Bağlam kullanıcı satırı YENİDEN okunarak kuruluyor. `user` istek
       // başında yüklendi ve `currentWorkspaceId` alanı geçişten önceki değeri

@@ -16,6 +16,24 @@ commit'te sürüm artırılır ve buraya yazılır.
 
 ---
 
+## 0.9.1 — 19 Eylül 2026 — üç pürüz (kart #213)
+
+Araç yüzeyi değişmedi; metin ve denetim kaydı değişti.
+
+- **Geçiş iki alanın kaydına düşüyor.** `set_active_workspace` yalnızca
+  HEDEF alana `mcp.workspace_switched` yazıyordu; kaynak alanın kaydında
+  "buradan çıkıldı" hiç yoktu (1→4 geçişi 1'de görünmüyor, yalnızca 4→1
+  dönüşü). Şimdi kaynak alana `mcp.workspace_left`, hedefe
+  `mcp.workspace_switched`; ikisi de aynı `{from, to}` ayrıntısını taşıyor.
+  Raporlar ekranında etiket: "Bu alandan çıkıldı — MCP".
+- **"Bulunamadı" kapsamı söylüyor.** Proje/görev/not için 404 mesajı artık
+  "AKTİF alanda bulunamadı — başka alandaki kayıt da burada görünmez (alanı
+  whoami ile doğrula)". Metin sabit, hedefe bağlı hiçbir şey gömülmüyor:
+  olmayan kayıtla başka alandaki kayıt aynı gövdeyi alıyor (kâhin yok).
+- **Alt görev sözleşmesi belgelendi, değişmedi.** Girdi `title`, yanıt ve
+  `subtasks_detail` `text`. Değiştirmek kırıcı olurdu; araç açıklaması artık
+  bunu söylüyor.
+
 ## 0.9.0 — 19 Eylül 2026 — `add_attachment` (kart #205)
 
 **Yeni araç:** `add_attachment` — karta dosya ekler. Girdi `workspace_id`,

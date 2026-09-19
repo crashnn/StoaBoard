@@ -44,6 +44,9 @@ export const AUDIT = {
   // Aktif alan tarayıcı oturumuyla ortak: bu kayıt "kullanıcının ekranındaki
   // alanı Claude değiştirdi" sorusunun tek cevabı.
   MCP_WORKSPACE_SWITCHED: 'mcp.workspace_switched',
+  // Aynı geçişin KAYNAK alandaki izi (#213): kayıt alan bazında okunuyor,
+  // yalnızca hedefe yazılınca "buradan çıkıldı" hiçbir yerde görünmüyordu.
+  MCP_WORKSPACE_LEFT: 'mcp.workspace_left',
   // Güvenlik duvarı reddi (kart #262): bir araç çağrısı kurala ya da kotaya
   // takıldı. Ayrıntıda yalnızca araç ve kural adı; girdi içeriği yazılmıyor.
   // Kullanıcı kararı: retler burada durur, insanlar buradan bakar.

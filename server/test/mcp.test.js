@@ -1229,3 +1229,54 @@ describe('add_attachment — gövde çözülüp multipart devrediliyor', () => {
     assert.ok(!bloklar.some((b) => /^\s*'(delete|remove)_attachment'/.test(b)), 'ek silme aracı kaydedilmiş');
   });
 });
+
+// ─── #213 — MCP pürüzleri (0.9.1) ───────────────────────────────────────────
+
+describe('set_active_workspace — geçiş İKİ alanın kaydına düşüyor (#213/3)', () => {
+  // Denetim kaydı alan bazında okunuyor. Yalnızca hedefe yazılınca kaynak
+  // alanın kaydında "buradan çıkıldı" hiç yoktu: 1→4 geçişi 1'de görünmüyor,
+  // yalnızca 4→1 dönüşü görünüyordu. Ölçüt aracın kendi bloğuna bağlı.
+  const mcpSrc = yorumsuz('routes/mcp.js');
+  const blok = mcpSrc.split('server.registerTool(').slice(1).find((b) => /^\s*'set_active_workspace'/.test(b));
+
+  test('kaynak alana workspace_left, hedefe workspace_switched yazılıyor', () => {
+    assert.ok(blok, 'set_active_workspace kaydı yok');
+    const kayitlar = [...blok.matchAll(/recordAudit\(req, \{[\s\S]*?\}\);/g)].map((m) => m[0]);
+    assert.equal(kayitlar.length, 2, `geçişte ${kayitlar.length} denetim kaydı — iki olmalı (kaynak + hedef)`);
+    const [kaynak, hedef] = kayitlar;
+    assert.match(kaynak, /action: AUDIT\.MCP_WORKSPACE_LEFT/, 'ilk kayıt kaynak alanın "çıkıldı" satırı değil');
+    assert.match(kaynak, /workspaceId: Number\(once\.workspace\.id\)/, 'çıkış satırı KAYNAK alana yazılmıyor');
+    assert.match(hedef, /action: AUDIT\.MCP_WORKSPACE_SWITCHED/);
+    assert.match(hedef, /workspaceId: Number\(workspace_id\)/, 'geçiş satırı HEDEF alana yazılmıyor');
+    // Aktif alanı olmayan kullanıcı (ilk geçiş): kaynak yok, çıkış satırı da olmamalı.
+    const i = blok.indexOf(kaynak);
+    assert.match(blok.slice(Math.max(0, i - 80), i), /if \(once\.workspace\?\.id\) \{\s*$/, 'çıkış satırı kaynak alan yokken de yazılıyor');
+  });
+
+  test('iki satır aynı from/to ayrıntısını taşıyor', () => {
+    assert.match(blok, /const detail = \{\s*from: metinKimlik\(once\.workspace\?\.id \?\? null\),\s*to: metinKimlik\(workspace_id\),\s*\};/);
+    assert.equal((blok.match(/detail,\s*\}\);/g) || []).length, 2, 'iki kayıt aynı detail nesnesini kullanmıyor');
+  });
+});
+
+describe('bulunamadı mesajı kapsamı söylüyor, hedefe bağlı değil (#213/2)', () => {
+  const mcpSrc = yorumsuz('routes/mcp.js');
+  const i = mcpSrc.indexOf('const BULUNAMADI = {');
+  const tablo = mcpSrc.slice(i, mcpSrc.indexOf('\n};', i));
+
+  test('üç mesaj da "AKTİF alanda" diyor ve whoami\'ye yönlendiriyor', () => {
+    for (const tur of ['proje', 'gorev', 'not']) {
+      const j = tablo.indexOf(`${tur}: {`);
+      const satir = tablo.slice(j, tablo.indexOf('},', j));
+      assert.match(satir, /AKTİF alanda bulunamadı/, `${tur}: kapsam söylenmiyor`);
+      assert.match(satir, /whoami/, `${tur}: alanı doğrulama yolu söylenmiyor`);
+    }
+  });
+
+  test('mesaj sabit — hedef kayda dair hiçbir şey gömülmüyor (kâhin yok)', () => {
+    // Metne alan adı ya da kimlik girseydi olmayan kartla başka alandaki kart
+    // farklı gövde alır, 404 "başka alanda var" demeye başlardı.
+    assert.doesNotMatch(tablo, /\$\{/, 'bulunamadı mesajı değer gömüyor');
+    assert.doesNotMatch(tablo, /\bworkspace\b|\balan\.|name\b/, 'bulunamadı mesajı alan bilgisi okuyor');
+  });
+});

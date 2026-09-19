@@ -84,6 +84,7 @@ const ACTION_LABEL = {
   'mcp.subtask_updated': ['rep_act_mcp_sub_updated', 'Alt görev düzenlendi — MCP'],
   'mcp.subtask_deleted': ['rep_act_mcp_sub_deleted', 'Alt görev silindi — MCP'],
   'mcp.workspace_switched': ['rep_act_mcp_ws_switched', 'Aktif alan değişti — MCP'],
+  'mcp.workspace_left': ['rep_act_mcp_ws_left', 'Bu alandan çıkıldı — MCP'],
   // Bu iki eylem kaydediliyordu ama etiketi yoktu — ekranda ham adıyla
   // görünüyordu (kart #262 aile taraması). mcpKurallar.test.js artık her
   // AUDIT eyleminin burada satırı olmasını istiyor.
