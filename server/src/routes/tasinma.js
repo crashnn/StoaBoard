@@ -41,6 +41,11 @@
 //     AYNI yazma yolu — Trello için ikinci bir yazma yolu yok. Dönüştürücü
 //     her metni sınıra kırpar ve kırptığını sayar; arşiv taşınmaz, atlanan
 //     sayılır; done_list anahtarı yoksa dosya reddedilir (tahmin yok).
+//     CSV (20 Eylül): `{ source:'csv', text, mapping, done_value }` aynı
+//     kalıp; `preview:true` yalnızca ayrıştırır, yazmaz. Ayrıştırıcı saf
+//     (lib/csvIce.js), satır sınırı ICE_SINIR.tasks, hücreler kırpılır;
+//     boş başlıklı satır atlanır ve sayılır; eşlemede aynı sütun iki hedefe
+//     verilemez; durum sütunu eşlenmişse done_value anahtarı zorunlu.
 //  5. Kişi eşleme: dosyadaki slug yalnızca AKTİF ALANIN ÜYELERİ arasında
 //     aranır; eşleşmeyen atanan sessizce başka birine bağlanmaz, kart
 //     atanmadan gelir ve kartın altına "şu kişi üye değil" yorumu düşer.
@@ -66,6 +71,7 @@ import {
   paketiDogrula, dogrulamaMesaji, benzersizProjeAdi,
 } from '../lib/tasinma.js';
 import { trelloPaketi } from '../lib/trello.js';
+import { csvOnizleme, csvPaketi } from '../lib/csvIce.js';
 
 export const tasinmaRouter = Router();
 
@@ -175,6 +181,30 @@ tasinmaRouter.post(
     let paket = req.body;
     let kaynak = 'stoaboard';
     let trelloRapor = null;
+    // CSV: gövde { source:'csv', text, preview?, mapping, done_value, name }.
+    // preview=true yalnızca ayrıştırıp başlık/örnek/tahmin döner, hiçbir
+    // şey yazmaz — eşleme formu bununla kurulur; sonra aynı uç, aynı metin,
+    // onaylı eşlemeyle. Yeni uç açılmadı: aynı kapı, aynı yetki.
+    if (paket && typeof paket === 'object' && paket.source === 'csv') {
+      if (typeof paket.text !== 'string' || !paket.text.trim()) {
+        return res.status(400).json({ error: 'err_import_invalid', message: dogrulamaMesaji({ kod: 'shape', yer: 'CSV', sebep: 'metin boş' }, lang) });
+      }
+      if (paket.preview === true) {
+        const on = csvOnizleme(paket.text);
+        if (!on.ok) return res.status(400).json({ error: 'err_import_invalid', message: dogrulamaMesaji({ kod: 'shape', yer: 'CSV', sebep: on.sebep }, lang) });
+        return res.json(on);
+      }
+      const d = csvPaketi(paket.text, paket.mapping, {
+        doneValue: 'done_value' in paket ? paket.done_value : undefined,
+        name: typeof paket.name === 'string' ? paket.name : '',
+      });
+      if (!d.ok) {
+        return res.status(400).json({ error: 'err_import_invalid', message: dogrulamaMesaji({ kod: 'shape', yer: 'CSV', sebep: d.sebep }, lang) });
+      }
+      paket = d.paket;
+      trelloRapor = { archived_cards: 0, orphan_cards: d.rapor.skipped_empty_title, archived_lists: 0, truncated: d.rapor.truncated, csv: d.rapor };
+      kaynak = 'csv';
+    }
     if (paket && typeof paket === 'object' && paket.source === 'trello') {
       const d = trelloPaketi(paket.board, { doneListId: 'done_list' in paket ? paket.done_list : undefined });
       if (!d.ok) {
@@ -342,7 +372,7 @@ tasinmaRouter.post(
       unmatched_assignees: [...eslesmeyen],
       // Trello'da atlanan (arşiv) ve kırpılan sayılar: kullanıcı "kaç kart
       // gelmedi" sorusunun cevabını görsün, sessiz kayıp olmasın.
-      ...(trelloRapor ? { source: 'trello', skipped: { archived_cards: trelloRapor.archived_cards, orphan_cards: trelloRapor.orphan_cards, archived_lists: trelloRapor.archived_lists }, truncated: trelloRapor.truncated } : {}),
+      ...(trelloRapor ? { source: kaynak, skipped: { archived_cards: trelloRapor.archived_cards, orphan_cards: trelloRapor.orphan_cards, archived_lists: trelloRapor.archived_lists }, truncated: trelloRapor.truncated } : {}),
     });
   }),
 );

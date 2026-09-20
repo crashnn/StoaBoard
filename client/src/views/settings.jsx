@@ -656,6 +656,12 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
   // Sorulana kadar dosya burada bekler, sunucuya gitmez.
   const [trelloBekleyen, setTrelloBekleyen] = React.useState(null); // { board, lists, cards }
   const [trelloBitis, setTrelloBitis] = React.useState('');
+  // CSV: sunucu önizlemesi (başlıklar, örnek, tahmin) + kullanıcının eşlemesi.
+  // Dosya metni burada bekler; onaylanınca aynı uca eşlemeyle gider.
+  const [csvBekleyen, setCsvBekleyen] = React.useState(null); // { text, name, on }
+  const [csvEsleme, setCsvEsleme] = React.useState({});
+  const [csvBitis, setCsvBitis] = React.useState('');
+  const CSV_HEDEFLER = ['title', 'description', 'column', 'priority', 'assignees', 'labels', 'due', 'start'];
 
   const importGonder = async (govde) => {
     setImportBusy(true);
@@ -671,7 +677,8 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       // Trello'da arşiv taşınmaz; kaç kartın gelmediği sessiz kalmasın.
       const atlanan = r.skipped ? (r.skipped.archived_cards || 0) + (r.skipped.orphan_cards || 0) : 0;
       if (atlanan) {
-        window.showToast?.(_t('set_ws_import_skipped','Arşivdeki {n} kart taşınmadı.').replace('{n}', atlanan), 'info');
+        const k = r.source === 'csv' ? ['set_ws_import_csv_skipped', '{n} satır başlıksız olduğu için atlandı.'] : ['set_ws_import_skipped', 'Arşivdeki {n} kart taşınmadı.'];
+        window.showToast?.(_t(k[0], k[1]).replace('{n}', atlanan), 'info');
       }
       // Yeni projeler önyüklemede geliyor; en kestirme ve en güvenli yol yeniden yükleme.
       setTimeout(() => window.location.reload(), 1200);
@@ -685,6 +692,28 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
     const file = e.target.files?.[0];
     e.target.value = ''; // aynı dosya ikinci kez seçilebilsin
     if (!file) return;
+    // CSV: uzantıya ya da içeriğe göre. Bizim dışa aktarımımız UTF-16LE + BOM
+    // (Excel için); file.text() onu UTF-8 sanıp bozar, BOM'a bakılıyor.
+    const csvMi = /\.(csv|tsv|txt)$/i.test(file.name) || /csv|tab-separated/i.test(file.type || '');
+    if (csvMi) {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const utf16 = buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe;
+      const text = new TextDecoder(utf16 ? 'utf-16le' : 'utf-8').decode(buf);
+      setImportBusy(true);
+      try {
+        const on = await API.importWorkspace({ source: 'csv', text, preview: true });
+        const esleme = {};
+        for (const h of CSV_HEDEFLER) esleme[h] = on.guess?.[h] !== undefined ? String(on.guess[h]) : '';
+        setCsvEsleme(esleme);
+        setCsvBitis('');
+        setCsvBekleyen({ text, name: file.name.replace(/\.[^.]+$/, ''), on });
+      } catch (err) {
+        window.showToast?.(err.message, 'error');
+      } finally {
+        setImportBusy(false);
+      }
+      return;
+    }
     let paket;
     try { paket = JSON.parse(await file.text()); }
     catch (_) {
@@ -718,6 +747,17 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       return;
     }
     await importGonder(paket);
+  };
+
+  const csvOnayla = async () => {
+    if (!csvBekleyen) return;
+    const mapping = {};
+    for (const h of CSV_HEDEFLER) if (csvEsleme[h] !== '' && csvEsleme[h] !== undefined) mapping[h] = Number(csvEsleme[h]);
+    const govde = { source: 'csv', text: csvBekleyen.text, name: csvBekleyen.name, mapping };
+    // Durum sütunu eşliyse bitiş değeri anahtarı zorunlu ("yok" = null).
+    if (mapping.column !== undefined) govde.done_value = csvBitis || null;
+    setCsvBekleyen(null);
+    await importGonder(govde);
   };
 
   const trelloOnayla = async () => {
@@ -1444,13 +1484,75 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
               <label>{_t('set_ws_import_title','İçe aktar')}</label>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ flex: 1, minWidth: 200, fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
-                  {_t('set_ws_import_desc','StoaBoard JSON ya da Trello pano dosyası. Her seferinde yeni proje açılır, var olan projelere karışmaz. Atananlar bu alanın üyeleri arasında eşlenir; eşleşmeyenler kartta not olarak düşer.')}
+                  {_t('set_ws_import_desc','StoaBoard JSON, Trello pano dosyası ya da CSV (sütunları sen eşlersin). Her seferinde yeni proje açılır, var olan projelere karışmaz. Atananlar bu alanın üyeleri arasında eşlenir; eşleşmeyenler kartta not olarak düşer.')}
                 </span>
-                <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={importWorkspaceFile} />
-                <button className="btn btn-ghost" style={{ fontSize: 12, flexShrink: 0 }} disabled={importBusy || !!trelloBekleyen} onClick={() => importInputRef.current?.click()}>
-                  <Icon name="upload" size={12} /> {importBusy ? _t('set_ws_import_busy','Yükleniyor…') : _t('set_ws_import_btn','JSON yükle')}
+                <input ref={importInputRef} type="file" accept="application/json,.json,text/csv,.csv,.tsv" style={{ display: 'none' }} onChange={importWorkspaceFile} />
+                <button className="btn btn-ghost" style={{ fontSize: 12, flexShrink: 0 }} disabled={importBusy || !!trelloBekleyen || !!csvBekleyen} onClick={() => importInputRef.current?.click()}>
+                  <Icon name="upload" size={12} /> {importBusy ? _t('set_ws_import_busy','Yükleniyor…') : _t('set_ws_import_btn','JSON / CSV yükle')}
                 </button>
               </div>
+              {/* CSV: sütun eşleme. Sunucu başlıkları ve tahmini verdi; kullanıcı
+                  düzeltir. Durum sütunu eşliyse "hangi değer bitti" de sorulur —
+                  Trello'daki kuralın aynısı, sistem tahmin etmez. */}
+              {csvBekleyen && (() => {
+                const on = csvBekleyen.on;
+                const secenekler = on.headers.map((h, i) => ({ value: String(i), label: h }));
+                const kolonIdx = csvEsleme.column;
+                const durumDegerleri = kolonIdx !== '' && kolonIdx !== undefined ? on.distinct?.[kolonIdx] : null;
+                const kolonCokDeger = kolonIdx !== '' && kolonIdx !== undefined && !durumDegerleri;
+                const alanAdi = {
+                  title: _t('set_ws_import_f_title','Başlık'), description: _t('set_ws_import_f_description','Açıklama'),
+                  column: _t('set_ws_import_f_column','Durum / kolon'), priority: _t('set_ws_import_f_priority','Öncelik'),
+                  assignees: _t('set_ws_import_f_assignees','Atananlar'), labels: _t('set_ws_import_f_labels','Etiketler'),
+                  due: _t('set_ws_import_f_due','Bitiş tarihi'), start: _t('set_ws_import_f_start','Başlangıç tarihi'),
+                };
+                const kullanilan = new Set(Object.values(csvEsleme).filter(v => v !== ''));
+                return (
+                  <div className="danger-confirm" style={{ marginTop: 12 }}>
+                    <div>
+                      <strong>{_t('set_ws_import_csv_title','CSV tanındı: {name} — {rows} satır, {cols} sütun').replace('{name}', csvBekleyen.name).replace('{rows}', on.row_count).replace('{cols}', on.headers.length)}</strong>
+                      <p>{_t('set_ws_import_csv_desc','Hangi sütun neye karşılık geliyor? Başlık zorunlu; gerisi boş bırakılabilir. Her sütun en fazla bir alana gider.')}</p>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                      {CSV_HEDEFLER.map(h => (
+                        <div key={h}>
+                          <div style={{ fontSize: 11.5, color: 'var(--ink-muted)', marginBottom: 4 }}>{alanAdi[h]}{h === 'title' ? ' *' : ''}</div>
+                          <DefaultDropdown
+                            value={csvEsleme[h] ?? ''}
+                            onChange={v => setCsvEsleme(prev => ({ ...prev, [h]: v }))}
+                            fullWidth
+                            placeholder={_t('set_ws_import_none','— eşleme yok —')}
+                            options={secenekler.filter(o => o.value === csvEsleme[h] || !kullanilan.has(o.value))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {durumDegerleri && (
+                      <div>
+                        <div style={{ fontSize: 11.5, color: 'var(--ink-muted)', marginBottom: 4 }}>{_t('set_ws_import_csv_done','Hangi durum değeri "tamamlandı" sayılsın? Raporlar bu seçime dayanır.')}</div>
+                        <DefaultDropdown
+                          value={csvBitis}
+                          onChange={setCsvBitis}
+                          fullWidth
+                          placeholder={_t('set_ws_import_trello_none','— Bitiş kolonu yok —')}
+                          options={durumDegerleri.map(v => ({ value: v, label: v }))}
+                        />
+                      </div>
+                    )}
+                    {kolonCokDeger && (
+                      <div className="inline-error">{_t('set_ws_import_csv_many','Bu sütunda 30\'dan fazla farklı değer var; durum sütunu bu olmayabilir. Her değer ayrı kolon olur, bitiş kolonu seçilemez.')}</div>
+                    )}
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                      <button className="btn btn-ghost" onClick={() => setCsvBekleyen(null)} disabled={importBusy}>
+                        {_t('set_dng_cancel','İptal')}
+                      </button>
+                      <button className="btn btn-ghost" onClick={csvOnayla} disabled={importBusy || csvEsleme.title === '' || csvEsleme.title === undefined}>
+                        <Icon name="upload" size={12} /> {_t('set_ws_import_trello_go','İçe aktar')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
               {/* Trello: bitiş listesi sorusu. Dosya sunucuya bu cevapla
                   birlikte gider; cevapsız gönderim yok (sunucu da reddeder). */}
               {trelloBekleyen && (
