@@ -387,15 +387,52 @@ function PersonReport({ data, onOpenTask, project }) {
 // ─── Dönem raporu ───────────────────────────────────────────────────────────
 
 function PeriodReport({ data, onOpenTask }) {
+  // Önceki dönemle fark: sunucu sayıları verir (lib/donem.js), cümle ve
+  // etiket burada sözlükten kurulur — dil kuralı. Yüzde, önceki dönem sıfırsa
+  // sunucudan null gelir ve yazılmaz; "sonsuz artış" uydurulmaz.
+  const d = data.delta || {};
+  const pct = (f) => (f && f.pct !== null && f.pct !== undefined ? T('rep_exec_pct', ' (%{n})').replace('{n}', Math.abs(f.pct)) : '');
+  const prev = (alan, fmt = (x) => x) => {
+    const f = d[alan];
+    if (!f) return null;
+    const isaret = f.diff > 0 ? '▲' : f.diff < 0 ? '▼' : '=';
+    return `${isaret} ${T('rep_prev_label', 'önceki dönem {n}').replace('{n}', fmt(f.previous))}${pct(f)}`;
+  };
+  const ozet = (() => {
+    const c = d.completed || { diff: 0 };
+    const kalip = {
+      quiet: ['rep_exec_quiet', 'Bu dönemde hareket olmadı: iş açılmadı, tamamlanmadı, kolon geçişi yok. {open} iş açık bekliyor.'],
+      first: ['rep_exec_first', 'Bu dönemde {created} iş açıldı, {completed} iş tamamlandı, {moves} hareket kaydedildi; önceki dönemde kayıt yok. {open} iş açık, toplam emek {effort}.'],
+      up: ['rep_exec_up', 'Bu dönemde {created} iş açıldı ve {completed} iş tamamlandı — önceki dönemden {diff} fazla{pct}. {open} iş açık, toplam emek {effort}.'],
+      down: ['rep_exec_down', 'Bu dönemde {created} iş açıldı ve {completed} iş tamamlandı — önceki dönemden {diff} az{pct}. {open} iş açık, toplam emek {effort}.'],
+      flat: ['rep_exec_flat', 'Bu dönemde {created} iş açıldı ve {completed} iş tamamlandı — önceki dönemle aynı. {open} iş açık, toplam emek {effort}.'],
+    }[data.summary_tone] || ['rep_exec_flat', 'Bu dönemde {created} iş açıldı ve {completed} iş tamamlandı — önceki dönemle aynı. {open} iş açık, toplam emek {effort}.'];
+    return T(kalip[0], kalip[1])
+      .replace('{created}', data.created).replace('{completed}', data.completed).replace('{moves}', data.moves)
+      .replace('{open}', data.open).replace('{effort}', formatDuration(data.total_minutes))
+      .replace('{diff}', Math.abs(c.diff)).replace('{pct}', pct(c));
+  })();
+  const prevFrom = data.previous?.from ? String(data.previous.from).slice(0, 10) : '';
+  const prevTo = data.previous?.to ? String(data.previous.to).slice(0, 10) : '';
+
   return (
     <div className="report-body">
+      {data.summary_tone && (
+        <div className="report-summary">
+          <span className="report-summary-label">{T('rep_exec_label', 'Yönetici özeti')}</span>
+          <p>{ozet}</p>
+        </div>
+      )}
       <div className="report-stats">
-        <Stat label={T('rep_stat_created', 'Açılan')} value={data.created} />
-        <Stat label={T('rep_stat_completed', 'Tamamlanan')} value={data.completed} />
-        <Stat label={T('rep_moves', 'Hareket')} value={data.moves} />
+        <Stat label={T('rep_stat_created', 'Açılan')} value={data.created} sub={prev('created')} />
+        <Stat label={T('rep_stat_completed', 'Tamamlanan')} value={data.completed} sub={prev('completed')} />
+        <Stat label={T('rep_moves', 'Hareket')} value={data.moves} sub={prev('moves')} />
         <Stat label={T('rep_stat_open', 'Açık kalan')} value={data.open} />
-        <Stat label={T('rep_stat_effort', 'Toplam emek')} value={formatDuration(data.total_minutes)} />
+        <Stat label={T('rep_stat_effort', 'Toplam emek')} value={formatDuration(data.total_minutes)} sub={prev('total_minutes', formatDuration)} />
       </div>
+      {data.previous && (
+        <ReportFoot text={T('rep_foot_prev', 'Önceki dönem = aynı uzunlukta, hemen öncesindeki aralık ({from} – {to}). Yüzde, önceki dönem sıfırsa verilmez.').replace('{from}', prevFrom).replace('{to}', prevTo)} />
+      )}
 
       {data.by_column?.length > 0 && (
         <div className="panel">
@@ -479,14 +516,43 @@ function FlowReport({ data, onOpenTask }) {
         <Stat label={T('rep_stat_done_count', 'Tamamlanan iş')} value={data.count} />
         <Stat label={T('rep_stat_avg', 'Ortalama süre')} value={`${data.avg_days} ${T('rep_days', 'gün')}`} />
         <Stat label={T('rep_stat_median', 'Ortanca süre')} value={`${data.median_days} ${T('rep_days', 'gün')}`} />
+        <Stat label={T('rep_stat_bottleneck', 'Darboğaz')} value={data.bottleneck || '—'} />
       </div>
 
       {data.dwell?.length > 0 && (
         <div className="panel">
           <div className="panel-head">
             <div>
-              <div className="panel-title">{T('rep_dwell', 'Kolonlarda bekleme')}</div>
-              <div className="panel-sub">{T('rep_dwell_sub', 'İşler en çok nerede bekliyor')}</div>
+              <div className="panel-title">{T('rep_funnel', 'Kolonlara giren kartlar')}</div>
+              <div className="panel-sub">{T('rep_funnel_sub', 'Aralıkta her kolona kaç ayrı kart girdi')}</div>
+            </div>
+          </div>
+          <div className="panel-body">
+            <div className="report-bars">
+              {(() => {
+                const max = Math.max(...data.dwell.map((c) => c.entered), 1);
+                return data.dwell.map((c) => (
+                  <div className="report-bar-row" key={c.label}>
+                    <span className="report-bar-label">{c.label}</span>
+                    <span className="report-bar-track">
+                      <span className="report-bar-fill" style={{ width: `${(c.entered / max) * 100}%` }} />
+                    </span>
+                    <span className="report-bar-value">{c.entered}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+            <ReportFoot text={T('rep_foot_funnel', 'Her çubuk, aralıkta o kolona giren AYRI kart sayısıdır; aynı kart ileri geri taşındıysa bir kez sayılır. Kolonlar pano sırasında.')} />
+          </div>
+        </div>
+      )}
+
+      {data.dwell?.length > 0 && (
+        <div className="panel">
+          <div className="panel-head">
+            <div>
+              <div className="panel-title">{T('rep_dwell', 'Darboğaz tablosu')}</div>
+              <div className="panel-sub">{T('rep_dwell_sub', 'Kart-zamanı hangi kolonda birikiyor')}</div>
             </div>
           </div>
           <div className="panel-body">
@@ -494,23 +560,32 @@ function FlowReport({ data, onOpenTask }) {
               <thead>
                 <tr>
                   <th>{T('rep_col_column', 'Kolon')}</th>
-                  <th style={{ width: 120 }}>{T('rep_col_avg', 'Ortalama')}</th>
-                  <th style={{ width: 120 }}>{T('rep_col_median', 'Ortanca')}</th>
-                  <th style={{ width: 90 }}>{T('rep_col_samples', 'Ölçüm')}</th>
+                  <th style={{ width: 70 }}>{T('rep_col_entered', 'Giren')}</th>
+                  <th style={{ width: 110 }}>{T('rep_col_avg', 'Ortalama')}</th>
+                  <th style={{ width: 110 }}>{T('rep_col_median', 'Ortanca')}</th>
+                  <th style={{ width: 130 }}>{T('rep_col_waiting_now', 'Şu an bekleyen')}</th>
+                  <th style={{ width: 70 }}>{T('rep_col_share', 'Pay')}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.dwell.map((d) => (
-                  <tr key={d.label} style={{ cursor: 'default' }}>
-                    <td className="title">{d.label}</td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtHours(d.avg_hours)}</td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtHours(d.median_hours)}</td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>{d.samples}</td>
+                  <tr key={d.label} style={{ cursor: 'default' }} className={d.bottleneck ? 'rep-bottleneck' : undefined}>
+                    <td className="title">
+                      {d.label}
+                      {d.bottleneck && <span className="rep-badge">{T('rep_bottleneck_badge', 'Darboğaz')}</span>}
+                    </td>
+                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>{d.entered}</td>
+                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>{d.samples ? fmtHours(d.avg_hours) : '—'}</td>
+                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>{d.samples ? fmtHours(d.median_hours) : '—'}</td>
+                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {d.waiting_now ? T('rep_waiting_cell', '{n} kart · {d} gün').replace('{n}', d.waiting_now).replace('{d}', d.waiting_avg_days) : '—'}
+                    </td>
+                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>{d.is_done ? '—' : `%${d.share}`}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <ReportFoot text={T('rep_foot_flow_dwell', 'Bekleme = kartın o kolonda geçirdiği süre, kolon geçiş kaydından. Ölçüm = hesaba giren geçiş sayısı; ölçüm azsa ortalama oynaktır.')} />
+            <ReportFoot text={T('rep_foot_bottleneck', 'Ortalama ve ortanca = kolondan ÇIKAN kartların orada geçirdiği süre, geçiş kaydından. Şu an bekleyen = hâlâ o kolonda duran kartlar ve ortalama bekleyişleri, rapor aralığına kırpılmış. Pay = kolonun toplam kart-zamanındaki yüzdesi; en yüksek pay darboğazdır. Bitiş kolonu yarışa girmez.')} />
           </div>
         </div>
       )}
@@ -629,11 +704,12 @@ function ReportFoot({ text }) {
   return <p className="report-foot">{text}</p>;
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, sub = null }) {
   return (
     <div className="report-stat">
       <div className="report-stat-value">{value}</div>
       <div className="report-stat-label">{label}</div>
+      {sub && <div className="report-stat-sub">{sub}</div>}
     </div>
   );
 }

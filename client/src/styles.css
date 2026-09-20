@@ -10022,6 +10022,41 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   font-variant-numeric: tabular-nums;
 }
 .report-stat-label { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+/* Önceki dönem satırı (#146): kutunun altında küçük, ok işaretli. */
+.report-stat-sub { font-size: 11px; color: var(--ink-faint); margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+/* Yönetici özeti (#146): sayılardan üretilen tek cümle, raporun en üstünde.
+   Baskıda serif — künye ile aynı ses. */
+.report-summary {
+  border-left: 3px solid var(--accent);
+  padding: 8px 14px;
+  background: var(--bg-raised);
+  border-radius: var(--r-md);
+}
+.report-summary-label {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+.report-summary p { margin: 0; font-size: 14px; line-height: 1.55; }
+
+/* Darboğaz satırı ve rozeti (#146). */
+.list-table.rep-table tr.rep-bottleneck td { background: color-mix(in oklab, var(--status-rose) 8%, transparent); }
+.rep-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  color: var(--status-rose);
+  border: 1px solid color-mix(in oklab, var(--status-rose) 45%, transparent);
+  vertical-align: middle;
+}
 
 .report-bars { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
 .report-bar-row {
@@ -10192,6 +10227,11 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
     height: auto !important;
   }
   .report-bar-fill { background: #666 !important; }
+  .report-summary { border-left-color: #333; background: none; padding-left: 10px; }
+  .report-summary p { font-family: Georgia, 'Times New Roman', serif; font-size: 11.5px !important; color: #111 !important; }
+  .report-stat-sub { color: #666 !important; font-size: 9px !important; }
+  .list-table.rep-table tr.rep-bottleneck td { background: #eee !important; }
+  .rep-badge { color: #333 !important; border-color: #333 !important; }
   a[href]::after { content: ""; }
   @page { margin: 14mm; }
 }

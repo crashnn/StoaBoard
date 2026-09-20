@@ -8,6 +8,8 @@
 // ikincisi süre kaydından hesaplanır; biri diğerinin yerine geçmez.
 
 import { prisma } from '../db.js';
+import { darbogazTablosu, kolonEtiketi } from './darbogaz.js';
+import { oncekiAralik, donemFarki, ozetKalibi } from './donem.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -239,6 +241,17 @@ export async function periodReport(projectIds, { from, to }) {
     return { from, to, created: 0, completed: 0, moves: 0, open: 0, by_column: [], completed_tasks: [] };
   }
 
+  // Önceki dönem: aynı uzunlukta, hemen öncesi (lib/donem.js). Yalnızca dört
+  // sayı; tamamlanan işlerin listesi değil — karşılaştırma için yeter, iki
+  // kat sorgu yükü gerektirmez.
+  const onceki = oncekiAralik(from, to);
+  const oncekiSayilar = Promise.all([
+    prisma.task.count({ where: { projectId: { in: projectIds }, createdAt: { gte: onceki.from, lte: onceki.to } } }),
+    prisma.task.count({ where: { projectId: { in: projectIds }, completedAt: { gte: onceki.from, lte: onceki.to } } }),
+    prisma.taskTransition.count({ where: { projectId: { in: projectIds }, at: { gte: onceki.from, lte: onceki.to } } }),
+    prisma.workLog.aggregate({ where: { projectId: { in: projectIds }, spentOn: { gte: onceki.from, lte: onceki.to } }, _sum: { minutes: true } }),
+  ]);
+
   const [created, completedTasks, transitions, openTasks, columns, logs] = await Promise.all([
     prisma.task.count({
       where: { projectId: { in: projectIds }, createdAt: { gte: from, lte: to } },
@@ -307,6 +320,11 @@ export async function periodReport(projectIds, { from, to }) {
     };
   });
 
+  const [oCreated, oCompleted, oMoves, oLogs] = await oncekiSayilar;
+  const simdi = { created, completed: completedTasks.length, moves: transitions.length, total_minutes: totalMinutes };
+  const oncekiDonem = { created: oCreated, completed: oCompleted, moves: oMoves, total_minutes: oLogs._sum.minutes || 0 };
+  const fark = donemFarki(simdi, oncekiDonem);
+
   return {
     from,
     to,
@@ -318,6 +336,10 @@ export async function periodReport(projectIds, { from, to }) {
     total_minutes_label: formatMinutes(totalMinutes),
     by_column: [...byColumn.entries()].map(([label, count]) => ({ label, count })),
     completed_tasks: completedRows,
+    previous: { from: onceki.from, to: onceki.to, ...oncekiDonem },
+    delta: fark,
+    // Yönetici özetinin kalıbı; cümle istemcide sözlükten (dil kuralı).
+    summary_tone: ozetKalibi(simdi, fark),
   };
 }
 
@@ -331,7 +353,7 @@ export async function periodReport(projectIds, { from, to }) {
  */
 export async function flowReport(projectIds, { from, to }) {
   if (!projectIds.length) {
-    return { from, to, count: 0, avg_days: 0, median_days: 0, slowest: [], dwell: [] };
+    return { from, to, count: 0, avg_days: 0, median_days: 0, slowest: [], dwell: [], bottleneck: null, dwell_total_hours: 0 };
   }
 
   const completed = await prisma.task.findMany({
@@ -353,35 +375,42 @@ export async function flowReport(projectIds, { from, to }) {
     });
   }
 
-  // Kolon bekleme süresi: aynı görevin ardışık geçişleri arasındaki fark,
-  // önceki geçişin hedef kolonuna yazılır.
-  const transitions = await prisma.taskTransition.findMany({
-    where: { projectId: { in: projectIds }, at: { gte: from, lte: to } },
-    orderBy: [{ taskId: 'asc' }, { at: 'asc' }],
-    select: { taskId: true, toTitle: true, at: true },
-  });
-
-  const dwell = new Map();
-  let prev = null;
-  for (const t of transitions) {
-    if (prev && prev.taskId === t.taskId && prev.toTitle) {
-      const hours = (new Date(t.at) - new Date(prev.at)) / (60 * 60 * 1000);
-      if (hours >= 0) {
-        if (!dwell.has(prev.toTitle)) dwell.set(prev.toTitle, []);
-        dwell.get(prev.toTitle).push(hours);
-      }
-    }
-    prev = t;
-  }
-
-  const dwellRows = [...dwell.entries()]
-    .map(([label, hours]) => ({
-      label,
-      samples: hours.length,
-      avg_hours: Math.round((hours.reduce((a, b) => a + b, 0) / hours.length) * 10) / 10,
-      median_hours: Math.round(median(hours) * 10) / 10,
-    }))
-    .sort((a, b) => b.avg_hours - a.avg_hours);
+  // Darboğaz tablosu (lib/darbogaz.js): kapanmış bekleme geçiş kaydından,
+  // şu an bekleyenler açık kartların son geçişinden. Hangi kart hangi
+  // kolonda ve oraya ne zaman geldi: son geçiş kaydı (distinct taskId, at
+  // desc); hiç geçişi yoksa (eski kayıt) açılış anı.
+  const [transitions, columns, openTasks] = await Promise.all([
+    prisma.taskTransition.findMany({
+      where: { projectId: { in: projectIds }, at: { gte: from, lte: to } },
+      orderBy: [{ taskId: 'asc' }, { at: 'asc' }],
+      select: { taskId: true, toTitle: true, toIsDone: true, at: true },
+    }),
+    prisma.boardColumn.findMany({
+      where: { projectId: { in: projectIds } },
+      select: { id: true, title: true, titleTr: true, position: true, isDone: true },
+      orderBy: { position: 'asc' },
+    }),
+    prisma.task.findMany({
+      where: { projectId: { in: projectIds }, deletedAt: null, completedAt: null, columnId: { not: null } },
+      select: { id: true, columnId: true, createdAt: true },
+    }),
+  ]);
+  const sonGecis = openTasks.length
+    ? await prisma.taskTransition.findMany({
+      where: { taskId: { in: openTasks.map((t) => t.id) } },
+      orderBy: [{ taskId: 'asc' }, { at: 'desc' }],
+      distinct: ['taskId'],
+      select: { taskId: true, at: true },
+    })
+    : [];
+  const sonGecisAni = new Map(sonGecis.map((g) => [g.taskId, g.at]));
+  const kolonAdi = new Map(columns.map((c) => [c.id, kolonEtiketi(c)]));
+  const acikKartlar = openTasks.map((t) => ({
+    taskId: t.id,
+    label: kolonAdi.get(t.columnId) || null,
+    since: sonGecisAni.get(t.id) || t.createdAt,
+  }));
+  const darbogaz = darbogazTablosu({ columns, transitions, acikKartlar, from, to });
 
   const avg = durations.length
     ? durations.reduce((a, b) => a + b, 0) / durations.length
@@ -394,6 +423,10 @@ export async function flowReport(projectIds, { from, to }) {
     avg_days: Math.round(avg * 10) / 10,
     median_days: Math.round(median(durations) * 10) / 10,
     slowest: rows.sort((a, b) => b.days - a.days).slice(0, 15),
-    dwell: dwellRows,
+    // Pano sırasında; her satırda funnel (entered), kapanmış bekleme,
+    // şu an bekleyen ve pay. `bottleneck` işaretli satır tek.
+    dwell: darbogaz.rows,
+    bottleneck: darbogaz.bottleneck,
+    dwell_total_hours: darbogaz.total_hours,
   };
 }
