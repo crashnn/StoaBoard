@@ -517,7 +517,9 @@ describe('proje listesi ve etiketler yayınlanıyor (#272)', () => {
       'silinmiş projenin panosu açık kalır');
     const e = blok(APP, "sock.on('project_labels'", '\n    });');
     assert.match(e, /String\(project_id\) !== String\(window\.CURRENT_PROJECT_ID\)\) return;/, 'başka projenin etiketleri aktif panoyu ezer');
-    assert.match(e, /window\.DATA\.LABELS = labels;\s*setVeriTiki\(/, 'etiketler yazılıyor ama yeniden çizim yok');
+    // #290: araya etiket adresi eşlemesi girdi; yazma ve yeniden çizim yine aynı blokta.
+    assert.match(e, /window\.DATA\.LABELS = labels;/, 'etiketler yazılmıyor');
+    assert.match(e, /setVeriTiki\(n => n \+ 1\);\s*$/, 'etiketler yazılıyor ama yeniden çizim yok');
     // Ref her render'da tazeleniyor; soket etkisi bir kez kuruluyor.
     assert.match(APP, /\n  \};\n  switchProjectRef\.current = switchProject;/, 'switchProject ref\'i tanımın hemen ardından güncellenmiyor — bayat kopya');
   });

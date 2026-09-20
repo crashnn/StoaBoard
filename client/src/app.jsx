@@ -718,10 +718,18 @@ function App() {
 
     // Etiketler (#272): yalnızca AKTİF projenin sözlüğü uygulanıyor, kolonlar
     // gibi — başka projenin etiketleri aktif panonun renklerini ezmesin.
-    sock.on('project_labels', ({ project_id, labels, actor }) => {
-      if (!labels || benimYankim(actor)) return;
+    sock.on('project_labels', ({ project_id, labels, actor, renamed }) => {
+      if (!labels || (benimYankim(actor) && !renamed)) return;
       if (String(project_id) !== String(window.CURRENT_PROJECT_ID)) return;
       window.DATA.LABELS = labels;
+      // Etiket adresi değişti (#290): kartlar eski adresi taşıyor, çevir.
+      // Kendi sekmem dahil (sunucu yankı süzgecini bu olayda kapatıyor);
+      // ikinci uygulama boşa düşer, eski adres artık yok.
+      if (renamed?.from && renamed?.to) {
+        setTasks(prev => prev.map(t => (Array.isArray(t.labels) && t.labels.includes(renamed.from)
+          ? { ...t, labels: t.labels.map(l => (l === renamed.from ? renamed.to : l)) }
+          : t)));
+      }
       setVeriTiki(n => n + 1);
     });
 

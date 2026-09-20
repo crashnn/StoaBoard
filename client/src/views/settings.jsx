@@ -64,7 +64,10 @@ function LabelsSection({ canManage }) {
     setEditBusy(true);
     try {
       const result = await API.updateLabel(projectId, editingSlug, { name, tone: editTone });
-      const next = { ...labels, ...result };
+      // Ad değişince adres de değişir (#290): eski anahtar düşer, yenisi gelir.
+      const next = { ...labels };
+      delete next[result.old_slug || editingSlug];
+      next[result.slug] = result.label;
       setLabels(next);
       DATA.LABELS = next;
       setEditingSlug(null);

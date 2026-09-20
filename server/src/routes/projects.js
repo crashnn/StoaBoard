@@ -19,7 +19,7 @@
 import { Router } from 'express';
 
 import { kolonlariYayinla, etkinlikYayini, projelerYayini, etiketlerYayini } from '../lib/board.js';
-import { kolonSlug } from '../lib/slug.js';
+import { kolonSlug, etiketSlug } from '../lib/slug.js';
 
 import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
@@ -525,18 +525,34 @@ projectsRouter.patch(
 
     const data = req.body || {};
     const updates = {};
+    let renamed = null;
     if (typeof data.name === 'string' && data.name.trim()) {
       const name = data.name.trim();
       updates.nameEn = name;
       updates.nameTr = name;
+      // Adres adı izler (#290): "feature" adresli "Arka Uç" etiketi MCP'de
+      // ve dışa aktarımda yanıltıyordu. Kimlik id, bağlar id üstünden;
+      // adres projede tekil olacak şekilde yeniden üretilir.
+      const digerleri = await prisma.label.findMany({
+        where: { projectId, id: { not: label.id } },
+        select: { slug: true },
+      });
+      const yeniSlug = etiketSlug(name, new Set(digerleri.map((l) => l.slug)));
+      if (yeniSlug !== label.slug) {
+        updates.slug = yeniSlug;
+        renamed = { from: label.slug, to: yeniSlug };
+      }
     }
     if ('tone' in data) updates.colorTone = data.tone;
 
     const updated = Object.keys(updates).length
       ? await prisma.label.update({ where: { id: label.id }, data: updates })
       : label;
-    await etiketlerYayini(req.app.get('io'), access.project, access.user.slug);
-    res.json({ [updated.slug]: labelToDictValue(updated) });
+    // Adres değiştiyse yayın herkese, kendi sekmeme de: kartlardaki etiket
+    // listeleri eski adresi taşıyor, eşleme idempotent (ikinci uygulama
+    // boşa düşer), o yüzden yankı süzgeci bilerek kapalı.
+    await etiketlerYayini(req.app.get('io'), access.project, renamed ? null : access.user.slug, { renamed });
+    res.json({ slug: updated.slug, old_slug: label.slug, label: labelToDictValue(updated) });
   }),
 );
 

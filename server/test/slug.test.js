@@ -83,3 +83,50 @@ describe('kolon adresi — İ, tekillik, uzunluk (#251 aile)', () => {
     assert.match(src.slice(i, i + 200), /where: \{ projectId \}/, 'mevcut adresler projeye göre süzülmüyor');
   });
 });
+
+// ─── #290 — etiket adresi adı izler ─────────────────────────────────────────
+//
+// Etiketin adı değişince adresi eski kalıyordu: "feature" adresli "Arka Uç".
+// Arayüz adresi göstermiyor ama MCP (valid_labels) ve dışa aktarım gösteriyor;
+// kullanıcı "slug değişmiyor, yeniden mi açalım" diye sordu — yeniden açmak
+// kart bağlarını kaybettirir. Kimlik id, adres addan türetilir ve tekil olur.
+
+import { etiketSlug, ETIKET_SLUG_AZAMI } from '../src/lib/slug.js';
+
+describe('etiketSlug — addan ASCII adres, projede tekil (#290)', () => {
+  test('Türkçe harf çevrilir, boşluk tire, mevcutla çakışırsa -2', () => {
+    assert.equal(etiketSlug('Arka Uç'), 'arka-uc');
+    assert.equal(etiketSlug('Tasarım'), 'tasarim');
+    assert.equal(etiketSlug('Arka Uç', new Set(['arka-uc'])), 'arka-uc-2');
+    assert.equal(etiketSlug('Arka Uç', new Set(['arka-uc', 'arka-uc-2'])), 'arka-uc-3');
+    assert.equal(etiketSlug('!!!'), 'etiket');
+  });
+  test('uzunluk sınırı ekle birlikte aşılmaz', () => {
+    const uzun = etiketSlug('a'.repeat(200), new Set(['a'.repeat(ETIKET_SLUG_AZAMI - 4)]));
+    assert.ok(uzun.length <= ETIKET_SLUG_AZAMI);
+    assert.ok(uzun.endsWith('-2'));
+  });
+
+  const PROJECTS = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'projects.js'));
+  const APP = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'app.jsx'));
+  const SETTINGS = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'views', 'settings.jsx'));
+  const govde = (src, a, b) => { const i = src.indexOf(a); assert.ok(i >= 0, a); const j = src.indexOf(b, i); assert.ok(j > i, b); return src.slice(i, j); };
+
+  test('PATCH etiket: ad değişince adres öteki etiketlere göre tekil üretilir, yanıt eski/yeni adresi verir, yayın renamed taşır', () => {
+    const p = govde(PROJECTS, "projectsRouter.patch(\n  '/:projectId/labels/:slug'", "projectsRouter.delete(\n  '/:projectId/labels/:slug'");
+    assert.match(p, /id: \{ not: label\.id \}/, 'etiket kendi adresiyle çakışır sayılır — her düzenlemede -2 alır');
+    assert.match(p, /const yeniSlug = etiketSlug\(name, new Set\(digerleri\.map\(\(l\) => l\.slug\)\)\)/);
+    assert.match(p, /updates\.slug = yeniSlug;\s*renamed = \{ from: label\.slug, to: yeniSlug \};/);
+    assert.match(p, /etiketlerYayini\(req\.app\.get\('io'\), access\.project, renamed \? null : access\.user\.slug, \{ renamed \}\)/,
+      'adres değişince yayın kendi sekmeme de gitmeli (kartlar eski adresi taşıyor)');
+    assert.match(p, /res\.json\(\{ slug: updated\.slug, old_slug: label\.slug, label: labelToDictValue\(updated\) \}\)/);
+  });
+
+  test('istemci: kartlardaki eski adres yenisine çevrilir, yankı süzgeci renamed varken kapalı; ayarlar eski anahtarı düşürür', () => {
+    const e = govde(APP, "sock.on('project_labels'", '\n    });');
+    assert.match(e, /benimYankim\(actor\) && !renamed/);
+    assert.match(e, /t\.labels\.map\(l => \(l === renamed\.from \? renamed\.to : l\)\)/);
+    const s = govde(SETTINGS, 'const result = await API.updateLabel(', 'setEditingSlug(null);');
+    assert.match(s, /delete next\[result\.old_slug \|\| editingSlug\];\s*next\[result\.slug\] = result\.label;/);
+  });
+});

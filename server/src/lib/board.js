@@ -160,16 +160,19 @@ export async function projelerYayini(io, workspaceId, actorSlug) {
  * gövdede: istemci yalnızca AKTİF projenin etiketlerini uyguluyor, kolonlar
  * gibi. Şekil bootstrap'ın `labels` alanıyla aynı (slug → değer).
  */
-export async function etiketlerYayini(io, project, actorSlug) {
+export async function etiketlerYayini(io, project, actorSlug, { renamed = null } = {}) {
   if (!project) return false;
   const labels = await prisma.label.findMany({ where: { projectId: project.id } });
   const labelsMap = {};
   for (const l of labels) labelsMap[l.slug] = labelToDictValue(l);
+  // `renamed` = { from, to }: etiket adresi değişti (#290). İstemci kartların
+  // etiket listelerini eski adresten yenisine çevirir; kart bağları id
+  // üstünden olduğu için sunucuda değişen bir şey yok, yalnızca tutamaç.
   return panoYayini(
     io,
     'project_labels',
     project.workspaceId,
-    { project_id: String(project.id), labels: labelsMap },
+    { project_id: String(project.id), labels: labelsMap, ...(renamed ? { renamed } : {}) },
     actorSlug,
   );
 }
