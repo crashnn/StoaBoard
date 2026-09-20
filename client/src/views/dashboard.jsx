@@ -3,7 +3,7 @@
 import { useState as useDashState, useEffect as useDashEffect, useRef as useDashRef } from 'react';
 import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
-import { fmtTimeAgo, renderActivityText } from '../data.jsx';
+import { fmtTimeAgo, renderActivityText, kolonAdi } from '../data.jsx';
 import { sonGunlerdeTamamlanan } from '../sayim.js';
 
 function DashboardView({ tasks, etkinlik = [], onOpenTask, onView }) {
@@ -198,7 +198,7 @@ function DashboardView({ tasks, etkinlik = [], onOpenTask, onView }) {
                         key={col.id}
                         className="dist-seg"
                         style={{ width: `${pay}%`, background: getColColor(col) }}
-                        title={`${col.title_tr || col.title || col.id}: ${count}`}
+                        title={`${kolonAdi(col) || col.id}: ${count}`}
                       >
                         {/* Dogrudan etiket yalnizca sigdiginda. Her dilime sayi
                             basmak dar dilimlerde ust uste biner; skala zaten
@@ -214,7 +214,7 @@ function DashboardView({ tasks, etkinlik = [], onOpenTask, onView }) {
                   {dist.map(({ col, count }) => (
                     <div key={col.id} className="dist-legend-item">
                       <span className="legend-dot" style={{ background: getColColor(col) }} />
-                      <span className="dist-legend-name">{col.title_tr || col.title || col.id}</span>
+                      <span className="dist-legend-name">{kolonAdi(col) || col.id}</span>
                       <span className="dist-legend-val">{count}</span>
                     </div>
                   ))}
@@ -319,7 +319,7 @@ function DashboardView({ tasks, etkinlik = [], onOpenTask, onView }) {
                           <td style={{ fontWeight: 500 }}>{t.title}</td>
                           <td style={{ width: 100 }}><AvatarStack members={rowMembers} size="sm" max={3} /></td>
                           <td style={{ width: 90, paddingRight: 18 }}>
-                            <span className="col-chip" style={{ '--chip-color': getColColor(colObj) }}>{colObj?.title_tr || t.col}</span>
+                            <span className="col-chip" style={{ '--chip-color': getColColor(colObj) }}>{kolonAdi(colObj) || t.col}</span>
                           </td>
                         </tr>
                       );

@@ -4,6 +4,7 @@ import React, { useState as useCalState, useMemo as useCalMemo, useCallback as u
 import ReactDOM from 'react-dom';
 import { Icon } from '../icons.jsx';
 import { AvatarStack } from '../shell.jsx';
+import { kolonAdi } from '../data.jsx';
 
 const CAL_MONTHS     = () => (window.t?.('cal_months') || 'Ocak,Şubat,Mart,Nisan,Mayıs,Haziran,Temmuz,Ağustos,Eylül,Ekim,Kasım,Aralık').split(',');
 const CAL_DAYS_SHORT = () => (window.t?.('cal_days_short') || 'Pzt,Sal,Çar,Per,Cum,Cmt,Paz').split(',');
@@ -754,7 +755,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
                   <div className="cal-side-item-body">
                     <div className="cal-side-item-title">{t.title}</div>
                     <div className="cal-side-item-meta">
-                      <span>{col?.title_tr || t.col}</span>
+                      <span>{kolonAdi(col) || t.col}</span>
                       {t.start && t.due && t.start !== t.due && (
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>
                           {DATA.fmtDate(t.start)} – {DATA.fmtDate(t.due)}
@@ -802,7 +803,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
                     <div className="cal-side-item-body">
                       <div className="cal-side-item-title">{t.title}</div>
                       <div className="cal-side-item-meta">
-                        <span>{col?.title_tr || t.col}</span>
+                        <span>{kolonAdi(col) || t.col}</span>
                         {t.start && t.due && t.start !== t.due && (
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>
                             {DATA.fmtDate(t.start)} – {DATA.fmtDate(t.due)}
@@ -857,7 +858,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
                         <div className="agenda-item-body">
                           <div className="agenda-item-title">{t.title}</div>
                           <div className="agenda-item-meta">
-                            <span className="status-pill">{colObj?.title_tr || t.col}</span>
+                            <span className="status-pill">{kolonAdi(colObj) || t.col}</span>
                             {t.start && <span style={{ fontSize:11, color:'var(--ink-muted)' }}>{DATA.fmtDate(t.start)} – {DATA.fmtDate(t.due)}</span>}
                             {rowMembers.length > 0 && <AvatarStack members={rowMembers} size="sm" max={3} />}
                           </div>

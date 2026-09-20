@@ -3,7 +3,7 @@
 import React, { useState as useBoardState, useRef as useBoardRef, useEffect as useBoardEf } from 'react';
 import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
-import { API } from '../data.jsx';
+import { API, kolonAdi } from '../data.jsx';
 
 const COL_NAME_MAX = 30;
 const COL_COLORS = ['#6366f1','#3b82f6','#06b6d4','#10b981','#f59e0b','#f97316','#ef4444','#a855f7','#ec4899','#6b7280'];
@@ -226,7 +226,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
   const [menuPos, setMenuPos] = useBoardState(null);
   const [confirmDelete, setConfirmDelete] = useBoardState(false);
   const [renaming, setRenaming] = useBoardState(false);
-  const [renameVal, setRenameVal] = useBoardState(col.title_tr || col.title || '');
+  const [renameVal, setRenameVal] = useBoardState(kolonAdi(col));
   const [columnDragging, setColumnDragging] = useBoardState(false);
   const [colorPickerOpen, setColorPickerOpen] = useBoardState(false);
   const [rulesOpen, setRulesOpen] = useBoardState(false);
@@ -286,7 +286,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
   const handleRename = async () => {
     const newTitle = renameVal.trim();
     setRenaming(false);
-    if (!newTitle || newTitle === col.title_tr) return;
+    if (!newTitle || newTitle === kolonAdi(col)) return;
     await onUpdateColumn?.(col.db_id, { title: newTitle, title_tr: newTitle });
   };
 
@@ -321,7 +321,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
             onBlur={handleRename}
             onKeyDown={e => {
               if (e.key === 'Enter') handleRename();
-              if (e.key === 'Escape') { setRenaming(false); setRenameVal(col.title_tr || ''); }
+              if (e.key === 'Escape') { setRenaming(false); setRenameVal(kolonAdi(col)); }
             }}
             autoFocus
             style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1.5px solid ${renameVal.length >= COL_NAME_MAX ? 'var(--status-rose)' : 'var(--accent)'}`, outline: 'none', color: 'var(--ink)', fontSize: 13, fontWeight: 600, padding: '1px 0', minWidth: 0 }}
@@ -333,7 +333,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
           )}
           </>
         ) : (
-          <span className="col-label-chip">{col.title_tr}</span>
+          <span className="col-label-chip">{kolonAdi(col)}</span>
         )}
         <span className="col-count">{tasks.length}</span>
         <div className="col-actions">
@@ -350,7 +350,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
             </button>
             {menuOpen && menuPos && (
               <div ref={menuRef} className="col-menu" style={{ top: menuPos.top, right: menuPos.right }}>
-                <div className="col-menu-info">{tasks.length} görev · {col.title_tr}</div>
+                <div className="col-menu-info">{tasks.length} {window.t?.('board_col_menu_tasks') || 'görev'} · {kolonAdi(col)}</div>
                 {canManageProjects && (
                   <>
                     <div className="col-menu-divider" />
@@ -358,7 +358,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
                       <Icon name={col.is_done ? 'minus' : 'check'} size={13} />
                       {col.is_done ? window.t('board_col_unmark_done') : window.t('board_col_mark_done')}
                     </button>
-                    <button className="col-menu-item" onClick={() => { setMenuOpen(false); setRenaming(true); setRenameVal(col.title_tr || col.title || ''); }}>
+                    <button className="col-menu-item" onClick={() => { setMenuOpen(false); setRenaming(true); setRenameVal(kolonAdi(col)); }}>
                       <Icon name="edit" size={13} /> {window.t('board_col_rename')}
                     </button>
                     <button className="col-menu-item" onClick={() => setColorPickerOpen(o => !o)}>
@@ -393,7 +393,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
                             <button key={c.id} type="button" className="col-menu-rule" data-on={on}
                               onClick={() => toggleAllowedNext(c.id)}>
                               <span className="col-menu-rule-dot" style={{ background: c.color }} />
-                              <span className="col-menu-rule-name">{c.title_tr || c.title}</span>
+                              <span className="col-menu-rule-name">{kolonAdi(c)}</span>
                               <Icon name={on ? 'check' : 'circle'} size={12} />
                             </button>
                           );
@@ -545,7 +545,7 @@ function TableView({ tasks, onOpenTask, onMoveTask, canManageTasks }) {
                 <td>
                   <span className="table-status-chip" style={{ '--col-c': col?.color || 'var(--ink-faint)' }}>
                     <span className="col-dot" style={{ background: col?.color || 'var(--ink-faint)' }} />
-                    {col?.title_tr || '—'}
+                    {kolonAdi(col) || '—'}
                   </span>
                 </td>
                 <td>
@@ -822,7 +822,7 @@ function TimelineView({ tasks, onOpenTask }) {
               <div className="tl-side tl-group" style={{ cursor: 'pointer' }} onClick={() => toggleTlGroup(col.id)}>
                 <Icon name={isCollapsed ? 'chevronRight' : 'chevronDown'} size={12} strokeWidth={2.5} style={{ color: 'var(--ink-faint)', flexShrink: 0 }} />
                 <span className="col-dot" style={{ background: col.color }} />
-                {lang === 'en' ? (col.title || col.title_tr) : col.title_tr}
+                {kolonAdi(col)}
                 <span className="col-count" style={{ marginLeft: 'auto' }}>{gTasks.length}</span>
               </div>
               <div className="tl-track tl-group-track" style={{ width: totalW }} />
@@ -1522,7 +1522,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
                 <div className="list-group-header" onClick={() => toggleGroupCollapse(col.id)} style={{ cursor: 'pointer' }}>
                   <Icon name={collapsed ? 'chevronRight' : 'chevronDown'} size={12} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />
                   <div className="col-dot" style={{ background: col.color || 'var(--ink-faint)' }} />
-                  <span style={{ color: 'var(--ink)' }}>{col.title_tr}</span>
+                  <span style={{ color: 'var(--ink)' }}>{kolonAdi(col)}</span>
                   <span className="col-count">{colTasks.length}</span>
                   {canManageTasks && !collapsed && (
                     <button className="list-group-add" onClick={(e) => { e.stopPropagation(); onOpenModal(col.id); }}

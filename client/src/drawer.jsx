@@ -4,7 +4,7 @@ import { useState as useDrawerState, useEffect as useDrawerEffect, useRef as use
 import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
 import { Avatar, AvatarStack } from './shell.jsx';
-import { API, fmtTimeAgo } from './data.jsx';
+import { API, fmtTimeAgo, kolonAdi } from './data.jsx';
 import { DatePicker } from './modals.jsx';
 import { WorkLogSection } from './worklog.jsx';
 import { paragraflaraBol } from './belge.js';
@@ -392,7 +392,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   // sunuyordu — seçilirse sunucu kendi projesinde eşleşme aradığı için
   // taşıma sessizce olmuyordu.
   const kolonlar = Array.isArray(detail?.columns) && detail.columns.length ? detail.columns : DATA.COLUMNS;
-  const col = kolonlar.find(c => c.id === task.col) || { title_tr: task.col };
+  const col = kolonlar.find(c => c.id === task.col) || { title: task.col, title_tr: task.col };
   const projeAdi = (window.DATA?.PROJECTS || []).find(p => String(p.id) === String(task.project_id))?.name || null;
 
   // Kontrol listesi blokları gösterilmiyor ve geri saklanmıyor: yapılacaklar
@@ -555,7 +555,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
         <div className="prop-label"><Icon name="circleHalf" size={13} /> {window.t('drawer_status')}</div>
         <div className="prop-value custom-dropdown" ref={statusRef}>
           <button type="button" className="custom-dropdown-btn" disabled={!canManageTasks} onClick={() => canManageTasks && setStatusOpen(o => !o)}>
-            <span className="dropdown-label">{col.title_tr}</span>
+            <span className="dropdown-label">{kolonAdi(col)}</span>
             <Icon name="chevronDown" size={12} />
           </button>
           {statusOpen && canManageTasks && (
@@ -563,7 +563,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
               {kolonlar.map(c => (
                 <button key={c.id} type="button" className={"custom-dropdown-item" + (c.id === task.col ? ' active' : '')}
                   onClick={() => { onMoveTask(task.id, c.id); setStatusOpen(false); }}>
-                  {c.title_tr}
+                  {kolonAdi(c)}
                 </button>
               ))}
             </div>
@@ -1137,7 +1137,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
           </button>
           <div className="task-page-crumbs">
             <Icon name="chevronRight" size={11} style={{ color: 'var(--ink-faint)' }} />
-            <span>{col.title_tr}</span>
+            <span>{kolonAdi(col)}</span>
           </div>
           <div className="task-page-head-actions">
             <button className="icon-btn" title={window.t('drawer_duplicate')} onClick={handleDuplicate} disabled={duplicating}>
@@ -1175,7 +1175,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
                   yanlış bir ad göstermektense hiç göstermemek. */}
               {projeAdi && <span className="crumb-text">{projeAdi}</span>}
               {projeAdi && <span className="sep"><Icon name="chevronRight" size={11} /></span>}
-              <span className="crumb-text" style={{ color: 'var(--ink)' }}>{col.title_tr}</span>
+              <span className="crumb-text" style={{ color: 'var(--ink)' }}>{kolonAdi(col)}</span>
               {/* Kart numarası — Ayarlar → Görünüm → Geliştirici ile açılıyor.
                   Kırıntı satırının sonunda, çünkü çalışırken göz zaten orada. */}
               {tweaks.showCardIds && (

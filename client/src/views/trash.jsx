@@ -2,6 +2,7 @@
 
 import { useState as useTrashState } from 'react';
 import { Icon } from '../icons.jsx';
+import { kolonAdi } from '../data.jsx';
 
 const DAYS_RETENTION = 30;
 
@@ -179,7 +180,7 @@ export function TrashView({ tasks, onRestore, onPermanentDelete, canManageTasks,
                         {col && (
                           <span className="trash-item-col">
                             <span className="col-dot" style={{ background: col.color }} />
-                            {(localStorage.getItem('stoa.lang') || 'tr') === 'tr' ? col.title_tr : col.title}
+                            {kolonAdi(col)}
                           </span>
                         )}
                         <span className="trash-item-expiry" data-urgent={urgent}>

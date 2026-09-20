@@ -62,7 +62,8 @@ describe('çekmece kırıntısı — kart numarası ve proje adı (#263)', () =>
     assert.ok(metin.some((g) => /min-width:\s*0/.test(g) && /text-overflow:\s*ellipsis/.test(g)),
       'metin kırıntıları daralmıyor — uzun proje/kolon adı başlığı taşırır');
     // Kolon adı da metin kırıntısı: daralma ona uygulanmalı, numaraya değil.
-    assert.match(KIRINTI, /<span className="crumb-text" style=\{\{ color: 'var\(--ink\)' \}\}>\{col\.title_tr\}<\/span>/,
+    // Ad kolonAdi(col) ile okunuyor (#288: dile göre title / title_tr).
+    assert.match(KIRINTI, /<span className="crumb-text" style=\{\{ color: 'var\(--ink\)' \}\}>\{kolonAdi\(col\)\}<\/span>/,
       'kolon adı crumb-text sınıfını taşımıyor');
     assert.doesNotMatch(KIRINTI, /className="card-id[^"]*crumb-text|className="crumb-text[^"]*card-id/,
       'numara metin kırıntısı sınıfını almış — daralır');

@@ -4,6 +4,7 @@ import React, { useState as useModalState, useEffect as useModalEffect, useRef a
 import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
 import { Avatar } from './shell.jsx';
+import { kolonAdi } from './data.jsx';
 
 // ── Custom Date Picker ─────────────────────────────────────────────────────
 function DatePicker({ value, onChange, error }) {
@@ -303,7 +304,7 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
                 <button ref={colBtnRef} type="button" className="custom-dropdown-btn"
                   onClick={() => openDropdown(colBtnRef, setColPos, setColOpen)}>
                   <span className="col-dot" style={{ background: DATA.COLUMNS.find(c => c.id === col)?.color || 'var(--ink-faint)', flexShrink: 0 }} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{DATA.COLUMNS.find(c => c.id === col)?.title_tr || window.t('modal_select')}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{kolonAdi(DATA.COLUMNS.find(c => c.id === col)) || window.t('modal_select')}</span>
                   <Icon name="chevronDown" size={12} />
                 </button>
                 {colOpen && ReactDOM.createPortal(
@@ -315,7 +316,7 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
                         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                         onClick={() => { setCol(c.id); setColOpen(false); }}>
                         <span className="col-dot" style={{ background: c.is_done ? 'var(--status-green)' : c.color, flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title_tr}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kolonAdi(c)}</span>
                       </button>
                     ))}
                   </div>,

@@ -486,3 +486,32 @@ describe('sunucu hata mesajları — koda bağlı ve çevrili olmalı', () => {
     );
   });
 });
+
+// Kolonun iki adı var (title İngilizce, title_tr Türkçe) ve 20 Eylül 2026'ya
+// kadar istemci yirmi iki yerde yalnızca title_tr okuyordu: İngilizce
+// arayüzde kolonlar "Yapılacak / Devam Ediyor" kalıyordu (#288). Tek okuyucu
+// artık data.jsx'teki kolonAdi(); title_tr'yi doğrudan okumak yasak. Ölçüt
+// KULLANIMI arıyor (".title_tr" üye okuması), bildirimi değil — nesne anahtarı
+// olarak yazmak ({ title_tr: newTitle }) serbest, o okuma değil yazma.
+describe('kolon adı tek yerden — title_tr doğrudan okunmaz (#288)', () => {
+  test('data.jsx dışında hiçbir dosya .title_tr okumuyor', () => {
+    const ihlaller = [];
+    for (const dosya of jsxDosyalari(CLIENT)) {
+      if (path.basename(dosya) === 'data.jsx') continue;
+      const satirlar = yorumsuzDosya(dosya).split(/\r?\n/);
+      satirlar.forEach((satir, i) => {
+        if (/\.title_tr\b/.test(satir)) ihlaller.push(`${path.relative(CLIENT, dosya)}:${i + 1}`);
+      });
+    }
+    assert.deepEqual(ihlaller, [], 'Kolon adını kolonAdi(col) ile oku; title_tr yalnızca Türkçe ad, arayüz dili İngilizce olabilir.');
+  });
+
+  test('kolonAdi data.jsx\'te tanımlı, dışa açık ve dile göre seçiyor', () => {
+    const govde = dataSrc.slice(dataSrc.indexOf('function kolonAdi('));
+    const fn = govde.slice(0, govde.indexOf('\n}') + 2);
+    assert.match(fn, /uiLang\(\) === 'en'/);
+    assert.match(fn, /col\.title \|\| col\.title_tr/);
+    assert.match(fn, /col\.title_tr \|\| col\.title/);
+    assert.match(dataSrc, /export \{[\s\S]*\bkolonAdi\b[\s\S]*\}/);
+  });
+});

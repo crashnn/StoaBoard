@@ -34,6 +34,18 @@ function uiLang() {
   return (localStorage.getItem('stoa.lang') || 'tr').startsWith('en') ? 'en' : 'tr';
 }
 
+// Kolonun ekranda görünen adı (#288). Kolonun iki adı var: title İngilizce,
+// title_tr Türkçe — şablon böyle tohumluyor. İstemci 20 Eylül 2026'ya kadar
+// her yerde title_tr okuyordu; İngilizce arayüzde kolonlar "Yapılacak /
+// Devam Ediyor" kalıyordu. Kullanıcı kolonu yeniden adlandırınca iki alan
+// aynı değeri alıyor (board.jsx), yani seçim yalnızca şablon kolonlarında
+// fark eder. Bütün okuyucular buradan geçer; title_tr'yi doğrudan okumak
+// dil.test.js ile yasak.
+function kolonAdi(col) {
+  if (!col) return '';
+  return uiLang() === 'en' ? (col.title || col.title_tr || '') : (col.title_tr || col.title || '');
+}
+
 function fmtDate(isoDate) {
   const d = _parseServerDate(isoDate);
   if (!d) return '';
@@ -456,6 +468,7 @@ window.APP_I18N = {
     set_app_card_ids:'Kart numaralarını göster',
     set_app_card_ids_desc:'Kartın ve çekmecenin üstünde #numara görünür. Bir kartı başkasına tarif ederken işe yarar.',
     board_card_id:'Kart numarası', board_me_badge:'BEN',
+    board_col_menu_tasks:'görev',
     // Settings — Workspace
     set_ws_title:'Çalışma Alanı', set_ws_desc:'Takımınızın logo veya fotoğrafını yükleyin.',
     set_ws_uploading:'Yükleniyor…', set_ws_upload_logo:'Logo Yükle', set_ws_remove:'Kaldır',
@@ -707,8 +720,8 @@ window.APP_I18N = {
     dash_sort_open:'En fazla açık', dash_sort_done:'En fazla tamamlanan',
     dash_sort_label:'Sırala',
     dash_sub_prefix:'Takımında', dash_sub_active:'kart aktif olarak ilerliyor',
-    dash_sub_overdue:'kart geçmiş son tarih bugün mümkünse temizle.',
-    dash_sub_great:'harika gidiyor!',
+    dash_sub_overdue:'kartın son tarihi geçmiş — bugün temizlemeye çalış.',
+    dash_sub_great:'— harika gidiyor!',
     dash_stat_active:'Aktif kartlar', dash_stat_completed:'Tamamlanan',
     dash_stat_no_data:'son 7 günde tamamlanan yok',
     dash_stat_weekly_done_prefix:'son 7 günde ',
@@ -1414,6 +1427,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     set_app_card_ids:'Show card numbers',
     set_app_card_ids_desc:'A #number appears on the card and in the drawer. Handy when pointing someone at a specific card.',
     board_card_id:'Card number', board_me_badge:'ME',
+    board_col_menu_tasks:'tasks',
     // Settings — Workspace
     set_ws_title:'Workspace', set_ws_desc:'Upload your team logo or photo.',
     set_ws_uploading:'Uploading…', set_ws_upload_logo:'Upload Logo', set_ws_remove:'Remove',
@@ -1663,8 +1677,8 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     dash_sort_open:'Most open', dash_sort_done:'Most completed',
     dash_sort_label:'Sort',
     dash_sub_prefix:'Your team has', dash_sub_active:'cards actively in progress',
-    dash_sub_overdue:'cards past their due date, clear today if possible.',
-    dash_sub_great:"great progress!",
+    dash_sub_overdue:'cards are past due — clear them today if you can.',
+    dash_sub_great:'— good pace!',
     dash_stat_active:'Active cards', dash_stat_completed:'Completed',
     dash_stat_no_data:'none completed in the last 7 days',
     dash_stat_weekly_done_prefix:'last 7 days ',
@@ -2425,6 +2439,7 @@ window.DATA = {
 
 export {
   API,
+  kolonAdi,
   fmtDate,
   fmtTimeAgo,
   fmtAbsoluteTime,
