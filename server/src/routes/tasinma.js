@@ -36,6 +36,11 @@
 //  6. Girdi: lib/tasinma.js paketiDogrula — tür, uzunluk, sınır, slug
 //     biçimi, kolon/etiket referansı, tarih; doc gövdesi docDenetle'den
 //     geçer, doc içinde kontrol listesi reddedilir. Gövde 10 MB (app.js).
+//     TRELLO (20 Eylül): gövde `{ source:'trello', done_list, board }` ise
+//     önce lib/trello.js saf dönüştürücüden geçer, sonra AYNI doğrulama ve
+//     AYNI yazma yolu — Trello için ikinci bir yazma yolu yok. Dönüştürücü
+//     her metni sınıra kırpar ve kırptığını sayar; arşiv taşınmaz, atlanan
+//     sayılır; done_list anahtarı yoksa dosya reddedilir (tahmin yok).
 //  5. Kişi eşleme: dosyadaki slug yalnızca AKTİF ALANIN ÜYELERİ arasında
 //     aranır; eşleşmeyen atanan sessizce başka birine bağlanmaz, kart
 //     atanmadan gelir ve kartın altına "şu kişi üye değil" yorumu düşer.
@@ -60,6 +65,7 @@ import {
   alanPaketi, paketOzeti, paketDosyaAdi, paketCsv, paketMarkdown,
   paketiDogrula, dogrulamaMesaji, benzersizProjeAdi,
 } from '../lib/tasinma.js';
+import { trelloPaketi } from '../lib/trello.js';
 
 export const tasinmaRouter = Router();
 
@@ -160,7 +166,24 @@ tasinmaRouter.post(
     const lang = reqLang(req);
     const workspaceId = member.workspaceId;
 
-    const paket = req.body;
+    // Trello: gövde { source: 'trello', done_list: id|null, board: {...} }.
+    // Dönüştürücü saf ve Trello'ya özgü her şeyi kendinde bitiriyor; buradan
+    // sonrası kendi paketimizle birebir aynı yol (doğrulama + tek transaction).
+    // done_list ANAHTARI zorunlu: bitiş kolonunu içe aktaran seçer, "yok"
+    // demek için null gönderir; anahtar hiç yoksa dosya reddedilir — sistem
+    // tahmin etmez (kart #152 kuralı).
+    let paket = req.body;
+    let kaynak = 'stoaboard';
+    let trelloRapor = null;
+    if (paket && typeof paket === 'object' && paket.source === 'trello') {
+      const d = trelloPaketi(paket.board, { doneListId: 'done_list' in paket ? paket.done_list : undefined });
+      if (!d.ok) {
+        return res.status(400).json({ error: 'err_import_invalid', message: dogrulamaMesaji({ kod: 'shape', yer: 'Trello', sebep: d.sebep }, lang) });
+      }
+      paket = d.paket;
+      trelloRapor = d.rapor;
+      kaynak = 'trello';
+    }
     const dogrulama = paketiDogrula(paket);
     if (!dogrulama.ok) {
       return res.status(400).json({ error: 'err_import_invalid', message: dogrulamaMesaji(dogrulama, lang) });
@@ -303,7 +326,13 @@ tasinmaRouter.post(
       workspaceId,
       user,
       action: AUDIT.WORKSPACE_IMPORT,
-      detail: { ...ozet, unmatched_assignees: eslesmeyen.size, source: paket.workspace?.slug ?? null },
+      detail: {
+        ...ozet,
+        unmatched_assignees: eslesmeyen.size,
+        source: kaynak,
+        source_workspace: paket.workspace?.slug ?? null,
+        ...(trelloRapor ? { skipped: trelloRapor.archived_cards + trelloRapor.orphan_cards + trelloRapor.archived_lists } : {}),
+      },
     });
 
     res.status(201).json({
@@ -311,6 +340,9 @@ tasinmaRouter.post(
       ...ozet,
       project_ids: yeniProjeIdleri.map(String),
       unmatched_assignees: [...eslesmeyen],
+      // Trello'da atlanan (arşiv) ve kırpılan sayılar: kullanıcı "kaç kart
+      // gelmedi" sorusunun cevabını görsün, sessiz kayıp olmasın.
+      ...(trelloRapor ? { source: 'trello', skipped: { archived_cards: trelloRapor.archived_cards, orphan_cards: trelloRapor.orphan_cards, archived_lists: trelloRapor.archived_lists }, truncated: trelloRapor.truncated } : {}),
     });
   }),
 );

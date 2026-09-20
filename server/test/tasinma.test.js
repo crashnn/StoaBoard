@@ -285,6 +285,23 @@ describe('paketiDogrula — gidiş-dönüş', () => {
     assert.equal(d.ok, true);
     assert.deepEqual(d.ozet, { projects: 1, tasks: 0, subtasks: 0, comments: 0 });
   });
+
+  // Kolon adresleri #251'den beri Türkçe harf taşıyor (kolonSlug "Yapılacak"
+  // → "yapılacak"). Doğrulayıcı ASCII istiyordu: Türkçe adlı kolonu olan bir
+  // alanın kendi dışa aktarımı içe alınamıyordu. 20 Eylül 2026'da bulundu.
+  test('Türkçe harfli kolon adresi (yapılacak, incelemede) gidiş-dönüşte kabul edilir', () => {
+    const p = kopya(alanPaketi(ornek()));
+    p.projects[0].columns[0].slug = 'yapılacak';
+    p.projects[0].columns.push({ slug: 'öğüt-şç', title: 'Öğüt' });
+    p.projects[0].tasks[0].column = 'yapılacak';
+    const d = paketiDogrula(p);
+    assert.equal(d.ok, true, JSON.stringify(d));
+    // Küme yine dar: büyük harf, boşluk, nokta, öteki alfabeler geçmez.
+    for (const kotu of ['Yapılacak', 'ya pılacak', 'a.b', 'ünlü/', 'кол']) {
+      p.projects[0].columns[1].slug = kotu;
+      assert.equal(paketiDogrula(p).ok, false, kotu);
+    }
+  });
 });
 
 describe('paketiDogrula — reddedilenler, yeriyle', () => {

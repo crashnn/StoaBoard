@@ -290,7 +290,12 @@ export const ICE_SINIR = {
   slug: 60,
 };
 
-const SLUG = /^[a-z0-9][a-z0-9_-]{0,59}$/;
+// Kolon adresi Türkçe harf taşıyabilir: #251'den beri kolonSlug (lib/slug.js)
+// "Yapılacak" için "yapılacak" üretiyor, harfi silmiyor. İlk sürümdeki
+// ASCII desen bu adresleri reddediyordu — yani Türkçe adlı kolonu olan bir
+// alanın KENDİ dışa aktarımı içe alınamıyordu (gidiş-dönüş kırık, 20 Eylül).
+// Küme yine dar: harf, rakam, tire, alt çizgi; uzunluk şemadaki 60.
+const SLUG = /^[a-z0-9çğıöşü][a-z0-9çğıöşü_-]{0,59}$/;
 const GUN = /^\d{4}-\d{2}-\d{2}$/;
 const ONCELIK = new Set(['high', 'mid', 'low']);
 

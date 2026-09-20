@@ -651,19 +651,16 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
   // Taşınma: içe aktarma
   const importInputRef = React.useRef(null);
   const [importBusy, setImportBusy] = React.useState(false);
-  const importWorkspaceFile = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // aynı dosya ikinci kez seçilebilsin
-    if (!file) return;
+  // Trello dosyası seçildiyse önce "hangi liste bitiş?" sorulur; sistem
+  // tahmin etmez (kart #152 kuralı, raporlar bitiş kolonuna dayanıyor).
+  // Sorulana kadar dosya burada bekler, sunucuya gitmez.
+  const [trelloBekleyen, setTrelloBekleyen] = React.useState(null); // { board, lists, cards }
+  const [trelloBitis, setTrelloBitis] = React.useState('');
+
+  const importGonder = async (govde) => {
     setImportBusy(true);
     try {
-      let paket;
-      try { paket = JSON.parse(await file.text()); }
-      catch (_) {
-        window.showToast?.(_t('set_ws_import_bad_json','Dosya okunamadı: geçerli JSON değil'), 'error');
-        return;
-      }
-      const r = await API.importWorkspace(paket);
+      const r = await API.importWorkspace(govde);
       const doldur = (k, fb) => _t(k, fb)
         .replace('{projects}', r.projects).replace('{tasks}', r.tasks)
         .replace('{subtasks}', r.subtasks).replace('{comments}', r.comments);
@@ -671,13 +668,63 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
       if (r.unmatched_assignees?.length) {
         window.showToast?.(_t('set_ws_import_unmatched','Üye olmayan atananlar: {list}').replace('{list}', r.unmatched_assignees.join(', ')), 'info');
       }
+      // Trello'da arşiv taşınmaz; kaç kartın gelmediği sessiz kalmasın.
+      const atlanan = r.skipped ? (r.skipped.archived_cards || 0) + (r.skipped.orphan_cards || 0) : 0;
+      if (atlanan) {
+        window.showToast?.(_t('set_ws_import_skipped','Arşivdeki {n} kart taşınmadı.').replace('{n}', atlanan), 'info');
+      }
       // Yeni projeler önyüklemede geliyor; en kestirme ve en güvenli yol yeniden yükleme.
       setTimeout(() => window.location.reload(), 1200);
     } catch (err) {
       window.showToast?.(err.message, 'error');
-    } finally {
       setImportBusy(false);
     }
+  };
+
+  const importWorkspaceFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // aynı dosya ikinci kez seçilebilsin
+    if (!file) return;
+    let paket;
+    try { paket = JSON.parse(await file.text()); }
+    catch (_) {
+      window.showToast?.(_t('set_ws_import_bad_json','Dosya okunamadı: geçerli JSON değil'), 'error');
+      return;
+    }
+    // Trello pano dışa aktarımı: format alanı yok, lists + cards var.
+    // Tanıma sunucudakiyle aynı (lib/trello.js trelloMu); burada yalnızca
+    // soruyu sormak için, karar sunucuda yeniden verilir.
+    const trelloMu = paket && typeof paket === 'object' && !paket.format
+      && Array.isArray(paket.lists) && Array.isArray(paket.cards)
+      && (paket.cards.length === 0 || paket.cards.some(c => c && typeof c === 'object' && 'idList' in c));
+    if (trelloMu) {
+      const lists = paket.lists
+        .filter(l => l && typeof l === 'object' && l.closed !== true && typeof l.id === 'string')
+        .sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0))
+        .map(l => ({ id: l.id, name: String(l.name ?? '').trim() || l.id }));
+      // Gövde sınırı 10 MB; Trello dosyasının çoğu bize gerekmeyen eylem ve
+      // tercih verisi. Yalnızca dönüştürücünün okuduğu alanlar gönderilir.
+      const board = {
+        id: paket.id, name: paket.name,
+        lists: paket.lists, labels: paket.labels, members: paket.members, checklists: paket.checklists,
+        cards: paket.cards.map(c => (c && typeof c === 'object') ? {
+          id: c.id, name: c.name, desc: c.desc, closed: c.closed, idList: c.idList, idLabels: c.idLabels,
+          labels: c.labels, idMembers: c.idMembers, pos: c.pos, due: c.due, start: c.start, dateLastActivity: c.dateLastActivity,
+        } : c),
+        actions: (Array.isArray(paket.actions) ? paket.actions : []).filter(a => a && a.type === 'commentCard'),
+      };
+      setTrelloBitis('');
+      setTrelloBekleyen({ board, lists, cards: board.cards.filter(c => c && c.closed !== true).length });
+      return;
+    }
+    await importGonder(paket);
+  };
+
+  const trelloOnayla = async () => {
+    if (!trelloBekleyen) return;
+    const govde = { source: 'trello', done_list: trelloBitis || null, board: trelloBekleyen.board };
+    setTrelloBekleyen(null);
+    await importGonder(govde);
   };
 
   const [name, setName]   = React.useState(me.name || '');
@@ -1397,13 +1444,39 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
               <label>{_t('set_ws_import_title','İçe aktar')}</label>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ flex: 1, minWidth: 200, fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
-                  {_t('set_ws_import_desc','StoaBoard JSON dosyası. Her seferinde yeni proje açılır, var olan projelere karışmaz. Atananlar bu alanın üyeleri arasında eşlenir; eşleşmeyenler kartta not olarak düşer.')}
+                  {_t('set_ws_import_desc','StoaBoard JSON ya da Trello pano dosyası. Her seferinde yeni proje açılır, var olan projelere karışmaz. Atananlar bu alanın üyeleri arasında eşlenir; eşleşmeyenler kartta not olarak düşer.')}
                 </span>
                 <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={importWorkspaceFile} />
-                <button className="btn btn-ghost" style={{ fontSize: 12, flexShrink: 0 }} disabled={importBusy} onClick={() => importInputRef.current?.click()}>
+                <button className="btn btn-ghost" style={{ fontSize: 12, flexShrink: 0 }} disabled={importBusy || !!trelloBekleyen} onClick={() => importInputRef.current?.click()}>
                   <Icon name="upload" size={12} /> {importBusy ? _t('set_ws_import_busy','Yükleniyor…') : _t('set_ws_import_btn','JSON yükle')}
                 </button>
               </div>
+              {/* Trello: bitiş listesi sorusu. Dosya sunucuya bu cevapla
+                  birlikte gider; cevapsız gönderim yok (sunucu da reddeder). */}
+              {trelloBekleyen && (
+                <div className="danger-confirm" style={{ marginTop: 12 }}>
+                  <div>
+                    <strong>{_t('set_ws_import_trello_title','Trello panosu tanındı: {name}').replace('{name}', trelloBekleyen.board.name || 'Trello')}</strong>
+                    <p>{_t('set_ws_import_trello_desc','{lists} liste, {cards} kart. Hangi liste "tamamlandı" sayılsın? Raporlar bu seçime dayanır; arşivdeki kartlar taşınmaz.')
+                      .replace('{lists}', trelloBekleyen.lists.length).replace('{cards}', trelloBekleyen.cards)}</p>
+                  </div>
+                  <DefaultDropdown
+                    value={trelloBitis}
+                    onChange={setTrelloBitis}
+                    fullWidth
+                    placeholder={_t('set_ws_import_trello_none','— Bitiş kolonu yok —')}
+                    options={trelloBekleyen.lists.map(l => ({ value: l.id, label: l.name }))}
+                  />
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button className="btn btn-ghost" onClick={() => setTrelloBekleyen(null)} disabled={importBusy}>
+                      {_t('set_dng_cancel','İptal')}
+                    </button>
+                    <button className="btn btn-ghost" onClick={trelloOnayla} disabled={importBusy}>
+                      <Icon name="upload" size={12} /> {trelloBitis ? _t('set_ws_import_trello_go','İçe aktar') : _t('set_ws_import_trello_go_none','Bitiş kolonu olmadan içe aktar')}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
