@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 19 Eylül 2026 akşamı, **ev makinesinde**. En taze bölüm
-**0-AH**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**Son güncelleme:** 20 Eylül 2026, **ev makinesinde**. En taze bölüm
+**0-AI**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,59 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AI. 20 Eylül — taşınma tamam (Trello + CSV), darboğaz tablosu, kolon dili, alan geçişi yayını, demo alanı
+
+**Ev makinesi.** Kullanıcı "Eray Atalay - 2'ye ait kartları al geliştir" dedi;
+İncelemede 28 kart doğrulama bekliyordu, Yapılacak/Backlog karar bekliyordu,
+somut iş **Devam Ediyor'daki iki kartın** kalan alt görevlerindeydi. Testler
+**1000 → 1067**, beş commit, hepsi push'ta.
+
+| Commit | Kart | İş |
+|---|---|---|
+| `09a26a7` | #152 | **Trello JSON içe aktarma.** `lib/trello.js` saf dönüştürücü → bizim paket → aynı doğrulama ve tek transaction. Bitiş listesini kullanıcı seçer (`done_list` zorunlu, null = yok); arşiv taşınmaz ama sayılır; kırpma sayılır. Kart açılışı ObjectId'den. **Yol üstünde kusur:** doğrulayıcı kolon adresinde Türkçe harf kabul etmiyordu (#251'den beri `yapılacak`) — Türkçe kolonlu alanın kendi dışa aktarımı içe alınamıyordu |
+| `968c49a` | #146 | **Darboğaz tablosu + funnel** (`lib/darbogaz.js`): eski bekleme tablosu yalnızca kolondan çıkan kartı ölçüyordu, birikip çıkmayan kolon sıfır görünüyordu; şimdi "şu an bekleyen" de var, rapor penceresine kırpılı. **Önceki dönem + yönetici özeti** (`lib/donem.js`); cümle istemcide sözlükten, sunucu yalnızca kalıp seçiyor. "Hedef gün" bilerek yok (şema ister, #198/#237) |
+| `7cba0dc` | #288 | **Kolon adları dili izlemiyordu** — istemci 22 yerde `title_tr` okuyordu, İngilizce ekranda "Yapılacak / Devam Ediyor". Tek okuyucu `data.jsx kolonAdi()`; `dil.test.js` `.title_tr` okumasını yasaklıyor. Aile: ana sayfa "…ilerliyor harika gidiyor!" noktasız yapışma, "progress great progress" |
+| `ee5b091` | #289 | **Alan geçişi bütün sekmelere.** Dört yol dört davranış: soket yalnızca kendine, REST (MCP buradan) hiç, alan açma/kodla katılma hiç. Tek yardımcı `alanGecisiYayini` kullanıcı odasına; istemci zaten o alandaysa yüklemiyor |
+| `e340b2e` | #152 | **Genel CSV içe aktarma** (`lib/csvIce.js`): ayraç tahmini, tırnak, BOM/UTF-16; başlıktan eşleme tahmini (TR/EN); aynı `/import` ucu `preview:true` ile başlık/örnek/tahmin döner (**yeni uç yok**); istemcide sekiz alanlık eşleme formu; durum sütunu eşliyse `done_value` zorunlu. Tarih belirsizse GÜN ÖNCE |
+
+### Demo alanı (#187 alt görev 167) — "StoaBoard Yazılım" (id 19)
+
+Kullanıcı profilleri kurdu: `eray-atalay` = **Mehmet Can** (Arka Uç
+Geliştiricisi), `eray-atalay-3` = **Ayşe Kaya** (Ürün Tasarımcısı) — dikkat,
+sahip hesap Mehmet. 14 kart MCP ile yazıldı (5/3/3/2/2 dağılım, üçünde alt
+görev, ikisinde yorum, bilerek dengesiz). İlk yazımda roller ters düştü
+(kartlar Ayşe = sahip varsayımıyla yazılmıştı); yeniden atandı. #281'deki
+"Tasarım hazır" yorumu Mehmet'in adıyla kaldı, kullanıcı silip Ayşe'den
+atacaktı. Etiket yok (MCP'de etiket açma aracı yok; kullanıcı açarsa
+bağlanır). Ekran görüntüsü önerisi: açık tema, Mehmet'in panosu, #281 açık.
+Kullanıcının ürettiği ilk portreler loş/sinematikti; gündüz ışığı, nötr
+zemin, açık gömlek / koyu kazak istemi verildi — 28 px'te ayırt ediliyor.
+
+Yol boyunca ClickUp reklamı (üç panelli kompozisyon) konuşuldu: kompozisyon
+sektörün ortak dili, kopya değil; "7 uygulamayı değiştirdim" gibi sayı
+uydurulmayacak, vitrin brief'i zaten yasaklıyor.
+
+### Kaldığı yer
+
+- **HEAD `e340b2e`** + bu devir commit'i; push edildi. Ağaç temiz. Hiçbir
+  karta Devam Ediyor'da atalı değilim.
+- **#152** 4/5 — kalan "Ekler" boyut kararı; kod işi bitti. **#146** 6/6 —
+  Devam Ediyor'da, canlı doğrulamayla kapanır. **#288, #289** İncelemede.
+- **#261 tur kartı** 40 madde (35-40 bugün). Deploy sonrası kullanıcı toplu
+  doğrulayacak.
+- **Bir gözlem, kart açılmadı:** kullanıcı tarayıcıda BDH'ye geçti dedi ama
+  `whoami` hâlâ "StoaBoard Yazılım" dedi — ya Ayşe'nin tarayıcısından geçti,
+  ya tarayıcı geçişi MCP'nin okuduğu yere yazmıyor. İkincisiyse #260'ın
+  konusu (karar ertelenmiş). Doğrulanmadı.
+- **Bir gözlem daha:** Ayşe'nin kenar çubuğunda Çöp Kutusu **4** rozeti,
+  Mehmet'inkinde yok (aynı alan). Sayfa bayat olabilir; kullanıcı F5 ile
+  bakacaktı. Fark sürerse kusur (rozet kişiye göre mi sayıyor?).
+- Karar bekleyenler değişmedi (0-AH listesi). #124 hangi Neon dalı hâlâ
+  bilinmiyor — Trello/CSV/rapor işlerinin hiçbiri yerelde canlı veriyle
+  denenmedi, hepsi saf test + mutasyon.
 
 ---
 
