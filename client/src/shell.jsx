@@ -172,7 +172,7 @@ function Sidebar({
           onClick={onWsSwitcherToggle}
           style={{ cursor: 'pointer', userSelect: 'none' }}
         >
-          <div className="ws-avatar" style={wsLogoUrl ? { padding: 0, overflow: 'hidden' } : {}}>
+          <div className="ws-avatar" style={wsLogoUrl ? { padding: 0, overflow: 'hidden', background: 'transparent' } : {}}>
             {wsLogoUrl
               ? <img src={wsLogoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               : (DATA.WORKSPACE?.name || 'S')[0].toUpperCase()
@@ -212,7 +212,7 @@ function Sidebar({
               >
                 <div style={{
                   width: 28, height: 28, borderRadius: 7, flexShrink: 0, fontSize: 12, fontWeight: 700,
-                  background: 'var(--accent)', color: 'white',
+                  background: ws.logo_url ? 'transparent' : 'var(--accent)', color: 'white',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                 }}>
                   {ws.logo_url

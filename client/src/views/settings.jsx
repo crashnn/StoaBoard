@@ -1405,11 +1405,14 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
           </div>
           <div className="settings-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {/* Kenarlık ve vurgu zemini HARF yedeği için; yüklenen logoda
+                  ikisi de çerçeve gibi görünüyordu (20 Eylül). Logo kendi
+                  zeminiyle gelir, kutu ona karışmaz. */}
               <div style={{
                 width: 56, height: 56, borderRadius: 12, overflow: 'hidden', flexShrink: 0,
-                background: 'var(--accent)', display: 'flex', alignItems: 'center',
+                background: logoUrl ? 'transparent' : 'var(--accent)', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontSize: 22, fontWeight: 700, color: 'white',
-                border: '1px solid var(--line)',
+                border: logoUrl ? 'none' : '1px solid var(--line)',
               }}>
                 {logoUrl
                   ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
