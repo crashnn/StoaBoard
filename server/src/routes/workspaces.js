@@ -28,7 +28,7 @@ import crypto from 'node:crypto';
 import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireAuth } from '../lib/session.js';
-import { emitSafely } from '../lib/emit.js';
+import { emitSafely, alanGecisiYayini } from '../lib/emit.js';
 import {
   currentMember,
   memberForWorkspace,
@@ -243,6 +243,9 @@ workspacesRouter.post(
       return ws;
     });
 
+    // Yeni alan aktif alan oldu; öbür sekmeler de geçsin (#289). Transaction
+    // bittikten sonra: geri alınmış bir alana geçiş yayınlanmasın.
+    alanGecisiYayini(req.app.get('io'), user.id, result.id);
     res.status(201).json({
       ok: true,
       invite_code: result.inviteCode,
@@ -338,6 +341,7 @@ workspacesRouter.post(
         where: { id: user.id },
         data: { currentWorkspaceId: ws.id },
       });
+      alanGecisiYayini(req.app.get('io'), user.id, ws.id);
       return res.json({ ok: true, workspace_id: ws.id });
     }
 
@@ -599,6 +603,9 @@ workspacesRouter.post(
       where: { id: user.id },
       data: { currentWorkspaceId: wsId },
     });
+    // MCP de bu uçtan geçiyor (set_active_workspace → callSelf); açık
+    // sekmeler bu olayla yeni alanı yüklüyor (#289).
+    alanGecisiYayini(req.app.get('io'), user.id, wsId);
     res.json({ ok: true, workspace_id: wsId });
   }),
 );

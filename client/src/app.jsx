@@ -559,7 +559,11 @@ function App() {
       });
     });
     // Olay yeni alanın kimliğini taşıyor: o alanda en son açık proje gelsin.
+    // Sunucu bunu kullanıcının BÜTÜN sekmelerine gönderiyor (#289): başka
+    // sekmede ya da MCP'den alan değişince bu sekme de geçer. Geçişi başlatan
+    // sekme zaten yüklemiş oluyor; aynı alandaysak ikinci yükleme yok.
     sock.on('workspace_switched', ({ workspace_id } = {}) => {
+      if (!workspace_id || String(window.DATA?.WORKSPACE?.id) === String(workspace_id)) return;
       onyukle(workspace_id).then(data => {
         _applyBootstrap(data);
         setTasks(data.tasks || []);
@@ -1051,9 +1055,9 @@ function App() {
   // ── Workspace switching ───────────────────────────────────────────────────
   const handleSwitchWorkspace = async (wsId) => {
     try {
+      // Sunucu bu uçtan bütün sekmelere workspace_switched yayınlıyor (#289);
+      // ayrıca soket olayı göndermek aynı geçişi iki kez yayınlatırdı.
       await API.switchWorkspace(wsId);
-      // Notify socket server to update rooms
-      if (window.SOCKET) window.SOCKET.emit('switch_workspace', { workspace_id: wsId });
       const data = await onyukle(wsId);
       _applyBootstrap(data);
       setTasks(data.tasks || []);

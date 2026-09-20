@@ -19,6 +19,7 @@ import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { sessionMiddleware } from '../app.js';
 import { usersShareWorkspace, resolveWorkspaceId } from '../lib/workspace.js';
 import { userChannelRole, mentionAllowed } from '../lib/channels.js';
+import { alanGecisiYayini } from '../lib/emit.js';
 
 const MENTION_RE = /@([\w-]+)/g;
 
@@ -135,7 +136,10 @@ export function registerChatHandlers(io) {
         where: { id: user.id },
         data: { currentWorkspaceId: wsId },
       });
-      socket.emit('workspace_switched', { workspace_id: wsId });
+      // Yalnızca bu sokete değil, kullanıcının bütün sekmelerine (#289).
+      // Yeni istemci bu olayı göndermiyor (REST ucu yayınlıyor); eski
+      // sekmeler için duruyor.
+      alanGecisiYayini(io, user.id, wsId);
     });
 
     // ── chat_message ──

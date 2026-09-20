@@ -41,3 +41,20 @@ export function emitSafely(io, olay, fn) {
     return false;
   }
 }
+
+/**
+ * Aktif alan değişti — kullanıcının BÜTÜN açık sekmelerine (#289).
+ *
+ * Alanı değiştiren üç yol vardı ve üçü farklı davranıyordu: tarayıcının
+ * soket olayı yalnızca o sokete haber veriyordu (`socket.emit`), REST ucu
+ * (MCP'nin set_active_workspace'i buradan geçer) hiç haber vermiyordu, alan
+ * açma / kodla katılma da vermiyordu. Sonuç: Claude alanı değiştirince ya da
+ * ikinci sekmede alan değiştirilince açık sekme eski alanda kalıyor, F5
+ * istiyordu. `currentWorkspaceId`'yi yazan her yer bunu çağırır; oda
+ * kullanıcının kendi odası (user_<id>), yani yalnızca o kişinin sekmeleri.
+ */
+export function alanGecisiYayini(io, userId, workspaceId) {
+  return emitSafely(io, 'workspace_switched', (s) => {
+    s.to(`user_${userId}`).emit('workspace_switched', { workspace_id: workspaceId });
+  });
+}
