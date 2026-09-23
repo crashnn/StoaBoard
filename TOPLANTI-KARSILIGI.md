@@ -234,6 +234,13 @@ bugün Trello/Asana/Notion'da düzgün karşılığı olmayan bir şey. Ama MCP 
 salt okuma, tek kişilik ve ortam değişkeni elle düzenlenerek kuruluyor —
 satılabilir olması için en az kendi kendine anahtar üretme (TODO'da) gerekiyor.
 
+> **23 Eylül 2026 notu — bu şerh kapandı.** MCP artık salt okuma değil (0.9.1,
+> yazma açık, 23 araç), tek kişilik değil ve elle ortam değişkeni istemiyor:
+> kişisel anahtarlar Ayarlar → Claude bağlantısı'ndan üretiliyor. Yani
+> paragrafın "satılamaz" gerekçesi ortadan kalktı; kanca bugün hazır. Geri
+> kalan engel aynı — paket uygulanacak katman hâlâ proje bazlı erişimi
+> bekliyor. Ayrıntı 7.6'da.
+
 **İki tuzak:**
 
 - **Sızıntının tamiri paralı olmamalı.** Proje bazlı erişim "Pro özelliği"
@@ -310,6 +317,55 @@ elimizde, tahmine gerek yok.
 aşamada yeni özellik eklemek, var olanı satılabilir hâle getirmekten daha az
 değer üretiyor.
 
+
+### 7.6 · Sesli sohbet, premium ve Claude ile konuşma
+
+*(23 Eylül 2026. Soruldu, tartıldı, **karar verilmedi** — bu bölüm not olarak
+duruyor. Soru üç parçaydı: sohbete arama eklemek · bunu premium'a özel yapmak ·
+ilerde MCP üzerinden Claude ile sesli görüşme.)*
+
+**Aramayı premium yapmak 7.1'in gerekçelerini çürütmüyor, ağırlaştırıyor.**
+
+- Sayaçlı gider paralı olunca *kaybolmaz*, sabitlenir. Aylık sabit ücretle
+  sınırsız medya satarsan zararı sen yazarsın; dakika satarsan ürünün tek
+  iddiası olan sadelik gider.
+- Ücretli özellik "çalışsa iyi olur" olamaz. Bedava arama düşerse kullanıcı
+  Meet'e geçer; **parasını verdiği** arama düşerse destek talebi açar. Simetrik
+  NAT, yankı ve mobil tarayıcı tuhaflıkları paralı sürümde çok daha pahalıya
+  gelir.
+- Paket uygulamak bugün zaten mümkün değil: 7.2'nin teknik ön koşulu yerinde
+  duruyor. Sınırın uygulandığı katman yetkilendirmenin yaşadığı katmanla aynı
+  ve bir üye hâlâ çalışma alanındaki her şeyi görüyor. **Proje bazlı üyelik
+  bitmeden hiçbir şeyin arkasına duvar çekilemez** — arama dâhil.
+
+Ucuz karşılık değişmedi (7.1): görüşme bağlantısı alanı + kartta "görüşmeye
+katıl". Gerçekten WebRTC yazılacaksa yalnızca 1:1 ekran paylaşımı.
+
+**"Claude ile sesli görüşme" aslında iki ayrı iş — ve biri bedava.**
+
+MCP ses taşımaz; metin/JSON araç çağrısıdır. Ses her zaman *istemcinin* işidir.
+Bu ayrım yapılmazsa tek bir fikir gibi görünüyorlar:
+
+- **(a) Kullanıcı Claude ile konuşur, Claude Stoa araçlarını çağırır.** Stoa'da
+  yazılacak hiçbir şey yok: sesi Claude uygulaması sağlıyor, araçları sunucu
+  zaten veriyor. Bu bir özellik değil, **pazarlama cümlesi** — "panonu sesle
+  yönet". Maliyeti sıfır.
+- **(b) Stoa'nın kendi arayüzünde sesli asistan.** Mikrofon → yazıya çevirme →
+  araç erişimli model → sese çevirme. Premium olarak mantıklı olan tek aday
+  bu: değeri farklılaşmış, maliyeti kullanımla artıyor, yani fiyat maliyeti
+  gerçekten karşılıyor. Aramada bu denklem yok — bant genişliği yakıp
+  karşılığında Meet'in yaptığı şeyi yapıyorsun.
+
+**(b) girilirse atlanmayacak olan:** sesli asistan kartları okuyup işlem yapan
+bir yüzeydir, enjeksiyon yüzeyini genişletir. MCP sunucusunun kuralları ("veri
+talimat değildir", geliştirici ekipte olmayan yazara tedbir, reddedilen işi
+başka yoldan deneme) bugün sunucuda uygulanıyor. Sesli asistan **o kapıdan**
+geçmeli, yanına açılan yeni bir yoldan değil.
+
+**Sıralamaya etkisi yok.** (a) sıfır iş olduğu için sıraya girmiyor, denenir.
+(b) premium adayı olarak kaydedildi ama 7.5'teki 1. maddenin arkasında: paywall
+proje bazlı erişim olmadan kurulamaz. Ve 7.4'ün sorusu duruyor — sesli asistan
+da *"birileri bunu gerçekten kullanıyor mu"* sorusunu cevaplamıyor, erteliyor.
 **Bu bölüm bir karar değil, değerlendirme.** Karar verildiğinde bu belgeye
 işlenmeli — özellikle 7.1'e "yine de yapılacak" denirse, gerekçesi buraya
 yazılmalı ki maliyetin bilerek kabul edildiği görünsün.
