@@ -12,6 +12,7 @@ import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, fmtTimeAgo, fmtAbsoluteDateTime } from '../data.jsx';
 import { DefaultDropdown } from '../dropdown.jsx';
+import { benSlug } from '../ben.js';
 
 // Tones reused from settings.jsx — kept local to avoid module reference issue.
 const NOTE_LABEL_TONES = () => {
@@ -1107,9 +1108,10 @@ function NotesView({ socket, tasks, members, currentUserId, isOwner, canManagePr
     if (!socket) return;
     const onCreated = (note) => {
       if (!note) return;
-      if (note.actor && note.actor === window.CURRENT_USER?.slug) {
-        // own creation already added optimistically — still merge in case fields differ
-      }
+      // Kendi oluşturduğum not iyimser olarak zaten eklendi; aşağıdaki
+      // birleştirme kimlikle tekil olduğu için ayrı bir yankı elemesi
+      // gerekmiyor. Burada 30 Eylül'e kadar gövdesi BOŞ bir if duruyordu ve
+      // koşulu da yanlış alanı okuyordu (`CURRENT_USER.slug`, bkz. ben.js).
       setNotes(prev => {
         if (prev.some(n => n.id === note.id)) {
           return prev.map(n => n.id === note.id ? { ...n, ...note } : n);
@@ -1274,7 +1276,7 @@ function NotesView({ socket, tasks, members, currentUserId, isOwner, canManagePr
     if (filterPinned) list = list.filter(n => n.pinned);
     if (filterLabel)  list = list.filter(n => (n.labels || []).some(l => l.name.toLowerCase() === filterLabel.toLowerCase()));
     if (filterAuthor) {
-      if (filterAuthor === '__me__') list = list.filter(n => n.author === window.CURRENT_USER?.slug);
+      if (filterAuthor === '__me__') list = list.filter(n => n.author === benSlug());
       else list = list.filter(n => n.author === filterAuthor);
     }
     if (q.trim()) {
@@ -1314,8 +1316,8 @@ function NotesView({ socket, tasks, members, currentUserId, isOwner, canManagePr
         </div>
       );
     }
-    const isAuthor   = note.author === window.CURRENT_USER?.slug;
-    const isCollab   = (note.collaborators || []).includes(window.CURRENT_USER?.slug);
+    const isAuthor   = note.author === benSlug();
+    const isCollab   = (note.collaborators || []).includes(benSlug());
     const canEdit    = isOwner || canManageProjects || isAuthor || isCollab;
     return (
       <div className="notes-view">
@@ -1537,8 +1539,8 @@ function NotesView({ socket, tasks, members, currentUserId, isOwner, canManagePr
               <div className={`notes-grid notes-grid-${viewMode}`}>
                 {pinned.map(n => {
                   const author = members.find(m => m.id === n.author);
-                  const isAuthor = n.author === window.CURRENT_USER?.slug;
-                  const isCollab = (n.collaborators || []).includes(window.CURRENT_USER?.slug);
+                  const isAuthor = n.author === benSlug();
+                  const isCollab = (n.collaborators || []).includes(benSlug());
                   const canEdit  = isOwner || canManageProjects || isAuthor || isCollab;
                   return (
                     <NoteCard key={n.id} note={n} author={author} viewMode={viewMode}
@@ -1559,8 +1561,8 @@ function NotesView({ socket, tasks, members, currentUserId, isOwner, canManagePr
               <div className={`notes-grid notes-grid-${viewMode}`}>
                 {others.map(n => {
                   const author = members.find(m => m.id === n.author);
-                  const isAuthor = n.author === window.CURRENT_USER?.slug;
-                  const isCollab = (n.collaborators || []).includes(window.CURRENT_USER?.slug);
+                  const isAuthor = n.author === benSlug();
+                  const isCollab = (n.collaborators || []).includes(benSlug());
                   const canEdit  = isOwner || canManageProjects || isAuthor || isCollab;
                   return (
                     <NoteCard key={n.id} note={n} author={author} viewMode={viewMode}

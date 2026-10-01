@@ -16,6 +16,8 @@ import { durumdanYol, yoldanDurum, girisNoktasiMi, HUKUKI_YOLLAR, hatirlananGoru
 import { komsuKartlar } from './komsu.js';
 import { katmanYoneticisi } from './katman.js';
 import { etkinligeEkle } from './etkinlik.js';
+import { benSlug, benimYankim } from './ben.js';
+import { kartiYerlestir } from './kartListesi.js';
 import { CommandPalette } from './palette.jsx';
 import { ErrorBoundary } from './error-boundary.jsx';
 import { TweaksPanel } from './tweaks.jsx';
@@ -633,12 +635,12 @@ function App() {
     // Notes count maintenance (NotesView keeps its own list; we mirror count here)
     sock.on('note_created', (note) => {
       if (!note) return;
-      if (note.actor === window.CURRENT_USER?.slug) return;
+      if (benimYankim(note.actor)) return;
       setNotesCount(c => c + 1);
     });
     sock.on('note_deleted', (payload) => {
       if (!payload) return;
-      if (payload.actor === window.CURRENT_USER?.slug) return;
+      if (benimYankim(payload.actor)) return;
       setNotesCount(c => Math.max(0, c - 1));
     });
 
@@ -653,21 +655,21 @@ function App() {
     //
     // YANKI ELEMESİ: eylemi yapanın ekranı zaten iyimser güncellendi; kendi
     // yankısını uygulamak kart listesini iki kez oynatır ve sürüklerken
-    // titreme yaratır. Sunucu her gövdeye `actor` koyuyor.
+    // titreme yaratır. Sunucu her gövdeye `actor` koyuyor; karşılaştırma
+    // `ben.js` → `benimYankim`de, çünkü 30 Eylül'e kadar buradaki yerel
+    // kopya yanlış alanı (`CURRENT_USER.slug`) okuyordu ve hiç çalışmadı.
     //
     // PROJE SÜZGECİ: `tasks` yalnızca AKTİF projenin kartlarını tutuyor. Başka
     // projedeki bir kartı listeye eklemek panoyu sessizce yanlış yapardı —
     // ekranda görünür ama hiçbir kolona ait değil.
-    const benimYankim = (actor) => actor && actor === window.CURRENT_USER?.slug;
     const aktifProjede = (t) => String(t?.project_id) === String(window.CURRENT_PROJECT_ID);
 
     sock.on('task_created', ({ task, actor }) => {
       if (!task || benimYankim(actor) || !aktifProjede(task)) return;
-      // Kimlik elemesi: geri alma da bu olayı kullanıyor ve kart listede
-      // duruyor olabilir.
-      setTasks(prev => (prev.some(t => String(t.id) === String(task.id))
-        ? prev.map(t => (String(t.id) === String(task.id) ? { ...t, ...task } : t))
-        : [task, ...prev]));
+      // Yerleştirme kimlikle tekil (`kartListesi.js`): geri alma da bu olayı
+      // kullanıyor ve kart listede duruyor olabilir; ayrıca yankı, iyimser
+      // eklemeden ÖNCE gelebiliyor (sunucu 201'den önce yayınlıyor).
+      setTasks(prev => kartiYerlestir(prev, task));
     });
 
     sock.on('task_updated', ({ task, actor }) => {
@@ -1135,7 +1137,7 @@ function App() {
     // söyleniyor, eklenenler kartta hemen görünüyor.
     const { checklist = [], ...gorev } = formData || {};
     const created = await API.createTask(projectId, gorev);
-    setTasks(prev => [created, ...prev]);
+    setTasks(prev => kartiYerlestir(prev, created));
     if (created?.id && checklist.length > 0) {
       let eklenen = 0;
       for (const item of checklist) {
@@ -1159,7 +1161,7 @@ function App() {
       if (task) setTrashTasks(prev => [{ ...task, deleted_at: new Date().toISOString() }, ...prev]);
     } catch (e) {
       console.error(e);
-      if (task) setTasks(prev => [...prev, task]);
+      if (task) setTasks(prev => kartiYerlestir(prev, task, 'son'));
     }
   };
 
@@ -1167,7 +1169,7 @@ function App() {
     try {
       const restored = await API.restoreTask(id);
       setTrashTasks(prev => prev.filter(t => String(t.id) !== String(id)));
-      setTasks(prev => [...prev, restored]);
+      setTasks(prev => kartiYerlestir(prev, restored, 'son'));
       window.showToast?.(window.t?.('trash_restored') || 'Görev geri alındı', 'success');
     } catch (e) { console.error(e); }
   };
@@ -1547,15 +1549,6 @@ function App() {
     'hizmet-sartlari': window.t?.('crumb_terms') || 'Hizmet Şartları'
   }[view] || window.t('crumb_board');
 
-  // My-tasks open count (assigned to me, not in a done column)
-  const myId = window.CURRENT_USER?.id;
-  const myTasksOpenCount = myId
-    ? tasks.filter(t => {
-        if (!(t.assignees || []).includes(myId)) return false;
-        const c = (DATA.COLUMNS || []).find(c => c.id === t.col);
-        return !c?.is_done;
-      }).length
-    : 0;
   const noProject = !currentProject && DATA.PROJECTS.length === 0;
 
   // Convert onlineUsers map to Set of online slugs (for backward compat) and expose full map
@@ -1601,7 +1594,6 @@ function App() {
         }}
         mobileOpen={mobileSidebarOpen}
         onMobileClose={() => setMobileSidebarOpen(false)}
-        myTasksOpenCount={myTasksOpenCount}
         notifCount={notifCount}
         notesCount={notesCount}
         trashCount={trashTasks.length + trashNotes.length}
@@ -1651,7 +1643,7 @@ function App() {
                   setTaskPageTask(prev => prev && prev.id === updated.id ? { ...prev, ...updated } : prev);
                 }}
                 onDelete={(id) => { deleteTask(id); closeTaskPage(); }}
-                onCreateTask={(newTask) => setTasks(prev => [newTask, ...prev])}
+                onCreateTask={(newTask) => setTasks(prev => kartiYerlestir(prev, newTask))}
                 canManageTasks={canManageTasks}
                 tweaks={tweaks}
                 komsu={sayfaKomsu}
@@ -1690,7 +1682,7 @@ function App() {
               socket={socket}
               tasks={tasks}
               members={members}
-              currentUserId={window.CURRENT_USER?.slug}
+              currentUserId={benSlug()}
               isOwner={isOwner}
               canManageProjects={canManageProjects}
               onOpenTask={(t) => { setView('board'); setDrawerTask(t); }}
@@ -1745,7 +1737,7 @@ function App() {
           setDrawerTask(prev => prev && prev.id === updated.id ? { ...prev, ...updated } : prev);
         }}
         onDelete={deleteTask}
-        onCreateTask={(newTask) => setTasks(prev => [newTask, ...prev])}
+        onCreateTask={(newTask) => setTasks(prev => kartiYerlestir(prev, newTask))}
         canManageTasks={canManageTasks}
         onOpenPage={openTaskPage}
         tweaks={tweaks}

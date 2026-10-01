@@ -4,6 +4,7 @@ import React, { useState as useBoardState, useRef as useBoardRef, useEffect as u
 import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, kolonAdi } from '../data.jsx';
+import { benSlug } from '../ben.js';
 
 const COL_NAME_MAX = 30;
 const COL_COLORS = ['#6366f1','#3b82f6','#06b6d4','#10b981','#f59e0b','#f97316','#ef4444','#a855f7','#ec4899','#6b7280'];
@@ -1037,13 +1038,6 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
   const scrollRafRef = useBoardRef(null);
   const panRef = useBoardRef(null); // { active, startX, startScroll }
 
-  // Listen for sidebar "Görevlerim" shortcut
-  useBoardEf(() => {
-    const handler = () => setActiveMyTasks(true);
-    window.addEventListener('stoa:activateMyTasks', handler);
-    return () => window.removeEventListener('stoa:activateMyTasks', handler);
-  }, []);
-
   // Sync columns ONLY on initial load, not on every tasks change
   useBoardEf(() => {
     if (initialColumnsSet.current) return; // Already initialized
@@ -1256,7 +1250,17 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
   const idSorgu = /^#\s*(\d+)$/.exec(q);
   const idHam = idSorgu ? idSorgu[1] : null;
 
-  const myId = window.CURRENT_USER?.id;
+  const myId = benSlug();
+
+  // Araç çubuğundaki "Bana atananlar" kısayolunun rozeti: bana atanmış ve
+  // "tamamlandı" kolonunda OLMAYAN kart sayısı. 30 Eylül 2026'ya kadar aynı
+  // sayı `app.jsx`te hesaplanıp kenar çubuğuna veriliyordu; kısayol panoya
+  // taşınınca sayaç da süzgecin yanına geldi — tek okuyucu, tek tanım.
+  const myTasksOpenCount = myId
+    ? tasks.filter(t => (t.assignees || []).includes(myId)
+        && !(DATA.COLUMNS || []).find(c => c.id === t.col)?.is_done).length
+    : 0;
+
   const visibleTasks = tasks.filter(t => {
     // Kimlik kipinde başlığa BAKILMIYOR: "#193" yazan numara arıyor, metin
     // değil. Tam eşleşme ve önek (numarayı tam hatırlamamak asıl sorun).
@@ -1370,6 +1374,23 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
         <Icon name="filter" size={13} />
         {window.t('board_filter')}
         {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
+      </button>
+      {/* "Bana atananlar" kısayolu (30 Eylül 2026, kullanıcı): "bir my tasks
+          kısmını sol panelden çıkart, zaten panodan filtre yapabiliyoruz,
+          filtreler ile arama butonu arasına koy, kısayol filtre gibi."
+          Süzgeç panelinin içindeki çipin ta kendisini açıp kapatıyor —
+          AYNI durum, ikinci bir tanım değil. */}
+      <button
+        className="filter-toggle-btn"
+        data-active={activeMyTasks}
+        onClick={toggleMyTasks}
+        title={window.t('board_my_tasks')}
+      >
+        <Icon name="user" size={13} />
+        {window.t('board_my_tasks')}
+        {myTasksOpenCount > 0 && (
+          <span className="filter-count">{myTasksOpenCount > 99 ? '99+' : myTasksOpenCount}</span>
+        )}
       </button>
       <div className="board-search-wrap">
         <Icon name="search" size={13} style={{ color: 'var(--ink-faint)', flexShrink: 0 }} />

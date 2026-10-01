@@ -294,10 +294,32 @@ describe('görünüm dosyaları — çıplak Türkçe metin kalmamalı', () => {
       // ortasından başlayınca eşleşme kayıyor ve doğru yazılmış kodu
       // ("shell_status_offline" anahtarı tam solundayken) kaçak sanıyordu.
       // Tek geçişte ayrıştırmak bu sınıfı tamamen ortadan kaldırıyor.
+      // Modül yolları taramaya GİRMİYOR. Bir import belirteci hiçbir koşulda
+      // kullanıcının gördüğü metin değil, ama dize olarak kaynakta duruyor ve
+      // sözcük listesine takılabiliyor: bu depodaki modül adları Türkçe
+      // (`komsu.js`, `rozet.js`, `etkinlik.js`, `ben.js`…) ve `Ben` sözcük
+      // listesinde — "BEN" rozeti için eklenmişti (#268). 30 Eylül 2026'da
+      // `./ben.js` eklenince tarama dört dosyada birden kaçak uydurdu.
+      //
+      // `TANIMLAYICI` bu sınıfı kurtaramıyor: ölçütü "tek sözcük, küçük
+      // harfle başlıyor" ve `./ben.js` nokta ile eğik çizgi taşıyor. Doğru
+      // çözüm metni aklamak değil, YERİ taramanın dışında bırakmak — bir
+      // modül yolu hiçbir zaman çeviri adayı değil.
+      const yolAraliklari = [];
+      for (const yolRe of [
+        /\bfrom\s*(['"])[^'"\n]*\1/g,
+        /\bimport\s*\(\s*(['"])[^'"\n]*\1/g,
+        /^\s*import\s*(['"])[^'"\n]*\1/gm,
+      ]) {
+        for (const ym of src.matchAll(yolRe)) yolAraliklari.push([ym.index, ym.index + ym[0].length]);
+      }
+      const modulYolu = (i) => yolAraliklari.some(([a, b]) => i >= a && i < b);
+
       const dizeler = [...src.matchAll(/(['"])((?:[^\\\n]|\\.)*?)\1/g)];
       for (let di = 0; di < dizeler.length; di += 1) {
         const m = dizeler[di];
         const metin = m[2];
+        if (modulYolu(m.index)) continue;
         if (!TURKCE.test(metin)) continue;
         // Tek karakterlik değerler ayraç/işaret olabiliyor.
         //

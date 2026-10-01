@@ -6,6 +6,7 @@ import { Icon } from './icons.jsx';
 import { rolAdi } from './rolAdi.js';
 import { dikeyCekJesti, yaziliyorMu } from './jest.js';
 import { kanaliHatirla, hatirlananKanal } from './rota.js';
+import { benSlug } from './ben.js';
 import { Avatar, AvatarStack } from './shell.jsx';
 
 // Sohbet taslakları: (alan + hedef) çifti başına metin, yanıt ve eklenmiş
@@ -811,7 +812,7 @@ function ChannelSettingsModal({ open, onClose, channel, onUpdated, onDeleted, me
   const doLeaveChannel = async () => {
     setSubmitting(true);
     try {
-      const mySlug = window.CURRENT_USER?.slug || window.CURRENT_USER?.id || me;
+      const mySlug = benSlug() || me;
       await window.API.removeChannelMember(channel.channel_id, mySlug);
       onDeleted({ slug: channel.slug || channel.id, leftSelf: true });
       window.showToast?.(`#${channel.name} ${tx('chat_left_channel', 'kanalından ayrıldın')}`, 'info');
@@ -2284,7 +2285,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
     const onChannelMemberAdded = (ch) => onChannelUpdated(ch);
     const onChannelMemberRemoved = (payload) => {
       // If I'm the one removed, drop the channel from my list
-      const mySlug = window.CURRENT_USER?.slug || window.CURRENT_USER?.id;
+      const mySlug = benSlug();
       if (payload.removed_user_slug && payload.removed_user_slug === mySlug) {
         const slug = payload.slug || payload.id;
         setChannels(prev => {
@@ -2405,10 +2406,56 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   };
 
   // ── File pick & upload ────────────────────────────────────────────────
+  // Panodan gelen görselin adı tarayıcıya göre değişiyor: Chrome "image.png"
+  // veriyor, kimi tarayıcı adı BOŞ bırakıyor. Sunucu adsız dosyayı 400 ile
+  // reddediyor ve türü (`image`/`video`/`file`) UZANTIDAN okuyor
+  // (`routes/attachments.js`), yani adsız bir ekran görüntüsü ya hiç
+  // yüklenmez ya da sohbette ham dosya olarak görünürdü. Ad bu yüzden
+  // tarayıcıya bırakılmıyor, burada kuruluyor: tür MIME'dan, zaman damgası
+  // aynı sohbetteki iki ekran görüntüsünü ayırmak için.
+  //
+  // Ad sohbette GÖRÜNÜYOR, o yüzden sözlükten geçiyor — çıplak metin değil.
+  const panoGorseliniAdlandir = (file) => {
+    const uzanti = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }[file.type] || 'png';
+    const damga = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    const ad = window.t?.('chat_paste_name') || 'ekran-goruntusu';
+    return new File([file], `${ad}-${damga}.${uzanti}`, { type: file.type });
+  };
+
+  // Ctrl+V ile ekran görüntüsü (30 Eylül 2026, kullanıcı): "sohbetten ctrl-v
+  // ile ekran görüntüsünü direkt atabilelim ... Ekran görüntüsü alıyorum,
+  // sonra ctrl-v yapıyorum sohbete gidiyor."
+  //
+  // Panoda görsel YOKSA olay el sürülmeden geçiyor: düz metin yapıştırma
+  // eskisi gibi çalışmalı. Görsel varsa `preventDefault` şart, yoksa tarayıcı
+  // bazı durumlarda görselin yanındaki metin karşılığını da kutuya basıyor.
+  const handlePaste = (e) => {
+    const ogeler = Array.from(e.clipboardData?.items || []);
+    const gorselOgesi = ogeler.find((it) => it.kind === 'file' && (it.type || '').startsWith('image/'));
+    if (!gorselOgesi) return;
+    const ham = gorselOgesi.getAsFile();
+    if (!ham) return;
+    e.preventDefault();
+    // Sessiz geçmek yasak: ataç düğmesi yüklerken kapanıyor ama Ctrl+V'nin
+    // kapatacak bir düğmesi yok, sebebi söylenmezse tuş çalışmıyor sanılır.
+    if (uploading) {
+      window.showToast?.(window.t?.('chat_upload_busy') || 'Önceki yükleme sürüyor, bitmesini bekleyin', 'error');
+      return;
+    }
+    dosyaYukle(panoGorseliniAdlandir(ham));
+  };
+
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+    dosyaYukle(file);
+  };
+
+  // Ataç düğmesi ve Ctrl+V AYNI yoldan geçiyor. Ayrı iki yükleyici olsaydı
+  // hedef alanlarının sırası, hata çevirisi ve hız sınırı cevabı iki yerde
+  // ayrışırdı — bu depoda adı konmuş kusur sınıfı.
+  const dosyaYukle = async (file) => {
     setUploading(true);
     try {
       const fd = new FormData();
@@ -3490,6 +3537,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 rows={1}
               />
               <div className="chat-fp-composer-row">
@@ -4207,6 +4255,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 rows={1}
               />
               <button

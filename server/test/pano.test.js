@@ -168,8 +168,24 @@ describe('istemci pano olaylarını dinliyor ve kendi yankısını eliyor', () =
     // Eylemi yapanın ekranı zaten iyimser güncellendi. Kendi yankısını
     // uygulamak kart listesini iki kez oynatır; sürükleme sırasında titreme
     // olarak görünür.
-    assert.match(APP, /const benimYankim = \(actor\) => actor && actor === window\.CURRENT_USER\?\.slug/,
-      'yankı elemesi yok');
+    //
+    // BU ÖLÇÜT 30 EYLÜL 2026'DA DEĞİŞTİ ve sebebi kayda değer. Eskiden
+    // süzgecin KAYNAK METNİ birebir kilitleniyordu:
+    //
+    //     /const benimYankim = \(actor\) => actor && actor === window\.CURRENT_USER\?\.slug/
+    //
+    // Test yeşildi ve süzgeç hiç çalışmıyordu: sunucunun kullanıcı sözlüğü
+    // `slug` diye bir alan göndermiyor (adres `id`de), yani karşılaştırma
+    // her zaman undefined ile yapılıyordu. Test, metni doğruladığı için
+    // yanlışı da birlikte kilitledi — CLAUDE.md'deki "ölçüt metni arıyorsa
+    // davranışı aramıyordur" sınıfının tam örneği. Görünen kusur: yeni kart
+    // panoda iki kez çıkıyordu.
+    //
+    // Ölçüt artık ikiye ayrıldı: DAVRANIŞ `kimlik.test.js`te saf fonksiyon
+    // üzerinde ölçülüyor, burada yalnızca BAĞLANTI — dinleyicilerin o
+    // fonksiyonu gerçekten çağırdığı.
+    assert.match(APP, /import \{[^}]*benimYankim[^}]*\} from '\.\/ben\.js'/,
+      'yankı elemesi tek okuyucudan (ben.js) gelmiyor');
     const bas = APP.indexOf("sock.on('task_created'");
     const son = APP.indexOf("sock.on('notification'", bas);
     const blok = APP.slice(bas, son);

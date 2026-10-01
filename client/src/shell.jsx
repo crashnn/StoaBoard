@@ -113,7 +113,6 @@ function Sidebar({
   currentStatus, onStatusChange,
   mobileOpen, onMobileClose,
   unreadCounts,
-  myTasksOpenCount,
   notifCount,
   onOpenNotifs,
   notesCount,
@@ -253,16 +252,6 @@ function Sidebar({
       <div className="sidebar-scroll">
       <div className="sidebar-section">
         <NavItem onMobileClose={onMobileClose} icon="home"          label={window.t?.('nav_home') || 'Ana Sayfa'}   sub="Dashboard" onClick={() => onView('dashboard')} active={view === 'dashboard'} />
-        <NavItem onMobileClose={onMobileClose} icon="circleCheck"   label={window.t?.('nav_tasks') || 'Görevlerim'}  sub="My Tasks"
-          badge={myTasksOpenCount > 0 ? (myTasksOpenCount > 99 ? '99+' : String(myTasksOpenCount)) : null}
-          badgeUnread
-          onClick={() => {
-            localStorage.setItem('stoa.filterMyTasks', 'true');
-            window.dispatchEvent(new CustomEvent('stoa:activateMyTasks'));
-            onView('board');
-          }}
-          active={false}
-        />
         <NavItem onMobileClose={onMobileClose} icon="layoutBoard"   label={window.t?.('nav_board') || 'Pano'}       sub="Kanban"    onClick={() => onView('board')}     active={view === 'board'} />
         <NavItem onMobileClose={onMobileClose} icon="calendar"      label={window.t?.('nav_calendar') || 'Takvim'}  sub="Calendar"  onClick={() => onView('calendar')}  active={view === 'calendar'} />
         <NavItem onMobileClose={onMobileClose} icon="msg"           label={window.t?.('nav_chat') || 'Sohbet'}      sub="Chat"
