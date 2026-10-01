@@ -7,6 +7,7 @@ import { rolAdi } from './rolAdi.js';
 import { dikeyCekJesti, yaziliyorMu } from './jest.js';
 import { kanaliHatirla, hatirlananKanal } from './rota.js';
 import { benSlug } from './ben.js';
+import { yerelGunAnahtari } from './tarih.js';
 import { Avatar, AvatarStack } from './shell.jsx';
 
 // Sohbet taslakları: (alan + hedef) çifti başına metin, yanıt ve eklenmiş
@@ -157,12 +158,9 @@ function fmtSize(bytes) {
 }
 
 // ── Local YYYY-MM-DD (uses viewer's timezone, not UTC) ─────────────────────
-function _localDayKey(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+// Yerel gün anahtarı `tarih.js`te — aynı biçimi kart tarihleri de kullanıyor
+// ve iki ayrı kopya ayrışmaya açıktı (1 Ekim 2026).
+const _localDayKey = yerelGunAnahtari;
 // ── Time formatter (converts UTC ISO timestamp to local HH:MM) ────────────
 function fmtMsgTime(msg) {
   const raw = msg.ts || msg.created_at;
@@ -3895,7 +3893,21 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
             {(() => {
               const fmtBadge = (n) => n > 99 ? '+99' : `+${n}`;
               const generalCount = (unreadCounts || {})[wsId ? `general_${wsId}` : 'general'] || 0;
-              const totalDm = Object.entries(unreadCounts || {}).filter(([k]) => k.startsWith('dm_')).reduce((s, [,v]) => s + v, 0);
+              // Sekme rozeti, satır rozetleriyle AYNI kümeden sayıyor.
+              //
+              // KUSUR (1 Ekim 2026, kullanıcı): "+1 rozeti hâlâ var, bir de
+              // hangi DM'den geldiğini anlamıyorum." Toplam bütün `dm_*`
+              // anahtarlarını topluyordu; o anahtarlar localStorage'da
+              // yaşıyor ve alana göre kapsanmıyor. Listede olmayan birinden
+              // (başka alandaki ya da alandan çıkarılmış kişi) gelen
+              // okunmamış mesaj sekmede sayılıyor, ama karşılığında satır
+              // olmadığı için ne görülebiliyor ne temizlenebiliyordu.
+              //
+              // Bu depoda adı konmuş sınıf: aynı sayının iki ayrı hesabı
+              // (bildirim rozetlerinde de aynısı yaşandı). Hesap tek yere
+              // alındı — rozetin gösterdiği her sayının tıklanacak bir
+              // satırı var.
+              const totalDm = members.reduce((s, m) => s + ((unreadCounts || {})[`dm_${m.id}`] || 0), 0);
               const mediaCount = (unreadCounts || {}).media || 0;
               return (<>
                 <button data-active={tab === 'general'} onClick={() => setTab('general')}>

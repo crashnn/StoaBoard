@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
 import { Avatar } from './shell.jsx';
 import { kolonAdi } from './data.jsx';
+import { bugunYerel } from './tarih.js';
 
 // ── Custom Date Picker ─────────────────────────────────────────────────────
 function DatePicker({ value, onChange, error }) {
@@ -174,7 +175,6 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
   const [showPerAssignee, setShowPerAssignee] = useModalState(false);
   const [busy, setBusy]           = useModalState(false);
   const [titleError, setTitleError]   = useModalState(false);
-  const [startError, setStartError]   = useModalState(false);
   const [dueError, setDueError]       = useModalState(false);
   const [checklistItems, setChecklistItems] = useModalState([]);
   const [checklistInput, setChecklistInput] = useModalState('');
@@ -231,7 +231,20 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
       }
       const me = window.CURRENT_USER;
       setAssignees(me ? [me.id] : []);
-      if (initialDates?.start) setStartDate(initialDates.start);
+      // Başlangıç BUGÜNLE doluyor (17 Eylül kararı, 1 Ekim 2026'da istemciye
+      // de geçti): "task oluştururken başlangıç tarihi oluşturduğu an ...
+      // ancak başlangıç değişebilir, default bugün o gün olsun." Sunucu bunu
+      // zaten yapıyordu (`routes/tasks.js`, `bugununTarihi()`) ama modal alanı
+      // ZORUNLU tuttuğu için varsayılan hiç devreye giremiyordu — kullanıcı
+      // her kartta tarihi elle seçmek zorundaydı.
+      //
+      // Dayatma değil varsayılan: alan açık, kullanıcı değiştirebiliyor ve
+      // boşaltabiliyor. Boş gönderilirse sunucunun varsayılanı devralıyor.
+      //
+      // BİTİŞ bilerek boş doğuyor. Kararın öteki yarısı: tahmin edilen bir
+      // teslim tarihi, girilmemiş olandan kötüdür — raporda gerçekmiş gibi
+      // görünür ve kimse onu koymadığını bilmez.
+      setStartDate(initialDates?.start || bugunYerel());
       if (initialDates?.end)   setDue(initialDates.end);
     }
   }, [open]);
@@ -247,7 +260,6 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
     if (busy) return;
     let hasErr = false;
     if (!title.trim()) { setTitleError(true); hasErr = true; }
-    if (!startDate) { setStartError(true); hasErr = true; }
     if (!due) { setDueError(true); hasErr = true; }
     if (hasErr) return;
     setBusy(true);
@@ -340,8 +352,8 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
           </div>
           <div className="field-row">
             <div className="field">
-              <label>{window.t('modal_start_label')} {startError && <span style={{ color: 'var(--status-rose)', fontWeight: 400, fontSize: 11 }}>— {window.t('modal_required')}</span>}</label>
-              <DatePicker value={startDate} onChange={(v) => { setStartDate(v); setStartError(false); }} error={startError} />
+              <label>{window.t('modal_start_label')}</label>
+              <DatePicker value={startDate} onChange={setStartDate} />
             </div>
             <div className="field">
               <label>{window.t('modal_due_label')} {dueError && <span style={{ color: 'var(--status-rose)', fontWeight: 400, fontSize: 11 }}>— {window.t('modal_required')}</span>}</label>

@@ -94,7 +94,14 @@ export function registerChatHandlers(io) {
     // ── disconnect ──
     socket.on('disconnect', async () => {
       try {
-        onlineState.setOffline(user.id);
+        // Yalnızca BU soket düşüyor. Kişinin başka sekmesi ya da cihazı
+        // açıksa çevrimdışı değil — `setOffline` kümede soket kalmadıysa
+        // true dönüyor (1 Ekim 2026, bkz. onlineState.js). Önceden koşulsuz
+        // siliniyordu: ikinci sekmeyi kapatmak ya da ağın bir an kopup
+        // yeniden bağlanması kişiyi uygulamanın içindeyken çevrimdışı
+        // gösteriyordu.
+        const tamamenCevrimdisi = onlineState.setOffline(user.id, socket.id);
+        if (!tamamenCevrimdisi) return;
         await prisma.user.update({
           where: { id: user.id },
           data: { status: 'offline' },
