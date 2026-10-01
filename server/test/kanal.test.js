@@ -46,12 +46,20 @@ describe('sohbet — kanal adı boş durum ve yazma kutusunda (#249)', () => {
   });
 
   test('her boş durum kopyası kanal adını kullanıyor', () => {
-    // Mesaj listesinin boş durumu; yıldızlı/sabitli/üye boş durumları da
-    // chat-empty sınıfını taşıyor, çapa onlara kaymasın.
-    const bloklar = kopyalar(CHAT, '{messages.length === 0 && (', '</div>');
+    // Çapa 1 Ekim 2026'da DEĞİŞTİ. Eskiden `{messages.length === 0 && (`
+    // metnine bağlıydı ve boş duruma ikinci bir dal eklenince (yükleme
+    // hatası, `gecmisHatasi`) çapa hiçbir şeye uymaz oldu: tarama sıfır
+    // blok görüp "kopya sayısı 0" dedi. Ölçüt koşulun YAZILIŞINA bağlıydı,
+    // koruduğu şeye değil.
+    //
+    // Artık doğrudan korunan metne bağlı: "ilk mesajı gönder" kopyası kaç
+    // tane varsa (panel + tam sayfa) her biri kanal adını FONKSİYONLA
+    // yerleştirmeli. Hata boş durumu bu kurala girmiyor — kanal adı değil
+    // sebep gösteriyor; ayrıca `dmGecmisi.test.js` onu kendi başına
+    // kilitliyor.
+    const bloklar = kopyalar(CHAT, "window.t?.('chat_channel_first')", '</div>');
     assert.equal(bloklar.length, 2, `boş durum kopya sayısı ${bloklar.length} — panel ve tam sayfa bekleniyor`);
     for (const [i, b] of bloklar.entries()) {
-      assert.match(b, /window\.t\?\.\('chat_channel_first'\)/, `boş durum #${i + 1} kanal anahtarını kullanmıyor`);
       assert.match(b, YERLESTIR, `boş durum #${i + 1} kanal adını yerleştirmiyor`);
     }
   });

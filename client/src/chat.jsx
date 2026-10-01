@@ -1695,6 +1695,9 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   const cekJest = fullPage ? {} : cekJestRef.current;
   const [dmWith, setDmWith]       = useChatS(null);
   const [messages, setMessages]   = useChatS([]);
+  // Gecmis yuklenemediginde bos liste GOSTERILMEZ, sebep gosterilir.
+  // "Mesaj yok" ile "bu sohbeti goremiyorsun" ayni ekran olamaz.
+  const [gecmisHatasi, setGecmisHatasi] = useChatS(null);
   const [text, setText]           = useChatS('');
   const [typingUsers, setTypingUsers] = useChatS(() => new Set());
   const [uploading, setUploading] = useChatS(false);
@@ -2055,14 +2058,37 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
     const url = dmWith
       ? `/api/chat/messages?with=${dmWith}`
       : `/api/chat/messages?channel=${encodeURIComponent(activeChannel || 'general')}`;
+    setGecmisHatasi(null);
     fetch(url, { signal: controller.signal })
-      .then(r => r.json())
-      .then(msgs => {
-        if (!Array.isArray(msgs)) return;
-        msgs.forEach(m => msgIds.current.add(String(m.id)));
-        setMessages(msgs);
+      .then(async (r) => {
+        const govde = await r.json().catch(() => null);
+        if (!r.ok || !Array.isArray(govde)) {
+          // SESSIZ BASARISIZLIK KAPANDI (1 Ekim 2026). Eskiden burada
+          // `if (!Array.isArray(msgs)) return;` vardi: sunucunun hata
+          // govdesi diziye benzemedigi icin sessizce atiliyor, ekranda eski
+          // liste ya da bosluk kaliyordu. Sunucu tarafi da ayni kusuru
+          // tasiyordu — erisilemeyen DM 200 + bos dizi donuyordu, yani
+          // "goremezsin" ile "mesaj yok" ayirt edilemiyordu. Kullanicinin
+          // gordugu sey gecmisinin silinmesiydi.
+          //
+          // Kod once sozlukten geciyor, yoksa sunucunun metnine dusuyor:
+          // burada ham `fetch` var, `apiFetch`in ceviri katmani devrede
+          // degil (ayni sozlesme `dosyaYukle` icinde de elle uygulaniyor).
+          const kod = govde?.error || null;
+          const cevrilmis = kod && window.t?.(kod) !== kod ? window.t?.(kod) : null;
+          setMessages([]);
+          setGecmisHatasi(cevrilmis || govde?.message
+            || (window.t?.('chat_history_failed') || 'Sohbet geçmişi yüklenemedi'));
+          return;
+        }
+        govde.forEach(m => msgIds.current.add(String(m.id)));
+        setMessages(govde);
       })
-      .catch(err => { if (err.name !== 'AbortError') setMessages([]); });
+      .catch(err => {
+        if (err.name === 'AbortError') return;
+        setMessages([]);
+        setGecmisHatasi(window.t?.('chat_history_failed') || 'Sohbet geçmişi yüklenemedi');
+      });
     return () => controller.abort();
   }, [open, dmWith, wsId, activeChannel]);
 
@@ -2965,7 +2991,17 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
               <button className="chat-menu-item" style={{ borderTop: '1px solid var(--line)' }}
                 onClick={() => {
                   setDeleteMenu(null);
-                  window.showToast?.(window.t?.('chat_reported')||'Mesaj raporlandı, ekibimiz inceleyecek.', 'info');
+                  // DÜĞME SÖZ VERMİYOR (1 Ekim 2026). Eskiden "Mesaj
+                  // raporlandı, ekibimiz inceleyecek." diyordu; arkasında
+                  // hiçbir şey yoktu — ne uç, ne tablo, ne denetim kaydı, ne
+                  // bildirim. Yani kullanıcıya doğru olmayan bir şey
+                  // söyleniyordu. Eksik özellikten kötüsü: taciz türü bir
+                  // şikâyette kişi bildirdiğini sanıp bekler.
+                  //
+                  // Ürün kararı (kullanıcı): düğme kalsın ama dürüst olsun.
+                  // Gerçeği (tablo + uç + denetim kaydı + alan sahibine
+                  // bildirim) ayrı bir iş olarak TODO'ya yazıldı.
+                  window.showToast?.(window.t?.('chat_report_unavailable')||'Şikâyet kaydı henüz tutulmuyor. Lütfen çalışma alanı sahibine bildirin.', 'info');
                 }}>
                 <Icon name="alertTriangle" size={13} style={{ color: 'var(--status-yellow)' }} />
                 {window.t?.('chat_report')||'Şikayet et'}
@@ -3355,7 +3391,13 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                   <span>{gecmisNotu}</span>
                 </div>
               )}
-              {messages.length === 0 && (
+              {messages.length === 0 && gecmisHatasi && (
+                <div className="chat-empty" role="status" style={{ color: 'var(--status-rose)' }}>
+                  <Icon name="alertTriangle" size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />
+                  {gecmisHatasi}
+                </div>
+              )}
+              {messages.length === 0 && !gecmisHatasi && (
                 <div className="chat-empty">
                   {dmWith ? `${dmUser?.name || dmWith} ${window.t?.('chat_dm_start')||'ile sohbet başlat.'}` : (window.t?.('chat_channel_first')||'#{kanal} kanalına ilk mesajı gönder.').replace('{kanal}', () => kanalAdi)}
                 </div>
@@ -4079,7 +4121,13 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
                   <span>{gecmisNotu}</span>
                 </div>
               )}
-              {messages.length === 0 && (
+              {messages.length === 0 && gecmisHatasi && (
+                <div className="chat-empty" role="status" style={{ color: 'var(--status-rose)' }}>
+                  <Icon name="alertTriangle" size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />
+                  {gecmisHatasi}
+                </div>
+              )}
+              {messages.length === 0 && !gecmisHatasi && (
                 <div className="chat-empty">
                   {dmWith ? `${dmUser?.name || dmWith} ${window.t?.('chat_dm_start')||'ile sohbet başlat.'}` : (window.t?.('chat_channel_first')||'#{kanal} kanalına ilk mesajı gönder.').replace('{kanal}', () => kanalAdi)}
                 </div>

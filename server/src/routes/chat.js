@@ -17,6 +17,7 @@ import {
   resolveWorkspaceId,
   memberForWorkspace,
   usersShareWorkspace,
+  ortakAlanId,
 } from '../lib/workspace.js';
 import { chatMessageToDict } from '../lib/serializers.js';
 import {
@@ -194,11 +195,35 @@ chatRouter.get(
 
     let messages;
     if (withSlug) {
+      // KUSUR (30 Eylul 2026, kullanicinin arkadasi): "dm sohbetinde mesajlar
+      // vardi, tekrar girdi mesaj yok denmis, tekrar girince mesajlar geri
+      // yuklenmis."
+      //
+      // Uc red de 200 + BOS DIZI donuyordu. Istemci icin "mesaj yok" ile
+      // "bu sohbeti goremezsin" ayni sey oluyor, ekran bos ciziliyor ve
+      // kullanici gecmisinin silindigini saniyor. Bu depoda sessiz
+      // basarisizlik yasak (CLAUDE.md) — yoklugun kendisi soylenmeli.
+      //
+      // Niye "bazen"di: kapı `resolveWorkspaceId` ile kişinin AKTİF alanına
+      // bakıyordu, ama DM sorgusunun kendisi alana göre süzülmüyor. Aktif
+      // alan karşı tarafın üyesi olmadığı bir alansa kapı kapanıyor, alan
+      // değişince açılıyordu. Mesajlar hep yerinde duruyordu; oynayan şey
+      // kapıydı. Ölçüt artık ortak alan (`ortakAlanId`), aktif alan değil.
+      //
+      // KAHIN KAPALI: "boyle bir kullanici yok", "kendinle DM" ve "ortak
+      // alaniniz yok" AYNI govdeyi donuyor. Ayirmak, disaridan birine deneme
+      // yanilmayla kullanici listesi cikarma imkani verirdi — ayni karar
+      // `tasks.js` kart erisiminde de alinmisti (kart #227, GUVENLIK.md 8).
+      const dmYok = () => res.status(404).json({
+        error: 'err_dm_not_available',
+        message: 'Bu sohbet açılamıyor',
+      });
       const other = await prisma.user.findUnique({ where: { slug: withSlug } });
-      if (!other || other.id === user.id) return res.json([]);
-      const wsId = await resolveWorkspaceId(user);
-      if (!(await usersShareWorkspace(user.id, other.id, wsId))) {
-        return res.json([]);
+      if (!other || other.id === user.id) return dmYok();
+      // Gönderme kapısıyla AYNI ölçüt (`ortakAlanId`): okuma ile yazma
+      // ayrışırsa kişi göremediği bir sohbete yazabilir ya da tersi.
+      if (!(await ortakAlanId(user.id, other.id, await resolveWorkspaceId(user)))) {
+        return dmYok();
       }
       messages = await prisma.chatMessage.findMany({
         where: {

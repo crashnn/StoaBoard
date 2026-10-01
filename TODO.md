@@ -98,6 +98,63 @@ yazılırsa (aşağıya), üçüncü turda demo sırası ona göre kurulur.
 
 ---
 
+## ✅ 30 Eylül – 1 Ekim 2026 — bir kök sebep, altı kusur
+
+Ayrıntılı anlatım: [DEVIR.md](DEVIR.md) bölüm **0-AJ**. Kartlar: **#313–#321**.
+
+**Kök sebep tek:** `lib/user.js` → `userToDict` adresi `id` alanında
+gönderiyor, `slug` diye bir alan hiç göndermiyor. İstemcide dokuz yer
+`window.CURRENT_USER?.slug` okuyordu ve hepsi `undefined` ile karşılaştırma
+yapıyordu. Adres artık yalnızca `client/src/ben.js`'ten okunuyor;
+`kimlik.test.js` kaynakta o okumayı yasaklıyor.
+
+- [x] **Kart panoda iki kez görünüyordu** *(#313)*. Soket yankı süzgeci
+      (`benimYankim`) 17 Eylül'de yazıldı ve **hiç çalışmadı** — yanlış alanı
+      okuyordu. `routes/tasks.js` `task_created`i 201 yanıtından ÖNCE
+      yayınladığı için yankı iyimser eklemeden önce gelip kartı koyuyor,
+      yanıt ikinci kez koyuyordu. İki katmanlı kapatıldı: süzgeç düzeltildi
+      **ve** `kartListesi.js` eklemeyi kimlikle idempotent yaptı — süzgeç bir
+      daha kırılsa bile görünen kusur geri gelmez.
+- [x] **Üye kendi notunu düzenleyemiyordu** *(aynı kök)*. `notes.jsx` içinde
+      `isAuthor` ve `isCollab` her zaman false'tu; "bana ait notlar" süzgeci
+      hep boş dönüyordu. Kimse bildirmemişti.
+- [x] **Başlangıç tarihi elle seçiliyordu** *(#316)*. Karar 17 Eylül'de
+      alınmış, **yalnızca sunucu yarısı** uygulanmıştı: `AddTaskModal` alanı
+      zorunlu tuttuğu için sunucunun varsayılanı hiç devreye giremiyordu.
+      `client/src/tarih.js` yerel günün tek okuyucusu — `toISOString()` UTC
+      verir ve UTC+3'te yerel 00:00–03:00 arasında UTC hâlâ dündür.
+- [x] **DM sekmesindeki "+1" hangi sohbete ait belli değildi** *(#317)*.
+      Sekme toplamı bütün `dm_*` anahtarlarını topluyordu, satırlar yalnızca
+      listelenen üyeleri. Rozette görünen sayının tıklanacak satırı yoktu.
+- [x] **Kullanıcılar uygulamadayken çevrimdışı görünüyordu** *(#318)*.
+      `onlineState` kişi başına tek `sid` tutuyordu ve `disconnect` kaydı
+      koşulsuz siliyordu. İki sekme ya da bir yeniden bağlanma kişiyi
+      düşürüyordu — ikincisinde **kalıcı olarak**, çünkü bir daha `connect`
+      gelmiyor.
+- [x] **DM geçmişi "mesaj yok" diye boş geliyordu** *(#319)*. İki uçta
+      sessiz başarısızlık: sunucu erişim reddini `200 + []` dönüyordu,
+      istemci hata gövdesini `if (!Array.isArray(msgs)) return;` ile atıyordu.
+      Kapı `resolveWorkspaceId` ile **aktif** alana bakıyordu ama DM sorgusu
+      alana göre süzülmüyor — mesajlar hep yerindeydi, oynayan şey kapıydı.
+      Ölçüt artık **ortak alan** (`ortakAlanId`); red `404 +
+      err_dm_not_available` ve üç red de aynı gövde (kâhin kapalı).
+- [x] **"Şikayet et" düğmesi yalan söylüyordu** *(#320)*. "Mesaj raporlandı,
+      ekibimiz inceleyecek." diyordu; arkasında uç, tablo, denetim kaydı,
+      bildirim — hiçbiri yoktu. Metin dürüst hâle getirildi.
+- [x] **Ctrl+V ile ekran görüntüsü yapıştırma** *(#314)* ve **"Görevlerim"
+      pano araç çubuğuna taşındı** *(#315)*.
+
+**Test 1067 → 1117.** Bu turun iki yöntem dersi:
+
+1. **`pano.test.js` kusuru kilitlemişti.** Süzgecin kaynak metnini hatalı
+   alan adıyla birlikte doğruluyordu; test iki haftadır yeşildi ve özellik
+   hiç çalışmıyordu. Ölçüt ikiye ayrıldı: davranış `kimlik.test.js`te,
+   bağlantı `pano.test.js`te.
+2. **`tarih.test.js` kuralın yalnızca bir ucunu ölçmüştü.** Sunucu doğruydu,
+   istemci o yolu kapatıyordu. **Kuralın uygulandığı her yer ayrı ölçülmeli.**
+
+---
+
 ## ✅ Güvenlik turu — 1 Eylül 2026
 
 Raporlama turunun hemen ardından, dal üzerinde yapılan güvenlik denetimi ve
@@ -1282,6 +1339,25 @@ Ofiste dal itmek, yerelde **alınamayan** bir doğrulama sağlıyor.
       Karar verilmeden koda girilmemeli.
 
 ### Bilinen kusurlar
+- [ ] **Mesaj şikâyeti diye bir özellik yok** *(1 Ekim 2026, kart #321)*.
+      Düğme artık dürüst ("şikâyet kaydı henüz tutulmuyor") ama gerçeği
+      kurulmadı: `message_reports` tablosu, `POST
+      /api/chat/messages/:id/report`, denetim kaydı, alan sahibine bildirim,
+      hız sınırı. **Yeni uç** olduğu için GUVENLIK.md bölüm 4 zorunlu;
+      özellikle şikâyet edenin kimliği şikâyet edilene sızmamalı ve "mesaj
+      bulunamadı" ile "yetkin yok" aynı gövdeyi dönmeli. Ürün sorusu:
+      şikâyeti kim görecek — platform sahibi mi, alan sahibi mi?
+
+- [ ] **DM okunmamış anahtarları alana göre kapsanmıyor** *(1 Ekim 2026)*.
+      `dm_<slug>` localStorage'da ve alansız; `general_<wsId>` kapsanıyor.
+      Rozet artık dürüst (satırlarla aynı kümeden sayıyor) ama veri modeli
+      hâlâ kapsam kararını bekliyor. Bkz. aşağıdaki "sohbet kapsamı".
+      **Not:** kullanıcı 1 Ekim'de "DM platform geneli olsun" dedi; kapı
+      "aktif alan" yerine "**herhangi bir ortak alan**" yapıldı, tamamen
+      kaldırılmadı — çok kiracılı kurulumda başka müşterinin çalışanına
+      adres tahmin ederek DM atma imkânı doğardı. Tam açılması istenirse
+      `ortakAlanId` çağrısını kaldırmak yeterli.
+
 - [x] **Sohbete dosya yükleme kapısız ve sınırsız** *(16 Eylül 2026 bulundu;
       17 Eylül kapandı)*. `POST /api/chat/upload` yalnızca oturum istiyordu:
       dosya hiçbir kanala/alana bağlı değildi, türü sorulmuyordu, tekrar

@@ -5,7 +5,7 @@
 // Bootstrap için minimum gerekenleri içerir; chat grubunda genişletilecek.
 
 import { prisma } from '../db.js';
-import { resolveWorkspaceId, usersShareWorkspace } from './workspace.js';
+import { resolveWorkspaceId, ortakAlanId } from './workspace.js';
 
 const CHANNEL_SLUG_STRIP = /[^a-z0-9\-_çğıöşü]+/g;
 
@@ -433,9 +433,13 @@ export async function resolveChatTarget(user, { to = null, channel = 'general' }
     if (receiver.id === user.id) {
       return { ok: false, status: 400, error: 'err_cannot_message_self', message: 'Kendinize mesaj gönderemezsiniz' };
     }
-    const workspaceId = await resolveWorkspaceId(user);
-    if (!(await usersShareWorkspace(user.id, receiver.id, workspaceId))) {
-      return { ok: false, status: 403, error: 'err_user_not_in_team', message: 'Bu kullanıcı aktif takımınızda değil' };
+    // Ölçüt AKTİF alan değil, ORTAK alan (1 Ekim 2026, bkz. ortakAlanId).
+    // Önceden aktif alana bakılıyordu: karşı taraf başka bir alanın üyesiyse
+    // kişi kendi sohbetine cevap yazamıyordu ve sebebi "aktif takımınızda
+    // değil" diye görünüyordu — oysa takım doğruydu, bakılan alan yanlıştı.
+    const workspaceId = await ortakAlanId(user.id, receiver.id, await resolveWorkspaceId(user));
+    if (!workspaceId) {
+      return { ok: false, status: 403, error: 'err_user_not_in_team', message: 'Bu kullanıcıyla ortak bir çalışma alanınız yok' };
     }
     return { ok: true, workspaceId, receiver, channel: 'dm', channelRow: null };
   }

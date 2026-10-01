@@ -178,3 +178,41 @@ export function userPrivateDict(user, member = null) {
   }
   return d;
 }
+
+/**
+ * İki kullanıcının ORTAK çalışma alanı var mı; varsa hangisi.
+ *
+ * KUSUR (30 Eylül 2026, kullanıcının arkadaşı): "dm sohbetinde mesajlar
+ * vardı, tekrar girdi mesaj yok denmiş, tekrar girince mesajlar geri
+ * yüklenmiş."
+ *
+ * Sohbet kapısı `usersShareWorkspace(a, b, resolveWorkspaceId(user))` ile
+ * kişinin AKTİF alanına bakıyordu. DM'in kendisi alana bağlı değil (sorgu
+ * yalnızca gönderen/alan çiftine bakıyor), ama kapı bağlıydı: aktif alan
+ * karşı tarafın üyesi olmadığı bir alansa sohbet kapanıyor, alan değişince
+ * açılıyordu. Mesajlar hep yerindeydi; oynayan şey kapıydı. "Bazen"in
+ * sebebi buydu.
+ *
+ * Ölçüt artık "şu an hangi alandayım" değil, "bu kişiyle BİR YERDE birlikte
+ * çalışıyor muyum". Kapı duruyor — kaldırılsaydı aynı platformdaki başka bir
+ * müşterinin çalışanı, adresi tahmin ederek DM açabilirdi (çok kiracılı
+ * kurulum, GUVENLIK.md 2).
+ *
+ * @returns {Promise<number|null>} Ortak alanın kimliği, yoksa null.
+ *   `tercih` (genelde aktif alan) ortaksa O dönüyor: DM satırına yazılan
+ *   `workspaceId` damgası böylece kullanıcının bulunduğu yeri gösteriyor,
+ *   rastgele bir ortak alanı değil.
+ */
+export async function ortakAlanId(userAId, userBId, tercih = null) {
+  if (userAId === userBId) return null;
+  if (tercih && (await usersShareWorkspace(userAId, userBId, tercih))) return tercih;
+  const satirlar = await prisma.workspaceMember.findMany({
+    where: { userId: { in: [userAId, userBId] } },
+    select: { workspaceId: true, userId: true },
+  });
+  const aninkiler = new Set(
+    satirlar.filter((r) => r.userId === userAId).map((r) => r.workspaceId),
+  );
+  const ortak = satirlar.find((r) => r.userId === userBId && aninkiler.has(r.workspaceId));
+  return ortak ? ortak.workspaceId : null;
+}

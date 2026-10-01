@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 20 Eylül 2026, **ev makinesinde**. En taze bölüm
-**0-AI**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**Son güncelleme:** 1 Ekim 2026, **ev makinesinde**. En taze bölüm
+**0-AJ**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,114 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AJ. 30 Eylül – 1 Ekim — bir kök sebep, altı kusur: oturum adresi yanlış alandan okunuyordu
+
+**Depo:** `main` = `f407b43`, `origin/main` ile eşit. Bu bölümdeki üçüncü
+yığın (DM kapısı + şikâyet metni) **henüz işlenmedi** — çalışma ağacında
+duruyor, aşağıda listeli. Test **1067 → 1117**.
+
+### Teşhisin kendisi devredilmeye değer
+
+Kullanıcı "görev oluşturunca iki tane kart açılıyor" dedi. Ekran
+görüntüsündeki iki kart **aynı numarayı** (#305) taşıyordu — sunucu iki kayıt
+açmamıştı, tek kart listeye iki kez girmişti. Oradan çıkan zincir altı ayrı
+görünür kusura dayandı:
+
+`lib/user.js` → `userToDict` adresi **`id` alanında** gönderiyor ve `slug`
+diye bir alan **hiç göndermiyor**. Dosyanın başındaki not bunu zaten
+yazıyordu. Ama istemcide dokuz yer `window.CURRENT_USER?.slug` okuyordu, yani
+hepsi sessizce `undefined` ile karşılaştırma yapıyordu:
+
+- **Soket yankı süzgeci** (`benimYankim`) — 17 Eylül'de yazıldı, **hiç
+  çalışmadı**. Sekiz pano olayında kendi yankını da uyguluyordun. Görünür
+  belirti çift kart: `routes/tasks.js` `task_created`i 201 yanıtından **önce**
+  yayınlıyor, yankı iyimser eklemeden önce gelip kartı koyuyor, yanıt ikinci
+  kez koyuyordu.
+- **`notes.jsx`** — `isAuthor` ve `isCollab` **her zaman false**. Normal bir
+  üye kendi notunu düzenleyemiyordu, "bana ait notlar" süzgeci hep boştu.
+- `NotesView`a giden `currentUserId` prop'u `undefined` gidiyordu.
+
+`chat.jsx` iki yerde `CURRENT_USER?.slug || CURRENT_USER?.id` yazarak bu
+tuzağı sessizce atlatmıştı — olgu biliniyordu ama tek yerde durmuyordu.
+Adres artık yalnızca **`client/src/ben.js`**'ten okunuyor ve
+`kimlik.test.js` kaynakta `CURRENT_USER.slug` okumasını yasaklıyor.
+
+### Testin kusuru kilitlediği yer — bu turun asıl dersi
+
+`pano.test.js` yankı süzgecini şöyle doğruluyordu:
+
+```js
+assert.match(APP, /const benimYankim = \(actor\) => actor && actor === window\.CURRENT_USER\?\.slug/)
+```
+
+**Test iki haftadır yeşildi ve süzgeç hiç çalışmıyordu.** Ölçüt kodun
+*metnini* doğruluyordu; metin hatalıydı, dolayısıyla test yanlışı da birlikte
+kilitledi. CLAUDE.md'de adı konmuş sınıfın (“ölçüt metni arıyorsa davranışı
+aramıyordur”) en pahalı örneği: koruduğu sanılan şey hiç korunmuyordu.
+
+Ölçüt ikiye ayrıldı — **davranış** `kimlik.test.js`te saf fonksiyon üzerinde,
+`pano.test.js`te yalnızca **bağlantı**. Aynı tur içinde ikinci kez düşüldü:
+`tarih.test.js` 17 Eylül'de alınan "başlangıç bugünle dolsun" kararının
+**yalnızca sunucu yarısını** kilitlemişti; istemci alanı zorunlu tuttuğu için
+sunucunun varsayılanı hiç devreye giremiyordu. **Kuralın uygulandığı her yer
+ayrı ayrı ölçülmeli.**
+
+### Yığın 1 — `7a20f4b` (push edildi)
+
+Çift kart · Ctrl+V ile ekran görüntüsü yapıştırma (ataç düğmesiyle aynı
+yoldan) · "Görevlerim" kenar çubuğundan pano araç çubuğuna taşındı.
+`dil.test.js` taramasına **modül yolu elemesi** eklendi: `Ben` sözcük
+listesinde (“BEN” rozeti, #268) ve `./ben.js` dört dosyada birden kaçak
+uydurmuştu. Eleme **aralık tabanlı**, satır tabanlı değil.
+
+### Yığın 2 — `f407b43` (push edildi)
+
+- **Başlangıç tarihi** bugünle açılıyor; `client/src/tarih.js` yerel günün tek
+  okuyucusu. `toISOString()` UTC verir ve UTC+3'te yerel 00:00–03:00 arasında
+  UTC hâlâ **dündür**.
+- **DM sekmesindeki "+1"** rozeti bütün `dm_*` anahtarlarını topluyordu;
+  satırlar yalnızca listelenen üyeleri okuyordu. Aynı sayının iki hesabı —
+  rozette görünen sayının tıklanacak satırı yoktu. Toplam artık satırlarla
+  aynı kümeden.
+- **Çevrimdışı dönme:** `onlineState` kişi başına **tek** `sid` tutuyordu ve
+  `disconnect` kaydı koşulsuz siliyordu. İki sekme ya da bir yeniden bağlanma
+  kişiyi uygulamanın içindeyken çevrimdışı yapıyordu — ikinci senaryoda
+  **kalıcı olarak**, çünkü bir daha `connect` gelmiyor. Artık soket kimlikleri
+  kümede sayılıyor.
+
+### Yığın 3 — ÇALIŞMA AĞACINDA, işlenmedi
+
+- **DM geçmişi "mesaj yok" diye boş geliyordu.** İki uçta sessiz başarısızlık:
+  sunucu erişim reddini `200 + []` dönüyordu, istemci de
+  `if (!Array.isArray(msgs)) return;` ile hata gövdesini atıyordu. "Bazen"in
+  sebebi: kapı `resolveWorkspaceId` ile **aktif** alana bakıyordu ama DM
+  sorgusu alana göre süzülmüyor — aktif alan karşı tarafın üyesi olmadığı bir
+  alansa kapı kapanıyor, alan değişince açılıyordu. **Mesajlar hep yerindeydi;
+  oynayan şey kapıydı.**
+- Ölçüt artık **ortak alan** (`lib/workspace.js` → `ortakAlanId`), okuma ve
+  yazma aynı yardımcıdan. Red `404 + err_dm_not_available`, üç red de **aynı
+  gövde** (kâhin kapalı).
+- **"Şikayet et" düğmesi** "Mesaj raporlandı, ekibimiz inceleyecek." diyordu
+  ve arkasında **hiçbir şey** yoktu — uç yok, tablo yok, denetim kaydı yok.
+  Metin dürüst hâle getirildi; gerçeği pano kartı **#321**'de.
+
+### Devralan oturum için
+
+**Ürün kararı kayda geçsin:** kullanıcı "DM platform geneli olsun" dedi,
+**birebir uygulanmadı**. Kapıyı tamamen kaldırmak çok kiracılı kurulumda başka
+bir müşterinin çalışanına adres tahmin ederek DM atma imkânı verirdi. Ölçüt
+"aktif alan" yerine "**herhangi bir ortak alan**" oldu: kusur tamamen
+kapanıyor, kiracı sınırı duruyor. Kullanıcıya söylendi; tam açılması
+istenirse `ortakAlanId` çağrısını kaldırmak yeterli.
+
+Hâlâ açık: `dm_*` okunmamış anahtarları localStorage'da ve **alana göre
+kapsanmıyor**. Rozet artık dürüst ama altındaki veri modeli kapsam kararını
+bekliyor (TOPLANTI-KARSILIGI, "sohbet kapsamı").
+
+Bu turun kartları panoda: **#313–#321** (Ana Proje).
 
 ---
 
