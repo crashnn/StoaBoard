@@ -200,3 +200,63 @@ describe('palet TEK KAYNAKTAN okuyor', () => {
     assert.match(PALETTE, /t\.project_name/, 'sonuçta proje adı gösterilmiyor');
   });
 });
+
+// ─── Sorgu ŞEMAYLA uyuşuyor mu ─────────────────────────────────────────────
+//
+// BU ÖLÇÜT BİR CANLI KUSURDAN DOĞDU (2 Ekim 2026). Arama ucunun ilk hâli
+// `orderBy: { updatedAt: 'desc' }` ve `select: { desc: true }` yazıyordu.
+// Task modelinde `updatedAt` YOK ve açıklama alanının adı `description` —
+// `desc` yalnızca API yanıtındaki ad. Sorgu canlıda patladı ve palet "arama
+// çalışmıyor" dedi.
+//
+// YUKARIDAKİ YİRMİ BİR ÖLÇÜT BUNU GÖREMEDİ, çünkü hepsi kaynağın METNİNİ
+// tarıyor; hiçbiri sorguyu ÇALIŞTIRMIYOR. Veritabanı isteyen bir test de
+// `npm test`in sözleşmesini bozardı ("veritabanı gerektirmez"). Aradaki yol:
+// sorgudaki alan adlarını ŞEMADAN okunan gerçek alanlarla karşılaştırmak —
+// veritabanı olmadan, ama metin eşleştirmesinden fazlası.
+
+describe('arama sorgusu şemadaki alanları kullanıyor', () => {
+  const SEMA = yorumsuzDosya(path.resolve(__dirname, '..', 'prisma', 'schema.prisma'));
+
+  /** `model Task { ... }` içindeki alan adları. */
+  const taskAlanlari = () => {
+    const bas = SEMA.indexOf('model Task {');
+    assert.ok(bas > 0, 'Task modeli bulunamadı');
+    const govde = SEMA.slice(bas, SEMA.indexOf('\n}', bas));
+    return new Set([...govde.matchAll(/^\s{2}(\w+)\s+\w/gm)].map((m) => m[1]));
+  };
+
+  const aramaUcu = () => {
+    const bas = NOTES.indexOf("meTasksRouter.get(\n  '/search'");
+    return NOTES.slice(bas, NOTES.indexOf('\n);\n', bas));
+  };
+
+  test('şema okuması gerçekten alan buluyor', () => {
+    const alanlar = taskAlanlari();
+    assert.ok(alanlar.has('title') && alanlar.has('description') && alanlar.has('deletedAt'),
+      `Task alanları okunamadı: ${[...alanlar].slice(0, 8)}`);
+    assert.ok(!alanlar.has('updatedAt'),
+      'Task artık updatedAt taşıyor — ölçütün dayandığı olgu değişmiş, gözden geçir');
+  });
+
+  test('select ve orderBy ŞEMADA VAR OLAN alanları kullanıyor', () => {
+    const alanlar = taskAlanlari();
+    const uc = aramaUcu();
+    const secim = uc.slice(uc.indexOf('select: {'), uc.indexOf('\n    });', uc.indexOf('select: {')));
+    // Üst düzey alanlar: `project` ve `column` ilişkileri de şemada var.
+    const kullanilan = [...secim.matchAll(/^\s{8}(\w+):/gm)].map((m) => m[1]);
+    assert.ok(kullanilan.length >= 4, `select beklenenden dar: ${kullanilan}`);
+    for (const ad of kullanilan) {
+      assert.ok(alanlar.has(ad), `select'te şemada OLMAYAN alan: ${ad}`);
+    }
+    const sira = /orderBy: \{ (\w+):/.exec(uc);
+    assert.ok(sira, 'orderBy bulunamadı');
+    assert.ok(alanlar.has(sira[1]), `orderBy şemada OLMAYAN alanı kullanıyor: ${sira[1]}`);
+  });
+
+  test('açıklama ŞEMA ADIYLA okunuyor, API adıyla değil', () => {
+    const uc = aramaUcu();
+    assert.match(uc, /desc: r\.description/, 'eşleştiriciye açıklama yanlış alandan veriliyor');
+    assert.doesNotMatch(uc, /r\.desc\b/, '`r.desc` diye bir alan yok — undefined gelir, açıklama hiç aranmaz');
+  });
+});

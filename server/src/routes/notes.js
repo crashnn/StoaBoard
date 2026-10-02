@@ -656,24 +656,28 @@ meTasksRouter.get(
     // Çöptekiler aranmıyor: çöp kutusunun kendi görünümü var.
     const rows = await prisma.task.findMany({
       where: { project: { workspaceId: wsId }, deletedAt: null },
-      orderBy: { updatedAt: 'desc' },
+      // `createdAt`: Task'ta `updatedAt` YOK. İlk yazımda vardı sanılmıştı ve
+      // sorgu canlıda patladı — kaynak tarayan testler sorguyu hiç
+      // çalıştırmadığı için göremedi (bkz. arama.test.js, şema uyumu ölçütü).
+      orderBy: { createdAt: 'desc' },
       take: TARAMA_TAVANI,
       select: {
         id: true,
         title: true,
-        desc: true,
+        // Alan adı `description`; `desc` yalnızca API yanıtındaki ad.
+        description: true,
         projectId: true,
         project: { select: { name: true } },
         column: { select: { slug: true, title: true, titleTr: true } },
       },
     });
 
-    const eslesen = rows.filter((r) => aramaEslesir({ title: r.title, desc: r.desc }, q));
+    const eslesen = rows.filter((r) => aramaEslesir({ title: r.title, desc: r.description }, q));
     res.json({
       results: eslesen.slice(0, limit).map((r) => ({
         id: String(r.id),
         title: r.title,
-        snippet: aramaKesiti(r.desc, q),
+        snippet: aramaKesiti(r.description, q),
         project_id: r.projectId,
         project_name: r.project?.name || '',
         col: r.column?.slug || null,
