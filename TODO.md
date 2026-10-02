@@ -183,10 +183,39 @@ düzeltmesi onu da diriltti), ama kartlar **odak alamıyor**.
       değişmedi, geri al 12 sn. Teklif istek **başarılı olduktan sonra**:
       istek düşerse geri alınacak bir şey yok. **Canlı: 2/2**, kart hem
       ekranda hem sunucuda geri geliyor.
-- [ ] **Tarih hızlı seçimi** *(ölçüldü, yapılmadı)*. Çekmecede ve yeni görev
-      penceresinde bugün yalnızca "Pick date" var; Bugün / Yarın / Haftaya
-      çipleri küçük ve her gün kullanılan bir kazanç olurdu. Bu turda zaman
-      yetmedi.
+- [x] **Tarih hızlı seçimi** *(#361)*. Takvimin içinde Bugün / Yarın /
+      Haftaya çipleri. Çıkarken asıl kusur bulundu: takvimdeki "Bugün"
+      düğmesi tarihi KENDİ ELİYLE biçimlendiriyordu, oysa `tarih.js` tam o
+      tuzağı önlemek için var. Mutasyon bir ölçüt zayıflığı gösterdi:
+      `Date.now() + gun * 86400000` (24 SAAT) ile `setDate` (bir GÜN) arasındaki
+      fark sabit saat dilimli makinede ölçülemiyordu — gerekçe yorumda
+      yazılıydı ama ölçülmüyordu. `gunSonra` artık taban alabiliyor ve ölçüt
+      Europe/Berlin'de yaz saati gecesini sorguluyor. **Canlı: 3/3.**
+
+### 🔍 Tarama — 2 Ekim 2026, bölüm bölüm ne eksik
+
+Kullanıcı isteğiyle bütün alanlar Playwright'la gezilip ölçüldü. Tam envanter
+**kart #367**'de; buraya yalnızca önerilen sıra:
+
+- [ ] **A · Çalışma alanı geneli arama.** Palet bugün yalnızca AKTİF PROJENİN
+      yüklü kartlarını ve yalnızca BAŞLIKLARI arıyor; başka projedeki kart
+      görünmez, açıklama hiç aranmaz. Sunucuda yetenek **zaten var** (MCP
+      `search_tasks`), arayüze açılmış REST ucu yok. En büyük günlük boşluk.
+- [ ] **B · Kartta geçmiş.** "Bu kart neden burada, kim taşıdı?" sorusunun
+      cevabı arayüzde yok. Veri **zaten duruyor**: `task_transitions.taskId`
+      indeksli. Tek sorgu. (`activity_logs` işe yaramaz — proje düzeyinde.)
+- [ ] **C · Toplu işlem.** Hiçbir görünümde seçim kutusu yok. Tablo görünümü
+      doğal evi; temizlik işini saatten dakikaya indirir. En ağırı.
+- [ ] **D · Üç küçük iş, aynı turda:** karta bağlantı kopyala · bitiş
+      tarihinin başlangıçtan ÖNCE olması sessizce kabul ediliyor (rapor yanlış
+      konuşur) · boş panoda "0 cards — good pace!" metni.
+- [ ] **E · Mobil dokunma hedefleri.** 390px'te 48 düğme 32px altında —
+      şüphe, doğrulanmadı; önce kesin ölçüm.
+
+**Öneri dışı bırakılanlar, gerekçeleriyle:** izleyici/bildirim kapsamı (açık ürün
+kararı) · tekrarlayan görev (zamanlayıcı + yeni kavram) · bağımlılıklar ve iş
+akışı motoru (TOPLANTI-KARSILIGI'nde bilinçli kapsam dışı) · gruplama
+(A–C'den sonra).
 
 **Bu turun yöntem dersi:** tur içinde **üç kez** mevcut bir test doğru bir
 değişikliği engelledi (#331'de `bildirim.test.js`, burada `surum.test.js`,
