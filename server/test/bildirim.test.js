@@ -42,6 +42,7 @@ import { fileURLToPath } from 'node:url';
 import { buildNotificationText } from '../src/lib/notifications.js';
 import { renderNotification } from '../src/lib/mailer.js';
 import { yorumsuzDosya, kaynakDosyalari } from './yardimcilar.js';
+import { etkinlikMetni } from '../../client/src/bildirimMetni.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(__dirname, '..', 'src');
@@ -295,21 +296,43 @@ describe('bildirim metni — e-posta gerçek üretici çıktısını okuyor', ()
 describe('bildirim metni — task_moved kolonu insan okur', () => {
   const tasksSrc = yorumsuzDosya(path.join(SRC, 'routes', 'tasks.js'));
 
-  test('task_moved kolon BAŞLIĞI yazıyor, slug değil', () => {
-    // Etkinlik şablonu (`activity_task_moved`) `{col}`u olduğu gibi basıyor:
-    // "… kartını <col>'ye taşıdı". Üretici slug yazsa kullanıcı "doing" gibi
-    // bir kimlik görür. Bu kural ilk olarak lib/throughput.js için yazılmıştı
-    // (başlıkla eşleştiriyordu); o dosya 18 Eylül'de silindi (kart #202), kural
-    // etkinlik akışı için hâlâ geçerli.
-    assert.ok(
-      /col:\s*newCol\.titleTr\s*\|\|\s*newCol\.title/.test(tasksSrc),
-      'task_moved kaydındaki `col` artık kolon başlığı değil — etkinlik akışı '
-      + 'kullanıcıya kolon kimliğini gösterir.',
-    );
-    assert.ok(
-      !/col:\s*newCol\.slug/.test(tasksSrc),
-      'task_moved kaydına slug yazılıyor — etkinlik akışında ham kimlik görünür.',
-    );
+  // ÖLÇÜT 2 EKİM 2026'DA YENİDEN YAZILDI — gerekçesi devredilmeye değer.
+  //
+  // Eski hâli şunu kilitliyordu: `col: newCol.titleTr || newCol.title`, ve
+  // slug yazmayı AÇIKÇA yasaklıyordu. O gün doğru ölçüttü, dayanağı şuydu:
+  // "etkinlik şablonu `{col}`u olduğu gibi basıyor, slug yazsak kullanıcı
+  // 'doing' gibi bir kimlik görür."
+  //
+  // Dayanak artık geçerli değil: `etkinlikMetni` slug'ı okuma anında kolon
+  // listesinden geçiriyor (kart #331). Eski ölçütün KORUDUĞU ŞEY ise hâlâ
+  // geçerli ve tam da bu yüzden silinmiyor: **kullanıcı ham kimlik
+  // görmemeli.** Değişen şey o özelliğin nereden sağlandığı.
+  //
+  // Eski ölçüt bunu UYGULAMAYA bağlamıştı ("şu satır şöyle yazmalı"), bu
+  // yüzden daha iyi bir uygulama gelince kusuru değil ESKİ ÇÖZÜMÜ savundu:
+  // #331'in düzeltmesi bu testi kırdı. Yeni ölçüt özelliğin kendisine bağlı
+  // — üretici referans yazar, okuyucu adı çözer, kullanıcı ad görür.
+  test('etkinlik akışında kullanıcı kolon ADI görür, ham kimlik görmez', () => {
+    // 1 · Üretici REFERANS yazıyor (dil donmasın — #331).
+    assert.match(tasksSrc, /col: newCol\.slug/,
+      'üretici kolon adını gövdeye yazıyor — yazıldığı andaki dili dondurur');
+
+    // 2 · Okuma anında çözülüyor: kullanıcı "review" değil "In Review" görür.
+    const govde = JSON.stringify({ type: 'task_moved', task: 'Kart', col: 'review' });
+    const ceviri = (k) => (k === 'activity_task_moved' ? 'moved {task} to {col}' : null);
+    const cozucuyle = etkinlikMetni(govde, ceviri, (s) => (s === 'review' ? 'In Review' : null));
+    assert.match(cozucuyle, /to In Review/, 'slug okuma anında ada çevrilmiyor');
+    assert.doesNotMatch(cozucuyle, /review</, 'ham kimlik ekrana sızıyor');
+
+    // 3 · Çözücüyü BAĞLAYAN yer: istemcideki sarmalayıcı. Saf fonksiyon
+    //     doğru olsa da çözücü geçilmezse kullanıcı yine "review" görür —
+    //     18 Eylül dersi: türü değiştirdiysen KULLANIMLARI ölç.
+    const dataSrc = yorumsuzDosya(path.join(CLIENT, 'data.jsx'));
+    const bas = dataSrc.indexOf('function renderActivityText');
+    assert.ok(bas > 0, 'renderActivityText bulunamadı');
+    const sarmalayici = dataSrc.slice(bas, dataSrc.indexOf('\n}', bas));
+    assert.match(sarmalayici, /etkinlikMetni\(raw,[^;]*kolonAdi\(/,
+      'etkinlik metni kolon çözücüsü OLMADAN çağrılıyor — kullanıcı ham slug görür');
   });
 
   test('"tamamlandı"nın ikinci tanımı geri gelmedi', () => {

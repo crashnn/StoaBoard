@@ -545,7 +545,7 @@ meTasksRouter.get(
       select: {
         id: true, title: true, projectId: true,
         project: { select: { name: true } },
-        column: { select: { slug: true, titleTr: true } },
+        column: { select: { slug: true, title: true, titleTr: true } },
       },
     });
     const kartlar = new Map(rows.map((r) => [r.id, {
@@ -554,7 +554,14 @@ meTasksRouter.get(
       project_id: r.projectId,
       project_name: r.project?.name || '',
       col: r.column?.slug || null,
-      col_title: r.column?.titleTr || r.column?.slug || null,
+      // Kolon adı OKUMA anında çözülüyor (kart #331). Burada
+      // `col_title: r.column?.titleTr` vardı: sunucu, okuyanın dilini
+      // bilmeden Türkçe başlığı seçiyordu. Artık iki başlık birlikte
+      // gönderiliyor ve dili istemcideki TEK okuyucu (`kolonAdi`) seçiyor —
+      // `columnToDict` ile aynı kalıp, aynı alan adları.
+      col_titles: r.column
+        ? { title: r.column.title, title_tr: r.column.titleTr || r.column.title }
+        : null,
     }]));
 
     res.json(oneriKur({
@@ -584,7 +591,7 @@ meTasksRouter.get(
         title: true,
         projectId: true,
         project: { select: { name: true } },
-        column: { select: { slug: true, titleTr: true } },
+        column: { select: { slug: true, title: true, titleTr: true } },
       },
     });
     res.json(
@@ -594,7 +601,12 @@ meTasksRouter.get(
         project_id: r.projectId,
         project_name: r.project?.name || '',
         col: r.column?.slug || null,
-        col_title: r.column?.titleTr || r.column?.slug || null,
+        // Kolon adı okuma anında çözülüyor (kart #331) — yukarıdaki uçla
+        // aynı gerekçe. İki uç aynı listeyi besliyor; biri eski kalıpta
+        // kalsa ekranın yarısı yine Türkçe donardı.
+        col_titles: r.column
+          ? { title: r.column.title, title_tr: r.column.titleTr || r.column.title }
+          : null,
       })),
     );
   }),

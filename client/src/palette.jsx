@@ -2,6 +2,7 @@
 
 import { useState as useP, useEffect as useE, useMemo as useM, useRef as useR } from 'react';
 import { Icon } from './icons.jsx';
+import { kolonAdi } from './data.jsx';
 
 function CommandPalette({ open, onClose, onAction }) {
   const [q, setQ] = useP('');
@@ -100,7 +101,10 @@ function CommandPalette({ open, onClose, onAction }) {
         icon: 'circleCheck',
         action: 'open:task:' + t.id,
         group: window.t?.(anahtar) || yedek,
-        sub: t.col_title || t.col || null,
+        // Kolon adi OKUMA aninda cozuluyor (kart #331): sunucu iki basligi
+        // da gonderiyor, dili tek okuyucu seciyor. Eski alan (`col_title`)
+        // sunucunun sectigi Turkce basligi tasiyordu.
+        sub: kolonAdi(t.col_titles) || t.col || null,
       }));
       base = [
         ...bolum('palette_group_recent', 'Son dokundukların', oneriler.dokunulan),

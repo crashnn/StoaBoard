@@ -123,7 +123,13 @@ function renderNotifText(raw) {
 }
 
 function renderActivityText(raw) {
-  return etkinlikMetni(raw, (k) => window.t?.(k));
+  // Kolon slug'ı → görünen ad, OKUMA anında (kart #331). Çözücü tek
+  // okuyucudan geçiyor (`kolonAdi`), yani etkinlik akışı pano ve çekmeceyle
+  // aynı adı gösteriyor. Slug listede yoksa (başka projenin kolonu ya da
+  // #331 öncesinden kalan donmuş metin) `kolonAdi` boş döner ve değer
+  // olduğu gibi basılır.
+  return etkinlikMetni(raw, (k) => window.t?.(k),
+    (slug) => kolonAdi((window.DATA?.COLUMNS || []).find((c) => c.id === slug)));
 }
 
 // renderNotifText, renderActivityText exported below

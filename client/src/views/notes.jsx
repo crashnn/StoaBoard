@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
-import { API, fmtTimeAgo, fmtAbsoluteDateTime } from '../data.jsx';
+import { API, fmtTimeAgo, fmtAbsoluteDateTime, kolonAdi } from '../data.jsx';
 import { DefaultDropdown } from '../dropdown.jsx';
 import { benSlug } from '../ben.js';
 
@@ -477,7 +477,8 @@ function LinkTaskPopover({ workspaceTasks, linkedIds, onPick, onClose }) {
                 </span>
               )}
             </span>
-            {t.col_title && <span style={{ fontSize: 10, color: 'var(--ink-faint)', flexShrink: 0 }}>{t.col_title}</span>}
+            {/* Kolon adi okuma aninda cozuluyor (kart #331) — tek okuyucu kolonAdi. */}
+            {kolonAdi(t.col_titles) && <span style={{ fontSize: 10, color: 'var(--ink-faint)', flexShrink: 0 }}>{kolonAdi(t.col_titles)}</span>}
           </button>
         ))}
       </div>

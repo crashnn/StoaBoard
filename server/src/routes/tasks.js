@@ -461,9 +461,23 @@ tasksRouter.patch(
           // "Tamamlandı"dan çıktı: iş yeniden açıldı, tamamlanma zamanı silinir.
           updates.completedAt = null;
         }
+        // Etkinlik gövdesine kolonun ADI DEĞİL SLUG'ı yazılıyor (kart #331).
+        //
+        // KUSUR: burada `newCol.titleTr || newCol.title` vardı. Gövde kalıcı
+        // bir kayıt ve yazıldığı andaki adı ve DİLİ donduruyor; şablon
+        // çevriliyor ama içine konan değer çevrilmiyor. Sonuç: İngilizce
+        // arayüzde ana sayfadaki akış "moved X to İncelemede" diyordu ve
+        // #288'in istemci düzeltmesi (`kolonAdi`) buraya yetişemiyordu.
+        // İroni otuz satır yukarıda: aynı kural orada DOĞRU uygulanıyor ve
+        // gerekçesi yorumda yazılı — kural dosyanın içinde biliniyordu.
+        //
+        // Ad okuma anında çözülüyor: `etkinlikMetni` slug'ı kolon listesinden
+        // geçiriyor. Eski kayıtlar donmuş metinle kalıyor ve çözücü onları
+        // tanımadığı için değeri olduğu gibi gösteriyor — geriye dönük veri
+        // taşınmıyor.
         movedActivity = buildNotificationText('task_moved', {
           task: data.title?.trim() || task.title,
-          col: newCol.titleTr || newCol.title,
+          col: newCol.slug,
         });
       }
     }

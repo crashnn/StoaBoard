@@ -125,6 +125,17 @@ export function renderNotification(text) {
         body: `${parsed.who || 'Bir takım arkadaşınız'} yorum yazdı: ${parsed.preview || ''}`,
       };
     case 'task_moved':
+      // DİKKAT — `parsed.col` artık kolonun ADI DEĞİL SLUG'ı (kart #331).
+      // Bu dal şu an ULAŞILAMAZ: `task_moved` gövdesi yalnızca etkinlik
+      // akışına yazılıyor (`logActivity`), hiç bildirim olmuyor, yani
+      // `dispatchEmail` buraya hiç düşmüyor. Biri `task_moved`ı bildirim
+      // yaparsa posta "review kolonuna taşındı" der.
+      //
+      // Düzeltmesi burada yapılamaz: slug'ı ada çevirmek veritabanı
+      // okuması ister ve hangi dilde yazılacağı da ayrı bir karar (posta
+      // metinleri şu an yalnızca Türkçe). Bu dal kullanılacaksa önce o iki
+      // soru cevaplanmalı. Not tam buraya yazılıyor, çünkü bu kartın dersi
+      // "kural dosyanın içinde biliniyordu, otuz satır sonra unutuldu".
       return {
         type: 'task_moved',
         title: 'Görev taşındı',

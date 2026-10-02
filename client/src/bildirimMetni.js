@@ -84,12 +84,34 @@ function eskiEtiketleriSok(raw) {
   return String(raw ?? '').replace(/<\/?strong>/g, '');
 }
 
-/** Etkinlik akışı için aynısı — `activity_` önekli anahtarlarla. */
-export function etkinlikMetni(raw, ceviri) {
+/**
+ * Etkinlik akışı için aynısı — `activity_` önekli anahtarlarla.
+ *
+ * `kolonCoz` bir slug'ı görünen ada çeviren işlev (uygulamada
+ * `kolonAdi(DATA.COLUMNS.find(…))`). Parametre olarak alınıyor ki bu modül
+ * saf kalsın; verilmezse değer olduğu gibi basılır.
+ */
+export function etkinlikMetni(raw, ceviri, kolonCoz = null) {
   const d = coz(raw);
   if (d) {
     const tpl = ceviri?.('activity_' + d.type);
-    if (tpl) return sablonDoldur(tpl, d);
+    if (tpl) return sablonDoldur(tpl, kolonuCoz(d, kolonCoz));
   }
   return htmlKacir(raw);
+}
+
+/**
+ * `col` alanı artık kolonun SLUG'ını taşıyor (kart #331): ad, yazma anında
+ * değil okuma anında çözülüyor. Eskiden sunucu Türkçe başlığı gövdeye
+ * yazıyordu ve şablon çevrilse de içindeki değer Türkçe kalıyordu —
+ * İngilizce arayüzde "moved X to İncelemede".
+ *
+ * ESKİ KAYITLAR DONMUŞ METİNLE DURUYOR ve bilerek taşınmadı: çözücü bir
+ * slug tanımazsa değer olduğu gibi kalıyor. Yani "İncelemede" yazan eski
+ * satır eskisi gibi görünür, yeni satırlar okuyanın dilinde.
+ */
+function kolonuCoz(d, kolonCoz) {
+  if (!d.col || typeof kolonCoz !== 'function') return d;
+  const ad = kolonCoz(d.col);
+  return ad ? { ...d, col: ad } : d;
 }
