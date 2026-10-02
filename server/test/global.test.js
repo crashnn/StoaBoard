@@ -430,11 +430,29 @@ describe('Pano arama çubuğu — numarayla süzme (kart #226)', () => {
     // Suzgec kimlik kipinde basligi ATLAMALI. `else if` bunun mekanizmasi:
     // ikisi ayni dalda kalirsa metin eslesmesi yine devreye girer ve yanlis
     // olumlu geri doner.
-    assert.match(
-      board, /\} else if \(q && !t\.title/,
+    //
+    // OLCUT DAL YAPISINA BAGLI, esleyicinin yazimina degil. Ilk hali
+    // `/\} else if \(q && !t\.title/` ariyordu — yani cozumun o gunku tam
+    // sozunu. 3 Ekim'de basliktaki esleyici `kapsiyor()`a gecti (Turkce
+    // katlama) ve dal yapisi hic degismedigi halde test kirildi. Bu depoda
+    // sorulan soru: "bunu duzelten biri testi kirmak zorunda mi kalir?"
+    // Cevap evetse olcut cozume baglanmistir, davranisa degil.
+    // Olcut, kimlik blogunun KAPANISININ HEMEN ARDINA bagli. "idHam'dan
+    // sonraki ilk `} else if (q &&`" demek yetmedi: aklama denemesi araya
+    // korumasiz bir `if (q && ...)` koyup asagiya olu bir `} else if (q &&
+    // t.title)` yazdi ve olcut onu buldu. Zincirin kopmasi tam olculen sey
+    // oldugu icin arada KOD OLMAMALI.
+    const dalBas = board.indexOf('if (idHam) {');
+    assert.ok(dalBas > 0, 'kimlik kipi dalı bulunamadı');
+    const KAPANIS = '\n    }';
+    const kapanis = board.indexOf(KAPANIS, dalBas);
+    assert.ok(kapanis > dalBas, 'kimlik kipi bloğu kapanmıyor');
+    const sonra = board.slice(kapanis + KAPANIS.length);
+    assert.ok(sonra.startsWith(' else if (q &&'),
       'Kimlik kipi başlık eşleşmesini ATLAMIYOR. İkisi aynı dalda kalırsa '
-      + '"#193" yine başlıkta aranır ve kusur (yanlış olumlu) geri gelir.',
-    );
+      + '"#193" yine başlıkta aranır ve kusur (yanlış olumlu) geri gelir.');
+    const dal = sonra.slice(0, sonra.indexOf('\n'));
+    assert.match(dal, /t\.title/, 'metin araması başlığa bakmıyor');
   });
 
   test('bulunamayınca sessiz boş liste bırakmıyor', () => {

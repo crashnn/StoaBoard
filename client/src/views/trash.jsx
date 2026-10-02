@@ -3,6 +3,8 @@
 import { useState as useTrashState } from 'react';
 import { Icon } from '../icons.jsx';
 import { kolonAdi } from '../data.jsx';
+import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec } from '../topluIslem.js';
+import { copAnahtari, copAyristir, copSuzgeci, secilebilirAnahtarlar } from '../copToplu.js';
 
 const DAYS_RETENTION = 30;
 
@@ -51,10 +53,63 @@ export function TrashView({ tasks, onRestore, onPermanentDelete, canManageTasks,
   const [search, setSearch] = useTrashState('');
   const [emptyConfirm, setEmptyConfirm] = useTrashState(false);
   const [emptyBusy, setEmptyBusy] = useTrashState(false);
+  const [secili, setSecili] = useTrashState(new Set());
+  const [topluMesgul, setTopluMesgul] = useTrashState(false);
+  const [topluSilOnay, setTopluSilOnay] = useTrashState(false);
 
-  const q = search.trim().toLowerCase();
-  const filteredTasks = q ? tasks.filter(t => t.title?.toLowerCase().includes(q)) : tasks;
-  const filteredNotes = q ? notes.filter(n => (n.title || '').toLowerCase().includes(q) || (n.preview || '').toLowerCase().includes(q)) : notes;
+  const q = search.trim();
+  // Süzgeç KOLON ADINI da tarıyor: ad satırda yazıyor, aranmaması
+  // kullanıcıya "ekranda gördüğüm kelime çalışmıyor" diyordu.
+  const { gorevler: filteredTasks, notlar: filteredNotes } = copSuzgeci(
+    { gorevler: tasks, notlar: notes },
+    q,
+    (t) => [kolonAdi(DATA.COLUMNS?.find(c => c.id === t.col) || {})],
+  );
+
+  // Seçim yalnızca GÖRÜNEN ve işlem yapılabilen satırları kapsıyor.
+  const secilebilir = secilebilirAnahtarlar(
+    { gorevler: filteredTasks, notlar: filteredNotes },
+    { gorevYetkisi: canManageTasks },
+  );
+  const seciliGorunen = secilebilir.filter(k => secili.has(k));
+  const hepsiSecili = secilebilir.length > 0 && seciliGorunen.length === secilebilir.length;
+
+  // `topluSonucMetni` "kart" diyor; çöpte not da var ve "3 kart geri alındı"
+  // mesajı iki notu kart sayardı. Çeviri işlevi zaten dışarıdan geliyor —
+  // modülün saf kalması için konan o seam tam buna yarıyor.
+  const COP_METIN = {
+    bulk_done: ['trash_bulk_done', '{n} öğe işlendi'],
+    bulk_all_failed: ['trash_bulk_all_failed', 'Hiçbir öğe işlenemedi'],
+    bulk_partial: ['trash_bulk_partial', '{n} öğe işlendi, {m} tanesi başarısız'],
+  };
+  const copCeviri = (k, fb) => {
+    const e = COP_METIN[k];
+    return e ? (window.t?.(e[0]) || e[1]) : (window.t?.(k) || fb);
+  };
+
+  const topluBitir = (sonuc) => {
+    const mesaj = topluSonucMetni(sonuc, copCeviri);
+    if (mesaj) window.showToast?.(mesaj, sonuc.basarisiz.length ? 'error' : 'info');
+    setSecili(new Set());
+    setTopluMesgul(false);
+    setTopluSilOnay(false);
+  };
+
+  // Geri alma ve kalıcı silme AYNI iskeleti kullanıyor; fark yalnızca hangi
+  // ucun çağrıldığı. İki ayrı kopya yazmak, birinde `seciliGorunen`
+  // süzgecini atlamanın yolunu açardı.
+  //
+  // `seciliGorunen` üzerinden yürüyor, `secili` üzerinden değil: arama
+  // daraldıktan sonra kümede kalan, ekranda olmayan satır işlem görmüyor.
+  const topluIsle = async (tur) => {
+    if (topluMesgul || seciliGorunen.length === 0) return;
+    setTopluMesgul(true);
+    topluBitir(await topluCalistir(seciliGorunen, (anahtar) => {
+      const { tur: cins, id } = copAyristir(anahtar);
+      if (tur === 'restore') return cins === 'task' ? onRestore(id) : onRestoreNote(id);
+      return cins === 'task' ? onPermanentDelete(id) : onPermanentDeleteNote(id);
+    }));
+  };
 
   const handleRestore = async (id, type) => {
     const key = `r-${type}-${id}`;
@@ -140,6 +195,61 @@ export function TrashView({ tasks, onRestore, onPermanentDelete, canManageTasks,
             )}
           </div>
         )}
+
+        {/* TOPLU IŞLEM — yalnizca secim varken. Bos ekranda duran bir cubuk,
+            hic kullanilmayan bir ozellik icin herkesin odedigi yer olurdu
+            (toplu islem cubugundaki ayni karar). */}
+        {seciliGorunen.length > 0 && (
+          <div className="toplu-cubuk trash-toplu">
+            <span className="toplu-sayi">
+              {(window.t?.('trash_bulk_selected') || '{n} öğe seçili').replace('{n}', seciliGorunen.length)}
+            </span>
+            <span className="toplu-ayirac" />
+            <button type="button" className="toplu-dugme" disabled={topluMesgul}
+              onClick={() => topluIsle('restore')}>
+              <Icon name="undo" size={12} /> {window.t?.('trash_bulk_restore') || 'Seçilenleri geri al'}
+            </button>
+            {/* KALICI SILME IKI ADIMLI — tek tikla geri alinamayan islem yok.
+                Satir basina onay da boyle, "Tumunu bosalt" da. */}
+            {topluSilOnay ? (
+              <>
+                <span className="toplu-etiket">{window.t?.('trash_confirm') || 'Kalıcı silinsin mi?'}</span>
+                <button type="button" className="toplu-dugme toplu-tehlike" disabled={topluMesgul}
+                  onClick={() => topluIsle('delete')}>
+                  {window.t?.('trash_confirm_yes') || 'Evet, sil'}
+                </button>
+                <button type="button" className="toplu-dugme" disabled={topluMesgul}
+                  onClick={() => setTopluSilOnay(false)}>
+                  {window.t?.('trash_confirm_no') || 'İptal'}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="toplu-dugme toplu-tehlike" disabled={topluMesgul}
+                onClick={() => setTopluSilOnay(true)}>
+                <Icon name="trash" size={12} /> {window.t?.('trash_bulk_delete') || 'Seçilenleri kalıcı sil'}
+              </button>
+            )}
+            <span className="toplu-ayirac" />
+            <button type="button" className="toplu-dugme" disabled={topluMesgul}
+              onClick={() => setSecili(new Set())}>
+              {window.t?.('bulk_clear') || 'Seçimi bırak'}
+            </button>
+          </div>
+        )}
+
+        {secilebilir.length > 0 && (
+          <label className="trash-hepsi">
+            <input
+              type="checkbox"
+              checked={hepsiSecili}
+              onChange={() => setSecili(hepsiniSec(secili, secilebilir))}
+            />
+            {hepsiSecili
+              ? (window.t?.('trash_select_none') || 'Seçimi kaldır')
+              : (window.t?.('trash_select_all') || 'Hepsini seç')}
+            <span className="trash-section-count">{secilebilir.length}</span>
+          </label>
+        )}
       </div>
 
       {isEmpty ? (
@@ -165,9 +275,21 @@ export function TrashView({ tasks, onRestore, onPermanentDelete, canManageTasks,
                 const col = DATA.COLUMNS?.find(c => c.id === task.col);
                 const days = daysLeft(task.deleted_at);
                 const urgent = days <= 3;
-                const itemKey = `task-${task.id}`;
+                const itemKey = copAnahtari('task', task.id);
                 return (
                   <div key={task.id} className="trash-item">
+                    {/* Kutu YALNIZCA islem yapilabilen satirda. Yetkisiz
+                        satirda kutu cizip sonra sessizce atlamak, "12 secili"
+                        deyip "5 geri alindi" demek olurdu. */}
+                    {canManageTasks && (
+                      <input
+                        type="checkbox"
+                        className="trash-item-check"
+                        aria-label={task.title}
+                        checked={secili.has(itemKey)}
+                        onChange={() => setSecili(secimiDegistir(secili, itemKey))}
+                      />
+                    )}
                     <div className="trash-item-info">
                       <div className="trash-item-title">{task.title}</div>
                       <div className="trash-item-meta">
@@ -218,9 +340,16 @@ export function TrashView({ tasks, onRestore, onPermanentDelete, canManageTasks,
               {filteredNotes.map(note => {
                 const days = daysLeft(note.deleted_at);
                 const urgent = days <= 3;
-                const itemKey = `note-${note.id}`;
+                const itemKey = copAnahtari('note', note.id);
                 return (
                   <div key={note.id} className="trash-item">
+                    <input
+                      type="checkbox"
+                      className="trash-item-check"
+                      aria-label={note.title || (window.t?.('notes_untitled') || 'Başlıksız Not')}
+                      checked={secili.has(itemKey)}
+                      onChange={() => setSecili(secimiDegistir(secili, itemKey))}
+                    />
                     <div className="trash-item-info">
                       <div className="trash-item-title">{note.title || (window.t?.('notes_untitled') || 'Başlıksız Not')}</div>
                       <div className="trash-item-meta">

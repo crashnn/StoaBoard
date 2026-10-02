@@ -13,6 +13,7 @@ import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, fmtTimeAgo, fmtAbsoluteDateTime, kolonAdi } from '../data.jsx';
 import { DefaultDropdown } from '../dropdown.jsx';
 import { benSlug } from '../ben.js';
+import { kapsiyorBiri } from '../arama.js';
 
 // Tones reused from settings.jsx — kept local to avoid module reference issue.
 const NOTE_LABEL_TONES = () => {
@@ -453,7 +454,7 @@ function LinkTaskPopover({ workspaceTasks, linkedIds, onPick, onClose }) {
     const linked = new Set((linkedIds || []).map(String));
     return (rows || [])
       .filter(t => !linked.has(String(t.id)))
-      .filter(t => !ql || (t.title || '').toLowerCase().includes(ql) || (t.project_name || '').toLowerCase().includes(ql))
+      .filter(t => kapsiyorBiri([t.title, t.project_name], ql))
       .slice(0, 60);
   }, [q, rows, linkedIds]);
 

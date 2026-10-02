@@ -6097,6 +6097,31 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: var(--font-ui); }
   flex-shrink: 0;
 }
 
+/* Toplu geri alma — kutular ve cubuk.
+   `.trash-item` zaten flex oldugu icin kutu kendiliginden yerine oturuyor;
+   burada yalnizca kucumsenmemesi (shrink) ve cubugun arama kutusuyla
+   arasindaki bosluk var. */
+.trash-item-check {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.trash-toplu {
+  margin-bottom: 10px;
+}
+.trash-hepsi {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.trash-hepsi input {
+  cursor: pointer;
+}
+
 /* search bar */
 .trash-search-wrap {
   display: flex;

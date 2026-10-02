@@ -8,6 +8,7 @@ import { komsuKolonId, hedefKartSirasi } from '../klavyePano.js';
 import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec, atamaEkleniyorMu, yeniAtananlar } from '../topluIslem.js';
 import { grupla, GRUP_OLCUTLERI } from '../gruplama.js';
 import { benSlug } from '../ben.js';
+import { kapsiyor } from '../arama.js';
 
 const COL_NAME_MAX = 30;
 const COL_COLORS = ['#6366f1','#3b82f6','#06b6d4','#10b981','#f59e0b','#f97316','#ef4444','#a855f7','#ec4899','#6b7280'];
@@ -1469,7 +1470,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, 
     if (idHam) {
       const kimlik = String(t.id);
       if (kimlik !== idHam && !kimlik.startsWith(idHam)) return false;
-    } else if (q && !t.title.toLowerCase().includes(q)) return false;
+    } else if (q && !kapsiyor(t.title, q)) return false;
     if (activePriority && t.priority !== activePriority) return false;
     if (activeLabels.size > 0 && !(t.labels || []).some(l => activeLabels.has(l))) return false;
     if (activeOverdue && !DATA.isOverdue(t.due, t.col)) return false;

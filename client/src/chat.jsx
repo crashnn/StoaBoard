@@ -9,6 +9,7 @@ import { kanaliHatirla, hatirlananKanal } from './rota.js';
 import { benSlug } from './ben.js';
 import { yerelGunAnahtari } from './tarih.js';
 import { Avatar, AvatarStack } from './shell.jsx';
+import { kapsiyor, kapsiyorBiri } from './arama.js';
 
 // Sohbet taslakları: (alan + hedef) çifti başına metin, yanıt ve eklenmiş
 // dosya. MODÜL KAPSAMINDA, bileşen içinde değil — panel unmount olunca
@@ -398,7 +399,7 @@ function CreateChannelModal({ open, onClose, onCreated, allMembers, me }) {
   const others = (allMembers || []).filter(m => m.id !== me);
   const q = search.trim().toLowerCase();
   const filtered = q
-    ? others.filter(m => (m.name || '').toLowerCase().includes(q) || (m.id || '').toLowerCase().includes(q))
+    ? others.filter(m => kapsiyorBiri([m.name, m.id], q))
     : others;
 
   const toggleMember = (slug) => {
@@ -599,7 +600,7 @@ function AddMemberModal({ open, onClose, channel, onAdded, allMembers, me }) {
   const candidates = (allMembers || []).filter(m => m.id !== me && !memberSlugs.has(m.id));
   const q = search.trim().toLowerCase();
   const filtered = q
-    ? candidates.filter(m => (m.name || '').toLowerCase().includes(q) || (m.id || '').toLowerCase().includes(q))
+    ? candidates.filter(m => kapsiyorBiri([m.name, m.id], q))
     : candidates;
 
   const toggle = (slug) => setSelected(prev => {
@@ -1988,7 +1989,7 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
   const [mentionIdx, setMentionIdx]   = useChatS(0);
   const mentionMembers = useChatRef([]);
   mentionMembers.current = mentionQuery
-    ? allMembers.filter(m => m.id !== me && (m.name.toLowerCase().includes(mentionQuery.toLowerCase()) || m.id.toLowerCase().includes(mentionQuery.toLowerCase())))
+    ? allMembers.filter(m => m.id !== me && kapsiyorBiri([m.name, m.id], mentionQuery))
     : allMembers.filter(m => m.id !== me);
 
   // Handle open/initialDmWith/initialChannel changes
@@ -3043,11 +3044,11 @@ function ChatPanel({ open, onClose, onExpand, onlineUsers, onlineStatuses, membe
       {/* ═════════════════ FULL-PAGE 3-COLUMN LAYOUT ═════════════════ */}
       {fullPage && (() => {
         const visibleMembers = leftSearch
-          ? members.filter(m => m.name.toLowerCase().includes(leftSearch.toLowerCase()))
+          ? members.filter(m => kapsiyor(m.name, leftSearch))
           : members;
         const showHeaderSearchHits = headerSearchOpen && headerSearch.trim();
         const headerHits = showHeaderSearchHits
-          ? messages.filter(m => (m.text || m.file_name || '').toLowerCase().includes(headerSearch.toLowerCase()))
+          ? messages.filter(m => kapsiyor(m.text || m.file_name, headerSearch))
           : [];
         // participant avatars (recent senders, max 4)
         const recentParticipants = [];

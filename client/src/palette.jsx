@@ -3,6 +3,7 @@
 import { useState as useP, useEffect as useE, useMemo as useM, useRef as useR } from 'react';
 import { Icon } from './icons.jsx';
 import { kolonAdi } from './data.jsx';
+import { kapsiyor, kapsiyorBiri } from './arama.js';
 
 function CommandPalette({ open, onClose, onAction }) {
   const [q, setQ] = useP('');
@@ -148,8 +149,7 @@ function CommandPalette({ open, onClose, onAction }) {
       ];
     }
     if (q) {
-      const ql = q.toLowerCase();
-      base = all.filter(it => it.label.toLowerCase().includes(ql));
+      base = all.filter(it => kapsiyor(it.label, q));
     }
 
     // ── Görev arama: ÇALIŞMA ALANININ TAMAMI, sunucudan ───────────────────
@@ -193,10 +193,9 @@ function CommandPalette({ open, onClose, onAction }) {
     }
 
     if (q && (DATA.NOTES || []).length) {
-      const ql = q.toLowerCase();
       const noteHits = (DATA.NOTES || [])
         .filter(n => !n.archived)
-        .filter(n => (n.title || '').toLowerCase().includes(ql) || (n.preview || '').toLowerCase().includes(ql))
+        .filter(n => kapsiyorBiri([n.title, n.preview], q))
         .slice(0, 6)
         .map(n => ({
           label: n.title || (window.t?.('notes_untitled')||'Başlıksız Not'),

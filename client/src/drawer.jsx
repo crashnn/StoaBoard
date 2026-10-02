@@ -11,6 +11,7 @@ import { GecmisSection } from './gecmis.jsx';
 import { durumdanYol } from './rota.js';
 import { paragraflaraBol } from './belge.js';
 import { dikeyCekJesti, yatayKaydirJesti } from './jest.js';
+import { kapsiyor } from './arama.js';
 
 // `tweaks` BİLEREK prop, global değil. Çekmece başka globalleri (DATA.COLUMNS,
 // window.t) okuyor ama `window.__TWEAKS__` bunlardan farklı: o sunucunun
@@ -554,7 +555,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
   };
 
   const mentionMembers = mentionQuery !== null
-    ? DATA.MEMBERS.filter(m => m.name.toLowerCase().includes(mentionQuery))
+    ? DATA.MEMBERS.filter(m => kapsiyor(m.name, mentionQuery))
     : [];
 
   const bodyContent = (
@@ -873,7 +874,7 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
                       ? <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--ink-faint)' }}>{window.t?.('drawer_loading') || 'Yükleniyor…'}</div>
                       : (allNotes || [])
                           .filter(n => !linkedNotes.some(ln => ln.id === n.id))
-                          .filter(n => !noteSearch || (n.title || '').toLowerCase().includes(noteSearch.toLowerCase()))
+                          .filter(n => kapsiyor(n.title, noteSearch))
                           .slice(0, 12)
                           .map(n => (
                             <button
