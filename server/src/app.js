@@ -123,15 +123,46 @@ export function createApp() {
   app.set('trust proxy', 1); // Railway/Heroku gibi proxy'ler için
   app.use(sessionMiddleware);
 
-  // --- Rate limit — sadece /api/auth (login/register brute-force koruması) ---
+  // --- Rate limit — kimlik DENEME uçları (login/register brute-force) ---
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 dk
     max: 30,                  // IP başına 30 deneme
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Too many requests, try again later.' },
+    // Sözleşme: { error: 'err_kod', message: 'Türkçe' }. Burada bir zamanlar
+    // `error` alanında düpedüz İngilizce cümle vardı; istemci `error`ü
+    // sözlükten geçirdiği için kullanıcı o cümleyi çevrilmemiş görüyordu.
+    message: { error: 'err_auth_rate_limited', message: 'Çok fazla giriş denemesi. Biraz sonra tekrar dene.' },
   });
-  app.use('/api/auth', authLimiter);
+
+  // Oturum YOKLAMASI brute-force değil — kart #328.
+  //
+  // KUSUR: `/api/auth` dalının TAMAMI 30/15dk ile limitliydi ve `/me` her
+  // sayfa yüklemesinde çağrılıyor. Yani sınır gerçekte "IP başına 15 dakikada
+  // 30 SAYFA YÜKLEMESİ" demekti; tek NAT IP'sinin arkasındaki üç kişi normal
+  // kullanımda birden "oturumdan düştü" ve F5 kurtarmıyordu (yeni istek de
+  // 429 alıyor). Aynı muhakeme `/mcp` için yapılmıştı (aşağıda, gerekçesi
+  // yorumda), `/me` için yapılmamıştı.
+  //
+  // NİÇİN MUAFİYET LİSTESİ, NİÇİN "LİMİTLENECEKLER" LİSTESİ DEĞİL: dalın
+  // tamamı varsayılan olarak limitli kalıyor, muafiyet tek tek yazılıyor.
+  // Ters yön daha tehlikeli olurdu — yeni bir giriş benzeri uç eklendiğinde
+  // sessizce korumasız kalır ve bunu kimse fark etmez. Bu yönde ise yeni uç
+  // en kötü hâlde fazla limitli doğar: görünür, şikâyet edilir, düzeltilir.
+  //
+  // Sınır tamamen kaldırılmadı: döngüye giren bir istemci yine durmalı.
+  // 300/15dk ≈ 20 istek/dk, yani ofis IP'si arkasındaki birkaç kişinin
+  // sekmelerini açıp kapamasına yeter, sonsuz döngüye yetmez.
+  const YOKLAMA_UCLARI = new Set(['/me']);
+  const yoklamaLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'err_auth_rate_limited', message: 'Çok fazla istek. Biraz sonra tekrar dene.' },
+  });
+  app.use('/api/auth', (req, res, next) =>
+    (YOKLAMA_UCLARI.has(req.path) ? yoklamaLimiter : authLimiter)(req, res, next));
 
   // MCP ucu ayrı bir limitleyici istiyor: protokol konuşkan (initialize,
   // tools/list, tools/call ayrı isteklerdir), yani /api/auth'un 30'luk sınırı

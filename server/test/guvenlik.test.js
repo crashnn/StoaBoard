@@ -1926,3 +1926,100 @@ describe('çevrimiçi liste yalnızca ortak alan üyelerini içerir (#332)', () 
       'aday kümesi istek sahibinin alanlarıyla süzülmüyor — kusur geri geldi');
   });
 });
+
+// ─── Oturum yoklaması brute-force değil (kart #328) ────────────────────────
+//
+// KUSUR (2 Ekim 2026, Playwright turunda yaşandı): uygulama birden giriş
+// ekranına düştü, oysa oturum SAĞLAMDI — `/api/auth/me` 429 dönüyordu.
+//
+// İki kusur üst üste binmişti:
+//
+//   KAPSAM — `app.use('/api/auth', authLimiter)` bütün dalı 30/15dk ile
+//   limitliyordu. `/me` ise bir oturum YOKLAMASI ve her sayfa yüklemesinde
+//   çağrılıyor; yani sınır gerçekte "IP başına 15 dakikada 30 sayfa
+//   yüklemesi" demekti. Tek NAT IP'sinin arkasındaki üç kişi normal
+//   kullanımda bu sayıya ulaşır. Aynı muhakeme `/mcp` için yapılmış
+//   (protokol konuşkan, ayrı limitleyici yazılmış), `/me` için yapılmamıştı.
+//
+//   SESSİZ BAŞARISIZLIK — istemci `me()`nin her hatasını "oturum yok" diye
+//   okuyordu: 429, 5xx, ağ kesintisi hepsi giriş ekranı. Kullanıcı "çıkış
+//   yapmışım" sanıyor, F5 de kurtarmıyor (yeni istek de 429).
+//
+// ÖLÇÜTÜN YÖNÜ ÖNEMLİ: dalın tamamı varsayılan olarak limitli kalmalı ve
+// muafiyet tek tek yazılmalı. Ters yön (yalnızca bilinen uçları limitlemek)
+// yeni bir giriş ucunu sessizce korumasız bırakır.
+
+describe('oturum yoklaması giriş denemesi gibi limitlenmiyor (#328)', () => {
+  const APP = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'app.js'));
+  const CLIENT_APP = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'app.jsx'));
+
+  test('/api/auth dalı hâlâ varsayılan olarak limitli', () => {
+    // Muafiyeti eklerken limitleyiciyi daldan tamamen kaldırmak, brute-force
+    // korumasını sessizce silmek olurdu.
+    assert.match(APP, /app\.use\('\/api\/auth',\s*\(req, res, next\) =>/,
+      'dal limitleyicisi kaldırılmış ya da biçimi değişmiş');
+    const bas = APP.indexOf("app.use('/api/auth', (req, res, next) =>");
+    const dagitici = APP.slice(bas, APP.indexOf(';', bas));
+    assert.match(dagitici, /authLimiter/, 'muaf olmayan uçlar authLimiter\'a gitmiyor');
+    assert.match(dagitici, /YOKLAMA_UCLARI\.has\(req\.path\)/, 'muafiyet yol üzerinden çözülmüyor');
+  });
+
+  test('muafiyet listesinde YALNIZCA yoklama ucu var — giriş uçları değil', () => {
+    // Ölçüt "/me listede mi" değil: listeye bir giriş ucu sızarsa brute-force
+    // koruması o uçta 300'e çıkar ve kimse fark etmez.
+    const m = /const YOKLAMA_UCLARI = new Set\(\[([^\]]*)\]\)/.exec(APP);
+    assert.ok(m, 'muafiyet listesi bulunamadı');
+    const uclar = [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+    assert.deepEqual(uclar, ['/me'], `muafiyet listesi beklenenden farklı: ${JSON.stringify(uclar)}`);
+    for (const deneme of ['/login', '/register', '/reset-password', '/forgot-password', '/google']) {
+      assert.ok(!uclar.includes(deneme), `${deneme} limitleyiciden muaf tutulmuş`);
+    }
+  });
+
+  test('yoklama sınırı kaldırılmadı, yalnızca genişletildi', () => {
+    // Sınırsız bırakmak döngüye giren bir istemciyi durdurmaz. Ölçüt iki
+    // limitleyicinin İLİŞKİSİ: yoklama sınırı deneme sınırından belirgin
+    // biçimde büyük, ama sonsuz değil.
+    const sayi = (ad) => {
+      const bas = APP.indexOf(`const ${ad} = rateLimit({`);
+      assert.ok(bas > 0, `${ad} yok`);
+      const blok = APP.slice(bas, APP.indexOf('});', bas));
+      const m = /max:\s*(\d+)/.exec(blok);
+      assert.ok(m, `${ad} içinde max yok`);
+      return Number(m[1]);
+    };
+    const deneme = sayi('authLimiter');
+    const yoklama = sayi('yoklamaLimiter');
+    assert.ok(yoklama > deneme * 5, `yoklama sınırı (${yoklama}) deneme sınırına (${deneme}) fazla yakın`);
+    assert.ok(yoklama <= 1000, `yoklama sınırı (${yoklama}) fiilen sınırsız`);
+  });
+
+  test('429 yanıtı sözleşmeye uyuyor — error alanı KOD', () => {
+    // Burada düpedüz İngilizce bir cümle vardı. İstemci `error`ü sözlükten
+    // geçiriyor; karşılığı olmayan metin kullanıcıya çevrilmemiş gidiyordu.
+    for (const ad of ['authLimiter', 'yoklamaLimiter']) {
+      const bas = APP.indexOf(`const ${ad} = rateLimit({`);
+      const blok = APP.slice(bas, APP.indexOf('});', bas));
+      const m = /message:\s*\{\s*error:\s*'([^']+)'/.exec(blok);
+      assert.ok(m, `${ad}: 429 gövdesinde error alanı yok`);
+      assert.match(m[1], /^err_[a-z0-9_]+$/, `${ad}: error alanı kod değil ("${m[1]}")`);
+    }
+  });
+
+  test('istemci 401 ile ÖTEKİ hataları ayırıyor', () => {
+    // Ölçüt oturum yoklama zincirinin catch bloğuna bağlı: dosyanın başka
+    // yerinde 401 kontrolü olması bu kusuru aklamamalı.
+    const bas = CLIENT_APP.indexOf('const oturumuYokla = () =>');
+    assert.ok(bas > 0, 'oturum yoklama zinciri bulunamadı');
+    const blok = CLIENT_APP.slice(bas, CLIENT_APP.indexOf('useEf(() => { oturumuYokla(); }', bas));
+    assert.match(blok, /if \(err\?\.status === 401\) \{ setAuthed\(false\); return; \}/,
+      'giriş ekranı kararı 401 kapısından geçmiyor');
+    // setAuthed(false) o kapıdan SONRA başka bir yerde çağrılmamalı; yoksa
+    // kapı var ama etkisiz olur.
+    const kapi = blok.indexOf('err?.status === 401');
+    const sonraki = blok.indexOf('setAuthed(false)', blok.indexOf('return; }', kapi));
+    assert.equal(sonraki, -1, '401 kapısından sonra da setAuthed(false) çağrılıyor');
+    assert.match(blok, /setBaglantiHatasi\(err\?\.status === 429 \? 'rate' : 'net'\)/,
+      'bilinmeyen hata ayrı bir duruma yazılmıyor');
+  });
+});

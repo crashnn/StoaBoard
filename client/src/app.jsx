@@ -90,6 +90,9 @@ function useGeriKatmani(yonetici, acik, kapat) {
 function App() {
   const [authed, setAuthed]                 = useS(false);
   const [loading, setLoading]               = useS(true);
+  // 'rate' | 'net' | null — "oturum yok" ile "cevabı bilmiyoruz" ayrı
+  // durumlar (kart #328). Giriş ekranı yalnızca birincisinde gösterilir.
+  const [baglantiHatasi, setBaglantiHatasi] = useS(null);
   const [needsWorkspace, setNeedsWorkspace] = useS(false);
   const [view, setView]                     = useS(() => {
     const path = window.location.pathname;
@@ -509,8 +512,22 @@ function App() {
   }, [canManageTasks]);
 
   // ── Auth + bootstrap on mount ────────────────────────────────────────────
-  useEf(() => {
-    API.me()
+  //
+  // KUSUR (kart #328): bu zincirin `catch`i HER başarısızlığı "oturum yok"
+  // diye okuyordu. Sunucu tarafı 429 döndüğünde (bkz. app.js, `/api/auth`
+  // limitleyicisi) kullanıcı giriş ekranına atılıyor, "çıkış yapmışım"
+  // sanıyor ve F5 de kurtarmıyordu — yeni istek de 429 alıyor. Oturum
+  // boyunca SAĞLAMDI; oynayan şey yanıttı.
+  //
+  // Artık yalnızca 401 "oturum yok" demek. Başka her şey (429, 5xx, ağ
+  // kesintisi) "BİLMİYORUZ" demek ve bilmemek giriş ekranı göstermek için
+  // yeterli değil: kullanıcıya bağlantı kurulamadığı söylenip tekrar deneme
+  // verilir. CLAUDE.md'deki kural — koşulun yokluk hâli sessizce bir karara
+  // dönüşmemeli.
+  const oturumuYokla = () => {
+    setLoading(true);
+    setBaglantiHatasi(null);
+    return API.me()
       .then(() => onyukle())
       .then((data) => {
         if (data.needs_workspace) {
@@ -534,8 +551,16 @@ function App() {
           }
         } catch (_) {}
       })
-      .catch(() => { setAuthed(false); setLoading(false); });
-  }, []);
+      .catch((err) => {
+        setLoading(false);
+        // 401 tek başına "oturum yok" diyebilen cevap. Oturum varken gelen
+        // her başka hata, kullanıcıyı giriş ekranına atmak için sebep değil.
+        if (err?.status === 401) { setAuthed(false); return; }
+        setBaglantiHatasi(err?.status === 429 ? 'rate' : 'net');
+      });
+  };
+
+  useEf(() => { oturumuYokla(); }, []);
 
   // ── Socket.IO connection ─────────────────────────────────────────────────
   useEf(() => {
@@ -1509,6 +1534,35 @@ function App() {
           </div>
           <div className="loading-brand">Stoa<em>Board</em></div>
           <div className="loading-bar-wrap"><div className="loading-bar" /></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Bağlantı kurulamadı — oturumun bitip bitmediği BİLİNMİYOR (kart #328).
+  // Giriş ekranı göstermek yanlış bilgi verirdi: kullanıcı çıkış yapmadı,
+  // sunucuya ulaşılamadı. 429 ayrı anlatılıyor çünkü çözümü beklemek.
+  if (baglantiHatasi) {
+    return (
+      <div className="app" data-auth="true">
+        <div className="loading-screen">
+          <div className="loading-content" style={{ textAlign: 'center', maxWidth: 420 }}>
+            <div className="loading-brand">Stoa<em>Board</em></div>
+            <div style={{ marginTop: 18, fontWeight: 600 }}>
+              {window.t?.('app_conn_title') || 'Bağlanılamadı'}
+            </div>
+            <div style={{ marginTop: 8, opacity: 0.75, lineHeight: 1.5 }}>
+              {baglantiHatasi === 'rate'
+                ? (window.t?.('app_conn_rate') || 'Çok fazla istek gönderildi. Oturumun açık, birkaç dakika sonra tekrar dene.')
+                : (window.t?.('app_conn_net') || 'Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.')}
+            </div>
+            <button
+              type="button" className="btn btn-primary" style={{ marginTop: 18 }}
+              onClick={() => oturumuYokla()}
+            >
+              {window.t?.('app_conn_retry') || 'Tekrar dene'}
+            </button>
+          </div>
         </div>
       </div>
     );
