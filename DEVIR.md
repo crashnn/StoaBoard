@@ -18,23 +18,25 @@ güven, düzyazıya değil.
 
 ---
 
-## 0-AK. 2 Ekim — Playwright turunun dört kartı: kapsamsız çevrimiçi liste, odağı çalan gizli pencere, 429 "oturum düştü", hayalet kart
+## 0-AK. 2 Ekim — Playwright turunun altı kartı: çevrimiçi liste, odağı çalan pencere, 429 "oturum düştü", hayalet kart, donmuş kolon adı, duman testi
 
-**Depo:** `main` = `2b60ae2` + bu devir commit'i, `origin/main` ile eşit,
-çalışma ağacı temiz. Dağıtım canlıda (kullanıcı onayıyla, üç turda push).
-Test **1117 → 1146**.
+**Depo:** `main` = `da19da0` + bu devir commit'i, `origin/main` ile eşit,
+çalışma ağacı temiz. Dağıtım canlıda (kullanıcı onayıyla, dört turda push).
+Test **1117 → 1174**; yeni komut **`npm run duman`**.
 
 **Devralınan durum:** 1 Ekim gecesi yapılan Playwright doğrulama turu altı
 kart açmış ve **hiçbirine kod yazmamıştı** (#328, #330, #331, #332, #333,
-#339). Bu tur dördünü kapattı (#330, #332, #328, #339), birini büyüttü
-(#333) ve bir yenisini açtı (#342). Kalan: **#331**, **#333**.
+#339). Bu tur **altısını da kapattı** ve bir yenisini açtı (#342).
+Yanında **#288** de kapandı: İncelemede'de bekliyordu, kalan yarısı #331'in
+sunucu tarafıydı.
 
-**DÖRT KARTIN DÖRDÜNDE KARTIN ÖNERİSİ BİREBİR UYGULANMADI** ve dördünde de
+**BEŞ KARTIN BEŞİNDE KARTIN ÖNERİSİ BİREBİR UYGULANMADI** ve beşinde de
 gerekçe aynı sınıftan: kartın önerisi bir **kural** koyuyordu, uygulanan şey
-kuralı gereksiz kılan bir **tasarım**. #332'de erişimci silindi, #330'da
-`inert` kondu, #328'de muafiyet listesi ters çevrildi, #339'da ölçüt bütün
-silme yollarını taradı. Her birinin gerekçesi aşağıda ve commit
-mesajlarında.
+kuralı gereksiz kılan bir **tasarım**. #332'de kapsamsız erişimci silindi,
+#330'da `inert` kondu, #328'de muafiyet listesinin **yönü** ters çevrildi,
+#339'da ölçüt tek uç yerine bütün silme yollarını taradı, #331'de kuralın
+**kapsamı daraldı** (dil donması yasak, ad donması değil). Her birinin
+gerekçesi aşağıda ve commit mesajlarında.
 
 ### #332 — çevrimiçi liste platform geneliydi (güvenlik)
 
@@ -120,10 +122,11 @@ olan — masaüstünde her zaman görünür, `inert` onu öldürür.
 
 ### Test ve mutasyon
 
-**1117 → 1146.** İki yeni dosya: `server/test/odak.test.js` (8, #330) ve
-`server/test/hayalet.test.js` (8, #339). Güvenlik regresyonları
-`guvenlik.test.js`e (#332 için 4, #328 için 5), saf katman
-`varlik.test.js`e (4).
+**1117 → 1174.** Üç yeni dosya: `odak.test.js` (8, #330),
+`hayalet.test.js` (8, #339) ve `gorunenAd.test.js` (28, #331). Güvenlik
+regresyonları `guvenlik.test.js`e (#332 için 4, #328 için 5), saf katman
+`varlik.test.js`e (4). `bildirim.test.js`teki bir ölçüt yeniden yazıldı —
+gerekçesi aşağıda, bu turun asıl dersi.
 
 Ölçütlerin hepsi korudukları **bloğa** bağlı: `/bootstrap` bloğu, emit
 satırının kendisi, `gorunurOnlineKisiler` gövdesi, `AddTaskModal` bloğu
@@ -132,14 +135,24 @@ pencerede autoFocus meşru), `G_MAP` etkisi. İki ölçüt metin değil **yüzey
 ölçüyor: `onlineState`'in argümansız fonksiyon sunmaması ve haritayı
 dolaşmaması.
 
-**Otuz iki mutasyonun otuz ikisi kırıldı** (6 + 9 + 9 + 8), dördü **aklama
+**Kırk üç mutasyonun kırk üçü kırıldı** (6 + 9 + 9 + 8 + 11), beşi **aklama
 denemesi**: ölçütün aradığı metin dosyada bırakıldı ama korumadığı bir yere
 taşındı; test yine kırıldı, yani ölçüt metni değil davranışı arıyor. Üçü
 bu turun en değerli mutasyonlarıydı, çünkü **olmayan** bir şeyi ölçtüler:
 "kapı var ama etkisiz" (#328: 401 kapısından sonra yine `setAuthed(false)`),
 "yayınsız yeni bir silme yolu ekle" (#339: aile korumasının kendisi) ve
-"tarama desenini boz" (#339: ölçüt kendini de koruyor). Mutasyon betikleri
-geçici dizinde, depoda değil.
+"tarama desenini boz" (#339 ve #331: ölçüt kendini de koruyor).
+
+Bir mutasyon ilk denemede **kaçtı** ve sebep mutasyonun kendisiydi:
+kullanılmayan bir `export` ekliyordu, yani davranışı hiç değiştirmiyordu.
+Doğru olanı (kaçışı kaldırmak) kırdı. **Kaçan mutasyon her zaman testin
+suçu değil** — önce mutasyonun gerçekten bir şey bozduğu doğrulanmalı.
+
+İkinci bir ders aynı turda: mutasyon betikleri dosyayı geri yazmayı
+`finally` içinde yapmalı. Bir betikte `print` konsol kodlamasında patladı
+(Windows cp1254, `ℹ` karakteri) ve **geri yazma hiç koşmadı**: kaynakta
+XSS kaçışı kaldırılmış hâlde kaldı, `git diff` ile yakalandı. Mutasyon
+betikleri geçici dizinde, depoda değil.
 
 ### #328 — oturum yoklaması giriş denemesi gibi limitleniyordu
 
@@ -195,82 +208,151 @@ yerine olmayan bir kusur uydurdu. İkincisi: `/me/trash` çapası aynı yolun
 **GET** tanımını buluyordu (çöp listesi), yani ölçüt yanlış bloğu ölçüyordu.
 İkisi de testte yorumda yazılı.
 
-### Canlı doğrulama — dört kartın üçü ölçüldü
+### #331 — kalıcı kayda görüntü metni: kolon adı donuyordu
 
-Dağıtım iki turda geldi; her turda `/pano` HTML'indeki varlık adının
-değiştiği beklendi, sonra ölçüldü.
+Etkinlik gövdesine `col: newCol.titleTr || newCol.title` yazılıyordu. Şablon
+çevriliyor (`activity_task_moved`) ama içine konan **değer çevrilmiyor** —
+İngilizce arayüzde akış "moved X to İncelemede" diyordu ve #288'in istemci
+düzeltmesi (`kolonAdi`) oraya yetişemiyordu. İkinci yer `notes.js`: iki uç
+`col_title: r.column?.titleTr` döndürüyordu, yani sunucu okuyanın dilini
+bilmeden Türkçe başlığı seçiyordu. Kartta "şüphe, doğrulanmadı" diye yazılan
+üçüncü madde buydu ve doğruydu.
+
+Artık gövdede **slug** var; ad `etkinlikMetni`in yeni üçüncü parametresiyle
+okuma anında çözülüyor ve çözücü istemcideki tek okuyucudan (`kolonAdi`)
+geçiyor. `notes.js` iki başlığı birlikte gönderiyor (`col_titles`,
+`columnToDict` kalıbı); tek başlık döndüren alanın **adı da kalktı** ki
+sessizce geri gelmesin. Eski kayıtlar bilerek taşınmadı: çözücü tanımadığı
+değeri olduğu gibi basıyor.
+
+**Kuralın kapsamı bilerek daraltıldı** — karttan sapma, gerekçesi testte.
+Kart "kolon, proje ve kullanıcı ADI girmesin" diyordu; uygulanan kural
+yalnızca **dil** donmasını yasaklıyor:
+
+- *Dil donması (yasak):* kolonun iki başlığı var ve hangisinin doğru olduğu
+  **okuyana** göre değişir. Sunucu seçerse yanlış seçmiş olur. Çözümü
+  bedelsiz.
+- *Ad donması (yasak değil):* `who: user.name`, `channel`, `workspace`. Tek
+  doğru karşılığı var, dile göre değişmiyor, yalnızca sonradan değişebilir.
+  Okuma anında çözmek burada **daha kötü** olabilir: bildirim okuyanın
+  göremediği bir varlıktan söz edebiliyor ("şu alana kabul edildin") ve
+  referans çözülemezse ad bugün dolu olan yerde yarın boş çıkar.
+
+### Bu turun asıl dersi: mevcut bir test tam tersini kilitliyordu
+
+`bildirim.test.js` şunu ölçüyordu: *"task_moved kolon BAŞLIĞI yazar, slug
+DEĞİL"*. O gün doğru ölçüttü; dayanağı "şablon `{col}`u olduğu gibi basıyor,
+slug yazsak kullanıcı 'doing' görür" idi.
+
+Dayanak artık geçersiz, çünkü okuyucu slug'ı çözüyor. Ama ölçüt
+**uygulamaya** bağlanmıştı ("şu satır şöyle yazmalı"), bu yüzden daha iyi bir
+uygulama gelince kusuru değil **eski çözümü savundu**: #331'in düzeltmesi
+testi kırdı.
+
+Test silinmedi — koruduğu şey hâlâ geçerli: *kullanıcı ham kimlik görmemeli.*
+Ölçüt o **özelliğe** bağlandı ve üçe ayrıldı: üretici referans yazar · saf
+fonksiyon adı çözer · istemcideki sarmalayıcı çözücüyü **geçirir**. Üçüncüsü
+18 Eylül dersinin kendisi (türü değiştirdiysen kullanımları ölç): saf
+fonksiyon doğru olsa da çözücü geçilmezse kullanıcı yine "review" görür.
+
+Bu, CLAUDE.md'deki "ölçüt metni arıyorsa davranışı aramıyordur" sınıfının
+yeni bir yüzü: ölçüt davranışı değil **çözümü** kilitlerse, daha iyi çözümün
+önünde durur. Yeni bir ölçüt yazarken soru şu olmalı: *bunu düzelten biri
+testi kırmak zorunda mı kalır?*
+
+### #333 — duman testi depoda: `duman/` + `npm run duman`
+
+Kartın "karar gereken" maddesi vardı; kararlar ve gerekçeleri:
+
+| Karar | Seçim | Niçin |
+|---|---|---|
+| Nereye | depo kökünde `duman/` | `npm test` sözleşmesi "veritabanı istemez, saniyeler sürer"; tarayıcı isteyen dosya onu bozar |
+| Komut | `cd server && npm run duman` | kökte `package.json` yok; `mcp:tara` da server'da |
+| Hedef | **canlı** (varsayılan), `STOA_URL` ile yerel | yerel sunucu + veritabanı ister, ofiste 5432 kapalı (#206'ya bağlanırdı) |
+| Playwright | **bağımlılık değil**, çalışma anında çözülüyor | devDependency `npm install`a tarayıcı indirmesi ekler, kancayı ağırlaştırır; yoksa **ATLANDI (2)**, `mcp:tara` sözleşmesi |
+| Kanca/CI | **bağlanmadı** | sıra: #203 → #212 → duman. O zaman CDP kuralı da düşer |
+
+Beş ölçüt, hepsi veri yazmadan. Üçü **olumlu** ölçüt, bilerek: "odak
+çalınmıyor" ile "kısayol gerçekten çalışıyor" ayrı şeyler ve olumsuz ölçüt
+mekanizma ölüyken bedava geçiyor (#267'de tam bu oldu).
+
+**Küme #330'u gerçekten yakalar mıydı — ölçüldü.** Kusurun koşulu canlı
+sayfada yeniden kuruldu (kapalı örtüden `inert` söküldü, gizli kutuya odak
+verildi) ve **dört ölçütün dördü de kaldı**; dördüncüsü kartın ölçtüğü
+belirtiyi aynen üretti (gizli kutuda `["gd"]`). Bu, bir duman testinin
+kendisine sorulması gereken soruydu.
+
+### Canlı doğrulama — altı kartın beşi ölçüldü
 
 | Kart | Ölçüm | Sonuç |
 |---|---|---|
-| #330 | `t330.mjs` — taze açılışta odak, kapalı pencerede `focus()`, `g,d`, gizli kutuya yazılan | **4/4 geçti**. Odak BODY · inert odağı reddetti · `/pano → /ana-sayfa` · kutular boş |
-| #328 | `t328.mjs` — 40 ardışık `/api/auth/me` | **3/3 geçti**. `{"200": 40}`; eski davranışta 31'inciden sonrası 429'du |
-| #339 | `t-silme-canli.mjs` — iki hesap, gözlemcide yenileme yok | **3/3 geçti**. Kalıcı silme artık F5'siz düşüyor |
-| #332 | `t332.mjs` | **ölçüm 2 geçti, ölçüm 1 GEÇERSİZ** — aşağıda |
+| #330 | `t330.mjs` | **4/4** · odak BODY · inert odağı reddetti · `g,d` → `/ana-sayfa` |
+| #328 | `t328.mjs` | **3/3** · 40 ardışık `/me` → `{"200": 40}` (eskiden 31'inciden sonrası 429) |
+| #339 | `t-silme-canli.mjs` | **3/3** · kalıcı silme F5'siz düşüyor |
+| #331 | `t331.mjs` | **2/2** · aynı kayıt TR'de "İncelemede", EN'de "In Review" |
+| #333 | `npm run duman` | **5/5**, üç sayfa yüklemesi |
+| #332 | `t332.mjs` | ölçüm 2 geçti, **ölçüm 1 GEÇERSİZ** — aşağıda |
+
+**#288 de kapandı** (İncelemede'deydi): kalan yarısı #331'in sunucu
+tarafıydı. İki yüzeyi de ölçüldü — pano kolon adları (duman kümesi, EN'de
+kalan Türkçe ad `[]`) ve etkinlik akışı. Pano ölçütü artık depoda, yani bir
+daha sessizce kırılmaz.
 
 **#332 niçin kapanmadı sayılmıyor.** Betiğin ölçütü yeniden yazıldı: eski
 ölçüt "yalnızca **aktif alanın** üyeleri" diyordu, uygulanan kural ise
 bilinçli olarak **ortak alan**. Eski ölçüt düzeltilmiş sunucuda da "SIZINTI
-VAR" diyor, yani yanlış kuralı ölçüyor — devralan oturumu olmayan bir kusuru
-aramaya götürürdü.
+VAR" diyor — devralan oturumu olmayan bir kusuru aramaya götürürdü.
 
 Kesin ölçülen (ölçüm 2, ayırt edici): B yalnız olduğu alanda (23, tek üye
 kendisi) iken listede 22'deki ortaklarını görüyor. Yani kapsam **aktif alan
 değil ortak alan** — karar canlıda uygulanmış.
 
 Ölçülemeyen (ölçüm 1): "hiçbir alan paylaşmayan biri listede yok". Üç test
-hesabı da 22 numaralı alanı paylaşıyor, yani aralarında ayırt edici bir çift
-**yok** ve bu hesaplarla yapılan ölçüm "ortak alan" kuralını "platform
-geneli"nden ayırt edemez. Betik bunu kendisi söylüyor: aday yoksa sonuç
-GEÇTİ değil **GEÇERSİZ**. Kart #332'nin kendi dersinin ters yönü.
+hesabı da 22'yi paylaşıyor, aralarında ayırt edici bir çift **yok**. Betik
+bunu kendisi söylüyor: aday yoksa sonuç GEÇTİ değil **GEÇERSİZ**.
 
-**Ayırt edici kılmanın yolu (sırayla, en ucuzdan):**
+**Ayırt edici kılmanın yolu (en ucuzdan):**
 1. Kullanıcı **kendi hesabıyla** (`eray-atalay`) bir sekme açık bıraksın — o
-   hesap `claude-code-1` ile hiçbir alan paylaşmıyor. Hiçbir veri yazmadan
-   kesin sonuç: `DISARIDAN=eray-atalay node t332.mjs`.
+   hesap `claude-code-1` ile hiçbir alan paylaşmıyor. Veri yazmadan kesin
+   sonuç: `DISARIDAN=eray-atalay node t332.mjs`.
 2. Test alanından (22) bir üyeyi geçici çıkarmak. Tersine alınabilir (davet
    kodu) ama canlı veriye dokunuyor — **kullanıcıya sorulmadan yapılmadı**.
 
 ### Kalan iş
 
-**Playwright turundan kalan iki kart:**
-- **#331** kalıcı kayda **görüntü metni** yazmak yasaklansın — kolon/proje/
-  kullanıcı adı donuyor *(mid, tarama kuralı)*. Turda üç ayrı yerde aynı
-  sınıfa rastlanmış; tek tek düzeltmek yerine kuralı doğrulayana yazmak için
-  açılmış.
-- **#333** canlı duman testi depoya alınsın *(mid)*. Koşum şu an depoda değil,
-  yanında: `Desktop/Temizlik/stoa-canli-test` (`OKU.md` içinde kurulum,
-  tuzaklar, koşma biçimi). **Bu turda oraya iki dosya eklendi** (`t330.mjs`,
-  `t328.mjs`) ve `t332.mjs` yeniden yazıldı; yani kart büyüdü.
+**Playwright turunun altı kartının beşi kapandı.** Açık kalan: yok — ama tur
+iki yeni kart doğurdu:
 
-**Bu turda açılan kart: #342** — kapalıyken DOM'da duran öteki paneller
-(`chat-panel`, bildirimler, mobil kenar çubuğu). Genel bir "data-open varsa
-inert olsun" taraması **yazılamaz**: `dropdown.jsx` aynı özniteliği açılır
-menünün **tetiğinde** kullanıyor ve o düğme kapalıyken de odak alabilmek
-zorunda. `odak.test.js` kapsamı bu yüzden elle liste tutuyor ve sınırını
-kendi içinde yazıyor. Mobil kenar çubuğu en riskli: masaüstünde her zaman
-görünür, `inert` onu öldürür.
+- **#342** *(bu turda açıldı, backlog)* — kapalıyken DOM'da duran öteki
+  paneller (`chat-panel`, bildirimler, mobil kenar çubuğu). Genel bir
+  "data-open varsa inert olsun" taraması **yazılamaz**: `dropdown.jsx` aynı
+  özniteliği açılır menünün **tetiğinde** kullanıyor ve o düğme kapalıyken de
+  odak alabilmek zorunda. `odak.test.js` kapsamı bu yüzden elle liste tutuyor
+  ve sınırını kendi içinde yazıyor. Mobil kenar çubuğu en riskli:
+  masaüstünde her zaman görünür, `inert` onu öldürür.
+- **#213'e yazıldı** — MCP `create_task` bilinmeyen alanı sessizce atıyor.
+  `description`/`column` gönderildi (doğrusu `desc`/`col`); sunucu
+  `created: true` dedi ve **boş bir kart** açtı. Aynı turda `update_task`
+  aynı hatada `updated: ["desc"]` diyerek ne yaptığını dürüstçe söyledi —
+  aynı sunucu, iki ayrı cevap; ikincisi doğru kalıp. Yön: şema `.strict()`
+  ya da yanıtta `applied`/`ignored`.
 
-**MCP yüzeyinde bu turda çıkan pürüz, #213'e yazıldı:** `create_task`
-bilinmeyen alanı sessizce atıyor. `description`/`column` gönderildi (doğrusu
-`desc`/`col`); sunucu `created: true` dedi ve **boş bir kart** açtı — hata
-yok, uyarı yok. Aynı turda `update_task` aynı hatada `updated: ["desc"]`
-diyerek ne yaptığını dürüstçe söyledi. Aynı sunucu, iki ayrı cevap; ikincisi
-doğru kalıp. Yön: şema `.strict()` ya da yanıtta `applied`/`ignored`.
-
-**Tarayıcı koşumu hakkında iki not:**
-- Her iki CDP tarayıcısı bu turda açıldı (`1-tarayici-A-claude-code.bat`,
-  `2-tarayici-B-ayse.bat`); B profilindeki hesap **`claude-code-1`**, OKU.md'de
-  "Ayşe (eray-atalay-3)" yazıyor — belge bayat, hesap değişmiş.
+**Tarayıcı koşumu hakkında:**
+- İki CDP tarayıcısı bu turda açıldı (`1-tarayici-A-claude-code.bat`,
+  `2-tarayici-B-ayse.bat`); B profilindeki hesap **`claude-code-1`**,
+  OKU.md "Ayşe (eray-atalay-3)" diyor — **belge bayat**, hesap değişmiş.
+- Deponun yanındaki koşum bu turda üç dosya aldı (`t330.mjs`, `t328.mjs`,
+  `t331.mjs`) ve `t332.mjs` yeniden yazıldı. Oradakiler ürün kodu değil, bir
+  tur kaydı; depoya yalnızca yan etkisi olmayanlar alındı (`duman/`).
 - 1 Ekim gecesinin ölçüm artığı duruyor: **"Playwright Sizinti Testi"**
   (alan 23, tek üye `claude-code-1`). Sunucuda çalışma alanı silme ucu yok.
-  Bu turda ölçüm 2 için işe yaradı — silinmesi gerekirse önce o ucun
-  olmayışı konuşulmalı.
+  Bu turda ölçüm 2 için **işe yaradı**.
 
-**Bu makinede veritabanı erişilebilir** (`[db] warmup ok`). Yani `prisma:push`
-ve `mcp:tara` burada koşar; 5432 kısıtı ofis makinesinin kısıtıydı.
+**Bu makinede veritabanı erişilebilir** (`[db] warmup ok`). `prisma:push` ve
+`mcp:tara` burada koşar; 5432 kısıtı ofis makinesinin kısıtıydı.
 
 **Karar bekleyenler değişmedi** (0-AH listesi). Kullanıcıya bu turda tek bir
-şey soruldu: push/dağıtım — onay verildi, üç turda push edildi.
+şey soruldu: push/dağıtım — onay verildi, dört turda push edildi.
 
 ---
 

@@ -155,14 +155,18 @@ yapıyordu. Adres artık yalnızca `client/src/ben.js`'ten okunuyor;
 
 ---
 
-## ✅ 2 Ekim 2026 — dört kusur: kapsamsız çevrimiçi liste, odağı çalan gizli pencere, 429 "oturum düştü", hayalet kart
+## ✅ 2 Ekim 2026 — Playwright turunun altı kartı kapandı
 
 1 Ekim gecesi Playwright turu altı kart açmış ve hiçbirine kod yazmamıştı.
-Bu turda **dördü kapandı** (#330, #332, #328, #339), üçü **canlıda
-doğrulandı** (#330, #328, #339), biri açıldı (#342). Kalan: #331, #333.
-Test **1117 → 1146**, otuz iki mutasyonun otuz ikisi kırıldı.
+Bu turda **altısı da kapandı** (#330, #332, #328, #339, #331, #333) ve
+yanında **#288** — İncelemede'de bekliyordu, kalan yarısı #331'in sunucu
+tarafıydı. Beşi **canlıda doğrulandı**; #332'nin ölçümü ayırt edici değil
+(aşağıda). Bir yeni kart açıldı: **#342**.
 
-Dört kusurun dördünde de **kartın önerisi birebir uygulanmadı** ve gerekçe
+Test **1117 → 1174**, kırk üç mutasyonun kırk üçü kırıldı. Yeni komut:
+**`cd server && npm run duman`**.
+
+Beş kusurun beşinde de **kartın önerisi birebir uygulanmadı** ve gerekçe
 aynı sınıftan: kart bir **kural** öneriyordu, uygulanan şey kuralı gereksiz
 kılan bir **tasarım**. Ayrıntı [DEVIR.md](DEVIR.md) bölüm **0-AK**.
 
@@ -229,6 +233,37 @@ kılan bir **tasarım**. Ayrıntı [DEVIR.md](DEVIR.md) bölüm **0-AK**.
       hesap, gözlemcide yenileme yok, kart F5'siz düşüyor.
       Not: #271'in "çöp görünümü eski (küçük)" değerlendirmesi yanlıştı,
       etki ana panodaydı.
+- [x] **Kalıcı kayda görüntü metni yazılıyordu — kolon adı donuyordu** *(#331)*.
+      Etkinlik gövdesine `col: newCol.titleTr || newCol.title` yazılıyordu;
+      şablon çevriliyor ama içine konan **değer çevrilmiyor** — İngilizce
+      arayüzde akış "moved X to İncelemede" diyordu. İkinci yer `notes.js`:
+      iki uç `col_title: r.column?.titleTr` döndürüyordu. Artık gövdede
+      **slug** var, ad okuma anında çözülüyor; `notes.js` iki başlığı
+      birlikte gönderiyor (`col_titles`, `columnToDict` kalıbı). Eski kayıtlar
+      bilerek taşınmadı: çözücü tanımadığı değeri olduğu gibi basıyor.
+      **Kuralın kapsamı daraldı:** yalnızca **dil** donması yasak, **ad**
+      donması değil (`who`, `channel`, `workspace`) — onları okuma anında
+      çözmek daha kötü olabilir, çünkü bildirim okuyanın **göremediği** bir
+      varlıktan söz edebiliyor ve ad bugün dolu olan yerde yarın boş çıkar.
+      **Mevcut bir test tam tersini kilitliyordu** ve bu turun asıl dersi:
+      ölçüt davranışa değil **çözüme** bağlanmıştı, bu yüzden daha iyi
+      çözüm gelince kusuru değil eski çözümü savundu. Silinmedi, koruduğu
+      **özelliğe** bağlandı: "kullanıcı ham kimlik görmez".
+- [x] **Canlı duman testi depoda** *(#333)*. `duman/` + `cd server && npm run
+      duman`. Beş ölçüt, hepsi **veri yazmadan**: taze açılışta odak · kapalı
+      pencere programlı odağı da reddediyor · panoda `g,d` → dashboard ·
+      kısayol tuşları gizli kutuya yazılmadı · pano kolon adları arayüz dilini
+      izliyor. Playwright **bağımlılık olarak eklenmedi** (kancanın ortamını
+      ağırlaştırırdı); yoksa koşum **ATLANDI (2)** diyor. Kancaya da
+      bağlanmadı — sıra #203 → #212 → duman.
+      **Küme #330'u gerçekten yakalar mıydı:** ölçüldü. Kusurun koşulu canlı
+      sayfada yeniden kuruldu ve dört ölçütün dördü de kaldı; dördüncüsü
+      kartın ölçtüğü belirtiyi aynen üretti (gizli kutuda `["gd"]`).
+- [x] **Kolon adları arayüz dilini izlemiyordu** *(#288, İncelemede'den
+      kapandı)*. Kalan yarısı #331'in sunucu tarafıydı. İki yüzeyi de
+      ölçüldü: pano kolon adları (duman kümesi, EN'de kalan Türkçe ad `[]`)
+      ve etkinlik akışı (aynı kayıt TR'de "İncelemede", EN'de "In Review").
+      Pano ölçütü artık **depoda**.
 - [ ] **Kapalıyken DOM'da duran öteki paneller** *(#342, yeni)*. `chat-panel`,
       bildirimler ve mobil kenar çubuğu aynı sınıfta. **Genel bir tarama
       yazılamaz:** `data-open` bu depoda iki ayrı iş yapıyor — "kapalıyken de
@@ -243,8 +278,8 @@ kılan bir **tasarım**. Ayrıntı [DEVIR.md](DEVIR.md) bölüm **0-AK**.
       aynı sunucu, iki ayrı cevap. Yön: şema `.strict()` ya da yanıtta
       `applied`/`ignored`.
 
-**Canlı doğrulama:** #330 (4/4), #328 (3/3) ve #339 (3/3) dağıtımdan sonra
-ölçüldü ve geçti. **#332 gerçekten kapandı sayılmıyor:** kesin ölçüm
+**Canlı doğrulama:** #330 (4/4), #328 (3/3), #339 (3/3), #331 (2/2) ve #333
+(5/5) dağıtımdan sonra ölçüldü ve geçti. **#332 gerçekten kapandı sayılmıyor:** kesin ölçüm
 "hiçbir alan paylaşmayan biri listede yok" diyor, ama üç test hesabı da aynı
 alanı paylaşıyor — aralarında ayırt edici bir çift yok, yani ölçüm
 "ortak alan" kuralını "platform geneli"nden ayırt **edemiyor**. Betik bunu

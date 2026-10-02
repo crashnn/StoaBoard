@@ -170,6 +170,7 @@ cd client && npm run build   # ön yüz derlemesi
 cd client && npm run lint    # ESLint: no-undef + rules-of-hooks + no-unused-vars hata, exhaustive-deps uyarı
 cd server && npm run lint    # ESLint: no-undef + no-unused-vars hata (18 Eylül, #153)
 cd server && npm run mcp:tara # MCP taraması — çalışan sunucu + veritabanı ister
+cd server && npm run duman   # canlı duman testi — CDP ile açık tarayıcı ister
 ```
 
 **Lint testten önce koşar ve testin göremediğini görür.** 15 Eylül'de iki
@@ -184,6 +185,20 @@ katmanda (`mcpShape.js`) görüyor; araçların gerçek yanıtlarını ve araçl
 arası tutarlılığı `npm run mcp:tara` ölçüyor. Açık bir sunucu ve veritabanı
 ister — 5432 kapalı ağda koşmaz. Çıkış kodu 2 "atlanan var" demek: atlanan
 kontrol geçmiş sayılmaz, sebebi çıktının sonunda.
+
+**Tarayıcıda görünen kusurlar için duman testi var.** `npm test` ve derleme,
+1-2 Ekim'de bulunan iki kusuru (gizli pencerenin odağı çalması #330, jestin
+ölü olması #267) **göremedi**: ikisi de yalnızca gerçek tarayıcıda, gerçek
+olay akışında görünüyor. 1067 test ve temiz derleme ikisini de geçirmişti.
+`npm run duman` o katmanı kapatıyor — beş ölçüt, veri yazmadan, saniyeler
+içinde. CDP ile açılmış bir tarayıcı ister; kurulum ve dört kuralı
+[duman/OKU.md](duman/OKU.md) içinde. Playwright bağımlılık değil: yoksa koşum
+**ATLANDI (çıkış 2)** diyor, sessizce geçmiyor. Kancaya bilerek bağlı değil
+(her push'u yavaşlatırdı); sıra #203 → #212 → duman.
+
+Odak, klavye kısayolu, jest ya da kapalı bir panelin görünürlüğüne
+dokunduysan bu kümeye bir ölçüt eklemeyi düşün — birim testinin göremediği
+sınıf tam burası.
 
 **Makine kurulumu, bir kez:**
 
