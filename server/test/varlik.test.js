@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as onlineState from '../src/lib/onlineState.js';
+import { onlineListesiKur } from '../src/lib/varlik.js';
 import { yorumsuzDosya } from './yardimcilar.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -74,10 +75,57 @@ describe('çevrimiçi durumu — kişi başına birden çok soket', () => {
   });
 
   test('çevrimdışı olan kişi listede yok', () => {
+    // Eskiden bu ölçüt `getOnlineIds()` ile ölçülüyordu. O erişimci kart
+    // #332'de silindi (kapsamsız liste kusurun kök sebebiydi); aynı olgu
+    // artık kişi başına sorularak ölçülüyor.
     onlineState.setOnline(7, 'sid-a');
     onlineState.setOnline(9, 'sid-c');
     onlineState.setOffline(7, 'sid-a');
-    assert.deepEqual(onlineState.getOnlineIds(), [9]);
+    assert.equal(onlineState.isOnline(7), false);
+    assert.equal(onlineState.isOnline(9), true);
+  });
+});
+
+// Çevrimiçi listenin YÜZEYE ÇIKAN hâli — kapsam kuralı burada.
+//
+// Kusurun kendisi ve niçin kapsam "aktif alan" değil "ortak alan" oldu:
+// guvenlik.test.js, kart #332. Buradaki testler saf katmanı ölçüyor:
+// liste ADAY KÜMESİNDEN kuruluyor mu, yoksa çevrimiçi olan herkesten mi.
+describe('onlineListesiKur — kapsam adaylardan gelir (#332)', () => {
+  beforeEach(() => onlineState._sifirla());
+
+  const kisi = (id, slug) => ({ id, slug });
+
+  test('adayların yalnızca çevrimiçi olanları dönüyor', () => {
+    onlineState.setOnline(1, 'sid-1');
+    onlineState.setOnline(2, 'sid-2');
+    const liste = onlineListesiKur([kisi(1, 'ali'), kisi(3, 'veli')], onlineState);
+    assert.deepEqual(liste, [{ slug: 'ali', status: 'online' }]);
+  });
+
+  test('ADAY OLMAYAN çevrimiçi kişi listeye GİRMİYOR — kusurun kendisi', () => {
+    // Kusurlu sürümde liste çevrimiçi haritasından kuruluyordu, yani
+    // buradaki `yabanci` de dönüyordu. Ölçüt bunu doğrudan ölçer: aday
+    // kümesi dışındaki bir çevrimiçi kullanıcı sızıyor mu.
+    onlineState.setOnline(1, 'sid-1');
+    onlineState.setOnline(99, 'sid-99');
+    const liste = onlineListesiKur([kisi(1, 'ali')], onlineState);
+    assert.deepEqual(liste.map((u) => u.slug), ['ali'],
+      'aday olmayan çevrimiçi kullanıcı yüzeye çıktı');
+  });
+
+  test('iki ortak alandan gelen aynı kişi bir kez listeleniyor', () => {
+    // Sorgu üyelik satırlarını veriyor: iki alanı paylaşan kişi iki satır.
+    onlineState.setOnline(1, 'sid-1');
+    const liste = onlineListesiKur([kisi(1, 'ali'), kisi(1, 'ali')], onlineState);
+    assert.equal(liste.length, 1);
+  });
+
+  test('seçilmiş durum korunuyor, slug alanı olmayan kayıt atlanıyor', () => {
+    onlineState.setOnline(1, 'sid-1');
+    onlineState.setStatus(1, 'dnd');
+    const liste = onlineListesiKur([kisi(1, 'ali'), null, { id: 2 }], onlineState);
+    assert.deepEqual(liste, [{ slug: 'ali', status: 'dnd' }]);
   });
 });
 

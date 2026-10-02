@@ -20,6 +20,7 @@ import { sessionMiddleware } from '../app.js';
 import { usersShareWorkspace, resolveWorkspaceId } from '../lib/workspace.js';
 import { userChannelRole, mentionAllowed } from '../lib/channels.js';
 import { alanGecisiYayini } from '../lib/emit.js';
+import { gorunurOnlineKisiler } from '../lib/varlik.js';
 
 const MENTION_RE = /@([\w-]+)/g;
 
@@ -39,19 +40,6 @@ async function resolveActiveWorkspaceId(user) {
   // silindi: üç kopyadan biriydi ve üçü de sırasız `findFirst` kullanıyordu
   // (bkz. currentMember'ın gerekçesi).
   return resolveWorkspaceId(user);
-}
-
-async function getOnlineSlugsWithStatus() {
-  const ids = onlineState.getOnlineIds();
-  if (!ids.length) return [];
-  const users = await prisma.user.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, slug: true },
-  });
-  return users.map((u) => ({
-    slug: u.slug,
-    status: onlineState.getStatus(u.id),
-  }));
 }
 
 export function registerChatHandlers(io) {
@@ -89,7 +77,12 @@ export function registerChatHandlers(io) {
       });
     }
 
-    socket.emit('online_users', { users: await getOnlineSlugsWithStatus() });
+    // İlk anlık görüntü de ORTAK ALAN üyeleriyle sınırlı (kart #332).
+    // Buradaki eski yol bütün çevrimiçi kullanıcıları yayınlıyordu: aşağıdaki
+    // `user_online` yayınları `ws_*` odalarına gittiği için doğruydu, ama bu
+    // anlık görüntü onlardan ayrı ve kapsamsız bir yoldu. Tek kaynak
+    // lib/varlik.js; soketin katıldığı odalarla aynı kapsamı veriyor.
+    socket.emit('online_users', { users: await gorunurOnlineKisiler(user.id) });
 
     // ── disconnect ──
     socket.on('disconnect', async () => {

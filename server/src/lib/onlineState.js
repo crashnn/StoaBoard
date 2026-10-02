@@ -71,9 +71,14 @@ export function isOnline(userId) {
   return online.has(userId);
 }
 
-export function getOnlineIds() {
-  return Array.from(online.keys());
-}
+// KAPSAMSIZ ERİŞİMCİ YOK (kart #332, 2 Ekim 2026). Burada bir zamanlar
+// `getOnlineIds()` vardı: bellekteki haritanın TAMAMINI döndürüyordu ve iki
+// çağıran da (önyükleme + soket bağlantısı) onu süzmeden yüzeye taşımıştı.
+// Sonuç: her kullanıcı platformdaki bütün çevrimiçi kişilerin slug'ını
+// görüyordu. Erişimci silindi, yerine bir şey konmadı — çevrimiçilik artık
+// yalnızca KİŞİ BAŞINA sorulabiliyor (`isOnline`, `getStatus`), yani soran
+// kişiyi adlandırmak zorunda. Listeyi kuran tek yer `lib/varlik.js` ve
+// adayları kapsamdan alıyor. Bu erişimciyi geri yazmak kusuru da geri yazar.
 
 /** Kişinin açık soket sayısı — yalnızca test ve teşhis için. */
 export function soketSayisi(userId) {

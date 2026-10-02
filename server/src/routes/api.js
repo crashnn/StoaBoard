@@ -17,6 +17,7 @@ import { requireAuth } from '../lib/session.js';
 import { hashPassword } from '../lib/password.js';
 import { initialsFromName } from '../lib/user.js';
 import * as onlineState from '../lib/onlineState.js';
+import { gorunurOnlineKisiler } from '../lib/varlik.js';
 import { destroyUserSessions } from '../lib/sessionStore.js';
 import { kullanicininAnahtarlariniIptalEt } from '../lib/mcpTokenStore.js';
 import {
@@ -134,12 +135,11 @@ apiRouter.get(
 
     // ── Workspace-level paralel sorgular ──────────────────────────────────
     // Bunların tümü user + workspace id'sini biliyor, birbirinden bağımsız.
-    const onlineIds = onlineState.getOnlineIds();
     const [
       allMemberships,
       ws,
       wsMembers,
-      onlineUserRows,
+      onlineUsers,
       projects,
       accessibleChannels,
       canCreateChannel,
@@ -157,12 +157,10 @@ apiRouter.get(
         where: { workspaceId: member.workspaceId },
         include: { user: true, workspaceRole: true },
       }),
-      onlineIds.length
-        ? prisma.user.findMany({
-            where: { id: { in: onlineIds } },
-            select: { id: true, slug: true },
-          })
-        : Promise.resolve([]),
+      // Çevrimiçi liste ORTAK ALAN üyeleriyle sınırlı (kart #332): burada
+      // bir zamanlar çevrimiçi olan herkes sorgulanıyordu, workspace
+      // süzgeci olmadan. Listeyi kuran tek yer lib/varlik.js.
+      gorunurOnlineKisiler(user.id),
       prisma.project.findMany({ where: { workspaceId: member.workspaceId } }),
       listAccessibleChannels(user),
       userCanCreateChannel(user, member.workspaceId),
@@ -203,11 +201,6 @@ apiRouter.get(
     const members = wsMembers
       .filter((wm) => wm.user)
       .map((wm) => memberToDict(wm));
-
-    const onlineUsers = onlineUserRows.map((u) => ({
-      slug: u.slug,
-      status: onlineState.getStatus(u.id),
-    }));
 
     const sidebarProjects = await projeSozlukleri(projects);
 

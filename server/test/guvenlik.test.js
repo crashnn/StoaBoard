@@ -366,6 +366,7 @@ describe('davet kodu — önyüklemede yok, görüntüleme kayıtlı', () => {
 
 import { mentionAllowed } from '../src/lib/channels.js';
 import { yorumsuzKaynak, yorumsuzDosya, kaynakDosyalari } from './yardimcilar.js';
+import * as onlineStateModulu from '../src/lib/onlineState.js';
 import { htmlKacir, htmlCoz, sablonDoldur, bildirimMetni, etkinlikMetni } from '../../client/src/bildirimMetni.js';
 
 describe('mentionAllowed — bahsetme bildirimi görünürlük kapısı', () => {
@@ -1840,5 +1841,88 @@ describe('bildirim üreticisi tek — soket yolu da createAndPush (#200)', () =>
       const b = src.slice(src.indexOf('matchAll(MENTION_RE)'));
       assert.match(b, /chatChannel: receiver \? 'dm' : 'general'/, `${ad}: chatChannel'a slug yazılıyor`);
     }
+  });
+});
+
+// ─── Çevrimiçi liste kapsamı: ortak alan (kart #332) ───────────────────────
+//
+// KUSUR (2 Ekim 2026, çift hesaplı canlı turda ÖLÇÜLDÜ): kimliği doğrulanmış
+// herhangi bir kullanıcı, platformda o anda çevrimiçi olan HERKESİN slug'ını
+// görüyordu. Ölçüm: yalnızca kendisinin üye olduğu bir alanda oturan hesabın
+// `/api/bootstrap` yanıtı `online_users: ["claude-code", "claude-code-1",
+// "eray-atalay-3"]` döndü — üç slug'ın ikisi o alanın üyesi değildi. Slug
+// kozmetik değil: @bahsetme ve DM aramasının adresi. Sızan şey "kim
+// çevrimiçi" değil, "bu platformda hangi hesaplar var"ın bir alt kümesiydi
+// (GUVENLIK.md "var/yok kâhini", #227 ailesi).
+//
+// İKİ OKUYUCU: önyükleme (routes/api.js) ve soket bağlantısı
+// (sockets/chat.js) listeyi ayrı ayrı kuruyordu, ikisi de kapsamsız. Kart
+// yalnızca birincisini anlatıyor; ikincisi aile taramasında çıktı. Soketin
+// `user_online`/`user_offline` YAYINLARI doğruydu (`ws_*` odalarına gidiyor) —
+// bozuk olan, bağlantıda gönderilen ilk anlık görüntüydü.
+//
+// Ölçütler üç katmanda: (1) kapsamsız erişimci modülde YOK, (2) iki çağrı
+// yeri de tek kaynaktan geçiyor, (3) tek kaynağın sorgusu üyelikle sınırlı.
+
+describe('çevrimiçi liste yalnızca ortak alan üyelerini içerir (#332)', () => {
+  const API = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'api.js'));
+  const SOKET = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'sockets', 'chat.js'));
+  const VARLIK = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'lib', 'varlik.js'));
+
+  test('onlineState kapsamsız bir "kim çevrimiçi" erişimcisi SUNMUYOR', () => {
+    // Kusurun kök sebebi bu erişimciydi: `getOnlineIds()` bellekteki haritanın
+    // tamamını veriyordu ve iki çağıran da onu süzmeden yüzeye taşıdı.
+    // Ölçüt metin değil, modülün gerçek yüzeyi: erişimci geri yazılırsa
+    // kusuru tekrarlamak yeniden mümkün olur.
+    for (const ad of Object.keys(onlineStateModulu)) {
+      const deger = onlineStateModulu[ad];
+      if (typeof deger !== 'function') continue;
+      if (ad === '_sifirla') continue;
+      assert.ok(
+        deger.length > 0,
+        `onlineState.${ad} argümansız — çevrimiçilik kişi adlandırılmadan sorulabiliyor`,
+      );
+    }
+    // Arity ölçütü tek başına oyunlanabilir (kullanılmayan bir argüman
+    // eklemek yeter), bu yüzden haritayı dolaşma yeteneği de yasak. Yasak
+    // dosya geneli, çünkü kural dosya geneli: bu modülde kimse bütün
+    // çevrimiçi kayıtları sayamaz.
+    const ONLINE = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'lib', 'onlineState.js'));
+    assert.doesNotMatch(ONLINE, /online\.(keys|values|entries|forEach)\(/,
+      'onlineState haritayı dolaşıyor — kapsamsız liste yeniden üretilebilir');
+  });
+
+  test('önyükleme listeyi tek kaynaktan alıyor, kendi sorgusunu kurmuyor', () => {
+    // Ölçüt /bootstrap bloğuna bağlı: dosyanın başka yerinde kullanıcı
+    // sorgusu olması bu kusuru aklamamalı.
+    const bas = API.indexOf("'/bootstrap'");
+    const son = API.indexOf('apiRouter.', API.indexOf('asyncHandler', bas) + 10);
+    const blok = API.slice(bas, son > bas ? son : API.length);
+    assert.match(blok, /gorunurOnlineKisiler\(user\.id\)/,
+      'önyükleme çevrimiçi listeyi lib/varlik.js üzerinden kurmuyor');
+    assert.doesNotMatch(blok, /prisma\.user\.findMany/,
+      'önyükleme kullanıcıları kendisi sorguluyor — kapsam süzgeci o yolda unutuldu');
+    const atama = /online_users:\s*(\w+)/.exec(blok);
+    assert.ok(atama, 'yanıtta online_users alanı yok');
+    assert.equal(atama[1], 'onlineUsers', 'online_users beklenmeyen bir değerden geliyor');
+  });
+
+  test('soket bağlantısındaki ilk anlık görüntü de aynı kaynaktan', () => {
+    // Ölçüt emit satırının kendisine bağlı: dosyada başka bir yerde doğru
+    // çağrı olması bu yayını aklamamalı.
+    const emit = /socket\.emit\('online_users',\s*\{\s*users:\s*await ([\w.]+)\(([^)]*)\)/.exec(SOKET);
+    assert.ok(emit, "soket 'online_users' yayını beklenen biçimde değil");
+    assert.equal(emit[1], 'gorunurOnlineKisiler', 'anlık görüntü kapsamsız bir yoldan kuruluyor');
+    assert.equal(emit[2].trim(), 'user.id', 'kapsam bağlanan kullanıcıdan okunmuyor');
+  });
+
+  test('tek kaynağın sorgusu istek sahibinin ÜYELİĞİYLE sınırlı', () => {
+    // Ölçüt fonksiyonun gövdesine bağlı. Sırası da önemli: önce kapsam,
+    // sonra varlık. Ters sıra kapsamsız bir çevrimiçi listesi gerektirir.
+    const bas = VARLIK.indexOf('export async function gorunurOnlineKisiler');
+    assert.ok(bas > 0, 'gorunurOnlineKisiler yok');
+    const govde = VARLIK.slice(bas);
+    assert.match(govde, /where:\s*\{\s*workspace:\s*\{\s*members:\s*\{\s*some:\s*\{\s*userId\s*\}/,
+      'aday kümesi istek sahibinin alanlarıyla süzülmüyor — kusur geri geldi');
   });
 });
