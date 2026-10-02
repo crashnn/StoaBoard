@@ -31,6 +31,40 @@ function CommandPalette({ open, onClose, onAction }) {
     return () => { iptal = true; };
   }, [open]);
 
+  // ── Sunucu araması ────────────────────────────────────────────────────────
+  //
+  // Geciktirme (debounce) 200 ms: her tuşta istek atmak hem sunucuyu hem
+  // kullanıcının bağlantısını gereksiz meşgul eder. İptal bayrağı şart —
+  // yavaş bir yanıt, sonradan yazılan daha dar bir aramanın sonucunu
+  // EZEBİLİR ve kullanıcı yazdığıyla ilgisiz bir liste görür.
+  const [gorevSonuclari, setGorevSonuclari] = useP([]);
+  const [aramaHatasi, setAramaHatasi] = useP(false);
+  const [aramaKirpildi, setAramaKirpildi] = useP(false);
+  useE(() => {
+    const sorgu = q.trim();
+    if (!open || sorgu.length < 2) {
+      setGorevSonuclari([]); setAramaHatasi(false); setAramaKirpildi(false);
+      return undefined;
+    }
+    let iptal = false;
+    const zaman = setTimeout(() => {
+      window.API?.gorevAra?.(sorgu)
+        .then((y) => {
+          if (iptal) return;
+          setGorevSonuclari(y?.results || []);
+          setAramaKirpildi((y?.total || 0) > (y?.results || []).length);
+          setAramaHatasi(false);
+        })
+        .catch((e) => {
+          if (iptal) return;
+          console.warn('[palette] task search failed:', e?.message);
+          setGorevSonuclari([]);
+          setAramaHatasi(true);
+        });
+    }, 200);
+    return () => { iptal = true; clearTimeout(zaman); };
+  }, [q, open]);
+
   const flat = useM(() => {
     // ── "#193" — kart numarasıyla arama ───────────────────────────────────
     //
@@ -118,25 +152,44 @@ function CommandPalette({ open, onClose, onAction }) {
       base = all.filter(it => it.label.toLowerCase().includes(ql));
     }
 
-    // ── Başlıkla görev arama ──────────────────────────────────────────────
+    // ── Görev arama: ÇALIŞMA ALANININ TAMAMI, sunucudan ───────────────────
     //
     // KUSUR (17 Eylül 2026, `#id` işi sırasında görüldü): yer tutucu metni
     // "Komut, GÖREV veya sayfa ara..." diyordu ama palet görevleri hiç
-    // aramıyordu — yalnızca komutlar ve notlar. Vaat edilen, yapılmıyordu.
-    // Sessiz bir kusur: arama çalışıyor görünüyor, yalnızca sonuç vermiyor.
-    if (q && (window.__APP_TASKS__ || []).length) {
-      const ql = q.toLowerCase();
-      const gorevHits = (window.__APP_TASKS__ || [])
-        .filter(t => (t.title || '').toLowerCase().includes(ql))
-        .slice(0, 6)
-        .map(t => ({
-          label: t.title,
-          icon: 'circleCheck',
-          action: 'open:task:' + t.id,
+    // aramıyordu. O gün kapatıldı — ama YARIM: arama
+    // `window.__APP_TASKS__` içinde süzüyordu, yani yalnızca AKTİF PROJENİN
+    // yüklü kartlarında ve yalnızca BAŞLIKTA. Üç projeli bir alanda "o kartı
+    // bir yere yazmıştım" sorusunun cevabı yoktu (2 Ekim 2026 taraması).
+    //
+    // Yerel süzme KALDIRILDI, geriye düşüş olarak bile bırakılmadı: iki
+    // okuyucu aynı soruya farklı cevap verirse hangisinin doğru olduğu
+    // ekrandan anlaşılmaz. Sunucu tek kaynak; ulaşılamıyorsa bu AÇIKÇA
+    // söyleniyor (aşağıdaki hata satırı), sessizce boş liste değil.
+    if (aramaHatasi) {
+      base = [...base, {
+        label: window.t?.('palette_search_failed') || 'Arama şu an çalışmıyor',
+        icon: 'alertTriangle',
+        action: 'noop',
+        group: window.t?.('palette_group_tasks') || 'Görevler',
+      }];
+    } else if (q) {
+      base = [...base, ...gorevSonuclari.map(t => ({
+        label: t.title,
+        icon: 'circleCheck',
+        action: 'open:task:' + t.id,
+        group: window.t?.('palette_group_tasks') || 'Görevler',
+        // Hangi projede olduğu YAZILI: artık sonuçlar başka projelerden de
+        // gelebiliyor ve "bu kart nerede" sorusu listeye bakarak cevaplanmalı.
+        sub: [t.project_name, kolonAdi(t.col_titles), t.snippet].filter(Boolean).join(' · ') || null,
+      }))];
+      if (aramaKirpildi) {
+        base = [...base, {
+          label: window.t?.('palette_search_more') || 'Daha fazla sonuç var — aramayı daralt',
+          icon: 'search',
+          action: 'noop',
           group: window.t?.('palette_group_tasks') || 'Görevler',
-          sub: t.col || null,
-        }));
-      base = [...base, ...gorevHits];
+        }];
+      }
     }
 
     if (q && (DATA.NOTES || []).length) {
@@ -155,7 +208,7 @@ function CommandPalette({ open, onClose, onAction }) {
       base = [...base, ...noteHits];
     }
     return base;
-  }, [q, oneriler]);
+  }, [q, oneriler, gorevSonuclari, aramaHatasi, aramaKirpildi]);
 
   const grouped = useM(() => {
     const m = {};

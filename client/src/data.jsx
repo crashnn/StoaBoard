@@ -360,6 +360,7 @@ const API = {
   taskLinkedNotes: (taskId)        => apiFetch(`/api/tasks/${taskId}/linked-notes`),
   workspaceTasks:  ()              => apiFetch('/api/workspaces/me/tasks'),
   oneriler:        ()              => apiFetch('/api/workspaces/me/tasks/oneriler'),
+  gorevAra:        (q, limit = 20)  => apiFetch(`/api/workspaces/me/tasks/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
   // Task attachments
   listAttachments:   (taskId)          => apiFetch(`/api/tasks/${taskId}/attachments`),
@@ -664,6 +665,9 @@ window.APP_I18N = {
     app_creating:'Oluşturuluyor…', app_create_project:'Proje Oluştur',
     // Bağlantı kurulamadı ekranı (kart #328): oturum yok DEĞİL, cevap bilinmiyor.
     app_task_trashed:'Görev çöp kutusuna taşındı',
+    palette_search_failed:'Arama şu an çalışmıyor',
+    palette_search_more:'Daha fazla sonuç var — aramayı daralt',
+    palette_group_all_tasks:'Bütün projelerde',
     cmd_keyboard:'Klavye',
     cmd_card_nav:'Kartlar arasında gezin',
     cmd_card_open:'Odaklı kartı aç',
@@ -1646,6 +1650,9 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     app_color:'Color', app_icon:'Icon', app_cancel:'Cancel',
     app_creating:'Creating…', app_create_project:'Create Project',
     app_task_trashed:'Task moved to trash',
+    palette_search_failed:'Search is unavailable right now',
+    palette_search_more:'More results exist — narrow your search',
+    palette_group_all_tasks:'Across all projects',
     cmd_keyboard:'Keyboard',
     cmd_card_nav:'Move between cards',
     cmd_card_open:'Open focused card',

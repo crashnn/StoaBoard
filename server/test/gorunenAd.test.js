@@ -190,13 +190,23 @@ describe('yanıtta kolon adı OKUMA anında çözülüyor (#331)', () => {
     }
   });
 
-  test('notes uçları iki başlığı BİRLİKTE gönderiyor', () => {
+  test('kolon adı gönderen HER uç iki başlığı birlikte veriyor', () => {
     // Olumlu ölçüt: yasağı `col_title`ı tamamen silerek de geçebilirdik,
     // o zaman ekranda kolon adı hiç görünmezdi.
+    //
+    // ÖLÇÜT SAYIDAN KURTARILDI (2 Ekim 2026). İlk hâli "tam iki uç" diyordu
+    // ve çalışma alanı geneli arama ucu eklenince kırıldı — korunan kural
+    // hiç değişmediği hâlde. Sayı, kuralın değil o günkü uç sayısının
+    // ölçüsüydü. Artık KAÇ TANE olduğu değil, OLANLARIN HEPSİNİN doğru
+    // kalıpta olduğu ölçülüyor: yeni bir uç kendiliğinden kapsama giriyor.
     const src = yorumsuzDosya(path.join(ROUTES, 'notes.js'));
-    const esler = [...src.matchAll(/col_titles: r\.column\s*\?\s*\{ title: r\.column\.title, title_tr: r\.column\.titleTr \|\| r\.column\.title \}/g)];
-    assert.equal(esler.length, 2,
-      'iki uç da iki başlığı göndermiyor — biri eski kalıpta kalırsa ekranın yarısı Türkçe donar');
+    const toplam = [...src.matchAll(/col_titles:/g)].length;
+    const dogru = [...src.matchAll(
+      /col_titles: r\.column\s*\n?\s*\?\s*\{ title: r\.column\.title, title_tr: r\.column\.titleTr \|\| r\.column\.title \}/g,
+    )].length;
+    assert.ok(toplam >= 2, `kolon adı gönderen uç sayısı beklenenden az: ${toplam}`);
+    assert.equal(dogru, toplam,
+      `kolon adı gönderen ${toplam} uçtan yalnızca ${dogru} tanesi iki başlığı birlikte veriyor`);
     assert.doesNotMatch(src, /col_title:/, 'tek başlık döndüren eski alan geri gelmiş');
   });
 });

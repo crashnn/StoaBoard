@@ -18,6 +18,8 @@ import { prisma } from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { oneriKur, HAREKETLI_PENCERE_MS } from '../lib/oneri.js';
 import { requireAuth } from '../lib/session.js';
+import { aramaEslesir } from '../lib/mcpShape.js';
+import { aramaKesiti } from '../lib/arama.js';
 import { emitSafely } from '../lib/emit.js';
 import {
   resolveWorkspaceId,
@@ -609,6 +611,79 @@ meTasksRouter.get(
           : null,
       })),
     );
+  }),
+);
+
+// ─── GET /api/workspaces/me/tasks/search ──────────────────────────────────
+//
+// ÇALIŞMA ALANI GENELİ ARAMA (2 Ekim 2026 taraması, madde A).
+//
+// KUSUR: komut paleti görev ararken `window.__APP_TASKS__` içinde süzüyordu,
+// yani YALNIZCA aktif projenin yüklü kartlarında ve YALNIZCA başlıkta. Üç
+// projeli bir alanda "o kartı bir yere yazmıştım" sorusunun cevabı yoktu.
+// Yer tutucu metni ise "Komut, görev veya sayfa ara…" diyor — 17 Eylül'de
+// aynı vaadin yarısı kapatılmıştı, öteki yarısı burada.
+//
+// NİÇİN EŞLEŞTİRME JAVASCRIPT'TE, SQL'DE DEĞİL: `katla` Türkçe I/İ/ı/i
+// dörtlüsünü tek harfe indiriyor (gerekçesi lib/mcpShape.js'te). Veritabanı
+// tarafında `contains` + `mode: 'insensitive'` bu katlamayı YAPMAZ: "İlker"
+// yazan kart "ilker" aramasında kaçardı. Aynı eşleştirici MCP'nin
+// `search_tasks` aracında da kullanılıyor — iki yüzey, TEK kural.
+//
+// TARAMA SINIRI ve dürüstlüğü: en çok `TARAMA_TAVANI` kart okunuyor. Tavana
+// değilirse yanıt `truncated: true` taşıyor ve istemci bunu kullanıcıya
+// söylüyor. Sessizce eksik liste döndürmek aramanın en kötü hâli olurdu —
+// kullanıcı "yok" sanır.
+const TARAMA_TAVANI = 2000;
+
+meTasksRouter.get(
+  '/search',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = await loadUser(req);
+    const wsId = await resolveWorkspaceId(user);
+    if (!wsId) return res.json({ results: [], total: 0, truncated: false });
+
+    const q = String(req.query.q || '').trim();
+    // İki karakterin altında arama yapılmıyor: tek harf bütün panoyu döndürür
+    // ve kullanıcıya hiçbir şey anlatmaz. MCP aracı da aynı eşiği kullanıyor.
+    if (q.length < 2) return res.json({ results: [], total: 0, truncated: false });
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 50);
+
+    // Kapsam: YALNIZCA kişinin aktif çalışma alanı. Proje kimliği dışarıdan
+    // ALINMIYOR — alınsaydı başka alandaki bir projenin kimliği denenebilirdi.
+    // Çöptekiler aranmıyor: çöp kutusunun kendi görünümü var.
+    const rows = await prisma.task.findMany({
+      where: { project: { workspaceId: wsId }, deletedAt: null },
+      orderBy: { updatedAt: 'desc' },
+      take: TARAMA_TAVANI,
+      select: {
+        id: true,
+        title: true,
+        desc: true,
+        projectId: true,
+        project: { select: { name: true } },
+        column: { select: { slug: true, title: true, titleTr: true } },
+      },
+    });
+
+    const eslesen = rows.filter((r) => aramaEslesir({ title: r.title, desc: r.desc }, q));
+    res.json({
+      results: eslesen.slice(0, limit).map((r) => ({
+        id: String(r.id),
+        title: r.title,
+        snippet: aramaKesiti(r.desc, q),
+        project_id: r.projectId,
+        project_name: r.project?.name || '',
+        col: r.column?.slug || null,
+        col_titles: r.column
+          ? { title: r.column.title, title_tr: r.column.titleTr || r.column.title }
+          : null,
+      })),
+      total: eslesen.length,
+      truncated: rows.length >= TARAMA_TAVANI,
+    });
   }),
 );
 

@@ -106,6 +106,19 @@ describe('öneri — bağlantılar', () => {
       assert.ok(b.includes(`'${anahtar}'`) && b.includes(`oneriler.${alan}`), `${alan} bölümü çizilmiyor`);
     }
     assert.match(b, /\.\.\.all,\s*\];/, 'öneriler komutların önüne değil yerine geçiyor');
-    assert.match(PALET, /\}, \[q, oneriler\]\);/, 'öneriler geldiğinde liste yenilenmiyor (useMemo bağımlılığı)');
+    // ÖLÇÜT 2 EKİM 2026'DA GEVŞETİLDİ. Eski hâli bağımlılık dizisinin TAM
+    // METNİNİ arıyordu (`}, [q, oneriler]);`) ve korumak istediği şey hiç
+    // değişmediği hâlde kırıldı: listeye sunucu araması eklenince dizi
+    // büyüdü. Ölçüt, korunan ÖZELLİĞE bağlandı — "öneriler değişince liste
+    // yeniden hesaplanır" — yani dizide `oneriler` BULUNMASI. Bu turda aynı
+    // sınıfa dördüncü kez düşüldü; kural artık CLAUDE.md'de: ölçüt davranışı
+    // değil çözümü kilitlerse, daha iyi çözümün önünde durur.
+    const deps = /\}, \[([^\]]*)\]\);/.exec(PALET.slice(PALET.indexOf('const flat = useM(')));
+    assert.ok(deps, 'liste hesaplamasının bağımlılık dizisi bulunamadı');
+    const alanlar = deps[1].split(',').map((x) => x.trim());
+    assert.ok(alanlar.includes('oneriler'),
+      `öneriler geldiğinde liste yenilenmiyor (useMemo bağımlılığı): [${deps[1]}]`);
+    assert.ok(alanlar.includes('q'),
+      `sorgu değişince liste yenilenmiyor: [${deps[1]}]`);
   });
 });
