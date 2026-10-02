@@ -322,4 +322,14 @@ describe('kart geçmişi ucu', () => {
     assert.match(GECMIS, /useEffect\(\(\) => \{ setAcik\(false\); setMoves\(\[\]\);[^}]*\}, \[taskId\]\);/,
       'kart değişiminde bölüm sıfırlanmıyor');
   });
+
+  test('kart açılışı ZATEN geçiş olarak yazılıyor — satır iki kez çizilmiyor', () => {
+    // CANLI ÖLÇÜMDE GÖRÜLDÜ (2 Ekim 2026): kart açılınca `task_transitions`a
+    // `from: null` bir satır düşüyor. Bölüm ayrıca "Kart açıldı" satırı
+    // çizince aynı olay iki kez, üstelik bir saniye arayla iki farklı
+    // zamanla görünüyordu. Ölçüt, doğuş kaydı VARSA ayrı satırın
+    // çizilmemesini kilitliyor.
+    assert.match(GECMIS, /createdAt && !moves\.some\(\(m\) => !m\.from\)/,
+      'kart açılışı iki kez gösteriliyor (hem geçiş hem ayrı satır)');
+  });
 });

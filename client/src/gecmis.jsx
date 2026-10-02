@@ -86,7 +86,12 @@ function GecmisSection({ taskId }) {
               <span style={{ color: 'var(--ink-faint)', marginLeft: 'auto' }}>{zaman(m.at)}</span>
             </div>
           ))}
-          {createdAt && (
+          {/* Kart açılışı ZATEN bir geçiş olarak yazılıyor (`from: null`) —
+              canlı ölçümde görüldü. Ayrıca "Kart açıldı" satırı çizmek aynı
+              olayı iki kez göstermek olurdu, üstelik bir saniye arayla iki
+              farklı zamanla. Geçişlerde doğuş kaydı yoksa (eski kartlar)
+              satır yine çiziliyor. */}
+          {createdAt && !moves.some((m) => !m.from) && (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12 }}>
               <Icon name="plus" size={11} />
               <span style={{ color: 'var(--ink-muted)' }}>{T('drawer_history_created', 'Kart açıldı')}</span>
