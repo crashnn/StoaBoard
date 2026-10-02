@@ -387,6 +387,42 @@ describe('toplu atama — bağlantı', () => {
       'yön döngünün İÇİNDE hesaplanıyor — işlem kendi kuyruğunu yer');
   });
 
+  test('atama SEÇİMİ KORUYOR, taşıma ve çöp korumuyor', () => {
+    // Canlı deneme bunu yakaladı (3 Ekim): seçim temizlendiği için düğme
+    // "hepsinde var" diye aktif olacağı anda çubuk kayboluyordu — çubuktan
+    // atama HİÇ kaldırılamıyordu. Ölçüt üç çağrı yerinin de üzerinde:
+    // "atama koruyor" demek yetmez, taşıma ve çöp korumaya DÖNMEMELİ, yoksa
+    // çöpe atılan kart seçili kalır ve sonraki toplu işlem onu arar.
+    // ÖLÇÜ SAYIYLA: "gövdede `, true);` geçiyor" demek yetmedi — aklama
+    // denemesi bayrağı ÖLÜ bir `if (0) topluBitir(...)` çağrısına taşıyıp
+    // geçti. Gövdede topluBitir TAM BİR kez çağrılıyor ve bayrak o çağrıda.
+    const govde = atamaGovdesi();
+    const kac = (govde.match(/topluBitir\(/g) || []).length;
+    assert.equal(kac, 1, `atama gövdesinde ${kac} topluBitir çağrısı — biri ölü olabilir`);
+    assert.match(govde, /\), true\);\s*$/, 'atama seçimi temizliyor');
+
+    // Çağrı yerini ölçmek de yetmedi: bayrağı hiç OKUMAMAK ve varsayılanı
+    // `true` yapmak ikisi de kaçtı. Kuralı taşıyan ikinci yer `topluBitir`in
+    // kendisi, o yüzden ölçüt oraya da bağlı.
+    const bitirBas = BOARD.indexOf('const topluBitir = (');
+    assert.ok(bitirBas > 0, 'topluBitir bulunamadı');
+    const bitir = BOARD.slice(bitirBas, BOARD.indexOf('\n  };', bitirBas));
+    assert.match(bitir, /const topluBitir = \(sonuc, secimiKoru = false\) => \{/,
+      'koruma varsayılan olmuş — her toplu işlem seçimi tutar');
+    assert.match(bitir, /if \(!secimiKoru\) setSecili\(new Set\(\)\);/,
+      'bayrak okunmuyor — seçim her hâlde temizleniyor');
+
+    const tek = (ad) => {
+      const bas = BOARD.indexOf(`const ${ad} = async`);
+      assert.ok(bas > 0, `${ad} bulunamadı`);
+      return BOARD.slice(bas, BOARD.indexOf('\n  };', bas));
+    };
+    assert.doesNotMatch(tek('topluTasi'), /topluBitir\([^;]*,\s*true\)/s,
+      'taşımadan sonra seçim duruyor');
+    assert.doesNotMatch(tek('topluCope'), /topluBitir\([^;]*,\s*true\)/s,
+      'çöpe atılan kart seçili kalıyor');
+  });
+
   test('atama hatası YUTULMUYOR', () => {
     // `topluCalistir` başarısızı ancak fırlatılırsa sayabilir.
     const APP = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'app.jsx'));

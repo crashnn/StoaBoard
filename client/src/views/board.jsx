@@ -564,10 +564,16 @@ function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, 
   const gorunenIdler = sorted.map((t) => String(t.id));
   const seciliGorunen = [...secili].filter((id) => gorunenIdler.includes(id));
 
-  const topluBitir = (sonuc) => {
+  // `secimiKoru` ATAMA icin var. Tasima ve cop kartlari yerinden oynatiyor,
+  // orada secimi tutmak anlamsiz. Atama oyle degil: ayni bes karta once Ayse
+  // sonra Mehmet eklemek dogal akis, secim silinirse bes kutu yeniden
+  // isaretlenir. Daha kotusu, anahtar semantigi ERISILEMEZ oluyordu: dugme
+  // "hepsinde var" diye aktif olacagi anda secim gidiyor, yani cubuktan
+  // atama hic kaldirilamiyordu. Canli deneme bunu yakaladi (3 Ekim).
+  const topluBitir = (sonuc, secimiKoru = false) => {
     const mesaj = topluSonucMetni(sonuc, (k, fb) => window.t?.(k) || fb);
     if (mesaj) window.showToast?.(mesaj, sonuc.basarisiz.length ? 'error' : 'info');
-    setSecili(new Set());
+    if (!secimiKoru) setSecili(new Set());
     setTopluMesgul(false);
   };
 
@@ -589,7 +595,7 @@ function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, 
     topluBitir(await topluCalistir(seciliGorunen, (id) => {
       const g = secilenler.find((t) => String(t.id) === id);
       return onAssignTask(id, yeniAtananlar(g, uyeId, ekle));
-    }));
+    }), true);
   };
 
   const topluCope = async () => {
