@@ -5,6 +5,7 @@ import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, kolonAdi } from '../data.jsx';
 import { komsuKolonId, hedefKartSirasi } from '../klavyePano.js';
+import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec } from '../topluIslem.js';
 import { benSlug } from '../ben.js';
 
 const COL_NAME_MAX = 30;
@@ -532,7 +533,12 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onMoveTas
 }
 
 // ─── Table View ──────────────────────────────────────────────────────────────
-function TableView({ tasks, onOpenTask, onMoveTask, canManageTasks }) {
+function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, canManageTasks }) {
+  // ── Toplu islem (tarama maddesi C) ──────────────────────────────────────
+  // Secili kartlar KIMLIKLE tutuluyor, nesneyle degil: liste yeniden
+  // suzuldugunde nesne kimligi degisir ve secim sessizce kaybolurdu.
+  const [secili, setSecili] = useBoardState(() => new Set());
+  const [topluMesgul, setTopluMesgul] = useBoardState(false);
   const [sortKey, setSortKey] = useBoardState('due');
   const [sortDir, setSortDir] = useBoardState('asc');
   const me = window.CURRENT_USER?.id;
@@ -550,6 +556,31 @@ function TableView({ tasks, onOpenTask, onMoveTask, canManageTasks }) {
     }
     return String(va).localeCompare(String(vb)) * dir;
   });
+
+  // Gorunen kartlar degisince OLMAYAN kartlarin secimi dusuyor: proje ya da
+  // suzgec degistiginde ekranda olmayan bir kart secili kalirsa kullanici
+  // gormedigi bir karti tasir.
+  const gorunenIdler = sorted.map((t) => String(t.id));
+  const seciliGorunen = [...secili].filter((id) => gorunenIdler.includes(id));
+
+  const topluBitir = (sonuc) => {
+    const mesaj = topluSonucMetni(sonuc, (k, fb) => window.t?.(k) || fb);
+    if (mesaj) window.showToast?.(mesaj, sonuc.basarisiz.length ? 'error' : 'info');
+    setSecili(new Set());
+    setTopluMesgul(false);
+  };
+
+  const topluTasi = async (colId) => {
+    if (!canManageTasks || topluMesgul) return;
+    setTopluMesgul(true);
+    topluBitir(await topluCalistir(seciliGorunen, (id) => onMoveTask(id, colId)));
+  };
+
+  const topluCope = async () => {
+    if (!canManageTasks || topluMesgul || !onDeleteTask) return;
+    setTopluMesgul(true);
+    topluBitir(await topluCalistir(seciliGorunen, (id) => onDeleteTask(id)));
+  };
 
   const daysBetween = (s, e) => {
     if (!s && !e) return 0;
@@ -576,9 +607,46 @@ function TableView({ tasks, onOpenTask, onMoveTask, canManageTasks }) {
 
   return (
     <div className="table-view-wrap">
+      {/* TOPLU ISLEM CUBUGU — yalnizca secim varken. Bos ekranda duran bir
+          cubuk, hic kullanilmayan bir ozellik icin herkesin odedigi yer
+          olurdu. */}
+      {canManageTasks && seciliGorunen.length > 0 && (
+        <div className="toplu-cubuk">
+          <span className="toplu-sayi">
+            {(window.t?.('bulk_selected') || '{n} kart seçili').replace('{n}', seciliGorunen.length)}
+          </span>
+          <span className="toplu-ayirac" />
+          <span className="toplu-etiket">{window.t?.('bulk_move_to') || 'Taşı:'}</span>
+          {DATA.COLUMNS.map((c) => (
+            <button key={c.id} type="button" className="toplu-dugme"
+              disabled={topluMesgul} onClick={() => topluTasi(c.id)}>
+              <span className="col-dot" style={{ background: c.color }} /> {kolonAdi(c)}
+            </button>
+          ))}
+          <span className="toplu-ayirac" />
+          <button type="button" className="toplu-dugme toplu-tehlike"
+            disabled={topluMesgul} onClick={topluCope}>
+            <Icon name="trash" size={12} /> {window.t?.('bulk_trash') || 'Çöpe at'}
+          </button>
+          <button type="button" className="toplu-dugme" disabled={topluMesgul}
+            onClick={() => setSecili(new Set())}>
+            {window.t?.('bulk_clear') || 'Seçimi bırak'}
+          </button>
+        </div>
+      )}
       <table className="table-view">
         <thead>
           <tr>
+            {canManageTasks && (
+              <th style={{ width: 32 }}>
+                <input
+                  type="checkbox"
+                  aria-label={window.t?.('bulk_select_all') || 'Görünen kartların hepsini seç'}
+                  checked={gorunenIdler.length > 0 && gorunenIdler.every((id) => secili.has(id))}
+                  onChange={() => setSecili(hepsiniSec(secili, gorunenIdler))}
+                />
+              </th>
+            )}
             <th style={{ width: 28 }} />
             <SortHead k="id" w={70}>ID</SortHead>
             <SortHead k="title">{window.t('list_title')}</SortHead>
@@ -604,6 +672,17 @@ function TableView({ tasks, onOpenTask, onMoveTask, canManageTasks }) {
             const isMine = me && (t.assignees || []).includes(me);
             return (
               <tr key={t.id} data-done={isDone} data-mine={isMine} onClick={() => onOpenTask(t)} style={{ cursor: 'pointer' }}>
+                {canManageTasks && (
+                  /* Tiklama satira KACMAMALI: kutuya basmak karti acardi. */
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={t.title}
+                      checked={secili.has(String(t.id))}
+                      onChange={() => setSecili(secimiDegistir(secili, String(t.id)))}
+                    />
+                  </td>
+                )}
                 <td onClick={(e) => {
                   e.stopPropagation();
                   if (!canManageTasks) return;
@@ -1746,7 +1825,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
     )}
 
     {subView === 'table' && (
-      <TableView tasks={visibleTasks} onOpenTask={onOpenTask} onMoveTask={onMoveTask} canManageTasks={canManageTasks} />
+      <TableView tasks={visibleTasks} onOpenTask={onOpenTask} onMoveTask={onMoveTask} onDeleteTask={onDeleteTask} canManageTasks={canManageTasks} />
     )}
 
     {/* Çizelge dar ekranda ÇİZİLMİYOR, yerine sebebi yazılıyor.

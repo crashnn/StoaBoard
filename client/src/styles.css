@@ -135,6 +135,39 @@
 }
 .tarih-cip:hover { color: var(--accent); border-color: var(--accent); }
 .tarih-cip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Toplu islem cubugu — yalnizca secim varken ciziliyor. */
+.toplu-cubuk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.toplu-sayi { font-size: 12px; font-weight: 600; color: var(--ink); }
+.toplu-etiket { font-size: 12px; color: var(--ink-muted); }
+.toplu-ayirac { width: 1px; height: 16px; background: var(--line); margin: 0 2px; }
+.toplu-dugme {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg-raised);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.toplu-dugme:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.toplu-dugme:disabled { opacity: 0.5; cursor: default; }
+.toplu-dugme:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toplu-tehlike:hover:not(:disabled) { border-color: var(--status-rose); color: var(--status-rose); }
 .toast-error { border-color: var(--status-rose); }
 .toast-success { border-color: var(--status-green); }
 .toast-msg-head {
