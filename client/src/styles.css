@@ -199,7 +199,23 @@
   .notif-dismiss {
     position: relative;
   }
-  .col-actions > button::after,
+  /* BITISIK dugmeler: yalnizca DIKEY buyume.
+   *
+   * CANLI OLCUM (2 Ekim 2026) gosterdi: "+" ve "..." yan yana ve 32px'lik
+   * alanlar yatayda birbirinin ustune biniyor — merkezin 14px sagindaki
+   * nokta KOMSU dugmeye gidiyordu. Yani yatay buyume, olu bosluğu "yanlis
+   * dugmeye isabet"e ceviriyordu. Dikeyde boyle bir komsu yok; kazanc
+   * oradan aliniyor, yatayda gorunur genislik korunuyor. */
+  .col-actions > button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 32px;
+    transform: translateY(-50%);
+  }
+  /* YALNIZ duran dugmeler: her iki yonde buyuyebilir, calacagi komsu yok. */
   .sidebar-section-title > button::after,
   .notif-dismiss::after {
     content: '';

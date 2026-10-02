@@ -273,8 +273,23 @@ describe('mobil dokunma hedefleri (tarama maddesi E)', () => {
     // Görsel büyütmek masaüstü düzenini de oynatırdı.
     const k = kural();
     assert.match(k, /::after/, 'hedef sözde-öge ile genişletilmiyor');
-    assert.match(k, /width: 32px;\s*\n\s*height: 32px;/, 'hedef boyutu 32px değil');
     assert.doesNotMatch(k, /font-size|padding:/, 'kural görünür boyutu da değiştiriyor');
+
+    // BİTİŞİK düğmeler yalnızca DİKEY büyüyor, yalnız duranlar iki yönde.
+    //
+    // Gerekçe CANLI ÖLÇÜMDEN geldi: "+" ve "..." yan yana ve 32px'lik alanlar
+    // yatayda birbirinin üstüne biniyordu — merkezin 14px sağındaki nokta
+    // KOMŞU düğmeye gidiyordu. Yani yatay büyüme, ölü boşluğu "yanlış
+    // düğmeye isabet"e çeviriyordu. Dikeyde böyle bir komşu yok.
+    const bitisik = k.slice(k.indexOf('.col-actions > button::after'),
+      k.indexOf('.sidebar-section-title > button::after'));
+    assert.match(bitisik, /height: 32px;/, 'bitişik düğmelerde dikey hedef 32px değil');
+    assert.doesNotMatch(bitisik, /width: 32px/,
+      'bitişik düğme yatayda da büyüyor — komşunun yerini çalar');
+
+    const yalniz = k.slice(k.indexOf('.sidebar-section-title > button::after'));
+    assert.match(yalniz, /width: 32px;/, 'yalnız duran düğmede yatay hedef 32px değil');
+    assert.match(yalniz, /height: 32px;/, 'yalnız duran düğmede dikey hedef 32px değil');
   });
 
   test('YALNIZCA dokunmatikte — farede uygulanmıyor', () => {
