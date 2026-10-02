@@ -155,10 +155,16 @@ yapıyordu. Adres artık yalnızca `client/src/ben.js`'ten okunuyor;
 
 ---
 
-## ✅ 2 Ekim 2026 — iki kusur: kapsamsız çevrimiçi liste, odağı çalan gizli pencere
+## ✅ 2 Ekim 2026 — dört kusur: kapsamsız çevrimiçi liste, odağı çalan gizli pencere, 429 "oturum düştü", hayalet kart
 
-1 Ekim gecesi Playwright turundan çıkan altı kartın ikisi kapandı. Kartlar:
-**#330, #332**; açılan: **#342**. Test **1117 → 1133**.
+1 Ekim gecesi Playwright turu altı kart açmış ve hiçbirine kod yazmamıştı.
+Bu turda **dördü kapandı** (#330, #332, #328, #339), üçü **canlıda
+doğrulandı** (#330, #328, #339), biri açıldı (#342). Kalan: #331, #333.
+Test **1117 → 1146**, otuz iki mutasyonun otuz ikisi kırıldı.
+
+Dört kusurun dördünde de **kartın önerisi birebir uygulanmadı** ve gerekçe
+aynı sınıftan: kart bir **kural** öneriyordu, uygulanan şey kuralı gereksiz
+kılan bir **tasarım**. Ayrıntı [DEVIR.md](DEVIR.md) bölüm **0-AK**.
 
 - [x] **Çevrimiçi liste platform geneliydi** *(#332, güvenlik)*. Kimliği
       doğrulanmış herhangi bir kullanıcı, o anda çevrimiçi olan
@@ -193,6 +199,36 @@ yapıyordu. Adres artık yalnızca `client/src/ben.js`'ten okunuyor;
       iki yerde ayrı yazılıydı (`app.jsx isEditing()` / `jest.js yaziliyorMu()`),
       kopya silindi. Kopya ayrıca `document.activeElement` null olduğunda
       patlıyordu ve o anda bütün klavye gezinmesi ölüyordu.
+- [x] **Oturum yoklaması giriş denemesi gibi limitleniyordu** *(#328)*.
+      `/api/auth` dalının TAMAMI 30/15dk ile limitliydi ve `/me` her sayfa
+      yüklemesinde çağrılıyor — yani sınır gerçekte "IP başına 15 dakikada
+      30 **sayfa yüklemesi**"ydi. Tek NAT IP'sinin arkasındaki üç kişi normal
+      kullanımda bu sayıya ulaşır ve hep birlikte "oturumdan düşer". İkinci
+      yarısı istemcide: `me()`nin **her** hatası "oturum yok" diye okunuyordu,
+      yani 429 giriş ekranı demekti ve F5 kurtarmıyordu (yeni istek de 429).
+      **Kartın önerisi ters çevrildi:** "yalnızca kimlik deneme uçlarını
+      limitle" demek, yeni bir login benzeri ucu **sessizce korumasız**
+      bırakır. Dalın tamamı varsayılan olarak limitli kaldı, muafiyet tek tek
+      yazıldı (`YOKLAMA_UCLARI`) — bu yönde yeni bir uç en kötü hâlde fazla
+      limitli doğar: görünür, şikâyet edilir, düzeltilir. Yol üstünde ikinci
+      ihlal: 429 gövdesi `{ error: 'Too many requests…' }` idi, oysa `error`
+      KOD taşır ve `apiFetch` onu sözlükten geçirir — kullanıcı o İngilizce
+      cümleyi çevrilmemiş görüyordu. **Canlı:** 40 ardışık `/me` → 40×200.
+- [x] **Kalıcı silinen kart başkasının panosunda hayalet kalıyordu** *(#339)*.
+      Çöpe atma, geri alma ve kart açma yayınları çalışıyordu; yalnızca
+      `DELETE /tasks/:id/permanent` **hiçbir şey yayınlamıyordu**. Ekran
+      görüntüsündeki asıl ayrıntı tutarsızlıktı: kenar çubuğu "Ana Proje 0"
+      derken kolonda kart ve kolon sayacı "1" — durum bayat değil, kendi
+      içinde çelişkili. **Ölçüt tek uca bağlanmadı:** `hayalet.test.js`
+      bütün kalıcı silme çağrılarını tarıyor ve her birini iki seçeneğe
+      zorluyor — ya yayın yapar, ya **gerekçesiyle** muafiyet listesinde
+      durur (`yetki.test.js`in `ACIK_UCLAR` kalıbı). Mutasyon turunda bunun
+      değeri görüldü: "yayınsız yeni bir silme yolu ekle" testi kırıyor.
+      İki muafiyet gerekçeli: 30 gün temizliği (aktörü yok) ve hesap silme
+      (alanın kendisi yok oluyor — #272/#273'ün konusu). **Canlı:** iki
+      hesap, gözlemcide yenileme yok, kart F5'siz düşüyor.
+      Not: #271'in "çöp görünümü eski (küçük)" değerlendirmesi yanlıştı,
+      etki ana panodaydı.
 - [ ] **Kapalıyken DOM'da duran öteki paneller** *(#342, yeni)*. `chat-panel`,
       bildirimler ve mobil kenar çubuğu aynı sınıfta. **Genel bir tarama
       yazılamaz:** `data-open` bu depoda iki ayrı iş yapıyor — "kapalıyken de
@@ -207,10 +243,20 @@ yapıyordu. Adres artık yalnızca `client/src/ben.js`'ten okunuyor;
       aynı sunucu, iki ayrı cevap. Yön: şema `.strict()` ya da yanıtta
       `applied`/`ignored`.
 
-**Canlıda doğrulanmadı** — dağıtım sonrası üç ölçüm: (1) çift hesaplı turda
-B'nin `online_users` listesinde yalnızca kendisi, (2) taze açılışta
-`document.activeElement` BODY, (3) panoda `g` ardından `d` dashboard'a
-götürüyor.
+**Canlı doğrulama:** #330 (4/4), #328 (3/3) ve #339 (3/3) dağıtımdan sonra
+ölçüldü ve geçti. **#332 gerçekten kapandı sayılmıyor:** kesin ölçüm
+"hiçbir alan paylaşmayan biri listede yok" diyor, ama üç test hesabı da aynı
+alanı paylaşıyor — aralarında ayırt edici bir çift yok, yani ölçüm
+"ortak alan" kuralını "platform geneli"nden ayırt **edemiyor**. Betik bunu
+kendisi söylüyor (GEÇERSİZ, geçti değil). Ölçülen ve geçen kısım: kapsamın
+**aktif alan değil ortak alan** olduğu — B yalnız olduğu alanda başka
+alandaki ortağını görüyor. Ayırt edici kılmanın en ucuz yolu: kullanıcı
+kendi hesabıyla bir sekme açık bırakır, `DISARIDAN=eray-atalay node t332.mjs`.
+
+**Betikler** `Desktop/Temizlik/stoa-canli-test` içinde (#333 bu yüzden
+büyüdü): `t330.mjs` ve `t328.mjs` eklendi, `t332.mjs` yeniden yazıldı — eski
+ölçütü yanlış kuralı ("yalnızca aktif alanın üyeleri") ölçüyordu ve
+düzeltilmiş sunucuda da "SIZINTI VAR" diyordu.
 
 ---
 

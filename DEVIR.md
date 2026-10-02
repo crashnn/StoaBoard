@@ -18,16 +18,23 @@ güven, düzyazıya değil.
 
 ---
 
-## 0-AK. 2 Ekim — Playwright turunun iki kartı: kapsamsız çevrimiçi liste, odağı çalan gizli pencere
+## 0-AK. 2 Ekim — Playwright turunun dört kartı: kapsamsız çevrimiçi liste, odağı çalan gizli pencere, 429 "oturum düştü", hayalet kart
 
-**Depo:** `main` = `b036ab9`. **Push edilmedi** — iki fix commit'i ve bu devir
-notu yerelde duruyor; kullanıcıya soruldu, dağıtım onun kararı (Railway
-`main`e push ile canlıya çıkıyor). Çalışma ağacı bunun dışında temiz.
-Test **1117 → 1133**.
+**Depo:** `main` = `2b60ae2` + bu devir commit'i, `origin/main` ile eşit,
+çalışma ağacı temiz. Dağıtım canlıda (kullanıcı onayıyla, üç turda push).
+Test **1117 → 1146**.
 
 **Devralınan durum:** 1 Ekim gecesi yapılan Playwright doğrulama turu altı
-kart açmış ve hiçbirine kod yazmamıştı (#328, #330, #331, #332, #333, #339).
-Bu tur ikisini kapattı — en yüksek ikisi. Dördü duruyor, aşağıda sıralı.
+kart açmış ve **hiçbirine kod yazmamıştı** (#328, #330, #331, #332, #333,
+#339). Bu tur dördünü kapattı (#330, #332, #328, #339), birini büyüttü
+(#333) ve bir yenisini açtı (#342). Kalan: **#331**, **#333**.
+
+**DÖRT KARTIN DÖRDÜNDE KARTIN ÖNERİSİ BİREBİR UYGULANMADI** ve dördünde de
+gerekçe aynı sınıftan: kartın önerisi bir **kural** koyuyordu, uygulanan şey
+kuralı gereksiz kılan bir **tasarım**. #332'de erişimci silindi, #330'da
+`inert` kondu, #328'de muafiyet listesi ters çevrildi, #339'da ölçüt bütün
+silme yollarını taradı. Her birinin gerekçesi aşağıda ve commit
+mesajlarında.
 
 ### #332 — çevrimiçi liste platform geneliydi (güvenlik)
 
@@ -113,8 +120,10 @@ olan — masaüstünde her zaman görünür, `inert` onu öldürür.
 
 ### Test ve mutasyon
 
-**1117 → 1133.** Yeni dosya `server/test/odak.test.js` (8), güvenlik
-regresyonları `guvenlik.test.js` (4) ve saf katman `varlik.test.js` (4).
+**1117 → 1146.** İki yeni dosya: `server/test/odak.test.js` (8, #330) ve
+`server/test/hayalet.test.js` (8, #339). Güvenlik regresyonları
+`guvenlik.test.js`e (#332 için 4, #328 için 5), saf katman
+`varlik.test.js`e (4).
 
 Ölçütlerin hepsi korudukları **bloğa** bağlı: `/bootstrap` bloğu, emit
 satırının kendisi, `gorunurOnlineKisiler` gövdesi, `AddTaskModal` bloğu
@@ -123,49 +132,145 @@ pencerede autoFocus meşru), `G_MAP` etkisi. İki ölçüt metin değil **yüzey
 ölçüyor: `onlineState`'in argümansız fonksiyon sunmaması ve haritayı
 dolaşmaması.
 
-**On beş mutasyonun on beşi kırıldı**, ikisi aklama denemesi (ölçütün aradığı
-metin dosyada bırakıldı ama korumadığı bir yere taşındı; test yine kırıldı,
-yani ölçüt metni değil davranışı arıyor). Mutasyon betikleri geçici dizinde,
-depoda değil.
+**Otuz iki mutasyonun otuz ikisi kırıldı** (6 + 9 + 9 + 8), dördü **aklama
+denemesi**: ölçütün aradığı metin dosyada bırakıldı ama korumadığı bir yere
+taşındı; test yine kırıldı, yani ölçüt metni değil davranışı arıyor. Üçü
+bu turun en değerli mutasyonlarıydı, çünkü **olmayan** bir şeyi ölçtüler:
+"kapı var ama etkisiz" (#328: 401 kapısından sonra yine `setAuthed(false)`),
+"yayınsız yeni bir silme yolu ekle" (#339: aile korumasının kendisi) ve
+"tarama desenini boz" (#339: ölçüt kendini de koruyor). Mutasyon betikleri
+geçici dizinde, depoda değil.
 
-### Kaldığı yer — devralan oturum için
+### #328 — oturum yoklaması giriş denemesi gibi limitleniyordu
 
-**CANLIDA HİÇBİRİ DOĞRULANMADI.** Dağıtımdan sonra üç ölçüm:
-1. **#332:** çift hesaplı tur, karttaki adımlar birebir. B'nin
-   `online_users` listesinde yalnızca kendisi olmalı. Ölçümün **ayırt edici**
-   olması şart: A, B ile hiçbir alan paylaşmamalı **ve** o anda çevrimiçi
-   olmalı. Önceki iki ölçüm tam bu koşul kurulmadığı için kusuru göremedi.
-2. **#330:** taze `/pano` açılışında `document.activeElement` BODY olmalı.
-3. **#330:** panoda `g` ardından `d` dashboard'a götürmeli. Üçüncü bir ölçüm
-   kartta "denenmemiş" diye yazılı: telefonda açılışta klavye kendiliğinden
-   açılıyor muydu, artık açılmıyor mu.
+`/api/auth` dalının **tamamı** 30/15dk ile limitliydi ve `/me` her sayfa
+yüklemesinde çağrılıyor. Yani sınır gerçekte "IP başına 15 dakikada 30 sayfa
+yüklemesi"ydi; tek NAT IP'sinin arkasındaki üç kişi normal kullanımda bu
+sayıya ulaşır ve **hep birlikte** oturumdan düşmüş görünür. Aynı muhakeme
+`/mcp` için yapılmıştı (protokol konuşkan diye ayrı limitleyici), `/me` için
+yapılmamıştı.
 
-**Playwright turundan kalan dört kart** (hiçbirine kod yazılmadı):
-- **#328** `/api/auth/me` brute-force limitine takılıyor ve 429 "oturumun
-  düştü" gibi görünüyor *(high)*. Oturum sağlamken kullanıcıyı giriş ekranına
-  atıyor; tur sırasında yaşandı.
+İkinci yarısı istemcide: `.catch(() => setAuthed(false))` me()'nin **her**
+hatasını "oturum yok" diye okuyordu. Kullanıcı "çıkış yapmışım" sanıyor ve
+F5 kurtarmıyor, çünkü yeni istek de 429 alıyor.
+
+**Kartın önerisi ters çevrildi, gerekçesi devredilmeye değer.** Kart
+"authLimiter yalnızca kimlik deneme uçlarına bağlansın" diyordu. O yön, yeni
+bir login benzeri uç eklendiğinde onu **sessizce korumasız** bırakır ve bunu
+kimse fark etmez. Dalın tamamı varsayılan olarak limitli kaldı, muafiyet tek
+tek yazıldı (`YOKLAMA_UCLARI`). Bu yönde yeni bir uç en kötü hâlde fazla
+limitli doğar — görünür, şikâyet edilir, düzeltilir. Aynı asimetri
+`yetki.test.js`in `ACIK_UCLAR` listesinin de gerekçesi.
+
+Yol üstünde ikinci bir sözleşme ihlali: 429 gövdesi `{ error: 'Too many
+requests, try again later.' }` idi. `error` alanı KOD taşır ve `apiFetch` onu
+sözlükten geçirir — yani kullanıcı o İngilizce cümleyi çevrilmemiş görüyordu.
+
+### #339 — kalıcı silinen kart başkasının panosunda hayalet kalıyordu
+
+Çöpe atma, geri alma ve kart açma yayınları çalışıyordu; yalnızca
+`DELETE /tasks/:id/permanent` **hiçbir şey yayınlamıyordu**. Ekran
+görüntüsündeki asıl ayrıntı tutarsızlıktı: kenar çubuğu "Ana Proje 0" derken
+kolonda kart ve kolon sayacı "1". Durum bayat değil, kendi içinde çelişkili.
+
+**Ölçüt tek uca bağlanmadı.** Kusurun sınıfı "aynı olgunun iki yolu, biri
+yayın yapıyor öteki yapmıyor"; tek ucu kilitlemek üçüncü bir silme yolunda
+aynı kusuru geri getirir. `hayalet.test.js` bütün kalıcı silme çağrılarını
+tarıyor ve her birini iki seçeneğe zorluyor: ya yayın yapar, ya gerekçesiyle
+muafiyet listesinde durur. Mutasyon turunda bunun değeri görüldü — "yayınsız
+yeni bir silme yolu ekle" mutasyonu testi kırıyor.
+
+İki muafiyet: 30 gün temizliği (kartlar zaten çöpte ve işlemin **aktörü yok**)
+ve hesap silme (alanın kendisi yok oluyor; kart yayını yetersiz, o boşluk
+#272/#273'ün konusu). Liste tek yönlü değil — muaf bir yere yayın
+*eklenirse* de test kırılıyor.
+
+### Testin kendisinde iki kusur, ikisi de mutasyonla değil ilk koşuda çıktı
+
+`hayalet.test.js`in ilk hâli `panoYayini\([^)]*'task_deleted'` deseniyle
+yazılmıştı ve **yayın yerindeyken kırmızı döndü**: çağrı
+`panoYayini(req.app.get('io'), ...)` biçiminde ve `[^)]*` iç içe parantezi
+geçemiyor. CLAUDE.md'de adı konmuş tuzağın ters yönü — bu kez kusuru örtmek
+yerine olmayan bir kusur uydurdu. İkincisi: `/me/trash` çapası aynı yolun
+**GET** tanımını buluyordu (çöp listesi), yani ölçüt yanlış bloğu ölçüyordu.
+İkisi de testte yorumda yazılı.
+
+### Canlı doğrulama — dört kartın üçü ölçüldü
+
+Dağıtım iki turda geldi; her turda `/pano` HTML'indeki varlık adının
+değiştiği beklendi, sonra ölçüldü.
+
+| Kart | Ölçüm | Sonuç |
+|---|---|---|
+| #330 | `t330.mjs` — taze açılışta odak, kapalı pencerede `focus()`, `g,d`, gizli kutuya yazılan | **4/4 geçti**. Odak BODY · inert odağı reddetti · `/pano → /ana-sayfa` · kutular boş |
+| #328 | `t328.mjs` — 40 ardışık `/api/auth/me` | **3/3 geçti**. `{"200": 40}`; eski davranışta 31'inciden sonrası 429'du |
+| #339 | `t-silme-canli.mjs` — iki hesap, gözlemcide yenileme yok | **3/3 geçti**. Kalıcı silme artık F5'siz düşüyor |
+| #332 | `t332.mjs` | **ölçüm 2 geçti, ölçüm 1 GEÇERSİZ** — aşağıda |
+
+**#332 niçin kapanmadı sayılmıyor.** Betiğin ölçütü yeniden yazıldı: eski
+ölçüt "yalnızca **aktif alanın** üyeleri" diyordu, uygulanan kural ise
+bilinçli olarak **ortak alan**. Eski ölçüt düzeltilmiş sunucuda da "SIZINTI
+VAR" diyor, yani yanlış kuralı ölçüyor — devralan oturumu olmayan bir kusuru
+aramaya götürürdü.
+
+Kesin ölçülen (ölçüm 2, ayırt edici): B yalnız olduğu alanda (23, tek üye
+kendisi) iken listede 22'deki ortaklarını görüyor. Yani kapsam **aktif alan
+değil ortak alan** — karar canlıda uygulanmış.
+
+Ölçülemeyen (ölçüm 1): "hiçbir alan paylaşmayan biri listede yok". Üç test
+hesabı da 22 numaralı alanı paylaşıyor, yani aralarında ayırt edici bir çift
+**yok** ve bu hesaplarla yapılan ölçüm "ortak alan" kuralını "platform
+geneli"nden ayırt edemez. Betik bunu kendisi söylüyor: aday yoksa sonuç
+GEÇTİ değil **GEÇERSİZ**. Kart #332'nin kendi dersinin ters yönü.
+
+**Ayırt edici kılmanın yolu (sırayla, en ucuzdan):**
+1. Kullanıcı **kendi hesabıyla** (`eray-atalay`) bir sekme açık bıraksın — o
+   hesap `claude-code-1` ile hiçbir alan paylaşmıyor. Hiçbir veri yazmadan
+   kesin sonuç: `DISARIDAN=eray-atalay node t332.mjs`.
+2. Test alanından (22) bir üyeyi geçici çıkarmak. Tersine alınabilir (davet
+   kodu) ama canlı veriye dokunuyor — **kullanıcıya sorulmadan yapılmadı**.
+
+### Kalan iş
+
+**Playwright turundan kalan iki kart:**
 - **#331** kalıcı kayda **görüntü metni** yazmak yasaklansın — kolon/proje/
   kullanıcı adı donuyor *(mid, tarama kuralı)*. Turda üç ayrı yerde aynı
   sınıfa rastlanmış; tek tek düzeltmek yerine kuralı doğrulayana yazmak için
   açılmış.
-- **#333** canlı duman testi depoya alınsın *(mid)*. Playwright koşumu şu an
-  depoda değil, yanında: `Desktop/Temizlik/stoa-canli-test` (`OKU.md` içinde
-  kurulum, tuzaklar, koşma biçimi).
-- **#339** kalıcı silinen kart başkasının panosunda **hayalet** kalıyor
-  *(mid)*. Sayaç 0 derken liste kartı gösteriyor; ekran görüntüsüyle kayıtlı.
+- **#333** canlı duman testi depoya alınsın *(mid)*. Koşum şu an depoda değil,
+  yanında: `Desktop/Temizlik/stoa-canli-test` (`OKU.md` içinde kurulum,
+  tuzaklar, koşma biçimi). **Bu turda oraya iki dosya eklendi** (`t330.mjs`,
+  `t328.mjs`) ve `t332.mjs` yeniden yazıldı; yani kart büyüdü.
 
-**MCP yüzeyinde bugün çıkan pürüz, #213'e yazıldı:** `create_task` bilinmeyen
-alanı sessizce atıyor. `description`/`column` gönderildi (doğrusu
+**Bu turda açılan kart: #342** — kapalıyken DOM'da duran öteki paneller
+(`chat-panel`, bildirimler, mobil kenar çubuğu). Genel bir "data-open varsa
+inert olsun" taraması **yazılamaz**: `dropdown.jsx` aynı özniteliği açılır
+menünün **tetiğinde** kullanıyor ve o düğme kapalıyken de odak alabilmek
+zorunda. `odak.test.js` kapsamı bu yüzden elle liste tutuyor ve sınırını
+kendi içinde yazıyor. Mobil kenar çubuğu en riskli: masaüstünde her zaman
+görünür, `inert` onu öldürür.
+
+**MCP yüzeyinde bu turda çıkan pürüz, #213'e yazıldı:** `create_task`
+bilinmeyen alanı sessizce atıyor. `description`/`column` gönderildi (doğrusu
 `desc`/`col`); sunucu `created: true` dedi ve **boş bir kart** açtı — hata
 yok, uyarı yok. Aynı turda `update_task` aynı hatada `updated: ["desc"]`
 diyerek ne yaptığını dürüstçe söyledi. Aynı sunucu, iki ayrı cevap; ikincisi
 doğru kalıp. Yön: şema `.strict()` ya da yanıtta `applied`/`ignored`.
 
+**Tarayıcı koşumu hakkında iki not:**
+- Her iki CDP tarayıcısı bu turda açıldı (`1-tarayici-A-claude-code.bat`,
+  `2-tarayici-B-ayse.bat`); B profilindeki hesap **`claude-code-1`**, OKU.md'de
+  "Ayşe (eray-atalay-3)" yazıyor — belge bayat, hesap değişmiş.
+- 1 Ekim gecesinin ölçüm artığı duruyor: **"Playwright Sizinti Testi"**
+  (alan 23, tek üye `claude-code-1`). Sunucuda çalışma alanı silme ucu yok.
+  Bu turda ölçüm 2 için işe yaradı — silinmesi gerekirse önce o ucun
+  olmayışı konuşulmalı.
+
 **Bu makinede veritabanı erişilebilir** (`[db] warmup ok`). Yani `prisma:push`
 ve `mcp:tara` burada koşar; 5432 kısıtı ofis makinesinin kısıtıydı.
 
 **Karar bekleyenler değişmedi** (0-AH listesi). Kullanıcıya bu turda tek bir
-şey soruldu: push/dağıtım.
+şey soruldu: push/dağıtım — onay verildi, üç turda push edildi.
 
 ---
 
