@@ -19,7 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { yorumsuzDosya } from './yardimcilar.js';
-import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec } from '../../client/src/topluIslem.js';
+import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec, atamaEkleniyorMu, yeniAtananlar } from '../../client/src/topluIslem.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BOARD = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'views', 'board.jsx'));
@@ -295,5 +295,105 @@ describe('mobil dokunma hedefleri (tarama maddesi E)', () => {
   test('YALNIZCA dokunmatikte — farede uygulanmıyor', () => {
     // Fareyle gezerken büyüyen görünmez alanlar komşu öğeleri bloklardı.
     assert.match(CSS, /@media \(pointer: coarse\) \{/, 'kural bütün cihazlarda geçerli');
+  });
+});
+
+// ─── Toplu atama (madde C'nin kalan parçası) ───────────────────────────────
+//
+// C'de bilerek dışarıda bırakılmıştı ("üç işi yarım yapmaktansa ikisini tam
+// yapmak"). Burada tamamlandı.
+//
+// TOGGLE SEMANTİĞİ: seçili kartların HEPSİNDE o kişi varsa kaldırılıyor,
+// değilse hepsine ekleniyor — "hepsini seç" kutusuyla aynı mantık.
+// REPLACE DEĞİL: "bu beş kartı Ayşe'ye ata" demek "Mehmet'i çıkar" demek
+// değildir ve replace var olan atamaları SESSİZCE silerdi.
+
+describe('toplu atama — saf', () => {
+  const g = (ids) => ({ assignees: ids });
+
+  test('hiçbirinde yoksa EKLİYOR', () => {
+    assert.equal(atamaEkleniyorMu([g([]), g(['x'])], 'ayse'), true);
+  });
+
+  test('HEPSİNDE varsa KALDIRIYOR', () => {
+    assert.equal(atamaEkleniyorMu([g(['ayse']), g(['ayse', 'x'])], 'ayse'), false);
+  });
+
+  test('BAZISINDA varsa EKLİYOR — eksikleri tamamlamak beklenen davranış', () => {
+    assert.equal(atamaEkleniyorMu([g(['ayse']), g([])], 'ayse'), true);
+  });
+
+  test('seçim boşsa ekleme yönünde, patlamıyor', () => {
+    assert.equal(atamaEkleniyorMu([], 'ayse'), true);
+    assert.equal(atamaEkleniyorMu(null, 'ayse'), true);
+  });
+
+  test('ekleme VAR OLANI korumuyor demek değil — öteki atananlar duruyor', () => {
+    // Replace kusurunun tam karşılığı: Mehmet silinmemeli.
+    assert.deepEqual(yeniAtananlar(g(['mehmet']), 'ayse', true), ['mehmet', 'ayse']);
+  });
+
+  test('aynı kişi İKİ KEZ eklenmiyor', () => {
+    assert.deepEqual(yeniAtananlar(g(['ayse']), 'ayse', true), ['ayse']);
+  });
+
+  test('kaldırma YALNIZCA o kişiyi düşürüyor', () => {
+    assert.deepEqual(yeniAtananlar(g(['ayse', 'mehmet']), 'ayse', false), ['mehmet']);
+  });
+
+  test('bozuk kart patlamıyor', () => {
+    assert.deepEqual(yeniAtananlar(null, 'ayse', true), ['ayse']);
+    assert.deepEqual(yeniAtananlar({}, 'ayse', false), []);
+  });
+});
+
+describe('toplu atama — bağlantı', () => {
+  // Her ölçüt `topluAta`nın KENDİ gövdesine bağlı, TableView'in tamamına
+  // değil. Aklama denemesi iki ölçütü bir kerede akladı: yetki satırını
+  // `topluAta`dan silip aynı metni `topluCope`ya koymak testi yeşil
+  // bıraktı. Blok, kuralı taşıyan fonksiyonun kendisi olmalı (CLAUDE.md,
+  // "ölçüt KORUDUĞU SATIRA bağlanmalı").
+  const atamaGovdesi = () => {
+    const bas = BOARD.indexOf('const topluAta = async (uyeId) => {');
+    assert.ok(bas > 0, 'toplu atama yolu bulunamadı');
+    const son = BOARD.indexOf('\n  };', bas);
+    assert.ok(son > bas, 'toplu atama gövdesi kapanmıyor');
+    return BOARD.slice(bas, son);
+  };
+
+  test('atama da GÖRÜNEN süzgecinden geçiyor', () => {
+    assert.match(atamaGovdesi(), /topluCalistir\(seciliGorunen, \(id\) => \{/,
+      'toplu atama görünmeyen kartlara da uygulanıyor');
+  });
+
+  test('yetki kapısı var', () => {
+    assert.match(atamaGovdesi(), /if \(!canManageTasks \|\| topluMesgul \|\| !onAssignTask\) return;/,
+      'yetkisiz kullanıcı toplu atama yapabiliyor');
+  });
+
+  test('yön BİR KEZ hesaplanıyor, kart başına değil', () => {
+    // Kart başına hesaplansaydı ilk kart eklenir, ikincisi (artık ona da
+    // eklendiği için) kaldırılırdı — işlem kendi kuyruğunu yerdi.
+    //
+    // "Hesap satırı döngüden önce mi" diye sormak YETMİYOR: aklama denemesi
+    // doğru satırı yukarıda bırakıp geri çağrının içinde İKİNCİ bir hesap
+    // yaptı ve ölçüt geçti. Ölçülen şey artık sayı: gövdede yön hesabı
+    // TAM BİR kez geçiyor, ve o da döngünün dışında.
+    const govde = atamaGovdesi();
+    const kac = (govde.match(/atamaEkleniyorMu\(/g) || []).length;
+    assert.equal(kac, 1, `yön ${kac} kez hesaplanıyor — bir kez olmalı`);
+    assert.match(govde, /const ekle = atamaEkleniyorMu\(secilenler, uyeId\);/, 'yön hesabı yok');
+    assert.ok(govde.indexOf('const ekle =') < govde.indexOf('topluCalistir('),
+      'yön döngünün İÇİNDE hesaplanıyor — işlem kendi kuyruğunu yer');
+  });
+
+  test('atama hatası YUTULMUYOR', () => {
+    // `topluCalistir` başarısızı ancak fırlatılırsa sayabilir.
+    const APP = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'app.jsx'));
+    const bas = APP.indexOf('const atamayiDegistir = async');
+    assert.ok(bas > 0, 'atama yolu bulunamadı');
+    const govde = APP.slice(bas, APP.indexOf('\n  };', bas));
+    assert.doesNotMatch(govde, /catch/, 'atama hatası yutuluyor — yarım başarı sayılamaz');
+    assert.match(govde, /await API\.updateTask\(id, \{ assignees \}\)/, 'atama sunucuya gitmiyor');
   });
 });

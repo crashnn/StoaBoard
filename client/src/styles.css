@@ -166,6 +166,11 @@
 }
 .toplu-dugme:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .toplu-dugme:disabled { opacity: 0.5; cursor: default; }
+.toplu-dugme[data-active="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
 .toplu-dugme:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .toplu-tehlike:hover:not(:disabled) { border-color: var(--status-rose); color: var(--status-rose); }
 

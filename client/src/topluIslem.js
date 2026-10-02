@@ -90,3 +90,34 @@ export function hepsiniSec(secili, gorunenIdler) {
   }
   return new Set([...secili, ...gorunen]);
 }
+
+/**
+ * Toplu atamanın yönü: EKLE mi, KALDIR mı.
+ *
+ * TOGGLE SEMANTİĞİ, bilinçli: seçili kartların HEPSİNDE o kişi zaten varsa
+ * kaldırılıyor, değilse hepsine ekleniyor. "Hepsini seç" kutusunun davranışı
+ * da aynı — kullanıcı aynı mantığı iki yerde öğreniyor.
+ *
+ * NİÇİN DEĞİŞTİRME (replace) DEĞİL: "bu beş kartı Ayşe'ye ata" demek,
+ * "Mehmet'i bu kartlardan çıkar" demek değildir. Replace, var olan
+ * atamaları SESSİZCE siler ve bunu kimse fark etmez — bu depodaki en pahalı
+ * kusur sınıfı. Eklemek geri alınabilir bir işlem, silmek değil.
+ *
+ * @param {Array} gorevler Seçili kartlar.
+ * @param {string} uyeId
+ * @returns {boolean} true = ekle, false = kaldır.
+ */
+export function atamaEkleniyorMu(gorevler, uyeId) {
+  const liste = Array.isArray(gorevler) ? gorevler : [];
+  if (liste.length === 0) return true;
+  return !liste.every((g) => (g.assignees || []).includes(uyeId));
+}
+
+/**
+ * Tek kartın yeni atanan listesi. Sıra korunuyor ve yineleme oluşmuyor.
+ */
+export function yeniAtananlar(gorev, uyeId, ekle) {
+  const simdiki = (gorev?.assignees || []).filter(Boolean);
+  if (ekle) return simdiki.includes(uyeId) ? simdiki : [...simdiki, uyeId];
+  return simdiki.filter((id) => id !== uyeId);
+}

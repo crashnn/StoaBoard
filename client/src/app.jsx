@@ -1209,6 +1209,16 @@ function App() {
     }
   };
 
+  // Toplu atama bu yoldan geciyor (tarama maddesi C'nin kalan parcasi).
+  // HATAYI YUTMUYOR: `topluCalistir` basarisizi ancak firlatilirsa sayabilir
+  // ve yarim basari kullaniciya soylenmek zorunda.
+  const atamayiDegistir = async (id, assignees) => {
+    const updated = await API.updateTask(id, { assignees });
+    setTasks(prev => prev.map(t => (String(t.id) === String(id) ? { ...t, ...updated } : t)));
+    setDrawerTask(prev => (prev && String(prev.id) === String(id) ? { ...prev, ...updated } : prev));
+    return updated;
+  };
+
   const restoreTask = async (id) => {
     try {
       const restored = await API.restoreTask(id);
@@ -1726,7 +1736,7 @@ function App() {
             {(view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') && (
               <LegalPage type={view} onViewChange={setView} authed={authed} />
             )}
-            {!taskPageTask && view === 'board'     && <BoardView key={currentProject?.id || 'default'} tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} onDeleteTask={deleteTask} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} canManageTasks={canManageTasks} canManageProjects={canManageProjects} switching={projectSwitching} />}
+            {!taskPageTask && view === 'board'     && <BoardView key={currentProject?.id || 'default'} tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} onDeleteTask={deleteTask} onAssignTask={atamayiDegistir} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} canManageTasks={canManageTasks} canManageProjects={canManageProjects} switching={projectSwitching} />}
             {view === 'notifications' && (
               <NotifPanel
                 fullPage

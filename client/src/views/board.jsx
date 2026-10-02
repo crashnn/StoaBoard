@@ -5,7 +5,7 @@ import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, kolonAdi } from '../data.jsx';
 import { komsuKolonId, hedefKartSirasi } from '../klavyePano.js';
-import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec } from '../topluIslem.js';
+import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec, atamaEkleniyorMu, yeniAtananlar } from '../topluIslem.js';
 import { grupla, GRUP_OLCUTLERI } from '../gruplama.js';
 import { benSlug } from '../ben.js';
 
@@ -534,7 +534,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onMoveTas
 }
 
 // ─── Table View ──────────────────────────────────────────────────────────────
-function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, canManageTasks }) {
+function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, canManageTasks }) {
   // ── Toplu islem (tarama maddesi C) ──────────────────────────────────────
   // Secili kartlar KIMLIKLE tutuluyor, nesneyle degil: liste yeniden
   // suzuldugunde nesne kimligi degisir ve secim sessizce kaybolurdu.
@@ -575,6 +575,21 @@ function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, canManageTasks
     if (!canManageTasks || topluMesgul) return;
     setTopluMesgul(true);
     topluBitir(await topluCalistir(seciliGorunen, (id) => onMoveTask(id, colId)));
+  };
+
+  // TOGGLE: secili kartlarin HEPSINDE o kisi varsa kaldiriliyor, degilse
+  // hepsine ekleniyor. Replace DEGIL — "bu bes karti Ayse'ye ata" demek
+  // "Mehmet'i cikar" demek degildir ve replace var olan atamalari sessizce
+  // silerdi.
+  const topluAta = async (uyeId) => {
+    if (!canManageTasks || topluMesgul || !onAssignTask) return;
+    const secilenler = sorted.filter((t) => seciliGorunen.includes(String(t.id)));
+    const ekle = atamaEkleniyorMu(secilenler, uyeId);
+    setTopluMesgul(true);
+    topluBitir(await topluCalistir(seciliGorunen, (id) => {
+      const g = secilenler.find((t) => String(t.id) === id);
+      return onAssignTask(id, yeniAtananlar(g, uyeId, ekle));
+    }));
   };
 
   const topluCope = async () => {
@@ -624,6 +639,28 @@ function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, canManageTasks
               <span className="col-dot" style={{ background: c.color }} /> {kolonAdi(c)}
             </button>
           ))}
+          {(DATA.MEMBERS || []).length > 0 && (
+            <>
+              <span className="toplu-ayirac" />
+              <span className="toplu-etiket">{window.t?.('bulk_assign_to') || 'Ata:'}</span>
+              {(DATA.MEMBERS || []).map((m) => {
+                const secilenler = sorted.filter((t) => seciliGorunen.includes(String(t.id)));
+                const hepsinde = secilenler.length > 0
+                  && secilenler.every((t) => (t.assignees || []).includes(m.id));
+                return (
+                  <button key={m.id} type="button" className="toplu-dugme"
+                    data-active={hepsinde}
+                    disabled={topluMesgul}
+                    title={hepsinde
+                      ? (window.t?.('bulk_unassign_from') || 'Atamayı kaldır') + ': ' + m.name
+                      : (window.t?.('bulk_assign_to') || 'Ata:') + ' ' + m.name}
+                    onClick={() => topluAta(m.id)}>
+                    <Avatar member={m} size="xs" /> {m.name}
+                  </button>
+                );
+              })}
+            </>
+          )}
           <span className="toplu-ayirac" />
           <button type="button" className="toplu-dugme toplu-tehlike"
             disabled={topluMesgul} onClick={topluCope}>
@@ -1147,7 +1184,7 @@ function tekKolonlar(cols) {
   });
 }
 
-function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, switching, initialSubView, onSubViewChange }) {
+function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, switching, initialSubView, onSubViewChange }) {
   const [subView, setSubView] = useBoardState(() => initialSubView || localStorage.getItem('stoa.boardSubView') || 'kanban');
   // Gruplama olcutu HATIRLANIYOR: "kime gore bakiyorum" bir calisma bicimi,
   // her acilista kolona donmek o bicimi her gun yeniden kurmak demek.
@@ -1870,7 +1907,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
     )}
 
     {subView === 'table' && (
-      <TableView tasks={visibleTasks} onOpenTask={onOpenTask} onMoveTask={onMoveTask} onDeleteTask={onDeleteTask} canManageTasks={canManageTasks} />
+      <TableView tasks={visibleTasks} onOpenTask={onOpenTask} onMoveTask={onMoveTask} onDeleteTask={onDeleteTask} onAssignTask={onAssignTask} canManageTasks={canManageTasks} />
     )}
 
     {/* Çizelge dar ekranda ÇİZİLMİYOR, yerine sebebi yazılıyor.
