@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 1 Ekim 2026, **ev makinesinde**. En taze bölüm
-**0-AJ**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**Son güncelleme:** 2 Ekim 2026, **ev makinesinde**. En taze bölüm
+**0-AK**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -18,11 +18,162 @@ güven, düzyazıya değil.
 
 ---
 
+## 0-AK. 2 Ekim — Playwright turunun iki kartı: kapsamsız çevrimiçi liste, odağı çalan gizli pencere
+
+**Depo:** `main` = `b036ab9`. **Push edilmedi** — iki fix commit'i ve bu devir
+notu yerelde duruyor; kullanıcıya soruldu, dağıtım onun kararı (Railway
+`main`e push ile canlıya çıkıyor). Çalışma ağacı bunun dışında temiz.
+Test **1117 → 1133**.
+
+**Devralınan durum:** 1 Ekim gecesi yapılan Playwright doğrulama turu altı
+kart açmış ve hiçbirine kod yazmamıştı (#328, #330, #331, #332, #333, #339).
+Bu tur ikisini kapattı — en yüksek ikisi. Dördü duruyor, aşağıda sıralı.
+
+### #332 — çevrimiçi liste platform geneliydi (güvenlik)
+
+Kimliği doğrulanmış herhangi bir kullanıcı, o anda çevrimiçi olan **herkesin**
+slug'ını görüyordu; hiçbir çalışma alanı paylaşmasa bile. Kart 1 Ekim gecesi
+çift hesaplı turda kanıtlanmıştı, yani bu tur yalnızca kapattı.
+
+Slug kozmetik bir değer değil — @bahsetme ve DM aramasının **adresi**. Sızan
+şey "kim çevrimiçi" değil, "bu platformda hangi hesaplar var" bilgisinin bir
+alt kümesiydi: GUVENLIK.md'deki "var/yok kâhini açmamalı" kuralıyla aynı aile
+(#227).
+
+**Aile taraması bir okuyucu daha buldu.** Kart yalnızca `/api/bootstrap`'ı
+anlatıyor ve içinde "soket tarafı doğru" yazıyordu. O tespit yalnızca
+`user_online` / `user_offline` **yayınları** için doğru (onlar `ws_*`
+odalarına gidiyor). Soket bağlantı anında `socket.emit('online_users', ...)`
+ile aynı listeyi **ikinci kez** kuruyordu ve o yol kapsamsızdı. Kartın
+tespitine güvenip yalnızca önyüklemeyi düzeltmek, kusurun yarısını canlıda
+bırakırdı.
+
+**Düzeltme kartın önerisinden bir basamak yukarı.** Kart "online_users aktif
+alanın üyeleriyle kesiştirilsin" diyordu; bu doğru ama bir *kural*, ve iki
+çağrı yerinde ayrı ayrı hatırlanması gerekiyordu. Onun yerine kök sebep olan
+erişimci — `onlineState.getOnlineIds()`, bellekteki haritanın tamamını
+döndüren tek fonksiyon — **silindi ve yerine bir şey konmadı**. Çevrimiçilik
+artık yalnızca kişi başına sorulabiliyor (`isOnline`, `getStatus`), yani soran
+kişiyi adlandırmak zorunda; haritayı dolaşma (`online.keys/values/entries`)
+testle yasak. Kusuru tekrarlamak için önce o erişimciyi geri yazmak gerekiyor
+— CLAUDE.md'deki merdivende belge değil tasarım basamağı, `db push` ve
+`session` tablosu hamleleriyle aynı yerde.
+
+Listeyi kuran tek yer **`server/src/lib/varlik.js`**. Sıra kuralın kendisi:
+**önce kapsam, sonra varlık.** Adaylar kişinin ortak alan paylaştığı
+üyelerden geliyor, çevrimiçilik ancak o küme içinde soruluyor. Ters sıra
+(önce çevrimiçi olanlar, sonra süz) yine kapsamsız bir liste gerektirirdi —
+yani kaldırılan erişimciyi.
+
+**Kapsam kararı: "aktif alan" değil "ortak alan".** 1 Ekim'de DM kapısında
+alınan kararın aynısı (`ortakAlanId`, 0-AJ). Gerekçe ayrı ve teknik: soket
+zaten kişinin **bütün** alanlarının odalarına katılıyor, yani `user_online`
+olayları ortak alanlardan akıyor. İlk anlık görüntüyü aktif alana daraltmak,
+akan olaylardan daha dar bir küme verir ve iki okuyucu yine ayrışırdı. Yan
+kazanç: önyüklemede bir sorgu eksildi (ayrı `prisma.user.findMany` kalktı).
+
+### #330 — gizli "Yeni görev" penceresi açılışta odağı çalıyordu
+
+Taze `/pano` açılışında `document.activeElement`, **kapalı** pencerenin
+başlık kutusuydu. Pencere taslak koruma (#252) için kapalıyken de DOM'da
+duruyor, görünürlük yalnızca CSS'te; alanda ise `autoFocus` vardı ve React
+onu **mount anında** uyguluyor, "görünür olduğunda" değil.
+
+Tek satırlık sebep iki özelliği sessizce öldürmüştü: dokuz **G+tuş** kısayolu
+(komut paleti bunları kullanıcıya *gösteriyor* — vaat edilip tutulmayan
+özellik, #156'nın daha kötü hâli) ve sohbet panelinin aşağı çek-kapat jesti
+(#267, doğduğu günden beri ölü).
+
+**"autoFocus olmasın" demekle bırakılmadı.** O bir kuraldır ve bir sonraki
+alanda yine unutulur; testi de yalnızca bilinen alanı korur. Kapalı örtüye
+`inert` konuldu: alt ağaç odak ve tıklama sırasından tamamen çıkıyor, yani
+kapalı pencerede odağın alınabilmesi tasarımen imkânsız. Kartın kendi
+önerdiği ölçüt ("kapalı pencerenin içindeki hiçbir alan odak alamaz") artık
+davranışın kendisinde. Odak pencere **açıldığında**, var olan `if (open)`
+etkisinde veriliyor; taslak korumaya dokunulmadı.
+
+Aile, iki bulgu daha:
+- **Komut paleti** de kapalıyken DOM'da. Odağı çalmıyor (odak zaten etkiyle,
+  açılışta veriliyor — doğru kalıp) ama kapalıyken arama kutusu ve bütün
+  sonuç düğmeleri sekme sırasındaydı. Aynı kapı oraya da konuldu.
+- **"Kullanıcı yazıyor mu" tek kaynağa alındı.** `app.jsx isEditing()` ve
+  `jest.js yaziliyorMu()` aynı olgunun iki okuyucusuydu. Kopya silindi.
+  Kopyanın sessiz bir kusuru da vardı: `document.activeElement` null
+  olduğunda `ae.tagName` patlıyor ve o anda bütün klavye gezinmesi ölüyordu.
+
+**Dokunulmadı, kart açıldı (#342):** kapalıyken DOM'da duran öteki paneller
+(`chat-panel`, bildirimler, mobil kenar çubuğu). **Genel bir tarama
+yazılamaz** ve bu kayda değer: `data-open` bu depoda iki ayrı iş yapıyor —
+"kapalıyken de duran panel" ve açılır menünün **tetiği** (`dropdown.jsx`'teki
+düğme ve ok). Tetik kapalıyken de odak alabilmek zorunda; menüyü açan şey o.
+"data-open varsa inert olsun" diyen bir tarama o düğmeleri ölü yapardı. Yani
+kural otomatik taranamıyor: `odak.test.js` kapsamı **elle liste** tutuyor
+(`ORTULER`) ve bu sınırı kendi içinde yazıyor. Mobil kenar çubuğu en riskli
+olan — masaüstünde her zaman görünür, `inert` onu öldürür.
+
+### Test ve mutasyon
+
+**1117 → 1133.** Yeni dosya `server/test/odak.test.js` (8), güvenlik
+regresyonları `guvenlik.test.js` (4) ve saf katman `varlik.test.js` (4).
+
+Ölçütlerin hepsi korudukları **bloğa** bağlı: `/bootstrap` bloğu, emit
+satırının kendisi, `gorunurOnlineKisiler` gövdesi, `AddTaskModal` bloğu
+(autoFocus yasağı dosya geneli **değil** — aynı dosyada koşullu çizilen bir
+pencerede autoFocus meşru), `G_MAP` etkisi. İki ölçüt metin değil **yüzey**
+ölçüyor: `onlineState`'in argümansız fonksiyon sunmaması ve haritayı
+dolaşmaması.
+
+**On beş mutasyonun on beşi kırıldı**, ikisi aklama denemesi (ölçütün aradığı
+metin dosyada bırakıldı ama korumadığı bir yere taşındı; test yine kırıldı,
+yani ölçüt metni değil davranışı arıyor). Mutasyon betikleri geçici dizinde,
+depoda değil.
+
+### Kaldığı yer — devralan oturum için
+
+**CANLIDA HİÇBİRİ DOĞRULANMADI.** Dağıtımdan sonra üç ölçüm:
+1. **#332:** çift hesaplı tur, karttaki adımlar birebir. B'nin
+   `online_users` listesinde yalnızca kendisi olmalı. Ölçümün **ayırt edici**
+   olması şart: A, B ile hiçbir alan paylaşmamalı **ve** o anda çevrimiçi
+   olmalı. Önceki iki ölçüm tam bu koşul kurulmadığı için kusuru göremedi.
+2. **#330:** taze `/pano` açılışında `document.activeElement` BODY olmalı.
+3. **#330:** panoda `g` ardından `d` dashboard'a götürmeli. Üçüncü bir ölçüm
+   kartta "denenmemiş" diye yazılı: telefonda açılışta klavye kendiliğinden
+   açılıyor muydu, artık açılmıyor mu.
+
+**Playwright turundan kalan dört kart** (hiçbirine kod yazılmadı):
+- **#328** `/api/auth/me` brute-force limitine takılıyor ve 429 "oturumun
+  düştü" gibi görünüyor *(high)*. Oturum sağlamken kullanıcıyı giriş ekranına
+  atıyor; tur sırasında yaşandı.
+- **#331** kalıcı kayda **görüntü metni** yazmak yasaklansın — kolon/proje/
+  kullanıcı adı donuyor *(mid, tarama kuralı)*. Turda üç ayrı yerde aynı
+  sınıfa rastlanmış; tek tek düzeltmek yerine kuralı doğrulayana yazmak için
+  açılmış.
+- **#333** canlı duman testi depoya alınsın *(mid)*. Playwright koşumu şu an
+  depoda değil, yanında: `Desktop/Temizlik/stoa-canli-test` (`OKU.md` içinde
+  kurulum, tuzaklar, koşma biçimi).
+- **#339** kalıcı silinen kart başkasının panosunda **hayalet** kalıyor
+  *(mid)*. Sayaç 0 derken liste kartı gösteriyor; ekran görüntüsüyle kayıtlı.
+
+**MCP yüzeyinde bugün çıkan pürüz, #213'e yazıldı:** `create_task` bilinmeyen
+alanı sessizce atıyor. `description`/`column` gönderildi (doğrusu
+`desc`/`col`); sunucu `created: true` dedi ve **boş bir kart** açtı — hata
+yok, uyarı yok. Aynı turda `update_task` aynı hatada `updated: ["desc"]`
+diyerek ne yaptığını dürüstçe söyledi. Aynı sunucu, iki ayrı cevap; ikincisi
+doğru kalıp. Yön: şema `.strict()` ya da yanıtta `applied`/`ignored`.
+
+**Bu makinede veritabanı erişilebilir** (`[db] warmup ok`). Yani `prisma:push`
+ve `mcp:tara` burada koşar; 5432 kısıtı ofis makinesinin kısıtıydı.
+
+**Karar bekleyenler değişmedi** (0-AH listesi). Kullanıcıya bu turda tek bir
+şey soruldu: push/dağıtım.
+
+---
+
 ## 0-AJ. 30 Eylül – 1 Ekim — bir kök sebep, altı kusur: oturum adresi yanlış alandan okunuyordu
 
-**Depo:** `main` = `f407b43`, `origin/main` ile eşit. Bu bölümdeki üçüncü
-yığın (DM kapısı + şikâyet metni) **henüz işlenmedi** — çalışma ağacında
-duruyor, aşağıda listeli. Test **1067 → 1117**.
+**Depo:** bu bölüm yazıldığında `main` = `f407b43`'tü ve üçüncü yığın
+çalışma ağacında duruyordu; **o yığın `86fccae` olarak işlendi ve push
+edildi** (2 Ekim). Güncel durum için 0-AK. Test **1067 → 1117**.
 
 ### Teşhisin kendisi devredilmeye değer
 

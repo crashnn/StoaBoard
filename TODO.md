@@ -155,6 +155,65 @@ yapıyordu. Adres artık yalnızca `client/src/ben.js`'ten okunuyor;
 
 ---
 
+## ✅ 2 Ekim 2026 — iki kusur: kapsamsız çevrimiçi liste, odağı çalan gizli pencere
+
+1 Ekim gecesi Playwright turundan çıkan altı kartın ikisi kapandı. Kartlar:
+**#330, #332**; açılan: **#342**. Test **1117 → 1133**.
+
+- [x] **Çevrimiçi liste platform geneliydi** *(#332, güvenlik)*. Kimliği
+      doğrulanmış herhangi bir kullanıcı, o anda çevrimiçi olan
+      **herkesin** slug'ını görüyordu — hiçbir çalışma alanı paylaşmasa bile.
+      Slug kozmetik değil: @bahsetme ve DM aramasının adresi, yani sızan şey
+      "bu platformda hangi hesaplar var" bilgisinin bir alt kümesiydi
+      (GUVENLIK "var/yok kâhini", #227 ailesi).
+      **İki okuyucu, aynı kusur:** kart yalnızca önyüklemeyi anlatıyordu;
+      `sockets/chat.js` bağlantı anında aynı listeyi ikinci kez kuruyordu ve o
+      da kapsamsızdı. Kartta "soket tarafı doğru" yazılıydı — o tespit
+      yalnızca `user_online`/`user_offline` **yayınları** için doğruydu.
+      **Düzeltme kartın önerisinden bir basamak yukarı:** kart "aktif alanın
+      üyeleriyle kesiştir" diyordu; onun yerine kök sebep olan erişimci
+      (`onlineState.getOnlineIds()`) **silindi ve yerine bir şey konmadı**.
+      Çevrimiçilik artık yalnızca kişi başına sorulabiliyor; listeyi kuran tek
+      yer `lib/varlik.js` ve sıra **önce kapsam, sonra varlık**. Kapsam
+      ölçütü "aktif alan" değil **ortak alan** — 1 Ekim'de DM kapısında alınan
+      kararın aynısı (`ortakAlanId`), çünkü soket zaten bütün alanların
+      odalarına katılıyor.
+- [x] **Gizli "Yeni görev" penceresi açılışta odağı çalıyordu** *(#330)*. Taze
+      `/pano` açılışında `document.activeElement` kapalı pencerenin başlık
+      kutusuydu: pencere taslak koruma (#252) için kapalıyken de DOM'da,
+      alanda ise `autoFocus` vardı ve React onu **mount anında** uyguluyor.
+      Tek satırlık sebep iki özelliği sessizce öldürmüştü: dokuz **G+tuş**
+      kısayolu (komut paleti bunları kullanıcıya gösteriyor — vaat edilip
+      tutulmayan özellik) ve sohbet panelinin aşağı çek-kapat jesti (#267).
+      **"autoFocus olmasın" demekle bırakılmadı:** kapalı örtüye `inert`
+      konuldu, yani kapalı pencerede odağın alınabilmesi tasarımen imkânsız.
+      Odak artık pencere **açıldığında** veriliyor.
+      Aile: komut paleti de kapalıyken DOM'da (odağı çalmıyor ama sekme
+      sırasındaydı) — aynı kapı oraya da konuldu; ve "kullanıcı yazıyor mu"
+      iki yerde ayrı yazılıydı (`app.jsx isEditing()` / `jest.js yaziliyorMu()`),
+      kopya silindi. Kopya ayrıca `document.activeElement` null olduğunda
+      patlıyordu ve o anda bütün klavye gezinmesi ölüyordu.
+- [ ] **Kapalıyken DOM'da duran öteki paneller** *(#342, yeni)*. `chat-panel`,
+      bildirimler ve mobil kenar çubuğu aynı sınıfta. **Genel bir tarama
+      yazılamaz:** `data-open` bu depoda iki ayrı iş yapıyor — "kapalıyken de
+      duran panel" ve açılır menünün **tetiği** (`dropdown.jsx`), ve tetik
+      kapalıyken de odak alabilmek zorunda. `odak.test.js` kapsamı bu yüzden
+      elle liste tutuyor ve sınırını kendi içinde yazıyor. Mobil kenar çubuğu
+      en riskli: masaüstünde her zaman görünür, `inert` onu öldürür.
+- [ ] **MCP `create_task` bilinmeyen alanı sessizce atıyor** *(#213'e yazıldı)*.
+      `description`/`column` (doğrusu `desc`/`col`) gönderildi; sunucu
+      `created: true` dedi ve **boş bir kart** açtı. Aynı turda `update_task`
+      aynı hatada `updated: ["desc"]` diyerek ne yaptığını dürüstçe söyledi —
+      aynı sunucu, iki ayrı cevap. Yön: şema `.strict()` ya da yanıtta
+      `applied`/`ignored`.
+
+**Canlıda doğrulanmadı** — dağıtım sonrası üç ölçüm: (1) çift hesaplı turda
+B'nin `online_users` listesinde yalnızca kendisi, (2) taze açılışta
+`document.activeElement` BODY, (3) panoda `g` ardından `d` dashboard'a
+götürüyor.
+
+---
+
 ## ✅ Güvenlik turu — 1 Eylül 2026
 
 Raporlama turunun hemen ardından, dal üzerinde yapılan güvenlik denetimi ve
