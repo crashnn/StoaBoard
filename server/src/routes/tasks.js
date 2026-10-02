@@ -374,6 +374,27 @@ tasksRouter.patch(
     // getirirdi.
     if ('due' in data) updates.dueDate = parseDate(data.due);
     if ('start' in data) updates.startDate = parseDate(data.start);
+
+    // ── Bitiş, başlangıçtan önce olamaz (tarama maddesi D) ─────────────────
+    //
+    // ÖLÇÜLEN (2 Ekim 2026): kart "2 Oct – 29 Sep" gösteriyordu; bitiş
+    // başlangıçtan önceydi ve ne arayüz uyarıyordu ne sunucu reddediyordu.
+    // Rapor bu veriyle yanlış konuşur: akış süresi negatif çıkar.
+    //
+    // DENETİM YALNIZCA TARİH DEĞİŞTİREN İSTEKTE: eski kartların bir kısmı
+    // zaten tutarsız olabilir ve başlığını düzeltmek isteyen birinin isteği
+    // ilgisiz bir sebeple düşmemeli. Kural ileriye dönük: tarihe DOKUNAN
+    // her istek tutarlı bir çift bırakmak zorunda.
+    if ('due' in data || 'start' in data) {
+      const yeniBitis = 'due' in data ? updates.dueDate : task.dueDate;
+      const yeniBaslangic = 'start' in data ? updates.startDate : task.startDate;
+      if (yeniBitis && yeniBaslangic && yeniBitis < yeniBaslangic) {
+        return res.status(400).json({
+          error: 'err_due_before_start',
+          message: 'Bitiş tarihi başlangıçtan önce olamaz.',
+        });
+      }
+    }
     if ('assignee_dates' in data) {
       updates.assigneeDates = data.assignee_dates || null;
     }

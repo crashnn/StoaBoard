@@ -108,7 +108,10 @@ function DashboardView({ tasks, etkinlik = [], onOpenTask, onView }) {
       <p className="dash-sub">
         {window.t('dash_sub_prefix')} <strong style={{ color: 'var(--ink)' }}>{inProgress}</strong> {window.t('dash_sub_active')}
         {overdue > 0 && <>; <strong style={{ color: 'var(--status-rose)' }}>{overdue}</strong> {window.t('dash_sub_overdue')}</>}
-        {overdue === 0 && ` ${window.t('dash_sub_great')}`}
+        {/* "Harika gidiyor" YALNIZCA gerçekten iş varken (tarama maddesi D).
+            Boş panoda "0 kart aktif — harika gidiyorsunuz!" diyordu: hiçbir
+            şey olmayan yerde övgü, cümleyi anlamsız yapıyordu. */}
+        {overdue === 0 && inProgress > 0 && ` ${window.t('dash_sub_great')}`}
       </p>
 
       <div className="dash-grid">

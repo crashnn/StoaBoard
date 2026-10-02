@@ -8,6 +8,7 @@ import { API, fmtTimeAgo, kolonAdi } from './data.jsx';
 import { DatePicker } from './modals.jsx';
 import { WorkLogSection } from './worklog.jsx';
 import { GecmisSection } from './gecmis.jsx';
+import { durumdanYol } from './rota.js';
 import { paragraflaraBol } from './belge.js';
 import { dikeyCekJesti, yatayKaydirJesti } from './jest.js';
 
@@ -350,6 +351,26 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
     } catch (e) {
       console.error('patchTask:', e);
       onTaskUpdate && onTaskUpdate({ id: task.id, ...task });
+    }
+  };
+
+  // ── Karta bağlantı kopyala (tarama maddesi D) ───────────────────────────
+  //
+  // ÖLÇÜLEN: tam ekran kart sayfası vardı ama "bu kartı sohbette paylaş"
+  // tek tıkla yapılamıyordu; adresi elle kurmak gerekiyordu.
+  //
+  // Adres `durumdanYol` ile kuruluyor, elle birleştirilmiyor: kart adresinin
+  // biçimi tek yerde tanımlı (`rota.js`) ve ikinci bir kurucu, biçim
+  // değiştiğinde sessizce bozulan bir bağlantı üretirdi.
+  const baglantiKopyala = async () => {
+    const adres = window.location.origin + durumdanYol('board', task.id);
+    try {
+      await navigator.clipboard.writeText(adres);
+      window.showToast?.(window.t?.('drawer_link_copied') || 'Bağlantı kopyalandı', 'success');
+    } catch (_) {
+      // Pano erişimi reddedilebiliyor (izin, güvensiz bağlam). Sessizce
+      // başarısız olmak yerine adresi gösteriyoruz ki kullanıcı elle alsın.
+      window.showToast?.(adres, 'info');
     }
   };
 
@@ -1146,6 +1167,9 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
             <span>{kolonAdi(col)}</span>
           </div>
           <div className="task-page-head-actions">
+            <button className="icon-btn" title={window.t('drawer_copy_link')} onClick={baglantiKopyala}>
+              <Icon name="link" size={14} />
+            </button>
             <button className="icon-btn" title={window.t('drawer_duplicate')} onClick={handleDuplicate} disabled={duplicating}>
               <Icon name="copy" size={15} />
             </button>
@@ -1206,7 +1230,10 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
                   </button>
                 </div>
               )}
-              <button className="icon-btn" title={window.t('drawer_duplicate')} onClick={handleDuplicate} disabled={duplicating}>
+              <button className="icon-btn" title={window.t('drawer_copy_link')} onClick={baglantiKopyala}>
+              <Icon name="link" size={14} />
+            </button>
+            <button className="icon-btn" title={window.t('drawer_duplicate')} onClick={handleDuplicate} disabled={duplicating}>
                 <Icon name="copy" size={15} />
               </button>
               {onOpenPage && (

@@ -169,3 +169,75 @@ describe('tablo görünümü — toplu işlem bağlantısı', () => {
     assert.match(tablo(), /setSecili\(new Set\(\)\);\s*\n\s*setTopluMesgul\(false\);/, 'seçim temizlenmiyor');
   });
 });
+
+// ─── Üç küçük iş (tarama maddesi D) ────────────────────────────────────────
+
+describe('bitiş tarihi başlangıçtan önce olamaz', () => {
+  const TASKS = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'tasks.js'));
+
+  test('tarihe DOKUNAN istek tutarlılık istiyor', () => {
+    // ÖLÇÜLEN: kart "2 Oct – 29 Sep" gösteriyordu ve kimse uyarmıyordu.
+    // Rapor bu veriyle yanlış konuşur: akış süresi negatif çıkar.
+    const bas = TASKS.indexOf("if ('due' in data || 'start' in data) {");
+    assert.ok(bas > 0, 'tarih tutarlılık kapısı yok');
+    const blok = TASKS.slice(bas, TASKS.indexOf('\n    }', bas));
+    assert.match(blok, /yeniBitis < yeniBaslangic/, 'karşılaştırma yapılmıyor');
+    assert.match(blok, /err_due_before_start/, 'ret kodu yok');
+    assert.match(blok, /status\(400\)/, 'ret 400 değil');
+  });
+
+  test('DEĞİŞMEYEN alan eski değerinden okunuyor', () => {
+    // Yalnızca `due` gönderilirse başlangıç karttan gelmeli; yoksa kural
+    // yarım uygulanır ve tek alan güncelleyen istek hep geçerdi.
+    const bas = TASKS.indexOf("if ('due' in data || 'start' in data) {");
+    const blok = TASKS.slice(bas, TASKS.indexOf('\n    }', bas));
+    assert.match(blok, /'due' in data \? updates\.dueDate : task\.dueDate/, 'bitiş eski değerden okunmuyor');
+    assert.match(blok, /'start' in data \? updates\.startDate : task\.startDate/, 'başlangıç eski değerden okunmuyor');
+  });
+
+  test('tarihe DOKUNMAYAN istek denetlenmiyor', () => {
+    // Eski kartların bir kısmı zaten tutarsız olabilir; başlığını düzeltmek
+    // isteyen birinin isteği ilgisiz bir sebeple düşmemeli.
+    const bas = TASKS.indexOf("if ('due' in data || 'start' in data) {");
+    assert.ok(bas > 0);
+    // Kapı koşullu: koşulsuz olsaydı her PATCH denetlenirdi.
+    assert.doesNotMatch(TASKS.slice(bas - 200, bas), /if \(true\)/, 'kapı koşulsuz');
+  });
+});
+
+describe('karta bağlantı kopyalama', () => {
+  const DRAWER = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'drawer.jsx'));
+
+  test('adres TEK KAYNAKTAN kuruluyor', () => {
+    // Elle birleştirilseydi (`/pano/kart/` + id) kart adresinin biçimi
+    // değiştiğinde bağlantı sessizce bozulurdu; biçim `rota.js`te tanımlı.
+    assert.match(DRAWER, /durumdanYol\('board', task\.id\)/, 'adres rota.js üzerinden kurulmuyor');
+    assert.doesNotMatch(DRAWER, /'\/pano\/kart\/' \+/, 'adres elle birleştiriliyor');
+  });
+
+  test('pano erişimi reddedilirse SESSİZ kalmıyor', () => {
+    // Pano izni verilmeyebiliyor; sessizce başarısız olmak "kopyaladım"
+    // sanmaya yol açardı.
+    const bas = DRAWER.indexOf('const baglantiKopyala');
+    const blok = DRAWER.slice(bas, DRAWER.indexOf('\n  };', bas));
+    // Ölçüt ULAŞILABİLİRLİĞE bakıyor, varlığa değil. MUTASYON BUNU YAKALADI:
+    // catch'in başına `return;` konunca test geçmeye devam etti, çünkü
+    // `showToast` metni blokta hâlâ duruyordu — ölü kodu canlı saymak.
+    // Artık catch gövdesinin İLK ifadesi ölçülüyor.
+    const catchBas = blok.indexOf('catch (_) {');
+    assert.ok(catchBas > 0, 'hata dalı yok');
+    const govde = blok.slice(catchBas + 'catch (_) {'.length).trim();
+    assert.ok(govde.startsWith('window.showToast'),
+      `hata dalında ilk iş kullanıcıya söylemek değil: ${govde.slice(0, 60)}`);
+  });
+});
+
+describe('ana sayfa övgüsü yalnızca iş varken', () => {
+  const DASH = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'views', 'dashboard.jsx'));
+
+  test('boş panoda "harika gidiyor" YAZMIYOR', () => {
+    // "0 kart aktif — harika gidiyorsunuz!" hiçbir şey olmayan yerde övgü.
+    assert.match(DASH, /overdue === 0 && inProgress > 0 && ` \$\{window\.t\('dash_sub_great'\)\}`/,
+      'övgü iş olmadan da yazılıyor');
+  });
+});
