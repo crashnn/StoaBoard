@@ -34,7 +34,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { yorumsuzDosya } from './yardimcilar.js';
+import { yorumsuzDosya, coarseBlok } from './yardimcilar.js';
 
 const KOK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CSS_YOL = path.join(KOK, 'client', 'src', 'styles.css');
@@ -251,17 +251,16 @@ describe('sürükle-kapat — mobilde kartı aşağı çekerek kapatma (#238)', 
     assert.match(DRAWER, /className="drawer-grab"/, 'tutamak çubuğu yok');
     const css = fs.readFileSync(CSS_YOL, 'utf8');
 
-    // Varsayım AÇIKÇA ölçülüyor: aşağıdaki `indexOf` ilk bloğu buluyor ve
-    // bugün tek blok var. İkinci bir `pointer: coarse` bloğu eklenirse ölçüt
-    // sessizce YANLIŞ yeri ölçmeye başlar — bugün tam bu tuzağa iki kez
-    // düşüldü (cokme.test.js ve burada).
-    const kacBlok = (css.match(/@media \(pointer: coarse\)/g) || []).length;
-    assert.equal(kacBlok, 1,
-      `${kacBlok} adet "pointer: coarse" bloğu var; aşağıdaki ölçüt yalnızca `
-      + 'ilkine bakıyor ve artık yanlış bloğu ölçüyor olabilir');
-
-    const bas = css.indexOf('@media (pointer: coarse)');
-    const blok = css.slice(bas, css.indexOf('\n}\n', bas));
+    // ÖLÇÜT ARTIK KENDİ KURALINI BULUYOR.
+    //
+    // Eski hâli ilk `pointer: coarse` bloğunu alıyor ve "bugün tek blok var"
+    // varsayımını AÇIKÇA ölçüyordu. O koruma doğruydu ve işini yaptı:
+    // 2 Ekim 2026'da ikinci bir blok eklendi (mobil dokunma hedefleri) ve
+    // test durdurdu. Ama varsayımın kendisi gereksizdi — blok, seçicisine
+    // göre bulunursa kaç tane olduğu önemsiz olur. Kural budur: ölçüt
+    // komşusunun sayısına değil, KENDİ hedefine bağlanmalı.
+    const blok = coarseBlok(css, /\.drawer-grab\s*\{/);
+    assert.ok(blok, 'tutamak kuralını içeren dokunmatik bloğu bulunamadı');
     // Seçici SINIRIYLA aranıyor. `/\.drawer-grab/` alt dize olarak
     // `.drawer-grab-XX`i de eşliyordu ve aklama mutasyonu tam oradan kaçtı:
     // seçiciyi yeniden adlandırmak testi kırmıyordu.

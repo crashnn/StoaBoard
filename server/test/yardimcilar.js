@@ -183,3 +183,27 @@ export function kaynakDosyalari(dizin, desen) {
   }
   return out;
 }
+
+/**
+ * `@media (pointer: coarse)` bloklarından, verilen seçiciyi İÇEREN bloğu
+ * döner. Bulamazsa boş dize.
+ *
+ * NİÇİN VAR (2 Ekim 2026): iki ayrı test dokunmatik kuralını
+ * `css.indexOf('@media (pointer: coarse)')` ile, yani İLK bloğu alarak
+ * buluyordu. `mobil.test.js` bu varsayımı açıkça ölçüyordu ("bugün tek blok
+ * var") ve ikinci bir blok eklenince gerçekten durdurdu — koruma işini
+ * yaptı. Ama varsayımın kendisi gereksizdi: blok seçicisine göre bulunursa
+ * kaç tane olduğu önemsiz olur.
+ *
+ * Her iki test de kendi kopyasını yazmasın diye buraya alındı — bu depoda
+ * "üç ayrı cevap, üç ayrı kör nokta" dersi yorum elemesinde yaşanmıştı.
+ */
+export function coarseBlok(css, secici) {
+  const parcalar = String(css ?? '').split('@media (pointer: coarse)').slice(1);
+  for (const p of parcalar) {
+    const son = p.indexOf('\n}\n');
+    const blok = son === -1 ? p : p.slice(0, son);
+    if (secici.test(blok)) return blok;
+  }
+  return '';
+}

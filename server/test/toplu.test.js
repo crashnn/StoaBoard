@@ -241,3 +241,42 @@ describe('ana sayfa övgüsü yalnızca iş varken', () => {
       'övgü iş olmadan da yazılıyor');
   });
 });
+
+describe('mobil dokunma hedefleri (tarama maddesi E)', () => {
+  const CSS = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'styles.css'));
+
+  const kural = () => {
+    const bas = CSS.indexOf('@media (pointer: coarse) {');
+    assert.ok(bas > 0, 'dokunma hedefi kuralı yok');
+    return CSS.slice(bas, CSS.indexOf('\n}', CSS.indexOf('.notif-dismiss::after', bas)));
+  };
+
+  test('ölçülen üç küçük düğme de kapsamda', () => {
+    // 390px'te ölçüldü: kolon başlığı 22x22, kenar çubuğu 17x17,
+    // bildirim 17x20. Üçü de ikon-only.
+    // ÖLÇÜT `::after` KURALINA BAKIYOR, bloğun tamamına değil. MUTASYON
+    // YAKALADI: yalnızca `.col-actions > button::after` seçicisi bozulunca
+    // test geçmeye devam etti, çünkü aynı seçici yukarıdaki
+    // `position: relative` kuralında hâlâ duruyordu. Dokunma alanını veren
+    // şey `::after`; ölçüt oraya bağlı olmalı.
+    const k = kural();
+    const hedefKurali = k.slice(k.indexOf('::after'));
+    for (const secici of ['.col-actions > button', '.sidebar-section-title > button', '.notif-dismiss']) {
+      assert.ok(hedefKurali.includes(`${secici}::after`),
+        `${secici} için dokunma ALANI tanımlı değil (::after kuralında yok)`);
+    }
+  });
+
+  test('GÖRÜNÜR boyut değişmiyor, yalnızca dokunma alanı', () => {
+    // Görsel büyütmek masaüstü düzenini de oynatırdı.
+    const k = kural();
+    assert.match(k, /::after/, 'hedef sözde-öge ile genişletilmiyor');
+    assert.match(k, /width: 32px;\s*\n\s*height: 32px;/, 'hedef boyutu 32px değil');
+    assert.doesNotMatch(k, /font-size|padding:/, 'kural görünür boyutu da değiştiriyor');
+  });
+
+  test('YALNIZCA dokunmatikte — farede uygulanmıyor', () => {
+    // Fareyle gezerken büyüyen görünmez alanlar komşu öğeleri bloklardı.
+    assert.match(CSS, /@media \(pointer: coarse\) \{/, 'kural bütün cihazlarda geçerli');
+  });
+});

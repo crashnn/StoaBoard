@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { yorumsuzDosya } from './yardimcilar.js';
+import { yorumsuzDosya, coarseBlok } from './yardimcilar.js';
 import {
   YON_ESIGI_PX, KENAR_PAYI_PX, DIRENC,
   yonKilidi, esikGecildi, gecisKarari, kenardanMi, izlemeMesafesi,
@@ -297,9 +297,12 @@ describe('sohbet paneli aşağı çek → kapat (#267) — ortak modüle bağlı
 
   test('tutamak dokunmatik bloğunda, varsayılan gizli; liste kaydırma zinciri kesik', () => {
     assert.match(CSS, /\.chat-grab \{ display: none; \}/, 'sohbet tutamağı varsayılan gizli değil');
-    const bas = CSS.indexOf('@media (pointer: coarse)');
-    const blok = CSS.slice(bas, CSS.indexOf('\n}\n', bas));
-    assert.match(blok, /\.chat-grab\s*\{/, 'sohbet tutamağı dokunmatik kuralına bağlı değil');
+    // Ölçüt KENDİ kuralını buluyor, "ilk blok"u değil: 2 Ekim 2026'da ikinci
+    // bir `pointer: coarse` bloğu eklendi (mobil dokunma hedefleri) ve ilk
+    // bloğa bakan ölçüt yanlış yeri ölçmeye başladı. Yardımcı tek yerde
+    // (`yardimcilar.js`) — iki test kendi kopyasını yazmasın.
+    const blok = coarseBlok(CSS, /\.chat-grab\s*\{/);
+    assert.ok(blok, 'sohbet tutamağı dokunmatik kuralına bağlı değil');
     assert.match(blok, /\.drawer \{ touch-action: pan-y; \}/, 'çekmecede yatay hareket tarayıcıya kalıyor (#265)');
     const m = CSS.indexOf('.chat-messages {');
     assert.match(CSS.slice(m, CSS.indexOf('}', m)), /overscroll-behavior-y:\s*contain/, 'mesaj listesinden çekmek sayfayı yeniler');

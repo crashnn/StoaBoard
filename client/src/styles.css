@@ -168,6 +168,49 @@
 .toplu-dugme:disabled { opacity: 0.5; cursor: default; }
 .toplu-dugme:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .toplu-tehlike:hover:not(:disabled) { border-color: var(--status-rose); color: var(--status-rose); }
+
+/* ── Dokunma hedefleri (tarama maddesi E) ─────────────────────────────────
+ *
+ * OLCULDU (2 Ekim 2026, 390px): kolon basligindaki "+" ve "..." 22x22,
+ * kenar cubugundaki "Yeni proje" 17x17, bildirimdeki "Kapat" 17x20. Hepsi
+ * IKON-ONLY ve parmakla isabet ettirmesi zor.
+ *
+ * TARAMA "48 dugme 32px altinda" demisti; kesin olcum sayinin yanilttigini
+ * gosterdi. Otekilerin cogu GENIS ama kisa (gorunum sekmeleri 86x25, suzgec
+ * cipleri 134x23): yatayda bol hedef veriyorlar ve hepsini buyutmek
+ * uygulamanin yogunlugunu degistiren bir TASARIM isi olurdu, kusur
+ * duzeltmesi degil. Burada yalnizca ikon-only kucukler ele aliniyor.
+ *
+ * GORUNUR BOYUT DEGISMIYOR, yalnizca dokunma alani buyuyor: gorsel
+ * buyutmek masaustu duzenini de oynatirdi. Teknik, gorunmez bir
+ * sozde-oge ile hedefi genisletmek.
+ *
+ * 32px secildi, 44 degil: "+" ve "..." KOMSU dugmeler ve 44'luk alanlar
+ * birbirinin ustune binerdi — DOM sirasinda sonraki kazanir ve "+" fiilen
+ * ulasilmaz olurdu. 32, olculen esige ulasiyor ve binmiyor.
+ *
+ * Yalnizca `pointer: coarse`: farede 22px zaten sorun degil ve fareyle
+ * gezerken buyuyen gorunmez alanlar komsu ogeleri bloklardi. Ayni sinyal
+ * jest.js'te de kullaniliyor.
+ */
+@media (pointer: coarse) {
+  .col-actions > button,
+  .sidebar-section-title > button,
+  .notif-dismiss {
+    position: relative;
+  }
+  .col-actions > button::after,
+  .sidebar-section-title > button::after,
+  .notif-dismiss::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 32px;
+    height: 32px;
+    transform: translate(-50%, -50%);
+  }
+}
 .toast-error { border-color: var(--status-rose); }
 .toast-success { border-color: var(--status-green); }
 .toast-msg-head {
