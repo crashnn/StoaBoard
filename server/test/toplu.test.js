@@ -259,10 +259,12 @@ describe('mobil dokunma hedefleri (tarama maddesi E)', () => {
     // test geçmeye devam etti, çünkü aynı seçici yukarıdaki
     // `position: relative` kuralında hâlâ duruyordu. Dokunma alanını veren
     // şey `::after`; ölçüt oraya bağlı olmalı.
+    // `secici::after` aranıyor, yalnızca `secici` değil: yukarıdaki
+    // `position: relative` kuralı aynı seçicileri taşıyor ve çıplak arama
+    // onlardan ödünç alırdı.
     const k = kural();
-    const hedefKurali = k.slice(k.indexOf('::after'));
     for (const secici of ['.col-actions > button', '.sidebar-section-title > button', '.notif-dismiss']) {
-      assert.ok(hedefKurali.includes(`${secici}::after`),
+      assert.ok(k.includes(`${secici}::after`),
         `${secici} için dokunma ALANI tanımlı değil (::after kuralında yok)`);
     }
   });
