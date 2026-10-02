@@ -75,6 +75,7 @@ göremezdi**:
 | Kapalı pencerenin alanı programlı odağı da alamıyor | #330 (`inert`) |
 | Panoda `g,d` dashboard görünümüne geçiriyor | #330, kısayolun vaadi |
 | Kısayol tuşları gizli kutuya yazılmadı | #330 |
+| Kart klavyeye açık (odak + rol + erişilebilir ad) | pano yalnızca fareyle kullanılıyordu |
 | Pano kolon adları arayüz dilini izliyor | #288 |
 
 Üçüncü ve dördüncü **olumlu** ölçüt, bilerek: ilk ikisi "odak çalınmıyor"

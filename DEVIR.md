@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 2 Ekim 2026, **ev makinesinde**. En taze bölüm
-**0-AK**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**Son güncelleme:** 2 Ekim 2026 akşamı, **ev makinesinde**. En taze bölüm
+**0-AL**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,106 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AL. 2 Ekim akşamı — taze göz turu: pano klavyeye açıldı, çöpe atma geri alınabilir oldu
+
+**Depo:** `main` = `9835191` + bu devir commit'i, `origin/main` ile eşit.
+Dağıtım canlıda. Test **1174 → 1191**. Kartlar: **#357**, **#358**.
+
+**Niçin bu iş:** kullanıcı "Stoa'ya ne gider, ne olsa süper olurdu dediğin?
+Yap onları da. Playwright ile denemeler yap." dedi. Yani iş listesinden değil,
+**ölçümden** çıkan bir tur. Önce canlı panoda gezildi (`kesif-ux.mjs`,
+`kesif-ux2.mjs`), sonra bulunan iki eksik kapatıldı.
+
+### Ölçümün kendisi devredilmeye değer
+
+Taze göz turu dört şey söyledi, üçü kodu okuyarak tahmin edilemezdi:
+
+| Ölçülen | Sonuç |
+|---|---|
+| Kart `tabIndex` | **-1** · `role` yok · `aria-label` yok → pano yalnızca fareyle |
+| `n` kısayolu | **çalışıyor** (#330'un düzeltmesi onu da dirilttti) |
+| Palet araması | **çalışıyor**, kartı metinle buluyor — yeniden yazmaya gerek yok |
+| Çekmecede tarih | yalnızca "Pick date", hızlı seçim yok |
+| Çöpe atma bildirimi | **hiç yok** |
+
+Üçüncü satır önemli: "arama eksik" diye bir iş açılacaktı, ölçüm engelledi.
+
+### Pano klavyeyle kullanılabilir (#357)
+
+Kartlar odak alamıyordu. Uygulama ise kısayolları komut paletinde
+**gösteriyor** (G D, G B, N): gezinme vaat edilmiş, işin kendisi dışarıda
+kalmıştı. #330'un ailesi — orada **kapalı** bir pencere odağı çalıyordu,
+burada **açık** bir pano odağı hiç kabul etmiyordu. Ekran okuyucu için de
+aynı kapı kapalıydı.
+
+`↑ ↓` kolon içinde · `← →` komşu kolona · `Enter` açar · `Shift + ← →` taşır.
+
+**Seçili kart = odaktaki kart.** Ayrı bir seçim durumu yok; bu depoda
+tekrarlanan ders "aynı olgunun iki okuyucusu ayrışır" (0-AJ). İkinci bir
+seçim durumu, odakla ayrışabilen ikinci bir gerçek üretirdi.
+
+Üç karar gerekçeli: **taşıma Shift istiyor** (yazma tek tuşla kazara
+olmamalı) · **kenarda sarma yok** (sarma olsa Shift ile taşırken bitmiş kart
+sessizce en başa dönerdi) · **hedef kolon boşsa odak oynatılmıyor** (odağı
+kaybetmek gezinmeyi ortada bırakır). Saf mantık `client/src/klavyePano.js`.
+
+Görünürlük ayrı bir iş olarak yapıldı: `.card:focus-visible` çerçevesi ve
+palette yeni "Klavye" grubu. Bu kurallar olmadan özellik **çalışır ama
+görünmez** olurdu — #156'nın dersi.
+
+### Çöpe atma geri alınabilir (#358)
+
+Kart ekrandan siliniyor, kullanıcıya hiçbir şey söylenmiyordu. Sunucu ucu
+(`/restore`) zaten vardı ve çöp kutusu onu kullanıyordu — **eksik olan tek
+şey teklifin kendisiydi.**
+
+Bildirim sistemi artık `eylem: { etiket, calistir }` ve `omur` taşıyor.
+Varsayılan ömür değişmedi (5 sn); geri al 12 sn. Teklif istek **başarılı
+olduktan sonra** yapılıyor: istek düşerse geri alınacak bir şey yok.
+
+### Bu turun yöntem dersi: ölçüt çözümü kilitlerse düzeltmenin önünde durur
+
+Bu tur içinde **üçüncü kez** aynı sınıfa düşüldü ve üçünde de mevcut bir
+test, doğru bir değişikliği engelledi:
+
+1. **#331** — `bildirim.test.js` "kolon BAŞLIĞI yazılır, slug DEĞİL" diyordu.
+2. **Bu tur** — `surum.test.js` bildirim süzgecinin **tam metnini** arıyordu;
+   yapışkanlık kuralı hiç değişmediği hâlde `t.omur || 5000` eklenince kırıldı.
+3. **Mutasyon turu** — palet ölçütü `data.includes('cmd_card_nav')` diyordu;
+   anahtar listeden çıkarılıp yalnızca sözlükte bırakılınca **test yine
+   geçti**. Bu üçüncüsü ters yön: ölçüt metni arıyordu, kullanımı değil.
+
+Üçünde de düzeltme aynı: ölçütü **korunan özelliğe** bağla, çözüme değil.
+Yeni bir ölçüt yazarken sorulacak soru:
+
+> **Bunu düzelten biri testi kırmak zorunda mı kalır?**
+
+Cevap "evet" ise ölçüt yanlış yere bağlanmıştır.
+
+### Ölçüm yolunda iki kusur, ikisi de ölçenin
+
+"Geri al düğmesi çıkmıyor" sonucu **yanlıştı**: çekmecedeki silme düğmesi
+metinsiz bir ikon (`title="Delete"`) ve silme **iki adımlı** (önce onay).
+Test metinle arıyordu ve ikinci adımı bilmiyordu, yani silme hiç olmamıştı.
+Ölçüt ayırt edici değildi; betiğe geçersizlik kapısı eklendi (sunucuda
+`deleted_at` yoksa bildirim ölçümü anlamsız). **İki adımlı onay doğru
+tasarım; eksik olan testti, ürün değil.**
+
+### Kaldığı yer
+
+- **Canlıda doğrulandı:** klavye 7/7, geri al 2/2 (`t-klavye.mjs`), duman
+  kümesi 5 geçti + 1 geçersiz.
+- **Duman kümesine bir ölçüt eklendi** (kart klavyeye açık). Boş panoda
+  **GEÇERSİZ** diyor — kapı bu turda gerçekten çalıştı, test alanı boştu.
+- **Yapılmadı, sırada bekliyor:** çekmecede ve yeni görev penceresinde
+  **tarih hızlı seçimi** (Bugün / Yarın / Haftaya). Ölçüldü, bugün yalnızca
+  "Pick date" var. Küçük ve her gün kullanılan bir kazanç; bu turda zaman
+  yetmedi, kart açılmadı.
+- Öteki açık işler değişmedi: **#342** (kapalı paneller), **#332**'nin ayırt
+  edici ölçümü, ve 0-AH'nin karar listesi.
 
 ---
 

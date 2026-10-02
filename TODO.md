@@ -155,6 +155,47 @@ yapıyordu. Adres artık yalnızca `client/src/ben.js`'ten okunuyor;
 
 ---
 
+## ✅ 2 Ekim 2026 akşamı — taze göz turu: pano klavyeye açıldı, çöpe atma geri alınabilir
+
+İş listesinden değil **ölçümden** çıkan bir tur: önce canlı panoda gezildi,
+sonra bulunan iki eksik kapatıldı. Kartlar **#357**, **#358**. Test
+**1174 → 1191**. Ayrıntı [DEVIR.md](DEVIR.md) bölüm **0-AL**.
+
+Ölçüm üç şeyi tahminle bulunamayacak biçimde söyledi: palet araması **zaten
+çalışıyor** (yeniden yazmaya gerek yok), `n` kısayolu **çalışıyor** (#330'un
+düzeltmesi onu da diriltti), ama kartlar **odak alamıyor**.
+
+- [x] **Pano yalnızca fareyle kullanılabiliyordu** *(#357)*. Kartlar
+      `tabIndex: -1`, `role` ve `aria-label` yok — sekmeyle ulaşılamıyor,
+      klavyeyle açılamıyor, taşınamıyordu; ekran okuyucu için de aynı kapı
+      kapalıydı. Uygulama ise kısayolları komut paletinde **gösteriyordu**.
+      Şimdi: `↑ ↓` kolon içinde · `← →` komşu kolona · `Enter` açar ·
+      `Shift + ← →` taşır. **Seçili kart = odaktaki kart** (ayrı seçim
+      durumu yok, ikinci bir gerçek üretmesin). Taşıma **Shift istiyor**,
+      kenarda **sarma yok**, hedef kolon boşsa odak oynamıyor — üçü de
+      gerekçeli. `.card:focus-visible` çerçevesi ve palette "Klavye" grubu
+      olmasa özellik **çalışır ama görünmez** olurdu (#156).
+      **Canlı: 7/7.**
+- [x] **Çöpe atılan kart sessizce kayboluyordu** *(#358)*. Hiç bildirim
+      yoktu; geri almanın tek yolu Çöp Kutusu'nu bulmaktı. Sunucu ucu
+      (`/restore`) **zaten vardı** — eksik olan tek şey teklifti. Bildirim
+      sistemi artık eylem taşıyor (`eylem`, `omur`); varsayılan ömür
+      değişmedi, geri al 12 sn. Teklif istek **başarılı olduktan sonra**:
+      istek düşerse geri alınacak bir şey yok. **Canlı: 2/2**, kart hem
+      ekranda hem sunucuda geri geliyor.
+- [ ] **Tarih hızlı seçimi** *(ölçüldü, yapılmadı)*. Çekmecede ve yeni görev
+      penceresinde bugün yalnızca "Pick date" var; Bugün / Yarın / Haftaya
+      çipleri küçük ve her gün kullanılan bir kazanç olurdu. Bu turda zaman
+      yetmedi.
+
+**Bu turun yöntem dersi:** tur içinde **üç kez** mevcut bir test doğru bir
+değişikliği engelledi (#331'de `bildirim.test.js`, burada `surum.test.js`,
+ve mutasyon turunda palet ölçütü). Üçünde de ölçüt korunan **özelliğe**
+değil o günkü **çözüme** bağlanmıştı. Yeni ölçüt yazarken sorulacak soru:
+*bunu düzelten biri testi kırmak zorunda mı kalır?*
+
+---
+
 ## ✅ 2 Ekim 2026 — Playwright turunun altı kartı kapandı
 
 1 Ekim gecesi Playwright turu altı kart açmış ve hiçbirine kod yazmamıştı.

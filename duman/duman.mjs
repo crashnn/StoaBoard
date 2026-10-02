@@ -165,7 +165,35 @@ try {
   olc('kısayol tuşları gizli kutuya YAZILMADI',
     sonra.yazilan.every((v) => !v) ? 'GEÇTİ' : 'KALDI', JSON.stringify(sonra.yazilan));
 
-  // ═══ 4 · Kolon adları arayüz dilini izliyor (kart #288) ═════════════════
+  // ═══ 4 · Kart klavyeye açık ═════════════════════════════════════════════
+  // Pano 2 Ekim'e kadar yalnızca fareyle kullanılabiliyordu: kartlar
+  // `tabIndex: -1` ve rolsüzdü. Ekran okuyucu için de aynı kapı kapalıydı.
+  // Veri yazmıyor: var olan bir karta odaklanıp bırakıyor.
+  const kartOdak = await page.evaluate(() => {
+    const k = document.querySelector('.card');
+    if (!k) return { kartYok: true };
+    k.focus();
+    return {
+      tabIndex: k.tabIndex,
+      rol: k.getAttribute('role'),
+      etiketVar: !!k.getAttribute('aria-label'),
+      kimlikVar: !!k.getAttribute('data-task-id'),
+      odakAlabildi: document.activeElement === k,
+    };
+  });
+  if (kartOdak.kartYok) {
+    // GEÇERSİZLİK KAPISI: boş panoda "kart odak alamıyor" diye bir şey
+    // ölçülemez. Geçti demek, ölçülmemiş bir şeyi geçmiş saymak olurdu.
+    olc('kart klavyeye açık (odak + rol + ad)', 'GEÇERSİZ',
+      'panoda hiç kart yok — ölçüt bir şey ayırt etmiyor');
+  } else {
+    olc('kart klavyeye açık (odak + rol + ad)',
+      kartOdak.odakAlabildi && kartOdak.tabIndex === 0 && kartOdak.rol === 'button'
+        && kartOdak.etiketVar && kartOdak.kimlikVar ? 'GEÇTİ' : 'KALDI',
+      JSON.stringify(kartOdak));
+  }
+
+  // ═══ 5 · Kolon adları arayüz dilini izliyor (kart #288) ═════════════════
   const TR = ['Yapılacak', 'Devam Ediyor', 'İncelemede'];
   const EN = ['To Do', 'In Progress', 'In Review'];
   const metin = () => page.evaluate(() => document.body.innerText || '');
