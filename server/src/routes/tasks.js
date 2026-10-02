@@ -656,6 +656,74 @@ tasksRouter.delete(
   }),
 );
 
+// ─── GET /tasks/:taskId/history ────────────────────────────────────────────
+//
+// KARTIN GEÇMİŞİ (2 Ekim 2026 taraması, madde B).
+//
+// ÖLÇÜLEN: "bu kart neden burada, kim taşıdı, ne zaman?" sorusunun cevabı
+// arayüzde hiç yoktu. Kart kolondan kolona geçiyor ve kimse kimin taşıdığını
+// göremiyordu.
+//
+// VERİ ZATEN DURUYORDU: `task_transitions` her kolon geçişini kimle ve ne
+// zamanla birlikte yazıyor (`lib/reporting.js`) ve `taskId` İNDEKSLİ
+// (`ix_tt_task`). Yani yeni tablo, yeni yazma yolu, yeni şema gerekmedi —
+// yalnızca okuma ucu.
+//
+// NİÇİN `activity_logs` DEĞİL: o tablo PROJE düzeyinde ve `taskId` taşımıyor
+// (serbest metin). Oradan kart geçmişi çıkarmak metin ayrıştırmak olurdu.
+//
+// DONMUŞ KOLON ADLARI BURADA DOĞRU — #331'in İSTİSNASI DEĞİL, BAŞKA BİR ŞEY:
+// `fromTitle`/`toTitle` geçişin YAŞANDIĞI ANDAKİ adı taşıyor ve bu bilinçli
+// (CLAUDE.md: raporlama tabloları denormalize, kayıt kart silinse de yaşamalı).
+// #331 "bugünkü adı dondurma" diyordu; burada gösterilen şey bugünün adı
+// değil, TARİHİN kendisi. Kolon sonradan yeniden adlandırılsa bile "o gün
+// hangi kolona taşındı" cevabı değişmemeli.
+//
+// Kapsam: `loadTaskWithAccess` — kartı göremeyen geçmişini de göremez.
+
+tasksRouter.get(
+  '/:taskId/history',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const taskId = parseInt(req.params.taskId, 10);
+    const access = await loadTaskWithAccess(req, res, taskId);
+    if (access.denied) return;
+
+    const satirlar = await prisma.taskTransition.findMany({
+      where: { taskId },
+      orderBy: { at: 'desc' },
+      take: 50,
+      select: {
+        id: true, at: true, userId: true, userName: true,
+        fromTitle: true, toTitle: true, toIsDone: true,
+      },
+    });
+
+    // Kullanıcı adları kayıtta donmuş (`userName`); kişi adını sonradan
+    // değiştirmişse geçmiş eski adı gösterir. Bu da bilinçli: kayıt o günün
+    // kaydı. Yine de bugünkü ad biliniyorsa onu da veriyoruz ki arayüz
+    // avatarı doğru kişiyle eşleştirebilsin.
+    const idler = [...new Set(satirlar.map((r) => r.userId).filter(Boolean))];
+    const kisiler = idler.length
+      ? await prisma.user.findMany({ where: { id: { in: idler } }, select: { id: true, slug: true } })
+      : [];
+    const slugById = new Map(kisiler.map((u) => [u.id, u.slug]));
+
+    res.json({
+      created_at: access.task.createdAt,
+      moves: satirlar.map((r) => ({
+        id: String(r.id),
+        at: r.at,
+        user_name: r.userName || null,
+        user_slug: r.userId ? (slugById.get(r.userId) || null) : null,
+        from: r.fromTitle || null,
+        to: r.toTitle || null,
+        to_is_done: Boolean(r.toIsDone),
+      })),
+    });
+  }),
+);
+
 // ─── GET /tasks/:taskId/subtasks ───────────────────────────────────────────
 
 tasksRouter.get(

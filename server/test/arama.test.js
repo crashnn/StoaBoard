@@ -260,3 +260,66 @@ describe('arama sorgusu şemadaki alanları kullanıyor', () => {
     assert.doesNotMatch(uc, /r\.desc\b/, '`r.desc` diye bir alan yok — undefined gelir, açıklama hiç aranmaz');
   });
 });
+
+// ─── Kartın geçmişi (tarama maddesi B) ─────────────────────────────────────
+//
+// ÖLÇÜLEN: "bu kart neden burada, kim taşıdı, ne zaman?" sorusunun cevabı
+// arayüzde hiç yoktu. Veri ZATEN duruyordu (`task_transitions`, `taskId`
+// indeksli) — eksik olan okuma ucu ve bölümdü.
+
+describe('kart geçmişi ucu', () => {
+  const TASKS = yorumsuzDosya(path.resolve(__dirname, '..', 'src', 'routes', 'tasks.js'));
+  const SEMA = yorumsuzDosya(path.resolve(__dirname, '..', 'prisma', 'schema.prisma'));
+  const GECMIS = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'gecmis.jsx'));
+
+  const uc = () => {
+    const bas = TASKS.indexOf("tasksRouter.get(\n  '/:taskId/history'");
+    assert.ok(bas > 0, 'geçmiş ucu bulunamadı');
+    const son = TASKS.indexOf('\n);\n', bas);
+    const govde = TASKS.slice(bas, son);
+    assert.ok(govde.length > 200 && govde.length < TASKS.length / 2,
+      `uç gövdesi beklenmedik uzunlukta (${govde.length})`);
+    return govde;
+  };
+
+  test('kartı göremeyen geçmişini de göremiyor', () => {
+    // Kapı kartın kendi erişim kontrolünden geçiyor; ayrı bir kural
+    // yazılsaydı ikisi ayrışabilirdi.
+    const b = uc();
+    assert.match(b, /loadTaskWithAccess\(req, res, taskId\)/, 'erişim kapısı yok');
+    assert.match(b, /if \(access\.denied\) return;/, 'ret sonrası devam ediliyor');
+    assert.match(b, /requireAuth/, 'uç kimlik doğrulaması istemiyor');
+  });
+
+  test('YALNIZCA bu kartın geçişleri', () => {
+    const b = uc();
+    assert.match(b, /where: \{ taskId \}/, 'sorgu karta göre süzülmüyor — başka kartların geçmişi sızar');
+    assert.match(b, /orderBy: \{ at: 'desc' \}/, 'geçmiş sıralanmıyor');
+  });
+
+  test('sorgu ŞEMADAKİ alanları kullanıyor', () => {
+    // Arama ucundaki canlı kusurun aynısı burada da olabilirdi.
+    const bas = SEMA.indexOf('model TaskTransition {');
+    const alanlar = new Set([...SEMA.slice(bas, SEMA.indexOf('\n}', bas)).matchAll(/^\s{2}(\w+)\s+\w/gm)].map((m) => m[1]));
+    const b = uc();
+    const secim = b.slice(b.indexOf('select: {'), b.indexOf('},', b.indexOf('select: {')));
+    for (const ad of [...secim.matchAll(/(\w+): true/g)].map((m) => m[1])) {
+      assert.ok(alanlar.has(ad), `select'te TaskTransition'da OLMAYAN alan: ${ad}`);
+    }
+    assert.ok(alanlar.has('taskId') && alanlar.has('at'), 'ölçütün dayandığı alanlar şemada yok');
+  });
+
+  test('geçmiş bölümü hatayı SESSİZCE yutmuyor', () => {
+    // "Geçmiş yok" ile "geçmişi alamadım" ayrı şeyler.
+    assert.match(GECMIS, /setDurum\('hata'\)/, 'hata durumu tutulmuyor');
+    assert.match(GECMIS, /drawer_history_failed/, 'hata kullanıcıya gösterilmiyor');
+    assert.match(GECMIS, /drawer_history_empty/, 'boş geçmiş ayrı anlatılmıyor');
+  });
+
+  test('kart değişince önceki kartın geçmişi GÖRÜNMÜYOR', () => {
+    // Açık kalsaydı yeni kart açıldığında bir an öncekinin geçmişi
+    // yenisininmiş gibi dururdu.
+    assert.match(GECMIS, /useEffect\(\(\) => \{ setAcik\(false\); setMoves\(\[\]\);[^}]*\}, \[taskId\]\);/,
+      'kart değişiminde bölüm sıfırlanmıyor');
+  });
+});

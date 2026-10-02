@@ -7,6 +7,7 @@ import { Avatar, AvatarStack } from './shell.jsx';
 import { API, fmtTimeAgo, kolonAdi } from './data.jsx';
 import { DatePicker } from './modals.jsx';
 import { WorkLogSection } from './worklog.jsx';
+import { GecmisSection } from './gecmis.jsx';
 import { paragraflaraBol } from './belge.js';
 import { dikeyCekJesti, yatayKaydirJesti } from './jest.js';
 
@@ -1024,6 +1025,11 @@ function TaskDrawer({ open, task, onClose, onMoveTask, onTaskUpdate, onDelete, o
 
       {/* Harcanan süre — raporlamanın emek tarafı */}
       {task?.id && <WorkLogSection taskId={task.id} />}
+
+      {/* Kartın geçmişi — "kim taşıdı" sorusunun cevabı (tarama maddesi B).
+          Kapalı açılıyor: her kart açılışında fazladan bir istek atmak, nadiren
+          sorulan bir soru için herkesin ödeyeceği bir bedel olurdu. */}
+      {task?.id && <GecmisSection taskId={task.id} />}
 
       {/* Comments */}
       <div className="comments-section drw-sec">

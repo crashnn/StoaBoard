@@ -361,6 +361,7 @@ const API = {
   workspaceTasks:  ()              => apiFetch('/api/workspaces/me/tasks'),
   oneriler:        ()              => apiFetch('/api/workspaces/me/tasks/oneriler'),
   gorevAra:        (q, limit = 20)  => apiFetch(`/api/workspaces/me/tasks/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+  gorevGecmisi:    (id)             => apiFetch(`/api/tasks/${id}/history`),
 
   // Task attachments
   listAttachments:   (taskId)          => apiFetch(`/api/tasks/${taskId}/attachments`),
@@ -666,6 +667,9 @@ window.APP_I18N = {
     // Bağlantı kurulamadı ekranı (kart #328): oturum yok DEĞİL, cevap bilinmiyor.
     app_task_trashed:'Görev çöp kutusuna taşındı',
     palette_search_failed:'Arama şu an çalışmıyor',
+    drawer_history:'Geçmiş', drawer_history_show:'Göster', drawer_history_hide:'Gizle',
+    drawer_history_failed:'Geçmiş alınamadı', drawer_history_empty:'Bu kart hiç taşınmamış.',
+    drawer_history_someone:'Biri', drawer_history_created:'Kart açıldı',
     palette_search_more:'Daha fazla sonuç var — aramayı daralt',
     palette_group_all_tasks:'Bütün projelerde',
     cmd_keyboard:'Klavye',
@@ -1651,6 +1655,9 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     app_creating:'Creating…', app_create_project:'Create Project',
     app_task_trashed:'Task moved to trash',
     palette_search_failed:'Search is unavailable right now',
+    drawer_history:'History', drawer_history_show:'Show', drawer_history_hide:'Hide',
+    drawer_history_failed:'Could not load history', drawer_history_empty:'This card has never moved.',
+    drawer_history_someone:'Someone', drawer_history_created:'Card created',
     palette_search_more:'More results exist — narrow your search',
     palette_group_all_tasks:'Across all projects',
     cmd_keyboard:'Keyboard',
