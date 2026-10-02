@@ -169,6 +169,47 @@
 .toplu-dugme:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .toplu-tehlike:hover:not(:disabled) { border-color: var(--status-rose); color: var(--status-rose); }
 
+/* Gruplama secici — yalnizca liste gorunumunde. */
+.grup-secici {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+.grup-etiket {
+  font-size: 11px;
+  color: var(--ink-faint);
+  padding: 0 6px 0 4px;
+  white-space: nowrap;
+}
+.grup-secici button {
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.grup-secici button:hover { color: var(--ink); }
+.grup-secici button[data-active="true"] {
+  background: var(--bg-raised);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+.grup-secici button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.list-group-bos {
+  padding: 24px 12px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
 /* ── Dokunma hedefleri (tarama maddesi E) ─────────────────────────────────
  *
  * OLCULDU (2 Ekim 2026, 390px): kolon basligindaki "+" ve "..." 22x22,

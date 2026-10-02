@@ -6,6 +6,7 @@ import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, kolonAdi } from '../data.jsx';
 import { komsuKolonId, hedefKartSirasi } from '../klavyePano.js';
 import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec } from '../topluIslem.js';
+import { grupla, GRUP_OLCUTLERI } from '../gruplama.js';
 import { benSlug } from '../ben.js';
 
 const COL_NAME_MAX = 30;
@@ -1148,6 +1149,10 @@ function tekKolonlar(cols) {
 
 function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, switching, initialSubView, onSubViewChange }) {
   const [subView, setSubView] = useBoardState(() => initialSubView || localStorage.getItem('stoa.boardSubView') || 'kanban');
+  // Gruplama olcutu HATIRLANIYOR: "kime gore bakiyorum" bir calisma bicimi,
+  // her acilista kolona donmek o bicimi her gun yeniden kurmak demek.
+  const [grupOlcutu, setGrupOlcutu] = useBoardState(() => localStorage.getItem('stoa.listGroupBy') || 'col');
+  useBoardEf(() => { localStorage.setItem('stoa.listGroupBy', grupOlcutu); }, [grupOlcutu]);
   const darEkran = useDarEkran();
   useBoardEf(() => {
     localStorage.setItem('stoa.boardSubView', subView);
@@ -1520,6 +1525,25 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
           </button>
         ))}
       </div>
+      {/* Gruplama secici YALNIZCA liste gorunumunde: oteki uc gorunumde
+          gruplama diye bir sey yok ve orada duran bir secici, hicbir seye
+          yaramayan bir dugme olurdu. */}
+      {subView === 'list' && (
+        <div className="grup-secici" role="group"
+          aria-label={window.t?.('group_by') || 'Grupla'}>
+          <span className="grup-etiket">{window.t?.('group_by') || 'Grupla:'}</span>
+          {GRUP_OLCUTLERI.map(o => (
+            <button
+              key={o.id}
+              type="button"
+              data-active={grupOlcutu === o.id}
+              onClick={() => setGrupOlcutu(o.id)}
+            >
+              {window.t?.(o.ceviriAnahtari) || o.yedek}
+            </button>
+          ))}
+        </div>
+      )}
       <button
         className="filter-toggle-btn"
         data-active={filterOpen || activeFilterCount > 0}
@@ -1690,18 +1714,34 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
             if (va > vb) return listSortDir === 'asc' ? 1 : -1;
             return 0;
           });
-          return DATA.COLUMNS.map(col => {
-            const colTasks = visibleTasks.filter(t => t.col === col.id);
-            const collapsed = collapsedGroups.has(col.id);
+          const gruplar = grupla(visibleTasks, grupOlcutu, {
+            kolonlar: DATA.COLUMNS,
+            uyeler: DATA.MEMBERS,
+            etiketler: DATA.LABELS,
+            ceviri: (k, fb) => window.t?.(k) || fb,
+            kolonAdi,
+          });
+          if (gruplar.length === 0) {
             return (
-              <div className="list-group" key={col.id}>
-                <div className="list-group-header" onClick={() => toggleGroupCollapse(col.id)} style={{ cursor: 'pointer' }}>
+              <div className="list-group-bos">
+                {window.t?.('group_empty') || 'Bu olcute gore gosterilecek kart yok.'}
+              </div>
+            );
+          }
+          return gruplar.map(grup => {
+            const colTasks = grup.gorevler;
+            const collapsed = collapsedGroups.has(grup.anahtar);
+            return (
+              <div className="list-group" key={grup.anahtar}>
+                <div className="list-group-header" onClick={() => toggleGroupCollapse(grup.anahtar)} style={{ cursor: 'pointer' }}>
                   <Icon name={collapsed ? 'chevronRight' : 'chevronDown'} size={12} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />
-                  <div className="col-dot" style={{ background: col.color || 'var(--ink-faint)' }} />
-                  <span style={{ color: 'var(--ink)' }}>{kolonAdi(col)}</span>
+                  <div className="col-dot" style={{ background: grup.renk || 'var(--ink-faint)' }} />
+                  <span style={{ color: 'var(--ink)' }}>{grup.baslik}</span>
                   <span className="col-count">{colTasks.length}</span>
-                  {canManageTasks && !collapsed && (
-                    <button className="list-group-add" onClick={(e) => { e.stopPropagation(); onOpenModal(col.id); }}
+                  {/* "+" YALNIZCA kolon gruplamasinda: bir onceligin ya da
+                      etiketin "icine" kart eklemek diye bir sey yok. */}
+                  {canManageTasks && !collapsed && grup.kolonId && (
+                    <button className="list-group-add" onClick={(e) => { e.stopPropagation(); onOpenModal(grup.kolonId); }}
                       title={window.t('board_add_task')}>
                       <Icon name="plus" size={12} />
                     </button>
@@ -1724,7 +1764,12 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
                     <tbody>
                       {sortTasks(colTasks).map(t => {
                         const members = (t.assignees || []).map(id => DATA.MEMBERS.find(m => m.id === id)).filter(Boolean);
-                        const isDone = col.is_done;
+                        // Bitmislik KARTIN KENDI kolonundan okunuyor: gruplama
+                        // olcutu kolon olmayabilir ve grup basligindan okumak
+                        // "oncelik: yuksek" grubundaki her karti bitmis
+                        // gosterirdi.
+                        const kartKolonu = DATA.COLUMNS.find(c => c.id === t.col);
+                        const isDone = kartKolonu?.is_done || false;
                         const overdue = DATA.isOverdue(t.due, t.col);
                         const subParts = String(t.subtasks || '0/0').split('/');
                         const sDone = parseInt(subParts[0]) || 0;
