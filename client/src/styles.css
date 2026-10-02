@@ -120,6 +120,21 @@
 }
 .toast-eylem:hover { background: var(--bg-subtle); border-color: var(--accent); }
 .toast-eylem:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Takvimdeki hizli tarih cipleri (Bugun / Yarin / Haftaya). */
+.tarih-cip {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tarih-cip:hover { color: var(--accent); border-color: var(--accent); }
+.tarih-cip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .toast-error { border-color: var(--status-rose); }
 .toast-success { border-color: var(--status-green); }
 .toast-msg-head {

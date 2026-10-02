@@ -5,7 +5,15 @@ import ReactDOM from 'react-dom';
 import { Icon } from './icons.jsx';
 import { Avatar } from './shell.jsx';
 import { kolonAdi } from './data.jsx';
-import { bugunYerel } from './tarih.js';
+import { bugunYerel, gunSonra } from './tarih.js';
+
+// Hizli tarih secimi. UC SECENEK, daha fazlasi degil: liste uzadikca
+// takvimin kendisi kadar taranir hale gelir ve kazanc kaybolur.
+const HIZLI_TARIHLER = [
+  { gun: 0, anahtar: 'cal_today',          yedek: 'Bugün' },
+  { gun: 1, anahtar: 'modal_date_tomorrow', yedek: 'Yarın' },
+  { gun: 7, anahtar: 'modal_date_next_week', yedek: 'Haftaya' },
+];
 
 // ── Custom Date Picker ─────────────────────────────────────────────────────
 function DatePicker({ value, onChange, error }) {
@@ -117,18 +125,32 @@ function DatePicker({ value, onChange, error }) {
           );
         })}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+      {/* HIZLI SEÇİM — en sık istenen üç tarih tek tıkla.
+          Ölçüldü (2 Ekim 2026): tarih koymanın tek yolu takvimi açıp günü
+          gözle bulmaktı; "yarın" demek bile takvimi taramayı gerektiriyordu.
+          Çipler takvimin İÇİNDE duruyor, dışarıda değil: çekmeceye ve yeni
+          görev penceresine üç düğme daha eklemek her kartta görünen bir
+          ağırlık olurdu, oysa kazanç yalnızca tarih koyarken var. */}
+      <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+        {HIZLI_TARIHLER.map(({ gun, anahtar, yedek }) => (
+          <button key={anahtar} type="button" className="tarih-cip"
+            onClick={() => {
+              // Tarih TEK KAYNAKTAN (`tarih.js`). Burada bir zamanlar
+              // `new Date()` elle biçimlendiriliyordu — o dosyanın var olma
+              // sebebi tam olarak ikinci bir "bugün" tanımının doğması.
+              const g = gunSonra(gun);
+              const d = new Date(g + 'T00:00:00');
+              setViewYear(d.getFullYear()); setViewMonth(d.getMonth());
+              onChange(g);
+              setOpen(false);
+            }}>
+            {window.t?.(anahtar) || yedek}
+          </button>
+        ))}
+        <span style={{ flex: 1 }} />
         <button type="button" onClick={() => { onChange(''); setOpen(false); }}
           style={{ fontSize: 12, color: 'var(--ink-muted)', padding: '2px 6px', borderRadius: 5 }}>
           {window.t?.('modal_date_clear') || 'Temizle'}
-        </button>
-        <button type="button" onClick={() => {
-          const t = new Date();
-          setViewYear(t.getFullYear()); setViewMonth(t.getMonth());
-          onChange(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`);
-          setOpen(false);
-        }} style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, padding: '2px 6px', borderRadius: 5 }}>
-          {window.t?.('cal_today') || 'Bugün'}
         </button>
       </div>
     </div>

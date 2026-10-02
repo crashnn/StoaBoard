@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import { yorumsuzDosya } from './yardimcilar.js';
 import { komsuKolonId, hedefKartSirasi } from '../../client/src/klavyePano.js';
+import { bugunYerel, gunSonra } from '../../client/src/tarih.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT = path.resolve(__dirname, '..', '..', 'client', 'src');
@@ -193,5 +194,105 @@ describe('çöpe atma GERİ ALINABİLİR', () => {
     const blok = SHELL.slice(bas, SHELL.indexOf(';', bas));
     assert.match(blok, /t\.omur \|\| 5000/, 'ömür varsayılanı korunmuyor');
     assert.match(blok, /t\.sticky \|\|/, 'yapışkan bildirim kuralı (#201) kaybolmuş');
+  });
+});
+
+// ─── Hızlı tarih seçimi (2 Ekim 2026) ──────────────────────────────────────
+//
+// ÖLÇÜLEN: tarih koymanın tek yolu takvimi açıp günü gözle bulmaktı. "Yarın"
+// demek bile takvimi taramayı gerektiriyordu. Takvimin içinde "Bugün" ve
+// "Temizle" vardı; "Yarın" ve "Haftaya" yoktu.
+//
+// YOL ÜSTÜNDE ÇIKAN ASIL KUSUR: takvimdeki "Bugün" düğmesi tarihi KENDİ
+// ELİYLE biçimlendiriyordu (`${t.getFullYear()}-${...}`), oysa `tarih.js`
+// tam bu iş için var ve var olma sebebi ikinci bir "bugün" tanımının
+// doğması. İki okuyucu, aynı olgu — bu depoda tekrarlanan sınıf.
+
+describe('hızlı tarih seçimi — saf', () => {
+  test('gunSonra(0) bugünle aynı', () => {
+    assert.equal(gunSonra(0), bugunYerel());
+  });
+
+  test('gunSonra(1) ve (7) ileri gidiyor, biçim bozulmuyor', () => {
+    for (const g of [1, 7]) {
+      const d = gunSonra(g);
+      assert.match(d, /^\d{4}-\d{2}-\d{2}$/, `biçim bozuk: ${d}`);
+      assert.ok(d > bugunYerel(), `${g} gün sonrası bugünden ileri değil: ${d}`);
+    }
+  });
+
+  test('AY VE YIL SINIRINI geçiyor', () => {
+    // Ölçüt gerçek takvimden bağımsız olsun diye aradaki gün sayısı
+    // doğrulanıyor: 31 Aralık + 1 gün, 1 Ocak olmalı — "32 Aralık" değil.
+    const bas = new Date(gunSonra(0) + 'T00:00:00');
+    for (const g of [1, 7, 60, 400]) {
+      const s = new Date(gunSonra(g) + 'T00:00:00');
+      const fark = Math.round((s - bas) / 86400000);
+      assert.equal(fark, g, `${g} gün sonrası ${fark} gün ileride`);
+    }
+  });
+
+  test('bozuk girdi bugüne düşüyor, patlamıyor', () => {
+    assert.equal(gunSonra(NaN), bugunYerel());
+    assert.equal(gunSonra(undefined), bugunYerel());
+  });
+
+  test('YAZ SAATİ gecesinde bir GÜN ekliyor, 24 SAAT değil', () => {
+    // Bu ölçüt mutasyon turunda doğdu: `setDate` yerine
+    // `Date.now() + gun * 86400000` yazmak testi KIRMIYORDU, çünkü ölçüm
+    // makinesi sabit UTC+3 ve iki hesap orada aynı sonucu veriyor. Yani
+    // gerekçe yorumda yazılıydı ama ÖLÇÜLMÜYORDU.
+    //
+    // Kurgu: Avrupa/Berlin, 29 Mart 2026 gecesi saat ileri alınıyor. 28
+    // Mart 23:30'dan 24 saat sonrası 30 Mart 00:30 (gün ATLIYOR); bir gün
+    // sonrası ise 29 Mart. Kullanıcı "Yarın" dediğinde öbür günü almamalı.
+    const eskiTz = process.env.TZ;
+    try {
+      process.env.TZ = 'Europe/Berlin';
+      const taban = new Date('2026-03-28T23:30:00+01:00');
+      assert.equal(gunSonra(1, taban), '2026-03-29',
+        '"yarın" bir gün atladı — gün değil 24 saat ekleniyor olabilir');
+      assert.equal(gunSonra(0, taban), '2026-03-28');
+      assert.equal(gunSonra(7, taban), '2026-04-04');
+    } finally {
+      if (eskiTz === undefined) delete process.env.TZ;
+      else process.env.TZ = eskiTz;
+    }
+  });
+});
+
+describe('tarih TEK KAYNAKTAN üretiliyor', () => {
+  const MODALS = yorumsuzDosya(path.join(CLIENT, 'modals.jsx'));
+
+  test('takvim "bugün"ü KENDİ ELİYLE biçimlendirmiyor', () => {
+    // Kusurun kendisi: `${t.getFullYear()}-${String(t.getMonth()+1)...}`
+    // ikinci bir "bugün" tanımıydı. Ölçüt KULLANIMI yasaklıyor (18 Eylül
+    // dersi): `tarih.js`i içe aktarmak yetmez, elle biçimlendirme kalmamalı.
+    assert.doesNotMatch(MODALS, /getFullYear\(\)\}-\$\{String\(/,
+      'tarih elle biçimlendiriliyor — ikinci bir "bugün" tanımı doğuyor');
+    assert.match(MODALS, /import \{ bugunYerel, gunSonra \} from '\.\/tarih\.js';/,
+      'tarih yardımcıları içe aktarılmıyor');
+  });
+
+  test('hızlı seçim çipleri gunSonra ile üretiliyor', () => {
+    const bas = MODALS.indexOf('const HIZLI_TARIHLER = [');
+    assert.ok(bas > 0, 'hızlı tarih listesi yok');
+    const liste = MODALS.slice(bas, MODALS.indexOf('];', bas));
+    for (const [gun, anahtar] of [[0, 'cal_today'], [1, 'modal_date_tomorrow'], [7, 'modal_date_next_week']]) {
+      assert.match(liste, new RegExp(`gun: ${gun}, anahtar: '${anahtar}'`), `${anahtar} (${gun} gün) listede yok`);
+    }
+    // Üç seçenek, daha fazlası değil: liste uzadıkça takvim kadar taranır
+    // hâle gelir ve kazanç kaybolur.
+    assert.equal((liste.match(/\{ gun:/g) || []).length, 3, 'hızlı seçim listesi beklenenden farklı uzunlukta');
+    // Çipin tıklaması gerçekten `gunSonra` çağırmalı; liste doğru ama
+    // tıklama elle hesaplasa ölçüt bir şey korumazdı.
+    const cip = MODALS.slice(MODALS.indexOf('HIZLI_TARIHLER.map('), MODALS.indexOf('</button>', MODALS.indexOf('HIZLI_TARIHLER.map(')));
+    assert.match(cip, /gunSonra\(gun\)/, 'çip tarihi tek kaynaktan almıyor');
+  });
+
+  test('temizleme seçeneği korunuyor', () => {
+    // Hızlı seçim eklerken var olan bir yolu silmek sessiz bir gerileme
+    // olurdu: tarihi KALDIRMAK da gerekiyor.
+    assert.match(MODALS, /modal_date_clear/, 'tarihi temizleme düğmesi kaybolmuş');
   });
 });

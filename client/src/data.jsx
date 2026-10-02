@@ -926,6 +926,7 @@ window.APP_I18N = {
     modal_checklist_label:'Yapılacaklar', modal_checklist_placeholder:'Madde ekle…', modal_checklist_add:'+ Ekle',
     modal_create_task:'Görevi oluştur',
     modal_date_pick:'Tarih seç', modal_date_clear:'Temizle',
+    modal_date_tomorrow:'Yarın', modal_date_next_week:'Haftaya',
     // Shell
     shell_members:'üye', shell_search:'Ara veya komut...',
     shell_status_online:'Çevrimiçi', shell_status_away:'Uzakta',
@@ -1907,6 +1908,7 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     modal_checklist_label:'To-do', modal_checklist_placeholder:'Add item…', modal_checklist_add:'+ Add',
     modal_create_task:'Create task',
     modal_date_pick:'Pick date', modal_date_clear:'Clear',
+    modal_date_tomorrow:'Tomorrow', modal_date_next_week:'Next week',
     // Shell
     shell_members:'members', shell_search:'Search or command...',
     shell_status_online:'Online', shell_status_away:'Away',
