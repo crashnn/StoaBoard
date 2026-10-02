@@ -4,6 +4,7 @@ import React, { useState as useBoardState, useRef as useBoardRef, useEffect as u
 import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, kolonAdi } from '../data.jsx';
+import { komsuKolonId, hedefKartSirasi } from '../klavyePano.js';
 import { benSlug } from '../ben.js';
 
 const COL_NAME_MAX = 30;
@@ -64,7 +65,7 @@ function FilterBar({ activeLabels, activePriority, activeOverdue, activeMyTasks,
   );
 }
 
-function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleChange, canManageTasks, onTouchLongPress }) {
+function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleChange, canManageTasks, onTouchLongPress, allColumns = [], onMoveTask }) {
   const members = (task.assignees || []).map(id => DATA.MEMBERS.find(m => m.id === id)).filter(Boolean);
   const colData = DATA.COLUMNS.find(c => c.id === task.col);
   const isDone = colData?.is_done || false;
@@ -122,9 +123,81 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
     touchState.current.timer = null;
   };
 
+  // ── Klavyeyle kart kullanımı ──────────────────────────────────────────────
+  //
+  // Pano 2 Ekim 2026'ya kadar yalnızca fareyle kullanılabiliyordu: kartlar
+  // `tabIndex: -1` ve `role`süzdü, yani sekmeyle ulaşılamıyor, klavyeyle
+  // açılamıyor, taşınamıyordu. Uygulama ise kısayolları komut paletinde
+  // GÖSTERİYOR — gezinme vaat edilip işin kendisi dışarıda kalmıştı. Ekran
+  // okuyucu için de aynı kapı kapalıydı.
+  //
+  // SEÇİLİ KART = ODAKTAKİ KART. Ayrı bir "seçim" durumu tutulmuyor; bu
+  // depoda tekrarlanan ders "aynı olgunun iki okuyucusu ayrışır" (#330
+  // ailesi). Komşuyu bulmak DOM'dan okunuyor, çünkü ekranda görünen sıra
+  // zaten orada.
+  const kartOdakla = (el) => el?.focus?.();
+
+  const kartKlavye = (e) => {
+    // Başlık düzenlenirken (contentEditable) tuşlar onun; olay oradan
+    // kabararak buraya geliyor. Ölçüt "odak kartın KENDİSİNDE mi".
+    if (e.target !== e.currentTarget) return;
+
+    const kart = e.currentTarget;
+    const kolonEl = kart.closest('[data-col-id]');
+    const panoEl = kolonEl?.parentElement;
+    if (!kolonEl || !panoEl) return;
+
+    const kolonKartlari = (el) => [...el.querySelectorAll('.card')];
+    const kardesler = kolonKartlari(kolonEl);
+    const sira = kardesler.indexOf(kart);
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();          // boşluk sayfayı kaydırmasın
+      if (!editing) onOpen(task);
+      return;
+    }
+
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      const hedef = kardesler[sira + (e.key === 'ArrowUp' ? -1 : 1)];
+      if (hedef) { e.preventDefault(); kartOdakla(hedef); }
+      return;
+    }
+
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const yon = e.key === 'ArrowLeft' ? -1 : 1;
+    const hedefKolonId = komsuKolonId(allColumns, task.col, yon);
+    if (!hedefKolonId) return;     // kenarda sarma yok (klavyePano.js)
+    e.preventDefault();
+
+    // SHIFT: kartı TAŞI. Shift'siz ok yalnızca odağı oynatıyor — yazma
+    // işlemi kazara tek tuşla olmasın. Taşıdıktan sonra kart başka bir
+    // kolonun içine yeniden çiziliyor, yani DOM öğesi değişiyor; odak
+    // kimliğe göre geri veriliyor, yoksa klavyeyle gezinme ortada kalır.
+    if (e.shiftKey) {
+      if (!canManageTasks || !onMoveTask) return;
+      onMoveTask(task.id, hedefKolonId);
+      setTimeout(() => {
+        kartOdakla(document.querySelector(`.card[data-task-id="${task.id}"]`));
+      }, 0);
+      return;
+    }
+
+    const hedefKolon = panoEl.querySelector(`[data-col-id="${hedefKolonId}"]`);
+    const hedefler = hedefKolon ? kolonKartlari(hedefKolon) : [];
+    const hedefSira = hedefKartSirasi(sira, hedefler.length);
+    if (hedefSira !== null) kartOdakla(hedefler[hedefSira]);
+  };
+
   return (
     <div
       className="card"
+      // Kimlik DOM'da: taşımadan sonra odağı geri vermenin ve dışarıdan
+      // (duman testi) kartı bulmanın tek güvenilir yolu.
+      data-task-id={task.id}
+      tabIndex={0}
+      role="button"
+      aria-label={`${task.title} — ${kolonAdi(colData)}`}
+      onKeyDown={kartKlavye}
       draggable={!editing && canManageTasks}
       data-dragging={dragging}
       data-done={isDone}
@@ -221,7 +294,7 @@ function Card({ task, onOpen, onDragStart, onDragEnd, dragging, tweaks, onTitleC
   );
 }
 
-function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, onDeleteColumn, onUpdateColumn, onTouchLongPress, onToggleDone, onColumnDragStart, onColumnDragOver, onColumnDrop, isColDragOver }) {
+function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onMoveTask, onDragStart, onDragEnd, dragging, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, onDeleteColumn, onUpdateColumn, onTouchLongPress, onToggleDone, onColumnDragStart, onColumnDragOver, onColumnDrop, isColDragOver }) {
   const [dragOver, setDragOver] = useBoardState(false);
   const [menuOpen, setMenuOpen] = useBoardState(false);
   const [menuPos, setMenuPos] = useBoardState(null);
@@ -444,6 +517,8 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onDragSta
             onTitleChange={onTitleChange}
             canManageTasks={canManageTasks}
             onTouchLongPress={onTouchLongPress}
+            allColumns={allColumns}
+            onMoveTask={onMoveTask}
           />
         ))}
         {canManageTasks && (
@@ -1447,6 +1522,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, tweaks, onOpen
           allColumns={columns}
           onOpenTask={onOpenTask}
           onDropCard={handleDrop}
+          onMoveTask={onMoveTask}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           dragging={draggingId}

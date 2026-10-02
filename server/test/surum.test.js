@@ -91,7 +91,26 @@ describe('sürüm — bağlantılar', () => {
   });
 
   test('yapışkan bildirim süreyle düşmüyor, tıklanınca yeniliyor', () => {
-    assert.match(SHELL, /filter\(t => t\.sticky \|\| \(now - \(t\._createdAt \|\| now\)\) < 5000\)/, 'yapışkan bildirim de beş saniyede siliniyor');
+    // ÖLÇÜT 2 EKİM 2026'DA GEVŞETİLDİ, gerekçesi devredilmeye değer.
+    //
+    // Eski hâli süzgecin TAM METNİNİ arıyordu:
+    //   /filter\(t => t\.sticky \|\| \(now - \(t\._createdAt \|\| now\)\) < 5000\)/
+    // Yapışkanlık kuralı hiç değişmediği hâlde kırıldı: bildirimlere `omur`
+    // alanı eklendi (geri al düğmesine beş saniye dar) ve sabit 5000
+    // `t.omur || 5000` oldu. Yani ölçüt, koruduğu davranışı değil o günkü
+    // YAZIMI kilitliyordu — bu turda aynı sınıfa üçüncü kez düşüldü
+    // (#331'de `bildirim.test.js`, burada bu satır).
+    //
+    // Yeni ölçüt iki parçaya ayrıldı ve ikisi de davranış: yapışkan bildirim
+    // süzgeçten MUAF, ve muafiyet süre karşılaştırmasından ÖNCE geliyor
+    // (sonra gelse etkisiz olurdu). Varsayılan ömrün 5 saniye kaldığı
+    // `klavye.test.js` içinde ölçülüyor.
+    const s = SHELL.indexOf('window.TOAST_QUEUE = window.TOAST_QUEUE.filter(');
+    assert.ok(s > 0, 'bildirim düşürme süzgeci bulunamadı');
+    const suzgec = SHELL.slice(s, SHELL.indexOf(';', s));
+    assert.match(suzgec, /t\.sticky \|\|/, 'yapışkan bildirim de süreyle siliniyor');
+    assert.ok(suzgec.indexOf('t.sticky') < suzgec.indexOf('_createdAt'),
+      'yapışkanlık muafiyeti süre karşılaştırmasından sonra geliyor — etkisiz');
     const i = SHELL.indexOf('const handleClick = (toast) => {');
     const b = SHELL.slice(i, SHELL.indexOf('};', i));
     assert.match(b, /if \(toast\.meta\?\.reload\) \{ window\.location\.reload\(\); return; \}/, 'yenile bildirimi tıklanınca yenilemiyor');

@@ -663,6 +663,12 @@ window.APP_I18N = {
     app_color:'Renk', app_icon:'İkon', app_cancel:'İptal',
     app_creating:'Oluşturuluyor…', app_create_project:'Proje Oluştur',
     // Bağlantı kurulamadı ekranı (kart #328): oturum yok DEĞİL, cevap bilinmiyor.
+    app_task_trashed:'Görev çöp kutusuna taşındı',
+    cmd_keyboard:'Klavye',
+    cmd_card_nav:'Kartlar arasında gezin',
+    cmd_card_open:'Odaklı kartı aç',
+    cmd_card_move:'Kartı komşu kolona taşı',
+    app_undo:'Geri al',
     app_conn_title:'Bağlanılamadı',
     app_conn_rate:'Çok fazla istek gönderildi. Oturumun açık; birkaç dakika sonra tekrar dene.',
     app_conn_net:'Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.',
@@ -1638,6 +1644,12 @@ err_channel_name_taken:'Bu isimde bir kanal zaten var',
     app_project_name:'Project Name', app_project_name_ph:'E.g: Website, Mobile App...',
     app_color:'Color', app_icon:'Icon', app_cancel:'Cancel',
     app_creating:'Creating…', app_create_project:'Create Project',
+    app_task_trashed:'Task moved to trash',
+    cmd_keyboard:'Keyboard',
+    cmd_card_nav:'Move between cards',
+    cmd_card_open:'Open focused card',
+    cmd_card_move:'Move card to next column',
+    app_undo:'Undo',
     app_conn_title:'Can’t connect',
     app_conn_rate:'Too many requests. You are still signed in — try again in a few minutes.',
     app_conn_net:'Could not reach the server. Check your connection and try again.',
@@ -2450,6 +2462,15 @@ function getCommands() {
       { label: tl('cmd_open_notifs','Bildirimleri aç'), icon: 'bell',       action: 'open:notifs' },
       { label: tl('cmd_open_chat','Sohbeti aç'),       icon: 'msg',         action: 'open:chat' },
       { label: tl('cmd_new_project','Yeni proje'),     icon: 'plus',        action: 'new:project' },
+    ]},
+    // Pano kisayollari BURADA duruyor, cunku bu depoda bir ozellik
+    // gorunmuyorsa yok sayiliyor (#156) ve kartlarin klavyeyle
+    // kullanilabildigini baska hicbir yer soylemiyor. Eylemleri panoya
+    // goturuyor: tuslar orada ise yariyor.
+    { group: tl('cmd_keyboard','Klavye'), items: [
+      { label: tl('cmd_card_nav','Kartlar arasında gezin'),   icon: 'layoutBoard', action: 'goto:board', shortcut: '↑ ↓ ← →' },
+      { label: tl('cmd_card_open','Odaklı kartı aç'),        icon: 'list',        action: 'goto:board', shortcut: 'Enter' },
+      { label: tl('cmd_card_move','Kartı komşu kolona taşı'), icon: 'arrowRight',  action: 'goto:board', shortcut: 'Shift + ← →' },
     ]},
     { group: tl('cmd_view','Görünüm'), items: [
       { label: tl('cmd_toggle_theme','Temayı değiştir'),       icon: 'sparkle',   action: 'toggle:theme' },

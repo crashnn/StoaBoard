@@ -1186,6 +1186,23 @@ function App() {
     try {
       await API.deleteTask(id);
       if (task) setTrashTasks(prev => [{ ...task, deleted_at: new Date().toISOString() }, ...prev]);
+      // GERİ AL — kartın kaybolduğu an, onu geri getirmenin de en kolay
+      // olduğu an. Önceden tek yol Çöp Kutusu görünümüne gidip kartı orada
+      // bulmaktı: kart ekrandan siliniyor, kullanıcıya hiçbir şey
+      // söylenmiyordu. Sunucu tarafı zaten vardı (`POST /tasks/:id/restore`,
+      // çöp kutusu onu kullanıyor); eksik olan tek şey teklifin kendisiydi.
+      //
+      // Ömür bilerek uzun: beş saniye "acaba sildim mi" diye düşünmeye
+      // yetmiyor. Bildirim kaçarsa kart kaybolmuyor — Çöp Kutusu yolu
+      // olduğu gibi duruyor, bu yalnızca kısa yol.
+      window.showToast?.({
+        message: window.t?.('app_task_trashed') || 'Görev çöp kutusuna taşındı',
+        omur: 12000,
+        eylem: {
+          etiket: window.t?.('app_undo') || 'Geri al',
+          calistir: () => restoreTask(id),
+        },
+      }, 'info');
     } catch (e) {
       console.error(e);
       if (task) setTasks(prev => kartiYerlestir(prev, task, 'son'));

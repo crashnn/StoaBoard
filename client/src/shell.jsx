@@ -27,7 +27,12 @@ function ToastContainer() {
       const now = Date.now();
       // Yapışkan bildirim (sürüm uyarısı, kart #201) kendiliğinden düşmez:
       // beş saniyede kaybolan bir "yenile" uyarısı görülmeden gider.
-      window.TOAST_QUEUE = window.TOAST_QUEUE.filter(t => t.sticky || (now - (t._createdAt || now)) < 5000);
+      //
+      // `omur` eylem taşıyan bildirimler için: "Geri al" düğmesine beş saniye
+      // dar. Varsayılan değişmedi — yalnızca isteyen uzatıyor.
+      window.TOAST_QUEUE = window.TOAST_QUEUE.filter(
+        t => t.sticky || (now - (t._createdAt || now)) < (t.omur || 5000),
+      );
       if (window.TOAST_LISTENER) window.TOAST_LISTENER([...window.TOAST_QUEUE]);
     }, 400);
     return () => { clearInterval(interval); window.TOAST_LISTENER = null; };
@@ -64,6 +69,22 @@ function ToastContainer() {
             </>
           ) : (
             <div className="toast-msg-text">{toast.message}</div>
+          )}
+          {/* Eylem taşıyan bildirim: "kart çöpe atıldı → Geri al". Tıklama
+              bildirimin KENDİ tıklamasına düşmemeli (o bildirimi kapatıp
+              sohbete gidebiliyor), o yüzden yayılma durduruluyor. */}
+          {toast.eylem && (
+            <button
+              type="button"
+              className="toast-eylem"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeToast(toast.id);
+                toast.eylem.calistir?.();
+              }}
+            >
+              {toast.eylem.etiket}
+            </button>
           )}
         </div>
       ))}
