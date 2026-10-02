@@ -179,6 +179,8 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
   const [checklistItems, setChecklistItems] = useModalState([]);
   const [checklistInput, setChecklistInput] = useModalState('');
   const checklistRef = useModalRef(null);
+  // Başlık alanının odağı AÇILIŞTA veriliyor, mount anında değil (kart #330).
+  const titleRef = useModalRef(null);
 
   const addChecklistItem = () => {
     const text = checklistInput.trim();
@@ -246,6 +248,15 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
       // görünür ve kimse onu koymadığını bilmez.
       setStartDate(initialDates?.start || bugunYerel());
       if (initialDates?.end)   setDue(initialDates.end);
+      // Odak pencere AÇILDIĞINDA veriliyor (kart #330). Alanda `autoFocus`
+      // vardı ve React onu MOUNT anında uyguluyor, "görünür olduğunda"
+      // değil. Bu pencere taslak koruma için (#252) kapalıyken de DOM'da
+      // durduğundan, her sayfa yüklemesinde GİZLİ bir metin kutusu odağı
+      // alıyordu. Görünen sonuç iki ayrı özelliğin ölmesiydi: G+tuş
+      // gezinmesi (app.jsx yazı alanında kısayolu bilerek atlıyor) ve
+      // sohbet panelinin aşağı çek-kapat jesti (#267). Odağı buraya almak
+      // taslak davranışına dokunmuyor.
+      titleRef.current?.focus();
     }
   }, [open]);
 
@@ -288,7 +299,13 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
   const handleKey = (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(); };
 
   return (
-    <div className="modal-overlay" data-open={open} onClick={onClose}>
+    // `inert` kapalı pencereyi odak ve tıklama sırasından TAMAMEN çıkarıyor
+    // (kart #330). Görünürlük yalnızca CSS'te olduğu için pencere kapalıyken
+    // de DOM'daydı: içindeki alanlar odak alabiliyor, sekmeyle gezilebiliyor
+    // ve ekran okuyucuya görünüyordu. Ölçüt "alanda autoFocus olmasın"
+    // değil — o kural bir sonraki alanda yine unutulur; burada odak
+    // alınabilmesi tasarımen imkânsız kılınıyor.
+    <div className="modal-overlay" data-open={open} inert={open ? undefined : ''} onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} onKeyDown={handleKey}>
         <div className="modal-head">
           <div className="modal-title">{window.t('modal_new_task')}</div>
@@ -298,7 +315,7 @@ function AddTaskModal({ open, onClose, defaultCol, onCreate, initialDates, tasla
           <div className="field">
             <label>{window.t('modal_title_label')} {titleError && <span style={{ color: 'var(--status-rose)', fontWeight: 400, fontSize: 11 }}>— {window.t('modal_title_required')}</span>}</label>
             <input
-              autoFocus
+              ref={titleRef}
               placeholder={window.t('modal_title_placeholder')}
               value={title}
               onChange={(e) => { setTitle(e.target.value); if (e.target.value.trim()) setTitleError(false); }}

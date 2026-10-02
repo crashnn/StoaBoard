@@ -7,6 +7,7 @@ import { Icon } from './icons.jsx';
 import { API, renderNotifText, htmlCoz } from './data.jsx';
 import { Sidebar, Topbar, ToastContainer } from './shell.jsx';
 import { AddTaskModal } from './modals.jsx';
+import { yaziliyorMu } from './jest.js';
 import { TaskDrawer } from './drawer.jsx';
 import { NotifPanel, notifType } from './notifications.jsx';
 import { yeniOkunmamisSayisi, sonBakisOku, sonBakisYaz, panelGorunur } from './rozet.js';
@@ -459,10 +460,11 @@ function App() {
 
   // Keyboard shortcuts
   useEf(() => {
-    const isEditing = () => {
-      const ae = document.activeElement;
-      return ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable;
-    };
+    // "Kullanıcı yazıyor mu" tek kaynaktan (kart #330): burada kendi kopyası
+    // vardı ve jest.js'teki `yaziliyorMu` ile aynı olguyu ölçüyordu. İki
+    // okuyucu, biri değişirse öteki ayrışır — bu depoda aynı sınıfa birkaç
+    // kez düşüldü. Kopya ayrıca `document.activeElement` null olduğunda
+    // patlıyordu (`ae.tagName`), yardımcı null'ı karşılıyor.
     const clearG = () => { clearTimeout(pendingGTimer.current); pendingGTimer.current = null; };
     // G+key navigation. 'l' (list) and 'b' (board) both go to board view; list sets sub-view.
     const G_MAP = { b: 'board', l: 'board', c: 'calendar', d: 'dashboard', s: 'settings', m: 'chat', n: 'notes', r: 'reports', t: 'trash' };
@@ -476,7 +478,7 @@ function App() {
         setWsSwitcherOpen(false);
         return;
       }
-      if (isEditing()) return;
+      if (yaziliyorMu()) return;
 
       // Second key of a G+key sequence
       if (pendingGTimer.current !== null) {

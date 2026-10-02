@@ -168,7 +168,12 @@ function CommandPalette({ open, onClose, onAction }) {
 
   let counter = 0;
   return (
-    <div className="palette-overlay" data-open={open} onClick={onClose}>
+    // Palet de kapalıyken DOM'da (kart #330 ailesi). Odağı ÇALMIYOR —
+    // arama alanına odak zaten açılışta, etkiyle veriliyor (yukarıda) — ama
+    // kapalıyken arama kutusu ve bütün sonuç düğmeleri sekme sırasında ve
+    // ekran okuyucuya görünür durumdaydı. `inert` alt ağacı tamamen dışarı
+    // alıyor; açıkken kaldırıldığı için davranış değişmiyor.
+    <div className="palette-overlay" data-open={open} inert={open ? undefined : ''} onClick={onClose}>
       <div className="palette" onClick={(e) => e.stopPropagation()}>
         <div className="palette-input-wrap">
           <Icon name="search" size={16} />
