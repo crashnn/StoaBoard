@@ -155,6 +155,44 @@ yapıyordu. Adres artık yalnızca `client/src/ben.js`'ten okunuyor;
 
 ---
 
+## ✅ 2 Ekim 2026 gecesi — tarama turu: beş maddenin beşi de bitti
+
+Kullanıcı isteğiyle bütün alanlar Playwright'la gezildi (envanter **#367**),
+sonra önerilen sıra baştan sona uygulandı. Test **1199 → 1257**.
+Ayrıntı [DEVIR.md](DEVIR.md) bölüm **0-AM**.
+
+- [x] **A · Çalışma alanı geneli arama** *(#374, canlı 7/7)*. Bütün projeler,
+      başlık VE açıklama. Eşleştirici MCP'nin `search_tasks`ıyla PAYLAŞILDI,
+      yeniden yazılmadı. SQL'de değil JavaScript'te, çünkü `katla` Türkçe
+      I/İ/ı/i dörtlüsünü tek harfe indiriyor. Palette yerel süzme kaldırıldı,
+      geriye düşüş olarak bile bırakılmadı.
+- [x] **B · Kartta geçmiş** *(#382, canlı 8/8)*. Veri ZATEN duruyordu
+      (`task_transitions.taskId` indeksli); yeni tablo, yazma yolu ya da şema
+      gerekmedi.
+- [x] **C · Toplu işlem** *(#386, canlı 6/6)*. Tabloda seç → taşı / çöpe at.
+      Toplu UÇ yazılmadı: her kartın kendi geçiş kaydı ve geçmişi olmalı.
+      Yarım başarı sayılıp olduğu gibi söyleniyor.
+- [x] **D · Üç küçük iş** *(#390, canlı 7/7)*. Karta bağlantı kopyala ·
+      bitiş<başlangıç reddi (rapor artık negatif süre konuşmuyor) · boş panoda
+      "harika gidiyor" yazmıyor.
+- [x] **E · Mobil dokunma hedefleri** *(#391, canlı 5/5)*. Kesin ölçüm
+      SAYININ YANILTTIĞINI gösterdi: 48'in çoğu GENİŞ ama kısa hedefler;
+      gerçek sorun üç ikon-only düğme. Görünür boyut değişmedi, yalnızca
+      dokunma alanı büyüdü.
+
+**Yapılmayanlar:** gruplama · çöpte arama ve toplu geri alma · toplu ATAMA
+(C'de bilerek dışarıda). Öneri dışı bırakılanlar değişmedi (#367).
+
+**Turun yöntem bilançosu:** ölçüm tahmini **beş kez** düzeltti ve üçünde
+ÜRÜN DOĞRUYDU, ölçüm yanlıştı. Arama ucu canlıda patladı (Task'ta
+`updatedAt` yok, açıklama `description`) ve **yirmi bir ölçüt bunu
+göremedi** — hepsi metin tarıyor, hiçbiri sorgu çalıştırmıyor. Yeni bir
+ölçüt türü doğdu: **sorgudaki alan adlarını `schema.prisma` ile
+karşılaştırmak.** Ölçüt sekiz kez "komşudan ödünç aldı" ve mutasyon turu
+sekizini de yakaladı; beş mevcut ölçüt bu yüzden gevşetildi.
+
+---
+
 ## ✅ 2 Ekim 2026 akşamı — taze göz turu: pano klavyeye açıldı, çöpe atma geri alınabilir
 
 İş listesinden değil **ölçümden** çıkan bir tur: önce canlı panoda gezildi,

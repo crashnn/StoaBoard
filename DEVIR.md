@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 2 Ekim 2026 akşamı, **ev makinesinde**. En taze bölüm
-**0-AL**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**Son güncelleme:** 2 Ekim 2026 gecesi, **ev makinesinde**. En taze bölüm
+**0-AM**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,109 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AM. 2 Ekim gecesi — tarama turu: beş madde, beşi de canlıda
+
+**Depo:** `main` = `f80f2d9` + bu devir commit'i, `origin/main` ile eşit.
+Test **1199 → 1257**. Kartlar: envanter **#367**, işler **#374, #382, #386,
+#390, #391**.
+
+**Niçin bu tur:** kullanıcı "bir tara, ne eklenebilir, eksik var mı — her
+bölüm için ayrı; notunu tut, sonra uygulamaya geçeriz" dedi. Önce bütün
+alanlar Playwright'la gezildi (envanter #367'de), sonra önerilen sıra
+baştan sona uygulandı.
+
+| Madde | Ne | Kart | Canlı |
+|---|---|---|---|
+| A | Çalışma alanı geneli arama (bütün projeler, başlık + açıklama) | #374 | 7/7 |
+| B | Kartta geçmiş (kim taşıdı, ne zaman) | #382 | 8/8 |
+| C | Toplu işlem (tabloda seç → taşı / çöpe at) | #386 | 6/6 |
+| D | Bağlantı kopyala · bitiş<başlangıç reddi · boş panoda övgü yok | #390 | 7/7 |
+| E | Mobil dokunma hedefleri | #391 | 5/5 |
+
+### Devredilmeye değer üç tasarım kararı
+
+**A — eşleştirici paylaşıldı, yeniden yazılmadı.** MCP'nin `search_tasks`
+aracı zaten doğru arıyordu; aynı `aramaEslesir` iki yüzeyi de besliyor.
+Eşleştirme SQL'de değil JavaScript'te, çünkü `katla` Türkçe I/İ/ı/i
+dörtlüsünü tek harfe indiriyor ve `contains` + `insensitive` bunu yapmaz —
+"İlker" yazan kart "ilker" aramasında kaçardı. Palette yerel süzme
+KALDIRILDI, geriye düşüş olarak bile bırakılmadı: iki okuyucu aynı soruya
+farklı cevap verirse hangisinin doğru olduğu ekrandan anlaşılmaz.
+
+**B — veri zaten duruyordu.** `task_transitions.taskId` indeksli; yeni tablo,
+yeni yazma yolu, yeni şema gerekmedi. `activity_logs` işe yaramaz (proje
+düzeyinde, `taskId` yok) ve kod okunmasaydı sezgisel seçim o olurdu.
+Geçmişte kolon adları DONMUŞ geliyor ve bu doğru: #331 "bugünün adını
+dondurma" diyordu, burada gösterilen şey tarihin kendisi.
+
+**C — toplu uç YAZILMADI, kartlar tek tek çağrılıyor.** Her kartın kendi
+geçiş kaydı, kendi yayını ve kendi geçmişi olmalı; toplu bir uç bunları tek
+satıra indirir ve "kim taşıdı" sorusu beş kart için tek cevaba düşerdi —
+B'yi yeni eklemişken onu bozmak olurdu. Bedeli yarım başarı ve o bedel
+ödeniyor: sonuç sayılıp olduğu gibi söyleniyor.
+
+### Turun asıl dersi: ölçüm tahmini beş kez düzeltti
+
+Üçünde **ürün doğruydu, ölçüm yanlıştı** — bunu ayırt edememek en pahalı
+hata olurdu:
+
+1. **Arama ucu canlıda patladı.** Task'ta `updatedAt` YOK ve açıklama
+   alanının adı `description` (`desc` yalnızca API adı). İkincisi daha
+   sinsi: sorgu patlamasa bile `r.desc` undefined gelir ve açıklama hiç
+   aranmaz — özelliğin yarısı sessizce ölü doğardı.
+   **Yirmi bir ölçüt bunu göremedi**, çünkü hepsi kaynağın METNİNİ tarıyor,
+   hiçbiri sorguyu ÇALIŞTIRMIYOR. Veritabanı isteyen bir test de `npm test`
+   sözleşmesini bozardı. Aradaki yol bulundu ve **yeni bir ölçüt türü**
+   doğdu: *sorgudaki alan adlarını `schema.prisma`dan okunan gerçek
+   alanlarla karşılaştırmak.* Veritabanı yok, ama metin eşleştirmesinden
+   fazlası — iki dosyanın birbirine uyması ölçülüyor. Aynı ölçüt B'nin
+   ucunda da kullanıldı.
+2. **Kart geçmişi:** "iki taşıma bekliyorum" denildi, üç görüldü — kart
+   açılışı da bir geçiş yazıyormuş. Ürün doğruydu; yan ürün olarak
+   çekmecede gerçek bir kusur çıktı (aynı olay iki satır).
+3. **Mobil dokunma alanı:** birim testi "kural yazıldı mı" diyordu; canlı
+   ölçüm "yatayda komşunun yerini çalıyor" dedi ve kural daraltıldı.
+4. Geri al ölçümünde silme düğmesi metinsiz ikon ve silme iki adımlıymış.
+5. Tarih çipi ölçümünde yanlış takvim okundu (başlangıç/bitiş).
+
+### Ölçüt sekiz kez "komşudan ödünç aldı"
+
+Mutasyon turu sekizini de yakaladı. Örnekler: uç gövdesinin sınırı yanlış
+olduğu için ilerideki başka bir rotanın `requireAuth`unu görmek · `setTimeout`u
+dosya genelinde aramak · `topluCalistir(seciliGorunen)`i "en az bir tane"
+diye ölçmek · `::after` kuralı yerine bloğun tamamına bakmak · ölü kodu
+(erken `return`den sonraki satırı) canlı saymak.
+
+Kural artık tek cümlede: **bunu düzelten biri testi kırmak zorunda mı
+kalır?** Cevap evetse ölçüt davranışa değil ÇÖZÜME bağlanmıştır. Bu turda
+beş mevcut ölçüt tam bu yüzden gevşetildi (`surum.test.js`,
+`oneri.test.js`, `gorunenAd.test.js`, `mobil.test.js`, `jest.test.js`).
+
+### Deponun kendi korumaları üç kez durdurdu
+
+- **Dil testi** uydurma bir anahtarı (`ui_loading`) yakaladı.
+- **pre-push kancası** kırmızı testle push'u iptal etti.
+- **`mobil.test.js`in kapısı** ("ikinci `pointer: coarse` bloğu eklenirse
+  ölçüt yanlış yeri ölçer") tam öngördüğü anda devreye girdi. Varsayımı
+  açıkça ölçmek işe yarıyor; bu turda o varsayım kaldırıldı ve ölçütler
+  kendi kurallarını `coarseBlok` ile buluyor (`test/yardimcilar.js`).
+
+### Kaldığı yer
+
+- **Envanterden yapılmayanlar:** gruplama (liste/tabloda atanana, önceliğe,
+  etikete göre) · çöpte arama ve toplu geri alma · toplu ATAMA (C'de bilerek
+  dışarıda: üye seçici ayrı yüzey).
+- **Öneri dışı bırakılanlar** değişmedi ve gerekçeleri #367'de: izleyici /
+  bildirim kapsamı (açık ürün kararı) · tekrarlayan görev · bağımlılıklar ve
+  iş akışı motoru.
+- **Canlı koşum dosyaları** deponun yanında büyümeye devam etti: `t-arama`,
+  `t-gecmis`, `t-toplu`, `t-kucuk`, `t-mobil`, `t-mobil-dogrula`,
+  `tarama-1..3`. Depodaki duman kümesi (`duman/`) yalnızca veri yazmayanları
+  taşıyor; bunlar veri yazıp temizliyor.
+- **#332'nin ayırt edici ölçümü** hâlâ bekliyor (0-AK'nin sonu).
 
 ---
 
