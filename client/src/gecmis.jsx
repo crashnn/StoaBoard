@@ -62,7 +62,7 @@ function GecmisSection({ taskId }) {
       </h3>
 
       {acik && durum === 'yukleniyor' && (
-        <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{T('ui_loading', 'Yükleniyor…')}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{T('drawer_loading', 'Yükleniyor…')}</div>
       )}
       {acik && durum === 'hata' && (
         <div style={{ fontSize: 12, color: 'var(--status-rose)' }}>
