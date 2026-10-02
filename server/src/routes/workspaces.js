@@ -40,7 +40,7 @@ import { workspaceRoleToDict, taskToDict, GOREV_INCLUDE } from '../lib/serialize
 import { buildNotificationText, createAndPush } from '../lib/notifications.js';
 import { upload, storeFile } from '../lib/uploads.js';
 import { recordAudit, AUDIT } from '../lib/audit.js';
-import { alanYayini, rollerYayini } from '../lib/board.js';
+import { alanYayini, rollerYayini, panoYayini } from '../lib/board.js';
 
 export const workspacesRouter = Router();
 
@@ -815,6 +815,20 @@ workspacesRouter.delete(
         prisma.notification.updateMany({ where: { taskId: { in: taskIds } }, data: { taskId: null } }),
         prisma.task.deleteMany({ where: { id: { in: taskIds } } }),
       ]);
+      // Kalıcı silme yayından geçsin (kart #339 ailesi). Buradaki kartlar
+      // ZATEN çöpteydi, yani kimsenin panosunda durmuyorlardı — bu yayının
+      // asıl alıcısı açık duran ÇÖP GÖRÜNÜMÜ ve çöp rozeti. Tekil uçla aynı
+      // olay kullanılıyor: istemci kimliğe göre süzdüğü için ikinci bir
+      // birleştirme dalı gerekmiyor ve yayın etkisizse zararsız.
+      //
+      // Kimlik başına tek olay, toplu bir olay değil: yeni bir olay adı
+      // istemcide yeni bir dal demek. Çöp 30 günde kendiliğinden boşaldığı
+      // için liste sınırlı; yine de boyut büyürse toplu olaya geçmek ayrı
+      // bir karar.
+      const io = req.app.get('io');
+      for (const id of taskIds) {
+        panoYayini(io, 'task_deleted', member.workspaceId, { id: String(id) }, user.slug);
+      }
     }
 
     // Toplu kalıcı silme geri alınamaz — kimin ne zaman kaç kayıt sildiği

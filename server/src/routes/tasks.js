@@ -625,6 +625,19 @@ tasksRouter.delete(
       prisma.notification.updateMany({ where: { taskId }, data: { taskId: null } }),
       prisma.task.delete({ where: { id: taskId } }),
     ]);
+    // KUSUR (kart #339, çift hesaplı turda ölçüldü): bu uç yayın yapmıyordu.
+    // Çöpe atma birkaç satır yukarıda `task_deleted` yayınlıyor, kalıcı silme
+    // yayınlamıyordu — kart başkasının panosunda HAYALET olarak kalıyor,
+    // tıklanabiliyor, F5 atılana kadar duruyordu. Ekran görüntüsündeki asıl
+    // ayrıntı tutarsızlıktı: kenar çubuğu "Ana Proje 0" derken kolonda kart
+    // ve kolon sayacı "1" gösteriyordu, yani durum bayat değil kendi içinde
+    // çelişkiliydi.
+    //
+    // Olay çöpe atmayla AYNI: gözlemci için ikisi de "bu kart panodan gitti"
+    // demek ve istemci kimliğe göre süzüyor (app.jsx `task_deleted`), yani
+    // ayrı bir olay ikinci bir birleştirme dalı doğururdu.
+    panoYayini(req.app.get('io'), 'task_deleted', access.project.workspaceId,
+      { id: String(taskId) }, access.user.slug);
     res.json({ ok: true });
   }),
 );
