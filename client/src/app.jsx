@@ -30,6 +30,7 @@ import { GECIKME_MS, baglantiDurumu, baglantiMetni, tazelenmeliMi } from './bagl
 import { PENCERE_MS, yiginKarari, ozetMetni } from './bildirimYigini.js';
 import { tusAtamalari, eslesenKisayol, diziBaslatiyorMu, kisayol } from './kisayollar.js';
 import { KisayolYardimi } from './kisayolYardimi.jsx';
+import { susturulmaliMi } from './rahatsizEtme.js';
 
 // Bildirim patlamasinin sayaci. MODUL KAPSAMI, ref degil: soket etkisi
 // yeniden kurulduğunda (alan degisimi) sayac sifirlanmamali, yoksa ayni
@@ -919,7 +920,15 @@ function App() {
 
         // `tur === null` eski biçimdeki bahsetme; kesenlerden sayılıyor.
         const kesiyor = tur === null || EKRANI_KESENLER.has(tur);
-        const izinVar = myStatus !== 'dnd' && twks.notifyTasks !== false;
+        // RAHATSIZ ETME PENCERESİ de buradan geçiyor. Önceden ayarlardaki
+        // "Otomatik DND penceresi" anahtarı ve iki saat kutusu
+        // `stoa.tweaks`e yazılıyor ve HİÇBİRİ okunmuyordu: kapı yalnızca
+        // `__MY_STATUS__`a (durum seçicisine) bakıyordu. Kullanıcı
+        // 19:00–08:00 kuruyor, sabaha kadar ding yiyor ve ayarı açık
+        // görüyordu. Gerekçenin tamamı `rahatsizEtme.js`te.
+        const izinVar = myStatus !== 'dnd'
+          && twks.notifyTasks !== false
+          && !susturulmaliMi(twks, new Date());
 
         // ── PATLAMA YIĞINI ───────────────────────────────────────────────
         //
@@ -980,6 +989,14 @@ function App() {
 
       const twks     = JSON.parse(localStorage.getItem('stoa.tweaks') || '{}');
       const myStatus = window.__MY_STATUS__ || 'online';
+      // RAHATSIZ ETME PENCERESI sohbeti de kapsiyor: ayar "bildirimleri
+      // sustur" diyor ve gece 3'te gelen bir DM de bildirimdir. S1 karari
+      // sohbeti kapsam disinda birakiyor ama o karar HANGI OLAYIN kestigiyle
+      // ilgili; sessiz saatler ayri bir soru ve ikisi catismiyor.
+      //
+      // Bir kez hesaplaniyor: ses ve toast AYNI pencereden gecmeli, yoksa
+      // 17 Eylul'deki "ding kapisiz" kusurunun ikinci bicimi dogar.
+      const dndPenceresi = susturulmaliMi(twks, new Date());
 
       // Unread counter — always increment unless currently viewing this conversation
       if (!isViewingThis && window.__INCREMENT_UNREAD__) {
@@ -990,14 +1007,14 @@ function App() {
       }
 
       // Notification sound — not DND, sound enabled, messages enabled, not viewing this conversation
-      if (!isViewingThis && myStatus !== 'dnd' && twks.soundEnabled !== false && twks.notifyMessages !== false) {
+      if (!isViewingThis && myStatus !== 'dnd' && !dndPenceresi && twks.soundEnabled !== false && twks.notifyMessages !== false) {
         _playDing();
       }
 
       // Toast notification
       if (isViewingThis) return;
       if (twks.notifyMessages === false || twks.notifyToasts === false) return;
-      if (myStatus === 'dnd') return;
+      if (myStatus === 'dnd' || dndPenceresi) return;
       if (isDM  && twks.notifyDMs       === false) return;
       if (!isDM && twks.notifyGroupChat === false) return;
 
