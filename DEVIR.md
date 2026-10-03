@@ -6,7 +6,7 @@ Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
 **Son güncelleme:** 3 Ekim 2026, **ev makinesinde**. En taze bölüm
-**0-AO**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**0-AP**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,107 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AP. 3 Ekim — ayarlar ekranı yalan söylüyordu: kısayollar tek kaynağa indi
+
+**Depo:** `main` = `e47d281` + bu devir commit'i, `origin/main` ile eşit.
+Test **1397 → 1432**. Kart: **#426**.
+
+**Niçin bu tur:** kalan iki küçük işten biri "`?` ile kısayol yardımı"ydı.
+Yardım yazmak için listeyi aradım ve listenin **gerçekle ayrıştığını**
+gördüm. Yardım ekranı o ayrışmayı miras alacaktı; o yüzden önce kaynak
+birleştirildi. **Kanban'da toplu işlem bilinçli bir kapsam kararıydı
+(`tablo bunun doğal evi`) ve tek taraflı bozulmadı.**
+
+### Dört kusur bir aradaydı
+
+1. **Özelleştirme hiçbir şey yapmıyordu.** Ayarlar ekranı
+   `stoa.shortcuts`e yazıyor, "kaydedildi" gösteriyor ve o anahtarı
+   **kimse okumuyordu**; `app.jsx`teki işleyici tuşları gömülü tutuyordu
+   (`'k'`, `G_MAP`, `'n'`). Kullanıcı "Yeni görev"i T yapıyor, T hiçbir şey
+   yapmıyor, N hâlâ çalışıyor.
+
+   **Sessizce hiçbir şey yapmayan bir ayar, olmayan bir ayardan kötüdür:**
+   kullanıcı onu denemiş ve uygulamanın bozuk olduğunu düşünmüştür.
+
+2. **Liste gerçekle İKİ YÖNDE ayrışmıştı.** Ayarlar `G,H`yi "Ana sayfa"
+   diye yazıyordu ama haritada `h` yoktu (panel `G,D`). `/` (arama odakla)
+   yazılıydı ve **hiçbir yerde işleyicisi yoktu**. Tersi de doğruydu:
+   `G+N`, `G+R`, `G+T`, `G+D` gerçekten çalışıyor ama listede yoktu, yani
+   kimse keşfedemiyordu.
+
+3. **Ekranda kısayol yardımı yoktu.** Ayarlarda sayfa var; akış içinde
+   bakılacak yer yok.
+
+4. **Kayıt arayüzünün sözcük dağarcığı eşleştiricininkiyle uyuşmuyordu.**
+   Bu dördüncüsü **mutasyon turunda çıktı ve benim yeni kodumdaydı**: kayıt
+   `'⌘'`/`'⌥'` yazıyor, eşleştirici `'Ctrl'` arıyordu. Kullanıcı Ctrl+K
+   kaydettiğinde depoya `['⌘','K']` gidiyor, Ctrl gerekliliği **görünmüyor**
+   ve kısayol düz K oluyordu — Ctrl'süz her K paleti açardı. Alt ise hiç
+   okunmuyordu. `DEGISTIRICILER` tek sözlük oldu.
+
+### Çözüm belgeyi düzeltmek değil KALDIRMAK
+
+CLAUDE.md'nin merdiveni tam buydu: kural **belgede** yazılıydı ve kod başka
+şey yapıyordu. `kisayollar.js` artık doğrulanan şeyin kendisi — işleyici,
+ayarlar ekranı ve `?` yardımı üçü de oradan besleniyor. İkinci bir liste
+olmadığı için ayrışamaz; `kisayol.test.js` hem bölümlerin listeyi tam
+kapsadığını hem de ayarlar/yardım ekranlarının kendi kopyalarını
+tutmadığını kilitliyor.
+
+**İki yönde eşleşme:** değiştirici gerekliyse basılı olmalı, gerekli
+değilse basılı **olmamalı**. Tek yön kontrol edilse Ctrl+N de "yeni görev"
+sayılır ve tarayıcının kendi kısayolunu çalardı.
+
+**Sabit kısayollar listede DURUYOR ama kaydedilemiyor.** Esc, sohbetteki ⏎
+ve kart okları özelleştirilemez ve ayarlar ekranında salt okunur görünüyor
+— kaydetmeye izin verip uygulamamak, bu turda kapatılan yalanın aynısı
+olurdu. Listede durmalarının sebebi asıl sorunun keşfedilememek olması.
+Esc'i bayat bir `stoa.shortcuts` bile çalamıyor (`tusAtamalari`
+özelleştirilemez girdinin özel atamasını yok sayıyor).
+
+**Esc ve palet `yaziliyorMu`dan ÖNCE:** ikisi de kullanıcıyı bir yerden
+**çıkarıyor** ve metin kutusunda kilitlenmiş birinin tek yolu bunlar.
+
+### Ölçüt dersi — çapanı SABİTE değil İŞLEYİCİYE bağla
+
+İki ölçüt yeniden bağlandı ve ikisi de aynı sebepten kırıldı: çapa
+`const G_MAP =` sabitiydi, sabit kalktı, **korudukları davranış hiç
+değişmediği hâlde** test kırıldı.
+
+- `gezinme.test.js` artık `KISAYOLLAR`ın gnav hedeflerini okuyor — ve
+  üstüne alt görünüm adını da doğruluyor (bayat ad panoyu bomboş
+  bıraktırıyordu, 0-AN).
+- `odak.test.js`in çapası artık işleyicinin kendisi
+  (`const onKey = (e) =>`). **İşleyici adı, sabitlerinden uzun ömürlü.**
+
+Bu, aynı dersin ikinci örneği; ilki `klavye.test.js`in **imza listesine**
+bağlı çapasıydı (0-AO). Üçünün ortak kuralı: çapa, ölçülen davranışın
+yaşadığı **yapıya** bağlanır — adı değişmeyecek olana, içindekine değil.
+
+**Mutasyon:** 26 + 1 aklama, hepsi kırılıyor. İki not:
+- Bir mutasyonum **yine kötüydü** (`tusKatla`daki Meta satırı o yolda ölü,
+  çünkü olayın `metaKey`i doğrudan okunuyor). Bu turun dördüncü kötü
+  mutasyonu; yerine konan gerçek kusur yukarıdaki 4. madde oldu — yani
+  **kötü mutasyonu düzeltmek gerçek bir kusur buldu.**
+- Aklama `tusAtamalari(ozel)` çağrısını **ölü bir değişkene** atayıp
+  `atamalar`ı varsayılandan kurdu. Ölçüt artık çağrının varlığını değil
+  **işleyicinin kullandığı değeri** ölçüyor.
+
+### Eldeki iş
+
+**Karar bekleyenler** değişmedi: teslim tarihi bildirimi (S4), tarayıcı
+bildirimi (S5), dönem dondurma, ve en büyük açık **proje bazlı üyelik**.
+
+**Bilinçli olarak yapılmayan:** kanban'da toplu işlem. Kapsam kararı
+"tablo bunun doğal evi" diye verilmişti; kanban'da seçim kutusu
+sürükle-bırak ve tıkla-aç ile çatışıyor. Genişletmek istenirse bu bir
+ürün kararı.
+
+**Kapanmamış tek ölçüm:** #332 (çevrimiçi listesi kapsamı) — üç test hesabı
+da alan 22'de.
 
 ---
 

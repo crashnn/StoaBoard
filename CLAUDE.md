@@ -90,7 +90,7 @@ Gece **kişisel MCP anahtarları** (DEVIR 0-V2): Ayarlar → Claude bağlantıs�
 iptal. **Anahtarı ortam değişkenine eklemek artık tek yol değil** — yeni kişi
 kendi anahtarını üretir.
 
-Test sayısı **1397**, hepsi geçiyor. Ayrıntılı durum için **her zaman
+Test sayısı **1432**, hepsi geçiyor. Ayrıntılı durum için **her zaman
 [DEVIR.md](DEVIR.md)** — bu blok bayatlamaya yatkın, oradaki 0-* bölümleri
 tarihli ve daha güvenilir.
 
@@ -158,7 +158,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1397 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1432 test,
 veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
 "Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
 modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
@@ -221,6 +221,29 @@ hiç başlamıyor ("The job was not started because your account is locked due t
 a billing issue"). Dosya yerinde duruyor, kilit açılınca değişiklik gerekmeden
 çalışacak. **Repoda CI dosyası görüp korunduğunu varsayma** — bugün koruyan
 şey kanca.
+
+**Capani SABITE degil ISLEYICIYE bagla.** Kaynak tarayan bir testin
+penceresi bir yerden baslar ve o baslangic noktasi genelde bir SABITIN adi
+olur (`const G_MAP =`) ya da bir IMZANIN tam yazimi
+(`const deleteTask = async (id) =>`). Ikisi de kirilgandir: sabit tasinir,
+imza parametre alir, ve test KORUDUGU DAVRANIS HIC DEGISMEDIGI HALDE kirilir.
+3 Ekim'de ayni sinifa uc kez dusuldu (`klavye.test.js`, `gezinme.test.js`,
+`odak.test.js`). Capa, olculen davranisin yasadigi yapiya baglanir — adi
+degismeyecek olana (`const onKey = (e) => {`, `function TableView(`,
+`sock.on('connect'`), icindekine degil.
+
+**Sessizce hicbir sey yapmayan bir ayar, OLMAYAN bir ayardan kotudur.**
+3 Ekim'de ayarlardaki kisayol ozellestirmesi `stoa.shortcuts`e yaziyor,
+"kaydedildi" gosteriyor ve o anahtari KIMSE okumuyordu: isleyici tuslari
+gomulu tutuyordu. Kullanici onu denemis, calismadigini gormus ve
+uygulamanin bozuk oldugunu dusunmustur — ozellik hic olmasa bundan iyiydi.
+Bir ayar eklerken sor: **bunu okuyan kod var mi, ve testi var mi?**
+
+Ayni turda ayni ekranda ikinci bicim: liste GERCEKLE IKI YONDE ayrismisti
+(var olmayan kisayol yaziliydi, calisan dort kisayol yazili degildi). Bir
+ekran bir seyi LISTELIYORSA listeyi veri olarak tut ve davranisi ondan
+turet; iki liste tutuldugu an biri bayatlar ve hangisinin dogru oldugunu
+kimse bilmez.
 
 **Kuralı belgeye değil, doğrulayana yaz.** Bu depoda kanıtlanmış bir ders:
 dil kuralı CLAUDE.md'de net biçimde yazılıydı ve yine de 31 yerde ihlal
