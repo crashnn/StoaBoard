@@ -90,7 +90,7 @@ Gece **kişisel MCP anahtarları** (DEVIR 0-V2): Ayarlar → Claude bağlantıs�
 iptal. **Anahtarı ortam değişkenine eklemek artık tek yol değil** — yeni kişi
 kendi anahtarını üretir.
 
-Test sayısı **1067**, hepsi geçiyor. Ayrıntılı durum için **her zaman
+Test sayısı **1335**, hepsi geçiyor. Ayrıntılı durum için **her zaman
 [DEVIR.md](DEVIR.md)** — bu blok bayatlamaya yatkın, oradaki 0-* bölümleri
 tarihli ve daha güvenilir.
 
@@ -158,7 +158,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 932 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1335 test,
 veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
 "Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
 modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
@@ -211,7 +211,7 @@ derlemeyi çalıştırıp kırmızıysa push'u iptal ediyor. Kancalar `.git/hook
 içinde takip edilmediği için depoda `.githooks/` klasöründe duruyorlar; komut
 git'e oraya bakmasını söylüyor. Bilerek atlamak için `git push --no-verify`.
 
-**Kanca ofis ağında da çalışır.** 509 testin hiçbiri veritabanı istemiyor;
+**Kanca ofis ağında da çalışır.** Testlerin hiçbiri veritabanı istemiyor;
 çalışmayan tek şey uygulamanın kendisi. Kanca sahte bir `DATABASE_URL` ile
 koşuyor ki test koşusu ağa bağımlı hale gelip asılı kalmasın.
 
@@ -341,6 +341,35 @@ Düzeltme her seferinde aynıydı: ölçütü önce ilgili **bloğa** daralt (et
 gövdesi, fonksiyonun kendisi, kuralın süslü parantezi), sonra o blok içinde
 ara. Sayı kullanacaksan neyi saydığını yaz: "her dalda bir tane" ölçülebilir,
 "en az bir tane" ölçülemez.
+
+**Ölçütü yazdıktan sonra sor: "bunu düzelten biri testi kırmak zorunda mı
+kalır?"** Cevap evetse ölçüt **çözüme** bağlanmıştır, davranışa değil.
+3 Ekim'de `global.test.js` pano süzgecini `/\} else if \(q && !t\.title/`
+ile kilitliyordu — yani çözümün o günkü tam sözünü. Eşleyici Türkçe
+katlamaya geçti, **dal yapısı hiç değişmedi** ve test kırıldı. Doğru ölçüt
+dal yapısına bağlıdır: kimlik bloğunun **kapanışının hemen ardında** bir
+`else if` olmalı. "Sonraki ilk `} else if`" demek de yetmedi — araya kod
+girince aşağıdaki ölü bir dal onu akladı. Zincirin kopmaması ölçülen şeyse
+arada **kod olmamalı**.
+
+Bu, "komşudan ödünç alma"nın kardeşi: orada ölçüt başka bir satırdan
+aklanıyor, burada ölçüt doğru satırı *fazla dar* tanıyor. İkisinin de
+çaresi aynı — ölçütü kuralın **mekanizmasına** bağla, yazımına değil.
+
+**Envanter maddesi, kodu açmadan "eksik" demez.** İki kez düşüldü:
+"gruplama yok" yazıldı, gruplama vardı (eksik olan ölçüt **seçimiydi**);
+"çöpte arama yok" yazıldı, arama vardı (eksik olan **toplu geri alma**ydı,
+ve arama satırda yazandan azını tarıyordu). Tarama turunda bir bölümü
+"eksik" diye not etmeden önce o ekranın kodunu aç — yoksa tur, var olanı
+ikinci kez yazmaya ve gerçek eksiği kaçırmaya gider.
+
+**Kazayla tetiklenebilen şey kullanıcıda da tetiklenir.** 3 Ekim'de bir
+Playwright betiği `stoa.boardSubView`e `'board'` yazdı (doğrusu
+`'kanban'`) ve pano **bomboş** açıldı. Betiğin hatasıydı, ama sebep
+gerçekti: dört görünüm dalı birbirinden bağımsız ve hiçbiri eşleşmezse
+ekranda hiçbir şey kalmıyordu. Kendi aracının hatası bir ekranı boşaltıyorsa
+orada **yedek dal** eksiktir — "benim hatamdı" deyip geçme, kusur
+kullanıcının bayat `localStorage`ında da duruyor.
 
 **Bir şeyin TÜRÜNÜ değiştirdiysen bildirimini değil KULLANIMLARINI ölç.**
 18 Eylül 2026: sohbet taslak deposu `useChatRef(new Map())`ten modül kapsamına

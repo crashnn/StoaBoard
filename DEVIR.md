@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 2 Ekim 2026 gecesi, **ev makinesinde**. En taze bölüm
-**0-AM**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**Son güncelleme:** 3 Ekim 2026, **ev makinesinde**. En taze bölüm
+**0-AN**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,149 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AN. 3 Ekim — envanterin kalanı bitti, ve bir Playwright hatası gerçek bir kusur buldu
+
+**Depo:** `main` = `d12356e` + bu devir commit'i, `origin/main` ile eşit.
+Test **1257 → 1335**. Kartlar: **#400** (toplu atama), **#416** (arama
+katlaması), **#417** (çöpte toplu geri alma), **#418** (boş pano).
+
+**Niçin bu tur:** 0-AM'nin sonunda envanterden üç madde eldeydi —
+gruplama, toplu atama, çöpte arama/toplu geri alma. Gruplama `bb4f0a6`'da
+kapandı; bu bölüm kalan ikisi ve yol boyunca çıkan iki kusur.
+
+| İş | Kart | Canlı | Commit |
+|---|---|---|---|
+| Toplu atama (anahtar semantiği, yön bir kez) | #400 | 7/0 | `250ee80` |
+| Toplu atamadan sonra seçim korunuyor | #400 | — | `ca6af34` |
+| Çöpte toplu geri alma + arama genişledi | #417 | 10/0 | `b8d0068` |
+| İstemci aramasına Türkçe katlama (11 yer) | #416 | 7/0 | `b8d0068` |
+| Tanınmayan alt görünüm adı → boş pano | #418 | 7/0 | `d12356e` |
+
+### 1 · Toplu atama: anahtar, değiştirme değil
+
+Seçili kartların **hepsinde** o üye varsa kaldırılıyor, yoksa hepsine
+ekleniyor. Değiştirme (replace) reddedildi: "bu beş kartı Ayşe'ye ata"
+demek "Mehmet'i çıkar" demek değildir, ve replace var olan atamaları
+**sessizce** silerdi.
+
+Yön **döngüden önce bir kez** hesaplanıyor. Kart başına hesaplanırsa işlem
+kendi kuyruğunu yer: ilk kart ekleme alır, ikinci kart artık "hepsinde var"
+olduğu için kaldırma alır.
+
+**Canlı denemenin asıl bulgusu kodda değil davranışta:** atamadan sonra
+`topluBitir` seçimi temizliyordu ve bu, anahtar semantiğini **erişilemez**
+yapıyordu. Düğme "hepsinde var" diye aktif olacağı anda çubuk kayboluyor,
+yani çubuktan bir atama **hiç kaldırılamıyordu**. Özelliğin yarısı ölü
+doğmuş; kod doğru, test yeşil, davranış eksik. `topluBitir(sonuc,
+secimiKoru)` — varsayılan temizlemek, atama tek istisna.
+
+### 2 · Türkçe arama katlaması — turun en geniş etkisi
+
+Çöpün aramasına bakarken göründü ki istemcideki **on bir** arama yerinin
+hepsi düz `toLowerCase().includes()` kullanıyor:
+
+```
+'İş planı'.toLowerCase()                      → 'i̇ş planı'  (i + U+0307)
+'İş planı'.toLowerCase().includes('iş')       → FALSE
+'İstanbul'.toLowerCase().includes('istanbul') → FALSE
+'Kırılma'.toLowerCase().includes('kirilma')   → FALSE
+```
+
+**Sorun "Türkçe klavyesi olmamak" DEĞİL.** Kullanıcı tam doğru biçimde
+"iş" yazdığında da kart bulunmuyordu: `toLowerCase()` İ'yi "i" + ayrı bir
+birleşen noktaya açıyor ve metinde artık düz bir "i" yok. Kusur görünmüyor
+çünkü arama "sonuç yok" diyor — doğru cevap veriyormuş gibi duruyor.
+
+Kural sunucuda **zaten çözülmüştü** (`mcpShape.js` → `katla`, 11 Eylül) ve
+istemciye hiç gelmemiş. Şimdi `client/src/arama.js` aynı kuralı taşıyor;
+bağlı yerler: pano kart süzgeci, komut paleti (komut + not), notlar (görev
+bağlama + liste), çekmece (not bağlama + bahsetme), sohbet (üye seçici,
+bahsetme, sol liste, mesaj arama), çöp.
+
+**İki tanım var, denkliği test ile kilitli.** İstemci paketine sunucu kodu
+sokmamak için ikinci bir tanım duruyor ama `aramaIstemci.test.js` ikisini
+de yükleyip aynı tabloda karşılaştırıyor — ölçüt kaynak metni değil
+**davranış**. Ç/Ğ/Ö/Ş/Ü bilinçli kapsam dışı (sunucudaki kararla aynı) ve
+bu da teste yazılı ki ileride "kusur" sanılmasın.
+
+### 3 · Bir Playwright hatası gerçek bir kusur buldu
+
+Pano arama denemesi `stoa.boardSubView` değerini `'board'` diye yazdı —
+doğrusu `'kanban'`. Pano **bomboş** açıldı. Betiğin hatası, ama sebep
+gerçekti: dört dal (`subView === 'list' | 'kanban' | 'table' |
+'timeline'`) birbirinden bağımsız ve hiçbiri eşleşmezse ekranda ne kart,
+ne kolon, ne hata kalıyor. Eski kod `localStorage.getItem(...) ||
+'kanban'` diyordu: yalnızca **yokluğu** karşılıyor, **bozukluğu**
+karşılamıyor.
+
+**Kazayla tetiklenebilen şey kullanıcıda da tetiklenir.** `grupla()` aynı
+soruyu zaten doğru cevaplıyordu (tanınmayan ölçüt kolona düşüyor); kural
+şimdi burada da.
+
+Ölçüt tek örneği değil **sınıfı** kapatıyor: üç küme birbirine eşit olmak
+zorunda — tanınan adlar (`ALT_GORUNUMLER`), seçicideki düğmeler
+(`subViews`), ve gerçekten çizilen dallar. Beşinci bir görünüm eklenip
+listeye yazılmazsa (ya da listeye yazılıp çizilmezse) test durduruyor.
+Ayrıca yedeğin **kendisi** çizilen bir görünüm olmak zorunda, yoksa
+indirgeme yapılır ve ekran yine boş açılır.
+
+### 4 · Envanter maddesi ikinci kez yarı yanlış çıktı
+
+"Çöpte arama yok" yazılıydı; **arama vardı**. Gruplamada da aynı olmuştu
+("gruplama yok" → gruplama vardı, eksik olan ölçüt seçimiydi). Gerçek
+eksikler okuyunca çıktı: toplu geri alma yoktu, ve arama **satırda
+yazandan azını** tarıyordu — proje adı ve kolon satırda duruyor ama süzgeç
+yalnızca başlığa bakıyordu.
+
+**Ders:** envanter maddesi, kodu açmadan "eksik" demez. İki kez düşüldü.
+
+### 5 · Ölçüt dersleri — bu tur beş kaçış
+
+Hepsi aynı sınıf (**komşudan ödünç alma** ve **çözüme bağlanma**), ve
+hepsini mutasyon + aklama denemesi buldu:
+
+- **Yetki satırı komşuya taşındı.** `topluAta`nın yetki kapısı silinip aynı
+  metin `topluCope`ya konunca test yeşil kaldı — ölçüt TableView'in
+  tamamında arıyordu. Blok artık fonksiyonun kendisi.
+- **Yön hesabı ikinci kez yapıldı.** "Hesap satırı döngüden önce mi" diye
+  sormak yetmedi: doğru satır yukarıda bırakılıp geri çağrının içine ikinci
+  bir hesap konunca ölçüt geçti. Artık **sayılıyor** (tam bir kez).
+- **Bayrak ölü bir çağrıya taşındı.** `}), true);` metni dosyada kalsın
+  diye `if (0) topluBitir(..., true)` yazmak testi akladı. Ölçüt artık
+  gövdedeki `topluBitir(` çağrısını sayıyor.
+- **Ölçüt çözümün tam sözüne bağlıydı.** `global.test.js`
+  `/\} else if \(q && !t\.title/` arıyordu. Eşleyici `kapsiyor()`a geçince
+  dal yapısı hiç değişmediği hâlde test kırıldı. **Sorulacak soru: "bunu
+  düzelten biri testi kırmak zorunda mı kalır?"** Cevap evetse ölçüt çözüme
+  bağlanmıştır, davranışa değil. Ölçüt artık kimlik bloğunun
+  **kapanışının hemen ardına** bağlı — "sonraki ilk `} else if`" demek
+  yetmedi, araya kod girince aşağıdaki ölü dal onu akladı.
+- **Ölçüt hiç yoktu.** "Hepsini seç süzülmemiş kümeyi alıyor" mutasyonu
+  kaçtı çünkü kimse ölçmüyordu. Mutasyon turu, olmayan ölçütü de buluyor.
+
+### 6 · Playwright betiği dersleri (iki yeni)
+
+- **`bitir()` try içinden çağrılınca `finally` koşmuyor.** `process.exit`
+  temizliği atlıyor ve iki geçersiz koşu canlıda dokuz kart bıraktı; o
+  kartlar sonraki koşunun ölçütünü bozdu ("üç kart bekleyen kapı dokuz
+  gördü"). Geçersizlik kapısı artık **fırlatıyor**, `catch` bayrak koyuyor,
+  `finally` temizliyor, çıkış ondan sonra. `temizle.mjs` kalanları siliyor.
+- **Kartları başlıkla değil kendi kimlikleriyle say.** Aynı başlıklı eski
+  kart ölçüte karışıyor.
+
+### Eldeki iş
+
+Envanter (#367) **bitti** — beş madde + gruplama + toplu atama + çöp.
+Sıradaki işler CLAUDE.md'nin "Sıradaki işler" listesinden devam ediyor;
+en büyük açık hâlâ **proje bazlı üyelik**.
+
+Kapanmamış tek ölçüm: **#332** (çevrimiçi listesi kapsamı). Üç test
+hesabının üçü de alan 22'de olduğu için ölçüm "ortak alan" ile "platform
+geneli"ni ayırt edemiyor. En ucuz yol: kullanıcının kendi hesabını bir
+sekmede açık tutması, sonra `DISARIDAN=eray-atalay node t332.mjs`.
 
 ---
 
