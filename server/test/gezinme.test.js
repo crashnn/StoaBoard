@@ -27,6 +27,7 @@ import {
   GORUNUM_YOLLARI, HUKUKI_YOLLAR, hatirlananGorunum, hatirlananGorunumuOku,
 } from '../../client/src/rota.js';
 import { yorumsuzDosya, kaynakDosyalari } from './yardimcilar.js';
+import { KISAYOLLAR } from '../../client/src/kisayollar.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ISTEMCI = path.resolve(__dirname, '..', '..', 'client', 'src');
@@ -113,12 +114,21 @@ describe('gezinme — sabit hedefler çizilen bir görünüme varıyor', () => {
     }
   });
 
-  test('G kısayol tablosu (G_MAP)', () => {
-    const m = /const G_MAP = \{([^}]*)\}/.exec(APP);
-    assert.ok(m, 'G_MAP bulunamadı');
-    const hedefler = [...m[1].matchAll(/:\s*'([a-z-]+)'/g)].map((x) => x[1]);
-    assert.ok(hedefler.length > 0, 'G_MAP değerleri okunamadı');
-    for (const h of hedefler) assert.ok(CIZILEN.has(h), `G_MAP → '${h}' çizilmiyor`);
+  test('G kısayollarının hedefleri çizilen görünümler', () => {
+    // ÖLÇÜT TEK KAYNAĞI OKUYOR. Önce `app.jsx`teki `G_MAP` sabitini
+    // tarıyordu; 3 Ekim'de tuşlar `kisayollar.js`e taşındı (ayarlar ekranı
+    // kendi kopyasını tutuyor ve gerçekle ayrışmıştı, özelleştirme de
+    // atıldı). Korunan kural aynı ve artık daha geniş: gezinme hedefi
+    // çizilmeyen bir görünüm olursa kullanıcı boş ekrana varır.
+    const hedefler = KISAYOLLAR.filter((k) => k.tur === 'gnav').map((k) => k.hedef);
+    assert.ok(hedefler.length > 0, 'gezinme kısayolu bulunamadı');
+    for (const h of hedefler) assert.ok(CIZILEN.has(h), `kısayol hedefi '${h}' çizilmiyor`);
+    // Alt görünüm de tanınan bir değer olmalı: bayat bir ad panoyu bomboş
+    // bırakıyordu (DEVIR 0-AN).
+    const ALT = new Set(['list', 'kanban', 'table', 'timeline']);
+    for (const k of KISAYOLLAR.filter((x) => x.tur === 'gnav' && x.altGorunum)) {
+      assert.ok(ALT.has(k.altGorunum), `${k.id} tanınmayan alt görünüm: ${k.altGorunum}`);
+    }
   });
 
   test('komut paleti goto: eylemleri', () => {

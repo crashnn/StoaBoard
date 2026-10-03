@@ -28,6 +28,8 @@ import { BoardView } from './views/board.jsx';
 import { LegalPage } from './views/legal.jsx';
 import { GECIKME_MS, baglantiDurumu, baglantiMetni, tazelenmeliMi } from './baglanti.js';
 import { PENCERE_MS, yiginKarari, ozetMetni } from './bildirimYigini.js';
+import { tusAtamalari, eslesenKisayol, diziBaslatiyorMu, kisayol } from './kisayollar.js';
+import { KisayolYardimi } from './kisayolYardimi.jsx';
 
 // Bildirim patlamasinin sayaci. MODUL KAPSAMI, ref degil: soket etkisi
 // yeniden kurulduğunda (alan degisimi) sayac sifirlanmamali, yoksa ayni
@@ -106,6 +108,9 @@ function App() {
   // hatası (`baglantiHatasi`) ile karıştırılmamalı: o giriş ekranını
   // kesiyor, bu uygulama ayaktayken gerçek zamanlının durmasını söylüyor.
   const [canliDurum, setCanliDurum] = useS('bagli');
+  // `?` ile acilan kisayol yardimi. Ayarlardaki sayfa duruyor; bu akis
+  // icinde bakilacak yer — ozellikler vardi ama kimse kesfedemiyordu.
+  const [kisayolYardimi, setKisayolYardimi] = useS(false);
   const [needsWorkspace, setNeedsWorkspace] = useS(false);
   const [view, setView]                     = useS(() => {
     const path = window.location.pathname;
@@ -482,43 +487,69 @@ function App() {
     // kez düşüldü. Kopya ayrıca `document.activeElement` null olduğunda
     // patlıyordu (`ae.tagName`), yardımcı null'ı karşılıyor.
     const clearG = () => { clearTimeout(pendingGTimer.current); pendingGTimer.current = null; };
-    // G+key navigation. 'l' (list) and 'b' (board) both go to board view; list sets sub-view.
-    const G_MAP = { b: 'board', l: 'board', c: 'calendar', d: 'dashboard', s: 'settings', m: 'chat', n: 'notes', r: 'reports', t: 'trash' };
+
+    // TUŞLAR ARTIK GÖMÜLÜ DEĞİL — `kisayollar.js`ten geliyor ve kullanıcının
+    // özelleştirmesi UYGULANIYOR. Önceden `stoa.shortcuts` yalnızca ayarlar
+    // ekranı tarafından yazılıyor ve kimse okumuyordu: kullanıcı "Yeni
+    // görev"i T yapıyor, T hiçbir şey yapmıyor, N hâlâ çalışıyordu.
+    // Gerekçenin tamamı `kisayollar.js`in başında.
+    let ozel = null;
+    try { ozel = JSON.parse(localStorage.getItem('stoa.shortcuts') || 'null'); } catch { ozel = null; }
+    const atamalar = tusAtamalari(ozel);
 
     const onKey = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); clearG(); setCmdOpen(true); return; }
-      if (e.key === 'Escape') {
+      const gBekliyor = pendingGTimer.current !== null;
+
+      // Esc ve palet YAZARKEN DE çalışmalı, o yüzden `yaziliyorMu`dan önce.
+      // İkisi de kullanıcıyı bir yerden ÇIKARIYOR; metin kutusunda
+      // kilitlenmiş birinin tek yolu bunlar.
+      const erken = eslesenKisayol(e, { gBekliyor: false, atamalar });
+      if (erken === 'cmd_palette') { e.preventDefault(); clearG(); setCmdOpen(true); return; }
+      if (erken === 'close_panels') {
         clearG();
         setDrawerTask(null); setModalOpen(false); setCmdOpen(false);
         setNotifOpen(false); setChatOpen(false); setProjectModal(false);
-        setWsSwitcherOpen(false);
+        setWsSwitcherOpen(false); setKisayolYardimi(false);
         return;
       }
       if (yaziliyorMu()) return;
 
-      // Second key of a G+key sequence
-      if (pendingGTimer.current !== null) {
+      // G dizisinin İKİNCİ tuşu.
+      if (gBekliyor) {
         clearG();
-        const k = e.key.toLowerCase();
-        const dest = G_MAP[k];
-        if (dest) {
+        const id = eslesenKisayol(e, { gBekliyor: true, atamalar });
+        const k = id ? kisayol(id) : null;
+        if (k) {
           e.preventDefault();
-          if (k === 'l') localStorage.setItem('stoa.boardSubView', 'list');
-          else if (k === 'b') localStorage.setItem('stoa.boardSubView', 'kanban');
-          setView(dest);
+          if (k.altGorunum) localStorage.setItem('stoa.boardSubView', k.altGorunum);
+          setView(k.hedef);
         }
         return;
       }
 
-      if (e.key?.toLowerCase() === 'g' && !e.metaKey && !e.ctrlKey) {
+      if (diziBaslatiyorMu(e, atamalar)) {
         e.preventDefault();
         pendingGTimer.current = setTimeout(clearG, 600);
         return;
       }
 
-      if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
+      const id = eslesenKisayol(e, { gBekliyor: false, atamalar });
+      if (id === 'new_task') {
         if (canManageTasks) openModal('todo');
+        return;
       }
+      // `/` ayarlar ekranında yazılıydı ve HİÇBİR YERDE işleyicisi yoktu:
+      // belgelenmiş ama var olmayan bir kısayol. Artık var.
+      if (id === 'search') {
+        const kutu = document.querySelector('.board-search-input')
+          || document.querySelector('input[placeholder]');
+        if (kutu) { e.preventDefault(); kutu.focus(); }
+        return;
+      }
+      // `?` yardımı listede DURMUYOR: kendisi listeyi gösteren şey, kendi
+      // satırı olması döngüsel olurdu. Shift gerektiği için `eslesenKisayol`
+      // yoluna da girmiyor.
+      if (e.key === '?') { e.preventDefault(); setKisayolYardimi((a) => !a); }
     };
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('keydown', onKey); clearG(); };
@@ -1815,6 +1846,7 @@ function App() {
           {baglantiMetni(canliDurum, (k, fb) => window.t?.(k) || fb)}
         </div>
       )}
+      <KisayolYardimi open={kisayolYardimi} onClose={() => setKisayolYardimi(false)} />
       <div
         className="sidebar-backdrop"
         data-open={mobileSidebarOpen}

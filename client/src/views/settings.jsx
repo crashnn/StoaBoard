@@ -6,6 +6,7 @@ import { rolAdi } from '../rolAdi.js';
 import { Avatar } from '../shell.jsx';
 import { API, fmtDate, fmtTimeAgo } from '../data.jsx';
 import { DefaultDropdown } from '../dropdown.jsx';
+import { KISAYOLLAR, DEGISTIRICILER } from '../kisayollar.js';
 
 const LABEL_TONES = () => {
   const _t = (k, fb) => window.t?.(k) || fb;
@@ -817,20 +818,22 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
   const [memberBusy, setMemberBusy]   = React.useState(null);
 
   // ── Keyboard shortcut customization ──────────────────────────────────────
-  const DEFAULT_SHORTCUTS = [
-    { id: 'cmd_palette',   label: _t('set_sct_cmd_palette','Komut paleti aç'),        keys: ['Ctrl','K'] },
-    { id: 'new_task',      label: _t('set_sct_new_task','Yeni görev'),                 keys: ['N'] },
-    { id: 'go_home',       label: _t('set_sct_home','Ana sayfa'),                      keys: ['G','H'] },
-    { id: 'go_board',      label: _t('set_sct_board','Pano (Kanban)'),                 keys: ['G','B'] },
-    { id: 'go_list',       label: _t('set_sct_list','Liste görünümü'),                 keys: ['G','L'] },
-    { id: 'go_calendar',   label: _t('set_sct_calendar','Takvim'),                     keys: ['G','C'] },
-    { id: 'go_chat',       label: _t('set_sct_chat','Sohbet'),                         keys: ['G','M'] },
-    { id: 'go_settings',   label: _t('set_sct_settings','Ayarlar'),                    keys: ['G','S'] },
-    { id: 'search',        label: _t('set_sct_search','Arama odakla'),                 keys: ['/'] },
-    { id: 'send_msg',      label: _t('set_sct_send','Mesaj gönder'),                   keys: ['↵'] },
-    { id: 'newline',       label: _t('set_sct_newline','Yeni satır (mesajda)'),        keys: ['⇧','↵'] },
-    { id: 'close_panels',  label: _t('set_sct_close_panels','Tüm panelleri kapat'),    keys: ['Esc'] },
-  ];
+  //
+  // LISTE BURADA DEGIL. Once bu dosya kendi `DEFAULT_SHORTCUTS` kopyasini
+  // tasiyordu ve gercekle IKI YONDE ayrismisti: `G,H`yi "Ana sayfa" diye
+  // yaziyordu ama isleyicinin haritasinda `h` yoktu, `/` hicbir yerde
+  // isleyicisi olmayan bir soz veriyordu, ve gercekten calisan dort kisayol
+  // (`G+N`, `G+R`, `G+T`, `G+D`) burada hic yazili degildi. Ustune
+  // ozellestirme de atildi: `stoa.shortcuts`i yalnizca bu ekran yaziyor,
+  // kimse okumuyordu.
+  //
+  // Artik tek kaynak `kisayollar.js`; bu ekran onu GOSTERIYOR, tanimlamiyor.
+  const DEFAULT_SHORTCUTS = KISAYOLLAR.map((k) => ({
+    id: k.id,
+    label: _t(k.anahtar, k.yedek),
+    keys: k.tuslar,
+    sabit: k.ozelleStirilebilir === false,
+  }));
   const [customShortcuts, setCustomShortcuts] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('stoa.shortcuts') || 'null') || {}; } catch { return {}; }
   });
@@ -854,10 +857,15 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
     if (!recordingId) return;
     const handler = (e) => {
       e.preventDefault();
+      // DEGISTIRICILER TEK KAYNAKTAN. Burada kendi sozcukleri vardi
+      // (`⌘`, `⌥`) ve esleştirici `Ctrl` ariyordu: kullanici Ctrl+K
+      // kaydettiginde depoya `['⌘','K']` yaziliyor, eslestirici Ctrl
+      // gerekliligini GORMUYOR ve kisayol duz K oluyordu. Iki sozcuk
+      // dagarcigi, "iki liste" kusurunun tus duzeyindeki hali.
       const parts = [];
-      if (e.metaKey || e.ctrlKey) parts.push('⌘');
-      if (e.altKey) parts.push('⌥');
-      if (e.shiftKey) parts.push('⇧');
+      if (e.metaKey || e.ctrlKey) parts.push(DEGISTIRICILER.ctrl);
+      if (e.altKey) parts.push(DEGISTIRICILER.alt);
+      if (e.shiftKey) parts.push(DEGISTIRICILER.shift);
       const key = e.key;
       if (!['Meta','Control','Alt','Shift'].includes(key)) {
         parts.push(key === 'Enter' ? '↵' : key === 'Escape' ? 'Esc' : key === '/' ? '/' : key.length === 1 ? key.toUpperCase() : key);
@@ -2125,17 +2133,27 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
               const currentKeys = getShortcutKeys(sc.id);
               const isCustom    = !!customShortcuts[sc.id];
               return (
-                <div key={sc.id} className="keymap-row" data-recording={isRecording || undefined}>
+                <div key={sc.id} className="keymap-row" data-sabit={sc.sabit || undefined} data-recording={isRecording || undefined}>
                   <span className="keymap-label">{sc.label}</span>
                   <div className="keymap-keys-wrap">
                     {isRecording ? (
                       <span className="keymap-recording-hint">{window.t?.('set_key_press') || 'Tuşa bas…'} <button className="keymap-cancel" onClick={() => setRecordingId(null)}>✕</button></span>
                     ) : (
                       <>
+                        {/* SABIT kisayol tiklanabilir GORUNMUYOR. Kaydetmeye
+                            izin verip uygulamamak, bu turda kapatilan yalanin
+                            aynisi olurdu. Esc evrensel bir kacis; sohbetteki
+                            ⏎ ve kart oklarinin isleyicileri kendi
+                            bilesenlerinde ve bu turda kapsam disi — ama
+                            LISTEDE duruyorlar, cunku asil sorun
+                            kesfedilememekti. */}
                         <span
                           className="keymap-keys"
-                          title={window.t?.('set_key_change') || 'Değiştirmek için tıkla'}
-                          onClick={() => setRecordingId(sc.id)}
+                          data-sabit={sc.sabit || undefined}
+                          title={sc.sabit
+                            ? (window.t?.('set_key_fixed') || 'Bu kısayol değiştirilemez')
+                            : (window.t?.('set_key_change') || 'Değiştirmek için tıkla')}
+                          onClick={sc.sabit ? undefined : () => setRecordingId(sc.id)}
                         >
                           {currentKeys.map((k, i) => <kbd key={i}>{k}</kbd>)}
                         </span>

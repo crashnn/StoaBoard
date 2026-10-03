@@ -123,9 +123,14 @@ describe('"kullanıcı yazıyor mu" tek kaynaktan (#330 ailesi)', () => {
 
   test('kısayol kapısı yardımcıyı okuyor — ölçüt kısayol etkisine bağlı', () => {
     // Dosyada bir yerde `yaziliyorMu()` geçmesi yetmez: kapı tam bu
-    // bloktaki erken dönüş. Pencere G_MAP'in bulunduğu etkiyle sınırlı.
-    const bas = APP.indexOf('const G_MAP =');
-    assert.ok(bas > 0, 'kısayol etkisi bulunamadı');
+    // bloktaki erken dönüş.
+    //
+    // ÇAPA DEĞİŞTİ. Önce `const G_MAP =` sabitini arıyordu; 3 Ekim'de tuşlar
+    // `kisayollar.js`e taşındı ve o sabit kalktı, yani çapa kaybolup test
+    // KORUDUĞU DAVRANIŞ HİÇ DEĞİŞMEDİĞİ HÂLDE kırıldı. Yeni çapa
+    // işleyicinin kendisi: adı, sabitlerinden daha uzun ömürlü.
+    const bas = APP.indexOf('const onKey = (e) => {');
+    assert.ok(bas > 0, 'kısayol işleyicisi bulunamadı');
     const blok = APP.slice(bas, APP.indexOf('pendingGTimer.current = setTimeout', bas));
     assert.match(blok, /if \(yaziliyorMu\(\)\) return;/,
       'kısayol kapısı paylaşılan odak kontrolünü okumuyor');
