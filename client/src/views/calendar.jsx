@@ -5,9 +5,13 @@ import ReactDOM from 'react-dom';
 import { Icon } from '../icons.jsx';
 import { AvatarStack } from '../shell.jsx';
 import { kolonAdi } from '../data.jsx';
+import { gunOfseti, gunAdlariSirali, haftaninBasi } from '../hafta.js';
 
 const CAL_MONTHS     = () => (window.t?.('cal_months') || 'Ocak,Şubat,Mart,Nisan,Mayıs,Haziran,Temmuz,Ağustos,Eylül,Ekim,Kasım,Aralık').split(',');
-const CAL_DAYS_SHORT = () => (window.t?.('cal_days_short') || 'Pzt,Sal,Çar,Per,Cum,Cmt,Paz').split(',');
+const CAL_DAYS_SHORT = (haftaBasiAyari) => gunAdlariSirali(
+  (window.t?.('cal_days_short') || 'Pzt,Sal,Çar,Per,Cum,Cmt,Paz').split(','),
+  haftaBasiAyari,
+);
 
 // Color palette for overlapping bar rotation
 const CAL_COLOR_PALETTE = ['#2e7d32','#c62828','#1565c0','#e65100','#37474f','#6a1b9a','#00838f','#558b2f'];
@@ -124,7 +128,7 @@ function toDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks }) {
+function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks, haftaBasiAyari }) {
   const [cursor, setCursor]         = useCalState(() => new Date());
   const [calView, setCalView]       = useCalState('month');
   const [rangeStart, setRangeStart] = useCalState(null);
@@ -148,7 +152,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
 
   // ── Month grid cells ──────────────────────────────────────────────────────
   const firstDay      = new Date(year, month, 1);
-  const startDOW      = (firstDay.getDay() + 6) % 7;
+  const startDOW      = gunOfseti(firstDay, haftaBasiAyari);
   const daysInMonth   = new Date(year, month + 1, 0).getDate();
   const prevMonthDays = new Date(year, month, 0).getDate();
 
@@ -163,8 +167,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
     cells.push({ day: cells.length - daysInMonth - startDOW + 1, other: true, dateStr: null });
 
   // ── Week grid ─────────────────────────────────────────────────────────────
-  const weekStart = new Date(cursor);
-  weekStart.setDate(cursor.getDate() - (cursor.getDay() + 6) % 7);
+  const weekStart = haftaninBasi(cursor, haftaBasiAyari);
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(weekStart.getDate() + i);
@@ -350,7 +353,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
 
   const miniY        = miniCursor.getFullYear();
   const miniM        = miniCursor.getMonth();
-  const miniFirstDOW = (new Date(miniY, miniM, 1).getDay() + 6) % 7;
+  const miniFirstDOW = gunOfseti(new Date(miniY, miniM, 1), haftaBasiAyari);
   const miniDaysIn   = new Date(miniY, miniM + 1, 0).getDate();
   const miniPrevDays = new Date(miniY, miniM, 0).getDate();
 
@@ -403,8 +406,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
   }, [tasks]);
 
   // ── Right panel: tasks for the whole week the cursor sits in ──────────────
-  const cursorWeekMon = new Date(cursor);
-  cursorWeekMon.setDate(cursor.getDate() - (cursor.getDay() + 6) % 7);
+  const cursorWeekMon = haftaninBasi(cursor, haftaBasiAyari);
   const cursorWeekSun = new Date(cursorWeekMon);
   cursorWeekSun.setDate(cursorWeekMon.getDate() + 6);
   const weekPanelStart = toDateStr(cursorWeekMon);
@@ -546,7 +548,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
       {/* ── Month view ── */}
       {calView === 'month' && (
         <div className="cal-grid" onClick={(e) => e.stopPropagation()}>
-          {CAL_DAYS_SHORT().map(w => <div key={w} className="cal-weekday">{w}</div>)}
+          {CAL_DAYS_SHORT(haftaBasiAyari).map(w => <div key={w} className="cal-weekday">{w}</div>)}
           {cells.map((c, i) => {
             const dayTasks   = c.dateStr ? tasksFor(c.dateStr) : [];
             const MAX_VISIBLE = 2;
@@ -624,7 +626,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
                 onMouseLeave={() => setHoverDate(null)}
               >
                 <div className="cal-week-head">
-                  <span className="cal-week-dow">{CAL_DAYS_SHORT()[idx]}</span>
+                  <span className="cal-week-dow">{CAL_DAYS_SHORT(haftaBasiAyari)[idx]}</span>
                   <span className="cal-week-date" data-today={isToday}>{d.getDate()}</span>
                   {holiday && (
                     <div
@@ -702,7 +704,7 @@ function CalendarView({ tasks: rawTasks, onOpenTask, onOpenModal, canCreateTasks
             </button>
           </div>
           <div className="cal-side-mini">
-            {CAL_DAYS_SHORT().map(d => <div key={d} className="cal-side-dow">{d[0]}</div>)}
+            {CAL_DAYS_SHORT(haftaBasiAyari).map(d => <div key={d} className="cal-side-dow">{d[0]}</div>)}
             {miniCells.map((c, i) => {
               const isToday    = c.dateStr === today;
               const isSelected = c.dateStr && c.dateStr === toDateStr(cursor);

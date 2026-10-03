@@ -1976,7 +1976,7 @@ function App() {
                 setTweak={setTweak}
               />
             )}
-            {!taskPageTask && view === 'calendar'  && <Lazy><CalendarView tasks={tasks} onOpenTask={openDrawer} onOpenModal={openModal} canCreateTasks={canManageTasks} /></Lazy>}
+            {!taskPageTask && view === 'calendar'  && <Lazy><CalendarView tasks={tasks} onOpenTask={openDrawer} onOpenModal={openModal} canCreateTasks={canManageTasks} haftaBasiAyari={tweaks.weekStart} /></Lazy>}
             {!taskPageTask && view === 'dashboard' && <Lazy><DashboardView tasks={tasks} etkinlik={etkinlik} onOpenTask={openDrawer} onView={setView} /></Lazy>}
             {!taskPageTask && view === 'reports' && (
               <Lazy>
