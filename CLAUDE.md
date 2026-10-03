@@ -90,7 +90,7 @@ Gece **kişisel MCP anahtarları** (DEVIR 0-V2): Ayarlar → Claude bağlantıs�
 iptal. **Anahtarı ortam değişkenine eklemek artık tek yol değil** — yeni kişi
 kendi anahtarını üretir.
 
-Test sayısı **1432**, hepsi geçiyor. Ayrıntılı durum için **her zaman
+Test sayısı **1486**, hepsi geçiyor. Ayrıntılı durum için **her zaman
 [DEVIR.md](DEVIR.md)** — bu blok bayatlamaya yatkın, oradaki 0-* bölümleri
 tarihli ve daha güvenilir.
 
@@ -158,7 +158,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1432 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1486 test,
 veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
 "Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
 modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
@@ -221,6 +221,28 @@ hiç başlamıyor ("The job was not started because your account is locked due t
 a billing issue"). Dosya yerinde duruyor, kilit açılınca değişiklik gerekmeden
 çalışacak. **Repoda CI dosyası görüp korunduğunu varsayma** — bugün koruyan
 şey kanca.
+
+**Bir kusur bulunca SINIFINI ara.** 3 Ekim'de kisayol ozellestirmesinin
+atil oldugu goruldu ("yaziliyor, okunmuyor"). Tek bir duzeltme yerine ayni
+soru butun depoya soruldu: `setItem('stoa.X')` yapilan her anahtar okunuyor
+mu, `setTweak('X')` ile yazilan her alan okunuyor mu, istemcide kac
+`catch { console.error }` var? Ikinci tarama DORT atil ayar daha buldu
+(tarih bicimi, haftanin ilk gunu, DND penceresi) — hepsi gercek arayuze
+sahip, hepsi hicbir sey yapmiyor. Bir kusuru kapatirken sor: **bu kusur bir
+ornek mi, bir sinif mi?** Sinif aramasi tek bir grep turudur ve bu depoda
+bes kusur buldu.
+
+**Bir ayari hayata gecirirken VARSAYILANI DEGISTIRMEMEK bir karardir.**
+`dateFormat`in uc secenegi vardi ve ikisi numerikti; varsayilani da numerik
+yapmak, ayari HIC ACMAMIS herkesin kart tarihlerini degistirirdi. Atil bir
+ayari calistirmak, onu ellemeyenler icin GORUNUR bir degisiklik olmamali.
+Olcut iki yonlu yazilir: yeni davranis geldi mi, VE varsayilan korundu mu.
+
+**Ayari calistirirken HESAP ve CIZIM birlikte donmeli.** `weekStart`te
+yalnizca hesabi dondurmek takvimi sessizce yanlis yapardi: 1 Ekim Pazar
+hesaplanir ama baslikta "Pzt" yazar, her kart bir gun kaymis gorunur —
+kusur duzeltilmis gorunur ve ekran yalan soyler. Bir ayar hem bir hesabi
+hem bir etiketi etkiliyorsa olcut ikisini BIRLIKTE sorar.
 
 **Capani SABITE degil ISLEYICIYE bagla.** Kaynak tarayan bir testin
 penceresi bir yerden baslar ve o baslangic noktasi genelde bir SABITIN adi

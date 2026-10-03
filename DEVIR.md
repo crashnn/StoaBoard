@@ -6,7 +6,7 @@ Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
 **Son güncelleme:** 3 Ekim 2026, **ev makinesinde**. En taze bölüm
-**0-AP**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**0-AQ**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,83 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AQ. 3 Ekim — sınıf araması: atıl dört ayar bulundu ve kapandı
+
+**Depo:** `main` = `8fdf67d` + bu devir commit'i. Test **1432 → 1486**.
+Kart: **#429**.
+
+**Niçin bu tur — yöntem olarak kayda değer.** Kısayol özelleştirmesi atıl
+çıktıktan sonra (0-AP) soru şuydu: *aynı sınıfın başka örneği var mı?*
+Üç tarama yapıldı:
+
+1. `setItem('stoa.X')` yapılan her anahtar → okunuyor mu? **Temiz**
+   (kısayol zaten kapanmıştı).
+2. `setTweak('X')` ile yazılan her alan → okunuyor mu? **Dört alan atıl.**
+3. İstemcide `catch { console.error }` → sessiz hata. *(0-AO'da altısı
+   kapandı.)*
+
+İkinci tarama bu bölümün tamamını üretti. **Dördünün de gerçek arayüzü
+vardı** — üç seçenekli düğmeler, seçileni gösteren, hiçbir şey yapmayan.
+
+| Ayar | Ne oluyordu | Commit |
+|---|---|---|
+| `dndEnabled` + `dndStart` + `dndEnd` | Kapı `__MY_STATUS__`a bakıyordu, bu ayara değil | `b4d0fa3` |
+| `weekStart` | Pazartesi dört yerde gömülü | `7daaae5` |
+| `dateFormat` | Hiçbir yerde okunmuyor | `8fdf67d` |
+
+### Üç işin her birinde bir incelik vardı
+
+**DND — pencere gece yarısını sarıyor.** Varsayılan 19:00–08:00, yani düz
+bir `bas <= simdi && simdi < bit` karşılaştırması **varsayılan ayarda hiç
+susturmazdı** ve kusur "düzeltilmiş" görünürdü. Üç kenar durumu da
+"şüpheyle bildirim göster" yönünde çözüldü: eşit saat = **boş** pencere
+(24 saat değil), bozuk saatte susturmuyor, başlangıç dahil / bitiş hariç.
+Sohbeti de kapsıyor ve pencere **bir kez** hesaplanıyor — iki ayrı
+`new Date()` sınırda sesin ve toast'ın ayrışmasına yol açardı.
+
+**weekStart — hesap ve çizim BİRLİKTE dönmek zorunda.** İşin asıl zorluğu
+bu: yalnızca hesabı döndürmek takvimi **sessizce yanlış** yapardı. 1 Ekim
+Pazar olarak hesaplanır ama başlıkta "Pzt" yazar, yani her kart bir gün
+kaymış görünür — kusur düzeltilmiş görünür ve takvim yalan söyler. Ölçüt
+ikisini birlikte soruyor: *ofseti 0 olan günün adı, listenin ilk adı
+olmalı.*
+
+**dateFormat — varsayılanı değiştirmemek bir karar.** `dmY` seçeneğinin
+önizlemesi ay adlı biçim, yani bugünkü çıktının kendisi. Üç seçeneğin
+ikisi numerik diye varsayılanı da numerik yapmak, ayarı **hiç açmamış
+herkesin** kart tarihlerini değiştirirdi. Önizleme de düzeltildi: yıl
+gösteriyordu, çıktı göstermiyor — küçük bir yalan, ama yalan.
+
+Üçünde de **tanınmayan değer makul varsayılana düşüyor** — `grupla()` ve
+alt görünüm adındaki kararla aynı (0-AN).
+
+### Canlı ölçümün biçimi: İKİ YÖNLÜ
+
+Her ölçüt hem **yeni davranışın geldiğini** hem de **varsayılanın
+korunduğunu** ölçüyor. Yalnızca yenisine bakmak, varsayılanı sessizce
+değiştirmiş olmayı kaçırırdı — tarih biçiminde tam o risk vardı.
+DND'de ayırt edicilik üç durumla kuruldu: pencere **dışında** toast
+görünüyor, **içinde** görünmüyor, ayar **kapalıyken** pencere içinde bile
+görünüyor. Yalnızca "içinde görünmüyor" demek, toast'ın başka bir sebeple
+çıkmadığını ayırt etmezdi.
+
+**Üç ölçüt ilk koşuda kaldı ve üçü de benim ölçüm hatamdı:** arayüz
+İngilizce ve büyük harf çiziyor (`MON`), desenim büyük/küçük duyarlıydı.
+Ürün doğruydu. Bu turun dersi listeye eklendi.
+
+### Eldeki iş
+
+**Ürün kararı gerektirmeyen iş kalmadı** — ve bu kez sınıf araması da
+temiz döndü. Karar bekleyenler: teslim tarihi bildirimi (BILDIRIMLER.md
+S4), tarayıcı bildirimi (S5), dönem dondurma, ve en büyük açık **proje
+bazlı üyelik**.
+
+**Bilinçli yapılmayan:** kanban'da toplu işlem (kapsam kararı, 0-AP).
+
+**Kapanmamış tek ölçüm:** #332 (çevrimiçi listesi kapsamı).
 
 ---
 
