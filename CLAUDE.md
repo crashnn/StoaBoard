@@ -131,9 +131,20 @@ Modeli kaldırırsan tuzak aynen geri gelir (6242a7c).
 **Windows PowerShell'de `npm` değil `npm.cmd`.** `npm` → `npm.ps1`e çözümlenip
 execution policy'ye takılıyor. Git Bash'te düz `npm` çalışır.
 
-**`server/.env` repoda yok** ve olmamalı. Üretim bağlantısı yalnızca Railway
-ortam değişkenlerinde; hiçbir geliştirici makinesinde durmuyor. Yerel test için
-Neon'da ayrı bir dal kullanılıyor.
+**`server/.env` repoda yok** ve olmamalı. **AMA BU MAKİNEDE ÜRETİME BAKIYOR
+(3 Ekim 2026) — kural gerçekle ayrışmış.** Yukarıdaki cümle "üretim bağlantısı
+hiçbir geliştirici makinesinde durmuyor" diyordu; doğrulandı ve yanlış çıktı.
+Hem `server/.env` hem kök `.env` canlı `neondb`ye bağlı; kanıt kesin, canlıda
+oluşturulan kart yerel bağlantıda görünüyor.
+
+**Pratik sonucu: bu makinede `npm run prisma:push` DOĞRUDAN CANLI ŞEMAYA
+gider.** Komutun kendisi güvenli (yıkıcı değişikliği reddediyor) ama *hangi
+veritabanına* gittiği ayrı bir soru. Şema komutu çalıştırmadan önce bağlantıyı
+DOĞRULA — `select current_database()` ya da canlıda bildiğin bir kaydı ara.
+Bu, GUVENLIK.md'nin kendi dersinin ihlali ("geliştirici makinesi üretim
+yüzeyidir — LastPass, 2022") ve düzeltilmesi kullanıcıya bırakıldı: yerel
+`.env`i Neon'daki geliştirme dalına çevirmek ya da kuralı gerçeğe göre
+yazmak. İkisi de yapılmadan şema komutu çalıştırma.
 
 **İki `.env` varsa `server/.env` kazanır.** `config.js` önce `server/.env`'i,
 sonra kök `.env`'i yüklüyor ve dotenv var olan değişkeni ezmiyor: aynı ad

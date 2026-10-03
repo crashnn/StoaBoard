@@ -6,7 +6,7 @@ Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
 **Son güncelleme:** 3 Ekim 2026, **ev makinesinde**. En taze bölüm
-**0-AR**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**0-AS**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,113 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AS. 3 Ekim — ⚠ YEREL `.env` ÜRETİME BAKIYOR. Proje bazlı erişim başladı
+
+**Depo:** `main` = `0ef6afd`. Test **1495**.
+
+### ⚠ ÖNCE BUNU OKU: bu makinede üretim bağlantısı var
+
+CLAUDE.md şöyle diyor ve **gerçek bu değil:**
+
+> `server/.env` repoda yok ve olmamalı. Üretim bağlantısı yalnızca Railway
+> ortam değişkenlerinde; hiçbir geliştirici makinesinde durmuyor.
+
+3 Ekim'de şema işine girmeden önce bağlantı doğrulandı. Hem `server/.env`
+hem kök `.env` **üretime** bakıyor: `neondb` / `neondb_owner`,
+`ep-wild-sea-al52woet`. Kanıt kesin — canlıda MCP'den oluşturulan **kart
+426** yerel bağlantıda duruyor. 331 görev, 39 üyelik, 31 proje.
+
+**Pratik sonucu:** bu makinede `npm run prisma:push` **doğrudan canlı
+şemaya** gider. CLAUDE.md'nin tuzaklar bölümü tam bu komutu güvenli
+sayıyor ("`--accept-data-loss` yok; yıkıcı değişikliği reddeder") — doğru,
+ama *hangi veritabanına* gittiği ayrı bir soru ve cevabı bugün "üretim".
+
+Bu, GUVENLIK.md'nin kendi dersinin ihlali: *"Geliştirici makinesi üretim
+yüzeyidir — LastPass, 2022."*
+
+**Karar kullanıcıya bırakıldı:** yerel `.env`'i Neon'daki geliştirme dalına
+çevirmek (önerilen), ya da kuralı gerçeğe göre güncellemek. İkisi de
+yapılmadan **bu makinede hiçbir şema komutu çalıştırılmamalı.** Bu oturumda
+da çalıştırılmadı.
+
+### Kararlar zaten verilmişti — belge BULUNABİLİR değildi
+
+Bu oturum kullanıcıya "proje bazlı üyelik ürün kararı istiyor" dedi ve
+seçenek sundu. **Yanlıştı.** `PROJE-ERISIMI.md` var ve kararlar 10 Eylül
+2026'da verilmiş: kim ekler (alan yöneticisi her projeye, projeyi açan
+kendi projesine), yönetici bütün projeleri görür, yeni üye hiçbir proje
+görmez, çıkarılan kişinin adı kartlarda kalır. Uygulama sırası yedi adım
+hâlinde yazılı.
+
+O belge CLAUDE.md'nin "Önce bunları oku" tablosunda **yoktu.** Deponun
+kendi dersinin örneği: belge doğru yazılmıştı ama bulunabilir değildi,
+yani okunmadı. Tablo güncellendi ve "Sıradaki işler" maddesi artık
+kararların VERİLDİĞİNİ ve nerede olduğunu söylüyor.
+
+### Yapılan: şema modeli (tablo HENÜZ YOK)
+
+`ProjectMember` tanımlandı. Soru tek: *bu kullanıcı bu projeyi görebilir
+mi?* Proje bazlı ikinci bir izin sistemi bilerek kurulmuyor — satırın
+varlığı erişim demek.
+
+- Bileşik birincil anahtar (`project_id`, `user_id`): aynı kişi aynı
+  projeye iki kez eklenemiyor, benzersizliği uygulamada kontrol etmek yarış
+  durumuna açık olurdu.
+- `added_by` denetim için, **yabancı anahtar yok** — ekleyen kişi alandan
+  çıkarılsa bile kayıt yaşamalı (raporlama tablolarındaki kararla aynı yön).
+- `created_by` **bilerek eklenmedi**: "projeyi açan kendi projesine ekler"
+  kararı onu gerektiriyor ama bu dilim okuma kapısı. Hiçbir şeyin okumadığı
+  bir sütun, bugün kapatılan "atıl ayar" sınıfının şema hâli olurdu.
+
+Commit canlıyı etkilemiyor: `prisma generate` istemciye bir erişimci
+ekliyor, onu hiçbir kod çağırmıyor. Deploy zincirinin `generate`den başka
+şey yapmadığı teyit edildi.
+
+### Sıradaki adım — SIRALAMA KISITI
+
+**Tablo canlıda oluşmadan erişim kapısını içeren kod gönderilemez**, yoksa
+canlı kırılır. Uygulanacak DDL çevrimdışı üretildi (`migrate diff`,
+veritabanına bağlanmıyor) ve tamamen ekleyici — `DROP` yok, mevcut tabloya
+dokunmuyor:
+
+```sql
+CREATE TABLE "project_members" (
+    "project_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "added_by" INTEGER,
+    "created_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "project_members_pkey" PRIMARY KEY ("project_id","user_id")
+);
+CREATE INDEX "ix_project_members_user_id" ON "project_members"("user_id");
+ALTER TABLE "project_members" ADD CONSTRAINT "project_members_project_id_fkey"
+  FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "project_members" ADD CONSTRAINT "project_members_user_id_fkey"
+  FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+```
+
+Ardından tek seferlik aktarım — karar: *"mevcut kullanıcıların erişimi
+geçiş anında kesilmez"*:
+
+```sql
+INSERT INTO project_members (project_id, user_id)
+SELECT p.id, wm.user_id FROM projects p
+JOIN workspace_members wm ON wm.workspace_id = p.workspace_id
+ON CONFLICT DO NOTHING;
+```
+
+Tablo oluştuktan sonraki dilim (PROJE-ERISIMI.md 4. adım): ortak
+`loadProjectWithAccess` + saf karar mantığı + **okuma** uçları. Yazma,
+rapor, çöp, not ve MCP yüzeyleri ondan sonra — belge bunu açıkça
+sıralıyor: *"Okuma kapısı kurulmadan yazma kapısını değiştirmek tutarsız
+bir güvenlik modeli üretir."*
+
+**Kapı kurulurken korunacak mevcut kural:** reddin gövdesi "bulunamadı"
+dalıyla AYNI olmalı (kâhin kapalı, kart #227). Aynı kalıbın altı kopyası
+var ve bir test hepsini birlikte kilitliyor; proje kapısı eklenirken bu
+kural bozulmamalı.
 
 ---
 
