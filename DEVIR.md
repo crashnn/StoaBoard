@@ -6,7 +6,7 @@ Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
 **Son güncelleme:** 3 Ekim 2026, **ev makinesinde**. En taze bölüm
-**0-AQ**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**0-AR**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,98 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AR. 3 Ekim — iki sınır kilidi: soket olayları ve uç yolları. Kusur bulunmadı
+
+**Depo:** `main` = `713a1d1`. Test **1486 → 1495**.
+
+**Bu bölümde kusur YOK, ve bunu başa yazıyorum** çünkü "test ekledim" ile
+"kusur kapattım" ayrı şeyler; devir notunu okuyan biri ikincisini
+sanmamalı. Kod iki sınırda da doğruydu. Teslim edilen şey **kilit**.
+
+**Niçin bu tur:** sınıf araması (0-AQ) atıl ayarları buldu ve bitti. Sıradaki
+soru şuydu: *bu depoda hangi sessiz kusur sınıfları HENÜZ ölçülmüyor?* İki
+sınır öne çıktı, ikisi de "iki taraf aynı adı konuşuyor mu" biçiminde:
+
+| Sınır | Kusurun hâli | Kilit |
+|---|---|---|
+| Soket olay adları | Sunucu `note_updated` yayınlar, istemci `note_update` dinler → özellik ölü doğar | `soketOlaylari.test.js` |
+| HTTP uç yolları | İstemci `/api/notes/trash` çağırır, sunucu başka yol sunar → istek yanlış yere gider | `ucEslesme.test.js` |
+
+İkisi de aynı belirtiyi üretiyor: hata yok, kayıt yok, ekranda yalnızca
+"bazen çalışmıyor" var. `lib/emit.js`in başındaki not bu sınıfın bir
+toplantıyı yaktığını anlatıyor.
+
+### Soket olayları — elle grep ON yanlış alarm üretti
+
+İlk deneme elle grep'ti ve **on olay** "istemci dinliyor, sunucu
+yayınlamıyor" diye göründü. Hepsi yanlış alarmdı: sunucuda **beş ayrı yayın
+yolu** var (`.emit` doğrudan, `panoYayini`, `emitToUsers`, `emitNoteEvent`,
+ve bunları saran `etkinlikYayini`) ve grep üçünü görmüyordu.
+
+**Ders:** soru elle cevaplanamıyorsa, cevaplayacak şey test.
+
+**Tarama yapıca tam.** Önce bir kural kilitleniyor: `server/src` içindeki
+her `.emit(` ya düz metin ya da kapsayan işlevin olay **parametresini**
+alır (bugün `olay` ve `event`). Kural tutuyorsa adların saklanacak başka
+yeri yok. Sarmalayıcı adları elle yazılmıyor — `.emit(<param>)` kalıbından
+geriye izlenerek **kaynaktan** bulunuyor. Üç biçimde kör kalma denendi
+(adı yeni bir değişkene almak, nesneden okumak, sarmalayıcının adını
+değiştirmek) ve üçü de yakalandı.
+
+### Uç yolları — müsamahalı kural İKİ KEZ kaçtı
+
+123 sunucu yolu, 103 istemci çağrısı, hepsi eşleşti. Ama **mutasyon turu
+ölçütün zayıf olduğunu gösterdi.**
+
+İlk kural "sunucu parçası `:param` ise her şey uyar"dı — Express'in gerçek
+davranışı bu, ama ölçüt olarak işe yaramıyor: `/api/notes/cop` yazım hatası
+`/api/notes/:id` rotası tarafından **emiliyor** ve test geçiyordu. Mutasyon
+bunu iki yönden de yakaladı ve **başlığa yazdığım "yazım hatasını yakalar"
+iddiası yanlış çıktı.**
+
+Sıkı kural: istemcinin yazdığı **sabit** parça, sunucuda da aynı **sabit**
+parça olmalı. Ara değer sunucunun parametresine uyabilir — çalışma anında
+ne geldiğini tarama bilemez.
+
+### İki turun ortak dersi: TARAMANIN KENDİ KUSURU
+
+Her ikisinde de tarama kendi kusuruyla **iki yönlü yanlış** üretti:
+
+- Soket turunda pencere `req.app.get('io'` noktasında kapanıyordu: `'io'`
+  olay **sanıldı** ve gerçek adlar **kaçtı**.
+- Uç turunda `req.app.get('io')` ifadesi `app.get(` gibi görünüp rota
+  sanıldı ve **dokuz hayalet kayıt** üretti.
+
+İkisi de aynı cümleyle özetleniyor: **taramanın kusuru, ölçtüğü kusuru hem
+uyduruyor hem gizliyor.** Kaynak tarayan bir ölçüt yazarken ilk sorulacak
+şey "deseni ne YANLIŞ yakalar", "ne kaçırır" değil.
+
+### Ne yakalamadıkları TESTE yazılı
+
+- Soket: olay **gövdesinin** biçimi ölçülmüyor; yalnızca adlar.
+- Uç: şablon ara değerinin doğru **tipte** olduğu ölçülmüyor
+  (`/api/tasks/${noteId}` yanlış kimliği gönderse sessiz).
+- Uç: "şablonlu çağrılar kapsanıyor" ölçütü bir **taban** ve mutasyonla
+  doğrulanmadı — kırılması için otuz beş çağrının birden kalkması gerekir.
+
+Üçü de yazılı ki "bu sınır tam test edilmiş" sanılmasın — `yetki.test.js`in
+kapsamlama notuyla aynı gerekçe.
+
+### Eldeki iş
+
+**Karar gerektirmeyen iş bitti, ve bu kez gerekçeli:** üç sınıf araması
+(atıl ayar, soket adı, uç yolu) ve iki sınır kilidi tamamlandı; son ikisi
+kusur bulmadı. Bundan sonrası ürün kararı istiyor.
+
+Karar bekleyenler: **proje bazlı üyelik** (en büyük açık), teslim tarihi
+bildirimi (BILDIRIMLER.md S4), dönem dondurma, tarayıcı bildirimi (S5).
+Bilinçli yapılmayan: kanban'da toplu işlem (kapsam kararı, 0-AP).
+
+Kapanmamış tek ölçüm: **#332** (çevrimiçi listesi kapsamı) — üç test hesabı
+da alan 22'de.
 
 ---
 

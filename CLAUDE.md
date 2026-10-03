@@ -90,7 +90,7 @@ Gece **kişisel MCP anahtarları** (DEVIR 0-V2): Ayarlar → Claude bağlantıs�
 iptal. **Anahtarı ortam değişkenine eklemek artık tek yol değil** — yeni kişi
 kendi anahtarını üretir.
 
-Test sayısı **1486**, hepsi geçiyor. Ayrıntılı durum için **her zaman
+Test sayısı **1495**, hepsi geçiyor. Ayrıntılı durum için **her zaman
 [DEVIR.md](DEVIR.md)** — bu blok bayatlamaya yatkın, oradaki 0-* bölümleri
 tarihli ve daha güvenilir.
 
@@ -158,7 +158,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1486 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1495 test,
 veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
 "Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
 modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
@@ -221,6 +221,36 @@ hiç başlamıyor ("The job was not started because your account is locked due t
 a billing issue"). Dosya yerinde duruyor, kilit açılınca değişiklik gerekmeden
 çalışacak. **Repoda CI dosyası görüp korunduğunu varsayma** — bugün koruyan
 şey kanca.
+
+**Kaynak tarayan olcut yazarken ilk soru "desen ne YANLIS yakalar".**
+3 Ekim'de iki tarama kendi kusuruyla IKI YONLU yanlis uretti ve ikisi de
+ayni ifadeye takildi: `req.app.get('io')`. Soket turunda pencere `.get('io'`
+noktasinda kapandi, `'io'` olay SANILDI ve gercek adlar KACTI. Uc turunda
+ayni ifade `app.get(` gibi gorunup rota sanildi ve dokuz hayalet kayit
+uretti. Ozeti: **taramanin kusuru, olctugu kusuru hem uyduruyor hem
+gizliyor** — yanlis olumlu ve yanlis olumsuz ayni desenden dogar. "Ne
+kacirir" diye sormak yetmiyor.
+
+**Iki ucun ayni adi konustugunu TEST sormali.** Sunucu `note_updated`
+yayinlar, istemci `note_update` dinler ve ozellik OLU DOGAR: hata yok,
+kayit yok, ekranda yalnizca "bazen calismiyor" var. Ayni sinif HTTP'de de
+var (istemci olmayan bir yolu cagirir). Ikisi de 3 Ekim'de kilitlendi
+(`soketOlaylari.test.js`, `ucEslesme.test.js`) ve KUSUR BULUNMADI — teslim
+edilen sey kilit.
+
+Boyle bir kilit yazarken taramanin KOR KALAMAYACAGINI once kanitla: soket
+tarafinda "her `.emit(` ya metin ya olay parametresi alir" kurali
+kilitlendi, uc tarafinda "mount edilmeyen router yok". Bu kurallar
+tutmazsa tarama eksik tarar ve sessizce "her sey yolunda" der. Ayrica
+ayirt edicilik kapisi koy: iki kume de bos olsa esitlik olcutu hicbir sey
+olcmez.
+
+**Olcut EXPRESS'TEN (ya da calisma zamanindan) SIKI olabilir.** Uc
+eslesmesinde "sunucu parcasi `:param` ise her sey uyar" dedim — yonlendirme
+gercekten oyle davraniyor, ama olcut olarak ise yaramadi: `/api/notes/cop`
+yazim hatasi `/api/notes/:id` tarafindan EMILIYOR ve test geciyordu.
+Calisma zamani kusuru gizliyorsa olcut onu taklit etmez; istemcinin yazdigi
+SABIT parca sunucuda da sabit olmak zorunda.
 
 **Bir kusur bulunca SINIFINI ara.** 3 Ekim'de kisayol ozellestirmesinin
 atil oldugu goruldu ("yaziliyor, okunmuyor"). Tek bir duzeltme yerine ayni
