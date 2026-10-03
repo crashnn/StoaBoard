@@ -139,6 +139,24 @@ describe('çöp ekranı bağlantısı', () => {
       'toplu işlem görünmeyen satırlara da uygulanıyor');
   });
 
+  test('toplu yol tek işleyiciyi SESSİZ çağırıyor', () => {
+    // İKİ SEBEP, ikisi de gerekli:
+    //  · `onRestore` tek satır yolunda "Görev geri alındı" diyor; yirmi öğe
+    //    yirmi toast demekti, üstüne bir de toplu sonuç.
+    //  · Daha önemlisi FIRLATMA: sessiz yolda hata fırlatılıyor, yoksa
+    //    `topluCalistir` yirmisinin yirmisi de düşse "20 öğe işlendi"
+    //    yazardı — kullanıcıya yanlış söyleyen bir başarı mesajı.
+    //
+    // Mutasyon bu ölçüt olmadan kaçtı: `const s = undefined` yazmak testi
+    // yeşil bıraktı.
+    const g = govde('const topluIsle = async');
+    assert.match(g, /const s = \{ sessiz: true \};/, 'sessiz seçeneği kurulmuyor');
+    // DÖRT çağrı yerinin DÖRDÜ de geçirmeli: biri atlanırsa o tür yine
+    // toast yağdırır ve sayımı şişirir. Sayı kullanılıyor, "en az bir" değil.
+    const cagri = [...g.matchAll(/on(Restore|RestoreNote|PermanentDelete|PermanentDeleteNote)\(id, s\)/g)].length;
+    assert.equal(cagri, 4, `${cagri} çağrı sessiz geçiyor, dördü olmalı`);
+  });
+
   test('boş seçimde HİÇ başlamıyor', () => {
     assert.match(govde('const topluIsle = async'),
       /if \(topluMesgul \|\| seciliGorunen\.length === 0\) return;/, 'boş seçimde istek gidiyor');

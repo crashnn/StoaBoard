@@ -1188,7 +1188,7 @@ function App() {
 
   // ── Task operations ───────────────────────────────────────────────────────
 
-  const moveTask = async (id, colId) => {
+  const moveTask = async (id, colId, { sessiz = false } = {}) => {
     const prev = tasks;
     const col = DATA.COLUMNS.find(c => c.id === colId);
     setTasks(tasks.map(t => t.id === id ? { ...t, col: colId, progress: col?.is_done ? 100 : t.progress } : t));
@@ -1213,6 +1213,13 @@ function App() {
       }
       // Kolon geçiş kuralı gibi bilinçli engellemelerde sunucu açıklama
       // gönderiyor; sessizce geri sarmak yerine sebebi göster.
+      // SESSIZ YOL FIRLATIYOR, gerekcesi toplu islemin DURUSTLUGU:
+      // `topluCalistir` basarisizi ancak firlatilirsa sayabiliyor. Yutuldugu
+      // surece yirmi ogenin yirmisi de dusse "20 oge islendi" yaziyordu —
+      // kullaniciya yanlis soyleyen bir basari mesaji, bu depodaki en pahali
+      // kusur sinifi. Tek oge yolunda kullaniciya hata gosteriliyor; eskiden
+      // yalnizca `console.error` vardi, yani sessizce dusebiliyordu.
+      if (sessiz) throw e;
       window.showToast?.(e.message || window.t?.('app_err_move_task') || 'Görev taşınamadı', 'error');
       console.error('moveTask failed:', e.message);
     }
@@ -1247,13 +1254,22 @@ function App() {
     return created;
   };
 
-  const deleteTask = async (id) => {
+  // `sessiz` TOPLU YOL İÇİN var. Toplu çöpe atma bu işlevi kart başına
+  // çağırıyor ve her çağrı kendi geri-al toast'ını gösteriyordu: yirmi kart
+  // yirmi toast, üstüne bir de toplu sonuç toast'ı. Yirmi bir bildirim,
+  // hepsi tek bir karta ait geri alma teklifi — kullanıcı hangisine
+  // basacağını bilmiyor ve ekran kapanıyor.
+  //
+  // Toplu yol kendi TEK teklifini gösteriyor (hepsini birden geri alan), o
+  // yüzden buradaki teklif orada bastırılıyor. Tek kart yolu değişmiyor.
+  const deleteTask = async (id, { sessiz = false } = {}) => {
     const task = tasks.find(t => String(t.id) === String(id));
     setTasks(prev => prev.filter(t => String(t.id) !== String(id)));
     setDrawerTask(null);
     try {
       await API.deleteTask(id);
       if (task) setTrashTasks(prev => [{ ...task, deleted_at: new Date().toISOString() }, ...prev]);
+      if (sessiz) return;
       // GERİ AL — kartın kaybolduğu an, onu geri getirmenin de en kolay
       // olduğu an. Önceden tek yol Çöp Kutusu görünümüne gidip kartı orada
       // bulmaktı: kart ekrandan siliniyor, kullanıcıya hiçbir şey
@@ -1272,8 +1288,16 @@ function App() {
         },
       }, 'info');
     } catch (e) {
-      console.error(e);
       if (task) setTasks(prev => kartiYerlestir(prev, task, 'son'));
+      // SESSIZ YOL FIRLATIYOR, gerekcesi toplu islemin DURUSTLUGU:
+      // `topluCalistir` basarisizi ancak firlatilirsa sayabiliyor. Yutuldugu
+      // surece yirmi ogenin yirmisi de dusse "20 oge islendi" yaziyordu —
+      // kullaniciya yanlis soyleyen bir basari mesaji, bu depodaki en pahali
+      // kusur sinifi. Tek oge yolunda kullaniciya hata gosteriliyor; eskiden
+      // yalnizca `console.error` vardi, yani sessizce dusebiliyordu.
+      if (sessiz) throw e;
+      console.error(e);
+      window.showToast?.(window.t?.('app_err_trash_task') || 'Görev çöpe atılamadı', 'error');
     }
   };
 
@@ -1287,35 +1311,75 @@ function App() {
     return updated;
   };
 
-  const restoreTask = async (id) => {
+  const restoreTask = async (id, { sessiz = false } = {}) => {
     try {
       const restored = await API.restoreTask(id);
       setTrashTasks(prev => prev.filter(t => String(t.id) !== String(id)));
       setTasks(prev => kartiYerlestir(prev, restored, 'son'));
-      window.showToast?.(window.t?.('trash_restored') || 'Görev geri alındı', 'success');
-    } catch (e) { console.error(e); }
+      if (!sessiz) window.showToast?.(window.t?.('trash_restored') || 'Görev geri alındı', 'success');
+    } catch (e) {
+      // SESSIZ YOL FIRLATIYOR, gerekcesi toplu islemin DURUSTLUGU:
+      // `topluCalistir` basarisizi ancak firlatilirsa sayabiliyor. Yutuldugu
+      // surece yirmi ogenin yirmisi de dusse "20 oge islendi" yaziyordu —
+      // kullaniciya yanlis soyleyen bir basari mesaji, bu depodaki en pahali
+      // kusur sinifi. Tek oge yolunda kullaniciya hata gosteriliyor; eskiden
+      // yalnizca `console.error` vardi, yani sessizce dusebiliyordu.
+      if (sessiz) throw e;
+      console.error(e);
+      window.showToast?.(window.t?.('trash_restore_failed') || 'Görev geri alınamadı', 'error');
+    }
   };
 
-  const permanentDeleteTask = async (id) => {
+  const permanentDeleteTask = async (id, { sessiz = false } = {}) => {
     try {
       await API.permanentDeleteTask(id);
       setTrashTasks(prev => prev.filter(t => String(t.id) !== String(id)));
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      // SESSIZ YOL FIRLATIYOR, gerekcesi toplu islemin DURUSTLUGU:
+      // `topluCalistir` basarisizi ancak firlatilirsa sayabiliyor. Yutuldugu
+      // surece yirmi ogenin yirmisi de dusse "20 oge islendi" yaziyordu —
+      // kullaniciya yanlis soyleyen bir basari mesaji, bu depodaki en pahali
+      // kusur sinifi. Tek oge yolunda kullaniciya hata gosteriliyor; eskiden
+      // yalnizca `console.error` vardi, yani sessizce dusebiliyordu.
+      if (sessiz) throw e;
+      console.error(e);
+      window.showToast?.(window.t?.('trash_delete_failed') || 'Kalıcı silme başarısız', 'error');
+    }
   };
 
-  const restoreNote = async (id) => {
+  const restoreNote = async (id, { sessiz = false } = {}) => {
     try {
       await API.restoreNote(id);
       setTrashNotes(prev => prev.filter(n => n.id !== id));
-      window.showToast?.(window.t?.('notes_trash_restored') || 'Not geri alındı', 'success');
-    } catch (e) { console.error(e); }
+      if (!sessiz) window.showToast?.(window.t?.('notes_trash_restored') || 'Not geri alındı', 'success');
+    } catch (e) {
+      // SESSIZ YOL FIRLATIYOR, gerekcesi toplu islemin DURUSTLUGU:
+      // `topluCalistir` basarisizi ancak firlatilirsa sayabiliyor. Yutuldugu
+      // surece yirmi ogenin yirmisi de dusse "20 oge islendi" yaziyordu —
+      // kullaniciya yanlis soyleyen bir basari mesaji, bu depodaki en pahali
+      // kusur sinifi. Tek oge yolunda kullaniciya hata gosteriliyor; eskiden
+      // yalnizca `console.error` vardi, yani sessizce dusebiliyordu.
+      if (sessiz) throw e;
+      console.error(e);
+      window.showToast?.(window.t?.('trash_restore_failed') || 'Görev geri alınamadı', 'error');
+    }
   };
 
-  const permanentDeleteNote = async (id) => {
+  const permanentDeleteNote = async (id, { sessiz = false } = {}) => {
     try {
       await API.permanentDeleteNote(id);
       setTrashNotes(prev => prev.filter(n => n.id !== id));
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      // SESSIZ YOL FIRLATIYOR, gerekcesi toplu islemin DURUSTLUGU:
+      // `topluCalistir` basarisizi ancak firlatilirsa sayabiliyor. Yutuldugu
+      // surece yirmi ogenin yirmisi de dusse "20 oge islendi" yaziyordu —
+      // kullaniciya yanlis soyleyen bir basari mesaji, bu depodaki en pahali
+      // kusur sinifi. Tek oge yolunda kullaniciya hata gosteriliyor; eskiden
+      // yalnizca `console.error` vardi, yani sessizce dusebiliyordu.
+      if (sessiz) throw e;
+      console.error(e);
+      window.showToast?.(window.t?.('trash_delete_failed') || 'Kalıcı silme başarısız', 'error');
+    }
   };
 
   const emptyTrash = async () => {
@@ -1814,7 +1878,7 @@ function App() {
             {(view === 'gizlilik-sartlari' || view === 'hizmet-sartlari') && (
               <LegalPage type={view} onViewChange={setView} authed={authed} />
             )}
-            {!taskPageTask && view === 'board'     && <BoardView key={currentProject?.id || 'default'} tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} onDeleteTask={deleteTask} onAssignTask={atamayiDegistir} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} canManageTasks={canManageTasks} canManageProjects={canManageProjects} switching={projectSwitching} />}
+            {!taskPageTask && view === 'board'     && <BoardView key={currentProject?.id || 'default'} tasks={tasks} onOpenTask={openDrawer} onMoveTask={moveTask} onDeleteTask={deleteTask} onRestoreTask={restoreTask} onAssignTask={atamayiDegistir} tweaks={tweaks} onOpenModal={openModal} onTitleChange={updateTitle} canManageTasks={canManageTasks} canManageProjects={canManageProjects} switching={projectSwitching} />}
             {view === 'notifications' && (
               <NotifPanel
                 fullPage

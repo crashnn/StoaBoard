@@ -104,10 +104,16 @@ export function TrashView({ tasks, onRestore, onPermanentDelete, canManageTasks,
   const topluIsle = async (tur) => {
     if (topluMesgul || seciliGorunen.length === 0) return;
     setTopluMesgul(true);
+    // `sessiz` TEK ISLEYICININ KENDI TOAST'INI bastiriyor. `onRestore` tek
+    // satir yolunda "Gorev geri alindi" diyor; yirmi oge yirmi toast demekti,
+    // ustune bir de toplu sonuc. Daha onemlisi FIRLATMA: sessiz yolda hata
+    // firlatiliyor, yoksa `topluCalistir` yirmisinin yirmisi de dusse
+    // "20 oge islendi" yazardi.
+    const s = { sessiz: true };
     topluBitir(await topluCalistir(seciliGorunen, (anahtar) => {
       const { tur: cins, id } = copAyristir(anahtar);
-      if (tur === 'restore') return cins === 'task' ? onRestore(id) : onRestoreNote(id);
-      return cins === 'task' ? onPermanentDelete(id) : onPermanentDeleteNote(id);
+      if (tur === 'restore') return cins === 'task' ? onRestore(id, s) : onRestoreNote(id, s);
+      return cins === 'task' ? onPermanentDelete(id, s) : onPermanentDeleteNote(id, s);
     }));
   };
 

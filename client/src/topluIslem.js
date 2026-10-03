@@ -121,3 +121,43 @@ export function yeniAtananlar(gorev, uyeId, ekle) {
   if (ekle) return simdiki.includes(uyeId) ? simdiki : [...simdiki, uyeId];
   return simdiki.filter((id) => id !== uyeId);
 }
+
+/**
+ * İşlem ÖNCESİ durumun anlık görüntüsü — geri alma buradan kuruluyor.
+ *
+ * NİÇİN VAR: bütün uygulamada tek bir "Geri al" vardı (çöpe atma). Toplu
+ * işlem çubuğu "yirmi kartı yanlış kolona taşımayı" tek tıklık hâle getirdi
+ * ve o tıklamanın geri dönüşü yoktu. Yanlışı kolaylaştırıp düzeltmeyi
+ * kolaylaştırmamak, aracı kullanıcıya karşı kurmak olur.
+ *
+ * DİZİ KOPYALANIYOR (`[...]`), gerekçesi ince: kopyalanmazsa görüntü canlı
+ * diziye TAKMA AD olur. `onAssignTask` durumu `{ ...t, ...updated }` ile
+ * değiştirdiği için çoğu yolda yeni nesne doğuyor, ama tek bir yerde yerinde
+ * değişiklik olsa görüntü de değişir ve "geri al" YENİ değeri geri
+ * yazardı — hiçbir şey yapmayan, ama yapmış görünen bir düğme.
+ *
+ * @param {Array} gorevler Bütün kartlar (işlem öncesi hâlleriyle).
+ * @param {Array<string>} idler İşleme girecek kimlikler.
+ * @param {string} alan 'col' ya da 'assignees'.
+ */
+export function geriAlmaPlani(gorevler, idler, alan) {
+  const izin = new Set((idler || []).map(String));
+  return (gorevler || [])
+    .filter((g) => izin.has(String(g.id)))
+    .map((g) => ({
+      id: String(g.id),
+      deger: Array.isArray(g?.[alan]) ? [...g[alan]] : g?.[alan],
+    }));
+}
+
+/**
+ * Plandan YALNIZCA tutmuş olanları süzer.
+ *
+ * Yarım başarıda geri alma da yarım olmalı: beş kartın üçü taşındıysa geri
+ * alma o üçünü döndürür. Başarısız ikisini "geri almak" hiç olmamış bir
+ * değişikliği geri yazmak olurdu.
+ */
+export function geriAlinacaklar(plan, basarili) {
+  const izin = new Set((basarili || []).map(String));
+  return (plan || []).filter((p) => izin.has(String(p.id)));
+}

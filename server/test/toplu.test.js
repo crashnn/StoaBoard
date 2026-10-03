@@ -19,7 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { yorumsuzDosya } from './yardimcilar.js';
-import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec, atamaEkleniyorMu, yeniAtananlar } from '../../client/src/topluIslem.js';
+import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec, atamaEkleniyorMu, yeniAtananlar, geriAlmaPlani, geriAlinacaklar } from '../../client/src/topluIslem.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BOARD = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'views', 'board.jsx'));
@@ -136,11 +136,18 @@ describe('tablo görünümü — toplu işlem bağlantısı', () => {
     // etti, çünkü çöp dalı hâlâ `seciliGorunen` kullanıyordu — komşudan
     // ödünç alma. Sayı kullanılıyor ve ne sayıldığı yazılı: toplu çağrıların
     // SAYISI kadar süzgeçli çağrı olmalı.
-    const cagrilar = [...t.matchAll(/topluCalistir\(/g)].length;
-    const suzgecli = [...t.matchAll(/topluCalistir\(seciliGorunen/g)].length;
-    assert.ok(cagrilar >= 2, `beklenenden az toplu çağrı: ${cagrilar}`);
-    assert.equal(suzgecli, cagrilar,
-      `${cagrilar} toplu çağrıdan yalnızca ${suzgecli} tanesi görünen süzgecinden geçiyor`);
+    //
+    // SAYIM İLERİ ÇAĞRILARA BAĞLI. 3 Ekim'de geri alma eklendi ve her toplu
+    // işlemin bir de GERİ ALMA çağrısı oldu. Onlar `seciliGorunen`
+    // kullanmamalı, kullanmaları yanlış olurdu: geri alma zaten TUTMUŞ
+    // kimlikler üzerinde çalışıyor ve o küme süzgeçten değil sonuçtan
+    // geliyor. Ayrım tesadüfi bir yazım değil mekanizma: ileri çağrı
+    // bekleniyor (`await`), geri alma bir kapanışın içinde dönüyor.
+    const ileri = [...t.matchAll(/await topluCalistir\(/g)].length;
+    const suzgecli = [...t.matchAll(/await topluCalistir\(seciliGorunen/g)].length;
+    assert.ok(ileri >= 2, `beklenenden az ileri toplu çağrı: ${ileri}`);
+    assert.equal(suzgecli, ileri,
+      `${ileri} ileri çağrıdan yalnızca ${suzgecli} tanesi görünen süzgecinden geçiyor`);
   });
 
   test('yetkisiz kullanıcı toplu işlem YAPAMIYOR', () => {
@@ -158,10 +165,56 @@ describe('tablo görünümü — toplu işlem bağlantısı', () => {
   });
 
   test('sonuç kullanıcıya SÖYLENİYOR', () => {
+    // Ölçüt `topluBitir`in gövdesine bağlı. İlk hâli `window.showToast?.(mesaj`
+    // kalıbını arıyordu; 3 Ekim'de geri alma eklenince toast'a artık düz
+    // metin değil `{ message, eylem }` nesnesi gidiyor ve ölçüt, DAVRANIŞ
+    // hiç değişmediği hâlde kırıldı. Ölçülen şey: sonuç cümleye çevriliyor,
+    // kullanıcıya gösteriliyor, ve yarım başarı ayrı ağırlıkta.
     const t = tablo();
-    assert.match(t, /topluSonucMetni\(sonuc,/, 'sonuç cümleye çevrilmiyor');
-    assert.match(t, /window\.showToast\?\.\(mesaj/, 'sonuç kullanıcıya gösterilmiyor');
-    assert.match(t, /sonuc\.basarisiz\.length \? 'error' : 'info'/, 'yarım başarı normal bildirim gibi gösteriliyor');
+    const bas = t.indexOf('const topluBitir = (');
+    assert.ok(bas > 0, 'topluBitir bulunamadı');
+    const govde = t.slice(bas, t.indexOf('\n  };', bas));
+    assert.match(govde, /topluSonucMetni\(sonuc,/, 'sonuç cümleye çevrilmiyor');
+    assert.match(govde, /window\.showToast\?\.\(/, 'sonuç kullanıcıya gösterilmiyor');
+    assert.match(govde, /\bmesaj\b/, 'gösterilen şey sonuç cümlesi değil');
+    assert.match(govde, /sonuc\.basarisiz\.length \? 'error' : 'info'/,
+      'yarım başarı normal bildirim gibi gösteriliyor');
+  });
+
+  test('GERİ ALMA teklifi var ve yalnızca TUTMUŞ olanları geri alıyor', () => {
+    // Bütün uygulamada tek bir "Geri al" vardı (çöpe atma). Toplu işlem
+    // çubuğu "yirmi kartı yanlış kolona taşımayı" tek tıklık hâle getirdi ve
+    // o tıklamanın geri dönüşü yoktu — yanlışı kolaylaştırıp düzeltmeyi
+    // kolaylaştırmamak, aracı kullanıcıya karşı kurmaktır.
+    const t = tablo();
+    const bas = t.indexOf('const topluBitir = (');
+    const govde = t.slice(bas, t.indexOf('\n  };', bas));
+    // Hiçbiri tutmadıysa teklif ÇIKMAMALI: hiçbir şey yapmayan ama yapmış
+    // görünen bir düğme olurdu.
+    assert.match(govde, /geriAl && sonuc\.basarili\.length > 0/, 'boş sonuçta da teklif çıkıyor');
+    assert.match(govde, /geriAl\(sonuc\.basarili\)/, 'geri alma tutmuş olanları görmüyor');
+    // Üç toplu işlemin üçü de teklif veriyor.
+    assert.equal([...t.matchAll(/geriAl:/g)].length, 3,
+      'toplu işlemlerden biri geri alma teklifi vermiyor');
+  });
+
+  test('görüntü işlemin DEĞİŞTİRDİĞİ alandan alınıyor', () => {
+    // Mutasyon bu ölçüt olmadan kaçtı: `geriAlmaPlani(sorted, ..., 'id')`
+    // yazmak testi yeşil bırakıyordu. Geri alma o zaman kartın kolonuna
+    // kimliğini yazardı — çalışan ama çöp üreten bir düğme.
+    //
+    // Ölçüt her işlemin KENDİ gövdesine bağlı: taşıma kolonu değiştiriyor,
+    // atama atananları. Alan eşleşmesi tesadüf değil, işlemin tanımı.
+    const t = tablo();
+    const govde = (ad) => {
+      const bas = t.indexOf(`const ${ad} = async`);
+      assert.ok(bas > 0, `${ad} bulunamadı`);
+      return t.slice(bas, t.indexOf('\n  };', bas));
+    };
+    assert.match(govde('topluTasi'), /geriAlmaPlani\([^)]*, 'col'\)/,
+      'taşımanın geri alması kolonu değil başka bir alanı geri yazıyor');
+    assert.match(govde('topluAta'), /geriAlmaPlani\([^)]*, 'assignees'\)/,
+      'atamanın geri alması atananları değil başka bir alanı geri yazıyor');
   });
 
   test('işlem bitince seçim BIRAKILIYOR', () => {
@@ -347,6 +400,93 @@ describe('toplu atama — saf', () => {
   });
 });
 
+describe('geri alma planı — saf', () => {
+  const GOREVLER = [
+    { id: '1', col: 'todo', assignees: ['ayse'] },
+    { id: '2', col: 'doing', assignees: [] },
+    { id: '3', col: 'done', assignees: ['mehmet', 'ayse'] },
+  ];
+
+  test('yalnızca işleme girecek kartların görüntüsü alınıyor', () => {
+    assert.deepEqual(geriAlmaPlani(GOREVLER, ['1', '3'], 'col'),
+      [{ id: '1', deger: 'todo' }, { id: '3', deger: 'done' }]);
+  });
+
+  test('DİZİ KOPYALANIYOR — takma ad olmuyor', () => {
+    // Kopyalanmazsa görüntü canlı diziye takma ad olur ve "geri al" YENİ
+    // değeri geri yazardı: hiçbir şey yapmayan ama yapmış görünen bir düğme.
+    const gorevler = [{ id: '1', col: 'todo', assignees: ['ayse'] }];
+    const plan = geriAlmaPlani(gorevler, ['1'], 'assignees');
+    gorevler[0].assignees.push('mehmet');          // işlem kartı değiştirdi
+    assert.deepEqual(plan[0].deger, ['ayse'], 'görüntü canlı diziye bağlı kalmış');
+  });
+
+  test('kimlik TÜRÜ karşılaştırmayı bozmuyor', () => {
+    // Kart kimliği sayı, seçim kümesi metin tutuyor.
+    assert.deepEqual(geriAlmaPlani([{ id: 7, col: 'todo' }], ['7'], 'col'),
+      [{ id: '7', deger: 'todo' }]);
+  });
+
+  test('eksik alan patlamıyor', () => {
+    assert.deepEqual(geriAlmaPlani([{ id: '1' }], ['1'], 'col'), [{ id: '1', deger: undefined }]);
+    assert.deepEqual(geriAlmaPlani(null, ['1'], 'col'), []);
+    assert.deepEqual(geriAlmaPlani(GOREVLER, null, 'col'), []);
+  });
+
+  test('YARIM BAŞARIDA geri alma da yarım', () => {
+    // Beş kartın üçü taşındıysa geri alma o üçünü döndürür. Başarısız
+    // ikisini "geri almak" hiç olmamış bir değişikliği geri yazmak olurdu.
+    const plan = geriAlmaPlani(GOREVLER, ['1', '2', '3'], 'col');
+    assert.deepEqual(geriAlinacaklar(plan, ['1', '3']).map((p) => p.id), ['1', '3']);
+  });
+
+  test('hiçbiri tutmadıysa geri alınacak da yok', () => {
+    const plan = geriAlmaPlani(GOREVLER, ['1', '2'], 'col');
+    assert.deepEqual(geriAlinacaklar(plan, []), []);
+    assert.deepEqual(geriAlinacaklar(plan, null), []);
+  });
+
+  test('planda olmayan başarılı kimlik UYDURULMUYOR', () => {
+    const plan = geriAlmaPlani(GOREVLER, ['1'], 'col');
+    assert.deepEqual(geriAlinacaklar(plan, ['1', '99']).map((p) => p.id), ['1']);
+  });
+});
+
+describe('tek kart yolu TOPLU yoldan ayrı — gürültü ve dürüstlük', () => {
+  const APP = yorumsuzDosya(path.resolve(__dirname, '..', '..', 'client', 'src', 'app.jsx'));
+  const govde = (ad) => {
+    const bas = APP.indexOf(`const ${ad} = async`);
+    assert.ok(bas > 0, `${ad} bulunamadı`);
+    const son = APP.indexOf('\n  };', bas);
+    assert.ok(son > bas, `${ad} kapanmıyor`);
+    return APP.slice(bas, son);
+  };
+
+  // Toplu yol bu işlevleri kart başına çağırıyor. İkisi birden gerekiyor:
+  // toast BASTIRILMALI (yirmi kart yirmi toast demekti) ve hata
+  // FIRLATILMALI (yoksa `topluCalistir` yirmisinin yirmisi de düşse
+  // "20 öğe işlendi" yazardı — kullanıcıya yanlış söyleyen bir başarı
+  // mesajı, bu depodaki en pahalı kusur sınıfı).
+  for (const ad of ['moveTask', 'deleteTask', 'restoreTask', 'permanentDeleteTask',
+    'restoreNote', 'permanentDeleteNote']) {
+    test(`${ad}: sessiz yol var ve hata FIRLATILIYOR`, () => {
+      const g = govde(ad);
+      assert.match(g, /\{ sessiz = false \} = \{\}/, `${ad} sessiz yol taşımıyor`);
+      assert.match(g, /if \(sessiz\) throw e;/,
+        `${ad} sessiz yolda hatayı yutuyor — toplu sonuç yalan söyler`);
+    });
+
+    test(`${ad}: tek kart yolunda hata SESSİZ DEĞİL`, () => {
+      // Eskiden yalnızca `console.error` vardı: geri alma sessizce
+      // düşebiliyordu ve kullanıcı kartın geri geldiğini sanıyordu.
+      const g = govde(ad);
+      const bas = g.indexOf('catch');
+      assert.ok(bas > 0, `${ad} hata yakalamıyor`);
+      assert.match(g.slice(bas), /showToast/, `${ad} tek kart yolunda sessizce düşüyor`);
+    });
+  }
+});
+
 describe('toplu atama — bağlantı', () => {
   // Her ölçüt `topluAta`nın KENDİ gövdesine bağlı, TableView'in tamamına
   // değil. Aklama denemesi iki ölçütü bir kerede akladı: yetki satırını
@@ -399,7 +539,11 @@ describe('toplu atama — bağlantı', () => {
     const govde = atamaGovdesi();
     const kac = (govde.match(/topluBitir\(/g) || []).length;
     assert.equal(kac, 1, `atama gövdesinde ${kac} topluBitir çağrısı — biri ölü olabilir`);
-    assert.match(govde, /\), true\);\s*$/, 'atama seçimi temizliyor');
+    // Bayrak 3 Ekim'de seçenek nesnesine taşındı (`geriAl` de aynı yoldan
+    // geçiyor). Ölçüt yazıma değil mekanizmaya bağlı: atama gövdesi
+    // `secimiKoru: true` geçiyor, `topluBitir` onu okuyor, taşıma ve çöp
+    // geçmiyor.
+    assert.match(govde, /secimiKoru: true/, 'atama seçimi temizliyor');
 
     // Çağrı yerini ölçmek de yetmedi: bayrağı hiç OKUMAMAK ve varsayılanı
     // `true` yapmak ikisi de kaçtı. Kuralı taşıyan ikinci yer `topluBitir`in
@@ -407,7 +551,7 @@ describe('toplu atama — bağlantı', () => {
     const bitirBas = BOARD.indexOf('const topluBitir = (');
     assert.ok(bitirBas > 0, 'topluBitir bulunamadı');
     const bitir = BOARD.slice(bitirBas, BOARD.indexOf('\n  };', bitirBas));
-    assert.match(bitir, /const topluBitir = \(sonuc, secimiKoru = false\) => \{/,
+    assert.match(bitir, /secimiKoru = false/,
       'koruma varsayılan olmuş — her toplu işlem seçimi tutar');
     assert.match(bitir, /if \(!secimiKoru\) setSecili\(new Set\(\)\);/,
       'bayrak okunmuyor — seçim her hâlde temizleniyor');
@@ -417,10 +561,11 @@ describe('toplu atama — bağlantı', () => {
       assert.ok(bas > 0, `${ad} bulunamadı`);
       return BOARD.slice(bas, BOARD.indexOf('\n  };', bas));
     };
-    assert.doesNotMatch(tek('topluTasi'), /topluBitir\([^;]*,\s*true\)/s,
-      'taşımadan sonra seçim duruyor');
-    assert.doesNotMatch(tek('topluCope'), /topluBitir\([^;]*,\s*true\)/s,
-      'çöpe atılan kart seçili kalıyor');
+    // TERS YÖN de kilitli: koruma taşımaya ya da çöpe DÖNMEMELİ. Çöpe atılan
+    // kart seçili kalırsa sonraki toplu işlem artık orada olmayan bir kartı
+    // arar.
+    assert.doesNotMatch(tek('topluTasi'), /secimiKoru/, 'taşımadan sonra seçim duruyor');
+    assert.doesNotMatch(tek('topluCope'), /secimiKoru/, 'çöpe atılan kart seçili kalıyor');
   });
 
   test('atama hatası YUTULMUYOR', () => {

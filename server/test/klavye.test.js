@@ -157,7 +157,13 @@ describe('kart klavyeye AÇIK (pano)', () => {
 describe('çöpe atma GERİ ALINABİLİR', () => {
   test('silme başarılı olunca geri al teklif ediliyor', () => {
     // Ölçüt `deleteTask`ın kendi gövdesine bağlı.
-    const bas = APP.indexOf('const deleteTask = async (id) =>');
+    //
+    // ÇAPA İMZADAN BAĞIMSIZ. İlk hâli `const deleteTask = async (id) =>`
+    // arıyordu; 3 Ekim'de işlev `{ sessiz }` seçeneği aldı ve çapa düştü,
+    // yani test koruduğu davranış hiç değişmediği hâlde kırıldı. İmza
+    // listesi ölçülüyor değil; ölçülen şey teklifin BAŞARIDAN sonra
+    // yapılması.
+    const bas = APP.indexOf('const deleteTask = async (');
     assert.ok(bas > 0, 'deleteTask bulunamadı');
     const govde = APP.slice(bas, APP.indexOf('const restoreTask', bas));
     assert.match(govde, /eylem: \{/, 'çöpe atma bildirimi eylem taşımıyor');
@@ -170,7 +176,7 @@ describe('çöpe atma GERİ ALINABİLİR', () => {
   });
 
   test('bildirim ömrü beş saniyeden uzun', () => {
-    const bas = APP.indexOf('const deleteTask = async (id) =>');
+    const bas = APP.indexOf('const deleteTask = async (');
     const govde = APP.slice(bas, APP.indexOf('const restoreTask', bas));
     const m = /omur: (\d+)/.exec(govde);
     assert.ok(m, 'ömür verilmemiş — varsayılan beş saniye, "acaba sildim mi" demeye yetmez');

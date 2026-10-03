@@ -5,7 +5,7 @@ import { Icon } from '../icons.jsx';
 import { Avatar, AvatarStack } from '../shell.jsx';
 import { API, kolonAdi } from '../data.jsx';
 import { komsuKolonId, hedefKartSirasi } from '../klavyePano.js';
-import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec, atamaEkleniyorMu, yeniAtananlar } from '../topluIslem.js';
+import { topluCalistir, topluSonucMetni, secimiDegistir, hepsiniSec, atamaEkleniyorMu, yeniAtananlar, geriAlmaPlani, geriAlinacaklar } from '../topluIslem.js';
 import { grupla, GRUP_OLCUTLERI } from '../gruplama.js';
 import { benSlug } from '../ben.js';
 import { kapsiyor } from '../arama.js';
@@ -535,7 +535,7 @@ function Column({ col, tasks, allColumns = [], onOpenTask, onDropCard, onMoveTas
 }
 
 // ─── Table View ──────────────────────────────────────────────────────────────
-function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, canManageTasks }) {
+function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onRestoreTask, onAssignTask, canManageTasks }) {
   // ── Toplu islem (tarama maddesi C) ──────────────────────────────────────
   // Secili kartlar KIMLIKLE tutuluyor, nesneyle degil: liste yeniden
   // suzuldugunde nesne kimligi degisir ve secim sessizce kaybolurdu.
@@ -571,17 +571,49 @@ function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, 
   // isaretlenir. Daha kotusu, anahtar semantigi ERISILEMEZ oluyordu: dugme
   // "hepsinde var" diye aktif olacagi anda secim gidiyor, yani cubuktan
   // atama hic kaldirilamiyordu. Canli deneme bunu yakaladi (3 Ekim).
-  const topluBitir = (sonuc, secimiKoru = false) => {
+  // `geriAl`, işlemi geri alacak işlevi alıyor ve YALNIZCA tutmuş kimlikleri
+  // görüyor. Toast'ın `eylem` yuvası zaten vardı (çöpe atmanın geri alması
+  // onu kullanıyor); eksik olan tek şey toplu işlemlerin teklifiydi.
+  //
+  // Ömür uzun (12 sn): "yirmi kartı yanlış kolona taşıdım" fark etmek beş
+  // saniye sürmüyor. Teklif kaçarsa iş kaybolmuyor — kartlar duruyor, bu
+  // yalnızca kısa yol.
+  const topluBitir = (sonuc, { secimiKoru = false, geriAl = null } = {}) => {
     const mesaj = topluSonucMetni(sonuc, (k, fb) => window.t?.(k) || fb);
-    if (mesaj) window.showToast?.(mesaj, sonuc.basarisiz.length ? 'error' : 'info');
+    // Hiçbiri tutmadıysa geri alınacak bir şey yok: "Geri al" düğmesi orada
+    // hiçbir şey yapmayan ama yapmış görünen bir düğme olurdu.
+    const geriAlinabilir = geriAl && sonuc.basarili.length > 0;
+    if (mesaj) {
+      window.showToast?.(
+        geriAlinabilir
+          ? {
+            message: mesaj,
+            omur: 12000,
+            eylem: {
+              etiket: window.t?.('app_undo') || 'Geri al',
+              calistir: () => geriAl(sonuc.basarili),
+            },
+          }
+          : mesaj,
+        sonuc.basarisiz.length ? 'error' : 'info',
+      );
+    }
     if (!secimiKoru) setSecili(new Set());
     setTopluMesgul(false);
   };
 
   const topluTasi = async (colId) => {
     if (!canManageTasks || topluMesgul) return;
+    // Görüntü İŞLEMDEN ÖNCE alınıyor: sonra alınsa her kartın kolonu zaten
+    // yeni değer olur ve "geri al" hiçbir şeyi geri almaz.
+    const oncesi = geriAlmaPlani(sorted, seciliGorunen, 'col');
     setTopluMesgul(true);
-    topluBitir(await topluCalistir(seciliGorunen, (id) => onMoveTask(id, colId)));
+    topluBitir(await topluCalistir(seciliGorunen, (id) => onMoveTask(id, colId, { sessiz: true })), {
+      geriAl: (basarili) => topluCalistir(
+        geriAlinacaklar(oncesi, basarili).map((p) => p.id),
+        (id) => onMoveTask(id, oncesi.find((p) => p.id === id).deger, { sessiz: true }),
+      ),
+    });
   };
 
   // TOGGLE: secili kartlarin HEPSINDE o kisi varsa kaldiriliyor, degilse
@@ -592,17 +624,32 @@ function TableView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, 
     if (!canManageTasks || topluMesgul || !onAssignTask) return;
     const secilenler = sorted.filter((t) => seciliGorunen.includes(String(t.id)));
     const ekle = atamaEkleniyorMu(secilenler, uyeId);
+    const oncesi = geriAlmaPlani(secilenler, seciliGorunen, 'assignees');
     setTopluMesgul(true);
     topluBitir(await topluCalistir(seciliGorunen, (id) => {
       const g = secilenler.find((t) => String(t.id) === id);
       return onAssignTask(id, yeniAtananlar(g, uyeId, ekle));
-    }), true);
+    }), {
+      secimiKoru: true,
+      geriAl: (basarili) => topluCalistir(
+        geriAlinacaklar(oncesi, basarili).map((p) => p.id),
+        (id) => onAssignTask(id, oncesi.find((p) => p.id === id).deger),
+      ),
+    });
   };
 
   const topluCope = async () => {
     if (!canManageTasks || topluMesgul || !onDeleteTask) return;
     setTopluMesgul(true);
-    topluBitir(await topluCalistir(seciliGorunen, (id) => onDeleteTask(id)));
+    // `sessiz` KART BASINA TOAST'I bastiriyor: `onDeleteTask` tek kart
+    // yolunda kendi geri-al teklifini gosteriyor ve yirmi kart yirmi toast
+    // demekti, ustune bir de toplu sonuc. Yirmi bir bildirim, hepsi tek bir
+    // karta ait teklif. Toplu yol kendi TEK teklifini gosteriyor.
+    topluBitir(await topluCalistir(seciliGorunen, (id) => onDeleteTask(id, { sessiz: true })), {
+      geriAl: onRestoreTask
+        ? (basarili) => topluCalistir(basarili, (id) => onRestoreTask(id, { sessiz: true }))
+        : null,
+    });
   };
 
   const daysBetween = (s, e) => {
@@ -1214,7 +1261,7 @@ function altGorunum(ad) {
   return ALT_GORUNUMLER.includes(ad) ? ad : 'kanban';
 }
 
-function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, switching, initialSubView, onSubViewChange }) {
+function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onRestoreTask, onAssignTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, switching, initialSubView, onSubViewChange }) {
   const [subView, setSubView] = useBoardState(() => altGorunum(initialSubView || localStorage.getItem('stoa.boardSubView')));
   // Gruplama olcutu HATIRLANIYOR: "kime gore bakiyorum" bir calisma bicimi,
   // her acilista kolona donmek o bicimi her gun yeniden kurmak demek.
@@ -1937,7 +1984,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, 
     )}
 
     {subView === 'table' && (
-      <TableView tasks={visibleTasks} onOpenTask={onOpenTask} onMoveTask={onMoveTask} onDeleteTask={onDeleteTask} onAssignTask={onAssignTask} canManageTasks={canManageTasks} />
+      <TableView tasks={visibleTasks} onOpenTask={onOpenTask} onMoveTask={onMoveTask} onDeleteTask={onDeleteTask} onRestoreTask={onRestoreTask} onAssignTask={onAssignTask} canManageTasks={canManageTasks} />
     )}
 
     {/* Çizelge dar ekranda ÇİZİLMİYOR, yerine sebebi yazılıyor.
