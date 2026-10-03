@@ -26,6 +26,7 @@ import { ChatPanel } from './chat.jsx';
 import { AuthPage, WorkspaceSetupPage } from './views/auth.jsx';
 import { BoardView } from './views/board.jsx';
 import { LegalPage } from './views/legal.jsx';
+import { GECIKME_MS, baglantiDurumu, baglantiMetni, tazelenmeliMi } from './baglanti.js';
 
 // Açılış-dışı ağır görünümler tembel yükleniyor. Açılış görünümü daima 'board';
 // aşağıdakilerin hiçbiri ilk boyada gerekmiyor, yalnızca ilgili sekmeye
@@ -93,6 +94,10 @@ function App() {
   // 'rate' | 'net' | null — "oturum yok" ile "cevabı bilmiyoruz" ayrı
   // durumlar (kart #328). Giriş ekranı yalnızca birincisinde gösterilir.
   const [baglantiHatasi, setBaglantiHatasi] = useS(null);
+  // Canlı bağlantının durumu — `baglanti.js`teki üç değerden biri. Önyükleme
+  // hatası (`baglantiHatasi`) ile karıştırılmamalı: o giriş ekranını
+  // kesiyor, bu uygulama ayaktayken gerçek zamanlının durmasını söylüyor.
+  const [canliDurum, setCanliDurum] = useS('bagli');
   const [needsWorkspace, setNeedsWorkspace] = useS(false);
   const [view, setView]                     = useS(() => {
     const path = window.location.pathname;
@@ -569,6 +574,65 @@ function App() {
     window.SOCKET = sock;
     setSocket(sock);
 
+    // ── BAĞLANTI DURUMU ────────────────────────────────────────────────────
+    //
+    // Buraya kadar hiç `disconnect` işleyicisi yoktu: bağlantı kopunca pano
+    // bayat kalıyor ve bunu söyleyen hiçbir şey olmuyordu (gerekçe
+    // `baglanti.js`in başında).
+    //
+    // Zamanlayıcı `sockRef` değil yerel bir değişkende: bu etki soketin
+    // ömrüyle aynı, temizliği de aşağıdaki `return` yapıyor.
+    let gecikmeZamani = null;
+    let koptu = false;
+    const durumuKur = ({ bagli, deniyor, gecikmeGecti }) =>
+      setCanliDurum(baglantiDurumu({ bagli, deniyor, gecikmeGecti }));
+
+    sock.on('connect', () => {
+      clearTimeout(gecikmeZamani);
+      gecikmeZamani = null;
+      durumuKur({ bagli: true });
+      // Şeridi kaldırmak YETMEZ: kopukken gönderilen olaylar geri gelmiyor.
+      // "Bağlantı var" deyip bayat pano göstermek hiç söylememekten daha
+      // kötü, çünkü kullanıcı artık ekrana güveniyor.
+      if (tazelenmeliMi({ koptu })) {
+        koptu = false;
+        onyukle(window.DATA?.WORKSPACE?.id || null)
+          .then(data => {
+            _applyBootstrap(data);
+            setTasks(data.tasks || []);
+            if (data.workspaces) setWorkspaces(data.workspaces);
+          })
+          .catch(() => {
+            // Tazeleme düşerse SESSİZ KALMIYOR: şerit kopuk durumuna
+            // dönüyor, çünkü ekrandaki veri hâlâ bayat.
+            durumuKur({ bagli: false, deniyor: false, gecikmeGecti: true });
+          });
+      }
+    });
+
+    sock.on('disconnect', () => {
+      koptu = true;
+      // Kısa blip şerit açmıyor; gecikme sonra hâlâ kopuksa açıyor.
+      clearTimeout(gecikmeZamani);
+      gecikmeZamani = setTimeout(() => {
+        // KİMLİK SIFIRLANIYOR: aşağıdaki `reconnect_attempt` kapısı "gecikme
+        // hâlâ bekliyor mu" diye buna bakıyor. Sıfırlanmazsa kimlik
+        // ateşlendikten sonra da dolu kalır ve "bağlanılıyor" durumu HİÇ
+        // görünmez — sessiz kalmanın ikinci biçimi.
+        gecikmeZamani = null;
+        durumuKur({ bagli: false, deniyor: false, gecikmeGecti: true });
+      }, GECIKME_MS);
+      durumuKur({ bagli: false, deniyor: false, gecikmeGecti: false });
+    });
+
+    // "Bağlantı yok" ile "bağlanmaya çalışıyorum" kullanıcı için iki ayrı
+    // cümle: ilki ona bir şey yapması gerektiğini düşündürür, ikincisi
+    // beklemesini söyler.
+    sock.io.on('reconnect_attempt', () => {
+      if (gecikmeZamani) return;        // gecikme dolmadıysa henüz sessiz
+      durumuKur({ bagli: false, deniyor: true, gecikmeGecti: true });
+    });
+
     sock.on('online_users', ({ users }) => _applyOnlineUsers(users));
     sock.on('user_online',  ({ user, status }) => setOnlineUsers(prev => {
       const n = new Map(prev); n.set(user, status || 'online'); return n;
@@ -888,9 +952,13 @@ function App() {
     });
 
     return () => {
+      clearTimeout(gecikmeZamani);
       sock.disconnect();
       window.SOCKET = null;
       setSocket(null);
+      // Soket gidiyor ama durum durumda kalıyordu: alan değişiminde şerit
+      // "bağlantı koptu" diye takılı kalırdı.
+      setCanliDurum('bagli');
     };
   }, [authed, needsWorkspace]);
 
@@ -1639,6 +1707,16 @@ function App() {
   return (
     <div className="app">
       <ToastContainer />
+      {/* BAĞLANTI ŞERİDİ — toast değil, çünkü toast kayboluyor ve koşul
+          kaybolmuyor. Bağlantı yoksa bunu söyleyen şey ekranda DURMAK
+          zorunda; yoksa kullanıcı iki saniye sonra yine bilmiyor.
+          `role="status"` ekran okuyucuya da söylüyor. */}
+      {canliDurum !== 'bagli' && (
+        <div className="canli-serit" data-durum={canliDurum} role="status">
+          <Icon name={canliDurum === 'donuyor' ? 'refresh' : 'alertTriangle'} size={13} />
+          {baglantiMetni(canliDurum, (k, fb) => window.t?.(k) || fb)}
+        </div>
+      )}
       <div
         className="sidebar-backdrop"
         data-open={mobileSidebarOpen}
