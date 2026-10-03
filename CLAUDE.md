@@ -17,6 +17,7 @@ Hangi işe girersen gir, ilgili belgeyi açmadan başlama:
 | [GUVENLIK.md](GUVENLIK.md) | **Yeni bir uç, ayar veya ekran eklerken zorunlu** |
 | [BILDIRIMLER.md](BILDIRIMLER.md) | Bildirimlere dokunurken |
 | [TOPLANTI-KARSILIGI.md](TOPLANTI-KARSILIGI.md) | Ürün yönü / kapsam sorusu geldiğinde |
+| [PROJE-ERISIMI.md](PROJE-ERISIMI.md) | **Proje bazlı erişime dokunurken zorunlu.** Ürün kararları 10 Eylül'de VERİLDİ, uygulama sırası yazılı |
 | [RAPORLAMA-TESTI.md](RAPORLAMA-TESTI.md) | `raporlama` dalını ayağa kaldırıp test ederken |
 | [MCP-SURUMLER.md](MCP-SURUMLER.md) | MCP yüzeyine dokunurken — sürüm geçmişi, kırıcı değişiklikler |
 
@@ -526,7 +527,12 @@ Ortak gerekçe: bunlar Jira'yı ağır yapan katman. StoaBoard'un iddiası sadel
 Öncelik sırasıyla — ayrıntı `GUVENLIK.md` ve `TODO.md` içinde:
 
 1. **Proje bazlı üyelik.** Bugün bir üye çalışma alanındaki her şeyi görüyor;
-   okuma izni diye bir kavram yok. En büyük açık.
+   okuma izni diye bir kavram yok. En büyük açık. **Ürün kararları BEKLEMİYOR
+   — 10 Eylül'de verildi, [PROJE-ERISIMI.md](PROJE-ERISIMI.md)'de yazılı**
+   (kim ekler, yönetici her şeyi görür, yeni üye hiçbir şey görmez, çıkarılan
+   kişinin adı kartlarda kalır). O belge CLAUDE.md'nin okuma listesinde
+   yoktu ve 3 Ekim'de bir oturum kararları "alınmamış" sanıp kullanıcıya
+   sordu — liste bu yüzden güncellendi.
 2. **Dönem dondurma.** Kapanmış dönemin raporu mühürlensin, yeniden
    hesaplanmasın.
 3. **Kanal geçmişi kesimi.** Yeni üye katılmadan önceki mesajları görüyor.

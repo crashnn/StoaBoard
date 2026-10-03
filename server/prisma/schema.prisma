@@ -39,6 +39,7 @@ model User {
   currentWorkspace     Workspace?             @relation("UserCurrentWorkspace", fields: [currentWorkspaceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   joinRequests         WorkspaceJoinRequest[]
   workspaceMemberships WorkspaceMember[]
+  projectMemberships   ProjectMember[]
   ownedWorkspaces      Workspace[]            @relation("WorkspaceOwner")
   mcpTokens            McpToken[]
 
@@ -93,6 +94,31 @@ model WorkspaceMember {
   @@map("workspace_members")
 }
 
+/// Proje bazlı üyelik (PROJE-ERISIMI.md, kararlar 10 Eylül 2026).
+///
+/// SORU TEK: "bu kullanıcı bu projeyi görebilir mi?" Proje bazlı ikinci bir
+/// izin sistemi BİLEREK kurulmuyor — satırın varlığı erişim demek. Proje
+/// yöneticisi rolleri ve ayrıntılı proje izinleri sonraki dilime ait.
+///
+/// `addedBy` denetim için: projeye kimin eklediği, kaydın kendisinde duruyor.
+/// Yabancı anahtar YOK ve bu bilinçli — ekleyen kişi alandan çıkarılsa bile
+/// kayıt yaşamalı, raporlama tablolarındaki kararla aynı yönde.
+///
+/// Bileşik birincil anahtar: aynı kişi aynı projeye iki kez eklenemiyor.
+/// Benzersizliği uygulamada kontrol etmek yarış durumuna açık olurdu.
+model ProjectMember {
+  projectId Int       @map("project_id")
+  userId    Int       @map("user_id")
+  addedBy   Int?      @map("added_by")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([projectId, userId])
+  @@index([userId], map: "ix_project_members_user_id")
+  @@map("project_members")
+}
+
 model WorkspaceJoinRequest {
   id          Int        @id @default(autoincrement())
   workspaceId Int?       @map("workspace_id")
@@ -114,6 +140,7 @@ model Project {
   activities  ActivityLog[]
   columns     BoardColumn[]
   labels      Label[]
+  members     ProjectMember[]
   workspace   Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tasks       Task[]
 
