@@ -2212,7 +2212,9 @@ function SettingsView({ tweaks, setTweak, onLogout, onWsLogoChange, onMembersCha
             <div className="tweak-label">{_t('set_lng_date_format','Tarih formatı')}</div>
             <div className="tweak-options">
               {[
-                ['dmY', '24 May 2026'],
+                // Onizleme GERCEK ciktiyla ayni olmali: `dmY` yili yalnizca
+                // baska bir yildaysa yaziyor, kart tarihinde yazmiyor.
+                ['dmY', '24 May'],
                 ['Ymd', '2026-05-24'],
                 ['mdY', '05/24/2026'],
               ].map(([k, l]) => (

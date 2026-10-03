@@ -2,6 +2,7 @@
 
 import { bildirimMetni, etkinlikMetni, htmlCoz } from './bildirimMetni.js';
 import { surumOlcutu, yeniSurumVar } from './surum.js';
+import { tarihYaz, yilBicimdeVarMi } from './tarihBicimi.js';
 
 const TR_MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -46,12 +47,21 @@ function kolonAdi(col) {
   return uiLang() === 'en' ? (col.title || col.title_tr || '') : (col.title_tr || col.title || '');
 }
 
+// Kullanicinin sectigi tarih bicimini okuyor. Onceden `dateFormat`
+// `stoa.tweaks`e yaziliyor ve HICBIR YERDE okunmuyordu — ucu de atil olan
+// dort ayardan biri. Varsayilan (`dmY`) bugunku ciktiyi birebir koruyor,
+// gerekcesi `tarihBicimi.js`te.
+function _tarihAyari() {
+  try { return (JSON.parse(localStorage.getItem('stoa.tweaks') || '{}') || {}).dateFormat; }
+  catch { return undefined; }
+}
+
 function fmtDate(isoDate) {
   const d = _parseServerDate(isoDate);
   if (!d) return '';
   const lang = localStorage.getItem('stoa.lang') || 'tr';
   const months = lang === 'en' ? EN_MONTHS : TR_MONTHS;
-  return `${d.getDate()} ${months[d.getMonth()]}`;
+  return tarihYaz(d, _tarihAyari(), { aylar: months });
 }
 
 function isOverdue(isoDate, colId) {
@@ -88,10 +98,12 @@ function fmtTimeAgo(iso) {
   }
   // For older items, show absolute date (more useful than "120 gün önce")
   const months = lang === 'en' ? EN_MONTHS : TR_MONTHS;
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return sameYear
-    ? `${d.getDate()} ${months[d.getMonth()]}`
-    : `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  // Ayni yil icindeyse yil ATLANIYOR ("24 Mayis") — ama yalnizca ay adli
+  // bicimde. Numerik bicimlerde yil bicimin parcasi ve onu atmak tarihi
+  // okunamaz yapardi ("05/24" hangi yil?).
+  const bicim = _tarihAyari();
+  const ayniYil = d.getFullYear() === new Date().getFullYear();
+  return tarihYaz(d, bicim, { aylar: months, yilEkle: !ayniYil || yilBicimdeVarMi(bicim) });
 }
 // fmtTimeAgo exported below
 
