@@ -1191,8 +1191,31 @@ function tekKolonlar(cols) {
   });
 }
 
+/**
+ * Alt görünüm adını TANINAN bir değere indirger.
+ *
+ * NİÇİN VAR: dört dal (`subView === 'list' | 'kanban' | 'table' |
+ * 'timeline'`) birbirinden bağımsız ve hiçbiri eşleşmezse ekran BOŞ
+ * kalıyordu — ne kart, ne kolon, ne hata. `localStorage`da bayat ya da
+ * bozuk bir değer (eski sürümden kalan bir ad, elle yazılmış bir şey)
+ * kullanıcıyı boş bir panoya bırakıyor ve sebebi hiçbir yerde yazmıyor.
+ *
+ * 3 Ekim'de bu kusur bir Playwright betiğinin kendi hatasıyla ortaya çıktı:
+ * betik değeri `'board'` diye yazdı (doğrusu `'kanban'`), pano bomboş açıldı
+ * ve ölçüt "kart görünmüyor" dedi. Yani kusuru bulan şey, kusurun kendisi
+ * değil onun bir kazayla tetiklenmesiydi — demek ki kullanıcıda da
+ * tetiklenebilir.
+ *
+ * `grupla()` aynı soruyu zaten böyle cevaplıyor: tanınmayan ölçüt kolona
+ * düşüyor, sessizce boş liste dönmüyor. Aynı kural burada da.
+ */
+const ALT_GORUNUMLER = ['list', 'kanban', 'table', 'timeline'];
+function altGorunum(ad) {
+  return ALT_GORUNUMLER.includes(ad) ? ad : 'kanban';
+}
+
 function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, tweaks, onOpenModal, onTitleChange, canManageTasks, canManageProjects, switching, initialSubView, onSubViewChange }) {
-  const [subView, setSubView] = useBoardState(() => initialSubView || localStorage.getItem('stoa.boardSubView') || 'kanban');
+  const [subView, setSubView] = useBoardState(() => altGorunum(initialSubView || localStorage.getItem('stoa.boardSubView')));
   // Gruplama olcutu HATIRLANIYOR: "kime gore bakiyorum" bir calisma bicimi,
   // her acilista kolona donmek o bicimi her gun yeniden kurmak demek.
   const [grupOlcutu, setGrupOlcutu] = useBoardState(() => localStorage.getItem('stoa.listGroupBy') || 'col');
@@ -1203,7 +1226,7 @@ function BoardView({ tasks, onOpenTask, onMoveTask, onDeleteTask, onAssignTask, 
     onSubViewChange?.(subView);
   }, [subView]);
   useBoardEf(() => {
-    if (initialSubView && initialSubView !== subView) setSubView(initialSubView);
+    if (initialSubView && altGorunum(initialSubView) !== subView) setSubView(altGorunum(initialSubView));
   }, [initialSubView]);
 
   const [draggingId, setDraggingId] = useBoardState(null);
