@@ -27,6 +27,14 @@ import { AuthPage, WorkspaceSetupPage } from './views/auth.jsx';
 import { BoardView } from './views/board.jsx';
 import { LegalPage } from './views/legal.jsx';
 import { GECIKME_MS, baglantiDurumu, baglantiMetni, tazelenmeliMi } from './baglanti.js';
+import { PENCERE_MS, yiginKarari, ozetMetni } from './bildirimYigini.js';
+
+// Bildirim patlamasinin sayaci. MODUL KAPSAMI, ref degil: soket etkisi
+// yeniden kurulduğunda (alan degisimi) sayac sifirlanmamali, yoksa ayni
+// patlama ikinci bir kesme uretir. 18 Eylul'deki `.current` dersi burada
+// ters yonde gecerli — tur degil KULLANIM onemli, ve bu nesne hic
+// `.current` tasimiyor.
+const BILDIRIM_YIGINI = {};
 
 // Açılış-dışı ağır görünümler tembel yükleniyor. Açılış görünümü daima 'board';
 // aşağıdakilerin hiçbiri ilk boyada gerekmiyor, yalnızca ilgili sekmeye
@@ -882,14 +890,40 @@ function App() {
         const kesiyor = tur === null || EKRANI_KESENLER.has(tur);
         const izinVar = myStatus !== 'dnd' && twks.notifyTasks !== false;
 
-        if (kesiyor && izinVar && twks.soundEnabled !== false) _playDing();
-
+        // ── PATLAMA YIĞINI ───────────────────────────────────────────────
+        //
+        // Toplu atama geldikten sonra yirmi kart yirmi toast + yirmi ding
+        // demek oldu (gerekçe `bildirimYigini.js`in başında). İlk bildirim
+        // hemen çıkıyor, gerisi sayılıyor, pencere kapanınca tek özet.
+        //
+        // Yığın MODÜL KAPSAMINDA (`BILDIRIM_YIGINI`), ref değil: bu etki
+        // soketin ömrüne bağlı ve yeniden kurulduğunda sayaç sıfırlanmamalı.
         if (kesiyor && izinVar) {
-          const metin = renderNotifText(notif.text);
-          // Toast düz metin gösteriyor: etiketler söküldükten sonra kaçış geri
-          // çözülüyor, yoksa kullanıcı `&lt;img&gt;` gibi varlık kodları görürdü.
-          // Metnin kendisi artık kaçışlı geliyor (bildirimMetni.js).
-          if (metin) window.showToast?.(htmlCoz(String(metin).replace(/<[^>]*>/g, '')), 'info');
+          const simdi = Date.now();
+          const kayit = BILDIRIM_YIGINI[tur];
+          if (yiginKarari(kayit, simdi) === 'ilk') {
+            clearTimeout(kayit?.zamanlayici);
+            BILDIRIM_YIGINI[tur] = { basladi: simdi, sayi: 1, zamanlayici: null };
+            if (twks.soundEnabled !== false) _playDing();
+            const metin = renderNotifText(notif.text);
+            // Toast düz metin gösteriyor: etiketler söküldükten sonra kaçış
+            // geri çözülüyor, yoksa kullanıcı `&lt;img&gt;` gibi varlık
+            // kodları görürdü. Metnin kendisi artık kaçışlı geliyor
+            // (bildirimMetni.js).
+            if (metin) window.showToast?.(htmlCoz(String(metin).replace(/<[^>]*>/g, '')), 'info');
+          } else {
+            // DING YOK ve TOAST YOK: patlamanın tamamı tek kesme sayılıyor.
+            kayit.sayi += 1;
+            clearTimeout(kayit.zamanlayici);
+            kayit.zamanlayici = setTimeout(() => {
+              const k = BILDIRIM_YIGINI[tur];
+              // `sayi - 1`: ilki zaten gösterildi, özet yalnızca FAZLASINI
+              // söylüyor.
+              const ozet = ozetMetni(tur, (k?.sayi || 1) - 1, (key, fb) => window.t?.(key) || fb);
+              if (ozet) window.showToast?.(ozet, 'info');
+              delete BILDIRIM_YIGINI[tur];
+            }, PENCERE_MS);
+          }
         }
       }
     });

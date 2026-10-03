@@ -708,10 +708,38 @@ describe('Bildirim kesme kümesi — tek karar, üç kanal (kart #121)', () => {
       'Bildirim işleyicisinde hiç ding çağrısı yok. Ses tümden kaldırıldıysa '
       + 'bu test de güncellenmeli; sessizce kaybolmasın.',
     );
+    // ÖLÇÜT İÇERİLMEYE BAĞLI, SATIR METNİNE DEĞİL.
+    //
+    // İlk hâli her ding satırının `kesiyor` kelimesini TAŞIMASINI istiyordu
+    // ve o gün doğruydu, çünkü kapı tek düz koşuldu:
+    // `if (kesiyor && izinVar && twks.soundEnabled !== false) _playDing();`
+    //
+    // 3 Ekim'de patlama yığını eklendi ve ding iki kapının İÇİNE girdi
+    // (`kesiyor && izinVar` → yığın kararı → ses tercihi). Korunan kural
+    // daha da sıkılaştı, ama ölçüt kırıldı: çözümün o günkü yazımına
+    // bağlıydı. Ölçülmesi gereken şey kelimenin satırda durması değil,
+    // çağrının KAPININ İÇİNDE olması.
+    const kapiBas = isleyici.indexOf('if (kesiyor && izinVar) {');
+    assert.ok(kapiBas > 0,
+      'Kesme kapısı bulunamadı. Ses ve toast AYNI kümeden beslenmeli; kapı '
+      + 'kalkmışsa kapısız ding geri gelmiş olabilir (kart #121).');
+    // Kapının kapanışı: açılış süslü parantezinden başlayıp eşleşeni bul.
+    let derinlik = 0;
+    let kapiSon = -1;
+    for (let i = isleyici.indexOf('{', kapiBas); i < isleyici.length; i += 1) {
+      if (isleyici[i] === '{') derinlik += 1;
+      else if (isleyici[i] === '}') {
+        derinlik -= 1;
+        if (derinlik === 0) { kapiSon = i; break; }
+      }
+    }
+    assert.ok(kapiSon > kapiBas, 'kesme kapısı kapanmıyor — sınır belirlenemedi');
+
     for (const satir of cagrilar) {
-      assert.match(
-        satir, /kesiyor/,
-        'Ding çağrısı kesme kararını okumuyor: `' + satir.trim() + '`\n  '
+      const yer = isleyici.indexOf(satir);
+      assert.ok(
+        yer > kapiBas && yer < kapiSon,
+        'Ding çağrısı kesme kapısının DIŞINDA: `' + satir.trim() + '`\n  '
         + 'Ses, toast ile AYNI kümeden beslenmeli. Kapısız ding, ekranda '
         + 'hiçbir şey görünmezken ses çıkması demek — kullanıcı sesin nereden '
         + 'geldiğini bulamaz (kart #121).',
