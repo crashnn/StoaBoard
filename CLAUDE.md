@@ -90,7 +90,7 @@ Gece **kişisel MCP anahtarları** (DEVIR 0-V2): Ayarlar → Claude bağlantıs�
 iptal. **Anahtarı ortam değişkenine eklemek artık tek yol değil** — yeni kişi
 kendi anahtarını üretir.
 
-Test sayısı **1335**, hepsi geçiyor. Ayrıntılı durum için **her zaman
+Test sayısı **1397**, hepsi geçiyor. Ayrıntılı durum için **her zaman
 [DEVIR.md](DEVIR.md)** — bu blok bayatlamaya yatkın, oradaki 0-* bölümleri
 tarihli ve daha güvenilir.
 
@@ -158,7 +158,7 @@ tarayıcı içi SQL Editor'ü HTTPS üzerinden çalıştığı için o ağlarda 
 
 ## Çalışma biçimi
 
-**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1335 test,
+**Testleri çalıştır.** Değişiklikten sonra `cd server && npm test` — 1397 test,
 veritabanı gerektirmez, birkaç saniye sürer. Çıktıda `[db] warmup failed` /
 "Can't reach database server" görürsen bu bir test hatası **değil**: uygulama
 modülü yüklenirken bağlantıyı deniyor, kurumsal ağda 5432 kapalı. Ölçüt en
@@ -362,6 +362,36 @@ aklanıyor, burada ölçüt doğru satırı *fazla dar* tanıyor. İkisinin de
 ve arama satırda yazandan azını tarıyordu). Tarama turunda bir bölümü
 "eksik" diye not etmeden önce o ekranın kodunu aç — yoksa tur, var olanı
 ikinci kez yazmaya ve gerçek eksiği kaçırmaya gider.
+
+**Olcut kirildiysa ikinci soruyu sor: DAVRANIS mi degisti, YAZIM mi?**
+Yukaridaki soru ("bunu duzelten biri testi kirmak zorunda mi kalir?") olcutu
+cozume baglanmaktan koruyor, ama tek basina yaniltici: bazen olcutun
+kirilmasi DOGRUDUR. 3 Ekim'de alti olcut kirildi ve altisi da hakliydi,
+cunku mekanizma gercekten degisti (`topluBitir(sonuc, true)` secenek
+nesnesine, `moveTask(id, col)` `{ sessiz }` aldi, ding iki kapinin icine
+girdi). Kural her seferinde SIKILASTI, yazim degisti.
+
+Ayirt etmenin yolu: olcutun ne OLCMEK ISTEDIGINI yaz, sonra yeni koda sor.
+"Ding kesme kararini okuyor mu" davranis; "`kesiyor` kelimesi ding
+satirinda geciyor mu" yazim. Ikincisi birincinin o gunku bicimiydi. Yeniden
+baglarken MEKANIZMAYI ara: ding kapinin ICINDE mi (parantez eslemesiyle
+blogu bul), atama govdesi koruma bayragini GECIYOR mu, dal ayrimi
+KAPANISIN HEMEN ARDINDA mi.
+
+**Kaynak taramasi ULASILABILIRLIGI kanitlayamaz, ve bunu yazili bilmek
+gerekir.** Aklama denemesi `_playDing()`i dalda birakip `if (false) { ... }`
+icine sardi; girinti olcutu KACIRDI, cunku sarmalayici AYNI SATIRDAYDI.
+Gercekci bicimleri kapatan uc olcut var (satir bicimi, girinti, parantez
+dengesi) ama bilerek kurulmus bir olu blok hala gecebilir. Boyle bir sinira
+dayandigin yerde onu TESTE yaz — `yetki.test.js`in kapsamlama notu gibi.
+Sinir yaziliysa kimse "ulasilabilirlik test edilmis" sanmaz.
+
+**Betigin temizligi urune dokunmamali.** 3 Ekim'de canli deneme toast'lari
+TIKLAYARAK temizliyordu; tiklama bildirimi acmaya gidiyor, gorunum degisiyor
+ve olculecek durum gidiyor. Olcut urunu degil kendi temizligimi olctu ve bos
+dondu. Ayni turda ikinci ders: "ayni anda kac tane" degil "TOPLAM kac
+farkli" olc — iki toastin birlikte ekranda olmasini beklemek toast OMRUNE
+baglanmakti, oysa iddia "yirmi bildirim iki toast uretir"di.
 
 **Kazayla tetiklenebilen şey kullanıcıda da tetiklenir.** 3 Ekim'de bir
 Playwright betiği `stoa.boardSubView`e `'board'` yazdı (doğrusu

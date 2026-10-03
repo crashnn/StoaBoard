@@ -6,7 +6,7 @@ Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
 **Son güncelleme:** 3 Ekim 2026, **ev makinesinde**. En taze bölüm
-**0-AN**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**0-AO**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,180 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AO. 3 Ekim — sessiz başarısızlığın üç biçimi: bağlantı, geri alma, yalan sayan toplu sonuç
+
+**Depo:** `main` = bu bölümün commit'leri, `origin/main` ile eşit.
+Test **1335 → 1397**. Kartlar: **#423** (bağlantı şeridi), **#424** (toplu
+geri alma + dürüst sayım), **#425** (bildirim patlaması).
+
+**Niçin bu tur:** kullanıcı "başka var mı — özellik, iyileştirme, UI, UX?"
+diye sordu. Tarama kodu açarak yapıldı (envanterde iki kez "yok" denip var
+çıktığı için) ve bu yüzden üç şey **bulunmadı**: boş durumlar eksik değil
+(sohbet ve takvim kendi sınıflarını kullanıyor), mobil kapsamı var, sunucu
+`arama.js` zaten `katla`yı içe alıyor. Bulunanlar aşağıda.
+
+### 1 · Bağlantı koptuğunda kullanıcıya hiçbir şey söylenmiyordu
+
+İstemcinin tamamında **tek bir `disconnect` işleyicisi yoktu**. Soket
+kuruluyor, sonra yalnızca BAŞKALARININ varlığı dinleniyordu. Dizüstü
+uyandığında, wifi değiştiğinde ya da sunucu yeniden başladığında pano bayat
+kalıyor ve bunu söyleyen hiçbir şey yok.
+
+Üç karar: **şerit toast değil** (toast kayboluyor, koşul kaybolmuyor);
+**kısa kesinti şerit açmıyor** (2500 ms, yoksa her blipte çakan şeride kimse
+bakmaz); **üç durum iki cümle** ("bağlantı yok" ile "bağlanılıyor" farklı
+şeyler söyler).
+
+**Geri dönüşte veri de tazeleniyor.** Şeridi kaldırmak yetmez: kopukken
+gönderilen olaylar geri gelmiyor. "Bağlantı var" deyip bayat pano göstermek
+hiç söylememekten daha kötü, çünkü kullanıcı artık ekrana güveniyor.
+Tazeleme düşerse şerit kopuk durumuna dönüyor.
+
+İlk yazımda **iki hata** vardı ve ikisi de kayda değer:
+
+- **Tazelemeyi şeridin durumuna bağlamıştım.** Yanlış: şerit gecikme
+  beklediği için 300 ms'lik kesinti ekranda hiç görünmüyor, ama o 300 ms'de
+  olaylar gerçekten kayboluyor. Şeridi geciktirmek arayüz kararı,
+  tazelemeyi geciktirmek veri kaybı.
+- **Zamanlayıcı kimliğini ateşten sonra sıfırlamıyordum.**
+  `reconnect_attempt` kapısı ona bakıyor; sıfırlanmazsa "bağlanılıyor"
+  durumu HİÇ görünmez — kapatmaya çalıştığım sınıfın ikinci biçimi.
+
+**Canlı ölçüm ayırt edici:** soket kopukken HTTP ile bir kart oluşturuldu
+(HTTP çalışır, soket çalışmaz). Kart kopukken panoda **yok**, geri dönüşte
+**var** — yani tazeleme gerçekten çalışıyor ve ölçüt boş değil (9/0).
+
+### 2 · Geri alma yalnızca bir yerdeydi, ve toplu sonuç YALAN SÖYLÜYORDU
+
+Bütün uygulamada tek bir "Geri al" vardı (çöpe atma). Toplu işlem çubuğu
+"yirmi kartı yanlış kolona taşımayı" tek tıklık hâle getirdi ve o tıklamanın
+geri dönüşü yoktu. **Yanlışı kolaylaştırıp düzeltmeyi kolaylaştırmamak,
+aracı kullanıcıya karşı kurmaktır.**
+
+Üç toplu işlemin üçü de artık geri alınabiliyor. Görüntü **işlemden önce**
+alınıyor ve dizi **kopyalanıyor** — kopyalanmazsa görüntü canlı diziye takma
+ad olur ve "geri al" yeni değeri geri yazardı: hiçbir şey yapmayan ama
+yapmış görünen bir düğme. Geri alma **yalnızca tutmuş olanları** geri alıyor;
+hiçbiri tutmadıysa teklif hiç çıkmıyor.
+
+**Yol boyunca iki kusur çıktı ve ikisi de dün gönderdiğim işin kenarıydı:**
+
+**a) Yirmi kart, yirmi bir toast.** `onDeleteTask` tek kart yolunda kendi
+geri-al teklifini gösteriyor; toplu çöpe atma onu kart başına çağırıyordu.
+Yirmi toast, hepsi tek bir karta ait teklif, üstüne bir de toplu sonuç.
+Aynısı çöpteki toplu geri almada da vardı. `sessiz` seçeneği kart başına
+toast'ı bastırıyor, toplu yol kendi **tek** teklifini gösteriyor.
+
+**b) Toplu sonuç mesajı yalan söyleyebiliyordu.** Altı işleyici
+(`moveTask`, `deleteTask`, `restoreTask`, `permanentDeleteTask`,
+`restoreNote`, `permanentDeleteNote`) hatayı `catch { console.error }` ile
+yutuyordu. `topluCalistir` başarısızı **ancak fırlatılırsa** sayabiliyor —
+yani yirmi öğenin yirmisi de düşse "20 öğe işlendi" yazıyordu. Kullanıcıya
+yanlış söyleyen bir başarı mesajı, bu depodaki en pahalı kusur sınıfı.
+Altısı da artık sessiz yolda fırlatıyor, tek kart yolunda ise kullanıcıya
+**söylüyor** (eskiden yalnızca `console.error` vardı: geri alma sessizce
+düşebiliyor ve kullanıcı kartın geri geldiğini sanıyordu).
+
+### 3 · Ölçüt dersleri
+
+**Dört ölçüt kırıldı ve dördü de HAKLI olarak kırıldı** — mekanizma gerçekten
+değişti (`topluBitir(sonuc, true)` → seçenek nesnesi; `onMoveTask(id, col)`
+→ `{ sessiz: true }`). Bu, 0-AN'de yazılan sorunun ters yönü: "bunu düzelten
+biri testi kırmak zorunda mı kalır?" Cevap evetse ölçüt çözüme bağlanmıştır —
+**ama mekanizmanın kendisi değiştiyse ölçütün kırılması doğrudur.** İkisini
+ayırmak için sorulacak ikinci soru: *davranış mı değişti, yazım mı?*
+
+- "toplu işlem yalnızca görünen kartlara": sayım artık **ileri** çağrılara
+  bağlı (`await topluCalistir(`). Geri alma çağrıları `seciliGorunen`
+  kullanmamalı — kullanmaları yanlış olurdu, çünkü geri alma zaten tutmuş
+  kimlikler üzerinde çalışıyor ve o küme süzgeçten değil **sonuçtan** geliyor.
+  Ayrım tesadüfi bir yazım değil mekanizma: ileri çağrı bekleniyor.
+- "sonuç kullanıcıya söyleniyor": `window.showToast?.(mesaj` arıyordu; toast
+  artık nesne alıyor. Ölçüt `topluBitir` gövdesine ve üç davranışa bağlandı.
+- "atama seçimi koruyor": `}), true);` yazımına bağlıydı → `secimiKoru: true`
+  mekanizmasına.
+
+**Aklama denemesi bağlantı ölçütünü İKİ KEZ akladı, ikisi de pencere
+genişliğinden.** Önce ölçüt yalnızca `sock.on('disconnect', () => {`
+kalıbını arıyordu ve ölü bir `if (false) sock.on('disconnect', () => {});`
+satırı onu doyurdu. Düzeltince gövde dilimi `\n    });`e kadar gidiyordu ve
+ölü **tek satırlık** işleyiciden taşıp aşağıdaki gerçek işleyiciyi okudu.
+Ölçüt artık işleyici **sayıyor** (tam bir tane) ve gövdeyi kendi kapanışına
+kadar alıyor.
+
+### 4 · Bildirim patlaması — kullanıcıya sorulmuştu, cevap gelmeden kapandı
+
+Önceki turda "karar bekliyor" diye bırakılmıştı; kullanıcı "devam, başla
+direkt" deyince önerilen **ucuz yol** uygulandı: alıcı tarafında birleştirme,
+şema değişmiyor, hiçbir kararı bozmuyor.
+
+İlk bildirim HEMEN çıkıyor, gerisi sayılıyor, pencere kapanınca tek özet
+("+19 yeni atama"). Ding yalnızca ilkinde. "Hepsini bekletip tek toast"
+reddedildi: tek bir atama da pencere kadar gecikirdi, yani **yaygın durumu
+nadir durum için yavaşlatmak** olurdu.
+
+Pencere **ilk** bildirimden sayılıyor; sonuncudan sayılsaydı saniyede bir
+gelen sürekli bir akış pencereyi hiç kapatmaz ve özet hiç görünmezdi.
+
+Sunucuda birleştirme yapılmadı: `Notification` tablosunda `type` sütunu yok
+(metin hazır geliyor), yani şema değişikliği ister ve bu depoda şema elle
+uygulanıyor. Kapatılan şey **kesmenin** gürültüsü; panelde yirmi satır olduğu
+gibi duruyor ve bu doğru.
+
+**Ölçüt yeniden bağlandı (turun üçüncü örneği).** `bildirim.test.js` her ding
+satırının `kesiyor` kelimesini **taşımasını** istiyordu ve o gün doğruydu:
+kapı tek düz koşuldu. Yığın eklenince ding iki kapının **içine** girdi —
+kural sıkılaştı, ölçüt kırıldı. Artık parantez eşlemesiyle kapı bloğu
+bulunuyor ve çağrının o aralığa düştüğü doğrulanıyor; yeniden bağlanan ölçüt
+asıl kusuru (kapısız ding) hâlâ yakalıyor, mutasyonla doğrulandı.
+
+**İki mutasyon ilk hâlde kaçtı.** Biri **testimin ayırt etmemesiydi**: kayıt
+yalnızca `basladi` taşıdığı için "son gelene bak" mutasyonu da aynı cevabı
+veriyordu; ölçüt artık kayda fazla alan koyuyor. İkincisi aklama —
+`_playDing` **aynı satırda** `if (false) { … }` içine sarıldı ve girinti
+ölçütü kaçırdı. Şimdi üç ölçüt birlikte: satır biçimi, girinti, parantez
+dengesi. **Kaynak taramasının ulaşılabilirliği kanıtlayamadığı teste açıkça
+yazılı** ki "ulaşılabilirlik test edilmiş" sanılmasın.
+
+**Canlı ölçüm:** bildirim başka kullanıcıya gittiği için yirmi gerçek
+bildirim bu oturumda alınamıyor. Onun yerine **soketin gerçek dinleyicisi**
+çağrıldı (`SOCKET.listeners('notification')`) — taklit değil, bağlanmış
+kodun kendisi. Yirmi bildirim **toplam iki** toast üretti, özet "+19" dedi,
+bahsetme ayrı sayaçtan "+4" dedi (9/0).
+
+### 5 · Playwright dersleri (iki yeni)
+
+- **Betiğin temizliği ürüne dokunmamalı.** Toast'ları **tıklayarak**
+  temizliyordum; tıklama bildirimi açmaya gidiyor, görünüm değişiyor ve yığın
+  durumu gidiyor. Ölçüt ürünü değil kendi temizliğimi ölçtü ve boş döndü.
+  Artık toast kendi ömründe düşüyor, betik bekliyor.
+- **"Aynı anda kaç tane" yerine "toplam kaç farklı".** İlk ölçüt iki toastın
+  birlikte ekranda olmasını bekliyordu ve **toast ömrüne** bağlandı: ilki
+  özet çıkmadan düşünce ölçüt kaldı, oysa iddia karşılanmıştı. İddia "yirmi
+  bildirim iki toast üretir"; doğru ölçüm patlama boyunca örneklemek ve
+  farklı mesajların **birleşimini** saymak.
+- Ayrıca: bu deneme **kullanıcının kulağına ding gönderdi**. Gerçek
+  dinleyiciyi çağırmak gerçek ses demek. Sentetik bildirim gönderen bir
+  betik yazarken bunu önceden söyle.
+
+### Eldeki iş
+
+**Karar bekleyenler — girilmedi, CLAUDE.md "cevaplanmadan girme" diyor:**
+teslim tarihi bildirimi (BILDIRIMLER.md S4: kime, ne zaman), tarayıcı
+bildirimi (S5), dönem dondurma, ve en büyük açık **proje bazlı üyelik**.
+
+**BILDIRIMLER.md 6. boşluk KAPANDI** (yukarıda, bölüm 4). Sunucu tarafı
+birleştirme hâlâ açık bir seçenek ama gerekmiyor: kesme gürültüsü istemcide
+kapandı, panel kasten olduğu gibi kaldı.
+
+**Yapılmayan, küçük:** kanban'da toplu işlem yok (bilinçli kapsam kararı),
+ekranda `?` ile kısayol listesi yok.
+
+**Kapanmamış tek ölçüm:** #332 (çevrimiçi listesi kapsamı) — üç test hesabı
+da alan 22'de, ölçüm "ortak alan" ile "platform geneli"ni ayırt edemiyor.
 
 ---
 
