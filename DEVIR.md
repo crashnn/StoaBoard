@@ -5,8 +5,8 @@ projeyi yeni devralan oturuma "şu an gerçekte ne doğru" demek için var.
 Belgelerde birbiriyle çelişen ifadeler bulursan **bu dosyaya ve `git log`a**
 güven, düzyazıya değil.
 
-**Son güncelleme:** 3 Ekim 2026, **ev makinesinde**. En taze bölüm
-**0-AS**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
+**Son güncelleme:** 4 Ekim 2026, **ev makinesinde**. En taze bölüm
+**0-AT**. Ofis makinesi 18 Eylül'de teslim edildi; artık tek oturum var.
 
 > **Bugün iki oturum aynı depoda paralel çalıştı** (ev + ofis) ve çakışmadı.
 > Nasıl yürüdüğü 0-AD'de; kanal panodaki **kart #196**.
@@ -15,6 +15,59 @@ güven, düzyazıya değil.
 > ve `npm run prisma:push` orada koşmaz. Ev makinesine uzaktan bağlanılırsa
 > komutlar ev makinesinde çalışır ve o kısıt geçerli olmaz — ofis ağı yalnızca
 > ekranı taşır.
+
+---
+
+## 0-AT. 4 Ekim — proje erişiminin ortak kapısı yazıldı, uçlara BAĞLI DEĞİL
+
+**Depo:** `main` = `59e69ce`. Test **1495 → 1518**.
+
+### Kullanıcı kararı: şema ertelendi
+
+0-AS'teki `.env` sorusu soruldu, cevap **"şimdilik ertele"**. Yani:
+`project_members` tablosu canlıda hâlâ yok, yerel `.env` hâlâ üretime
+bakıyor, bu makinede şema komutu çalıştırılmadı. 0-AS'in "önce bunu oku"
+uyarısı aynen geçerli.
+
+### Yapılan: `server/src/lib/projeErisimi.js`
+
+Veritabanı istemeyen dilim. Üç parça:
+
+- `projeyiGorebilir({ member, project, projeUyesi })` — saf karar. Her
+  eksik/tutarsız girdi reddeder (başka alanın üyeliği, başka kişinin satırı,
+  tanımsız satır).
+- `gorunurProjeKosulu(member)` — liste uçları için Prisma `where`. Tekil
+  kapıyla aynı kuralın ikinci biçimi; test ikisini örnek dünyada
+  karşılaştırıyor. Üyelik yoksa **fırlatıyor** (boş koşul = her proje).
+- `projeErisimiCoz(client, userId, projectId)` — ortak kapı, istemciyi
+  parametre alıyor. Yöneticide `project_members` hiç sorgulanmıyor.
+
+**"Yönetici" = `manage_members` izni.** Bu depoda yönetici bir rol adı
+değil, düzenlenebilir izin kümesi. Gerekçe kaynağın başında; kısaca: görmek
+ile projeye üye ekleyebilmek aynı izne bağlı olmalı, `manage_workspace`
+varsayılan Yönetici'de yok. Bu bir yorum kararıydı — kullanıcı farklı
+düşünürse değişecek tek satır `HER_PROJEYI_GOREN_IZIN`.
+
+**Kâhin tasarımda kapalı.** "Proje yok", "alan üyesi değil", "projeye
+eklenmemiş" aynı dondurulmuş `{ erisim: false }` nesnesini alıyor; çağıran
+ayrımı bilmediği için farklı yanıt yazamaz. Mevcut altı kopyanın kuralı
+yazımla korunuyordu, bu yedinci dal yapıyla.
+
+### Sıralama kısıtı artık TESTTE
+
+`projeErisimi.test.js`in son bloğu: `src` içinde modülün kendisi dışında
+`projeErisimi` ya da `.projectMember` kullanan dosya varsa kırılır. Sırası:
+
+1. Kullanıcı DDL'i + tek seferlik aktarımı (0-AS'teki iki SQL bloğu)
+   canlıda çalıştırır.
+2. O describe bloğu **bilerek silinir**.
+3. Okuma uçları kapıya bağlanır: `routes/projects.js`
+   (`loadProjectWithAccess`, `GET /projects`), `routes/tasks.js`
+   (`loadTaskWithAccess`, `GET /projects/:id/tasks`), önyükleme
+   (`kenarCubuguProjeleri`). Kapı 404'ü mevcut `_not_found` gövdeleriyle
+   döner, izin reddi (403) çağıranda kalır.
+
+Mutasyon turu 16 deneme, hepsi beklendiği gibi (ayrıntı commit mesajında).
 
 ---
 
